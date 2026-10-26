@@ -10,6 +10,7 @@ compile_commands.json
 *.swo
 *~
 # run outputs
+runs/
 *.dat
 fil10*
 fil21*
