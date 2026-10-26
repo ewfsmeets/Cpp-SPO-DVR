@@ -1,0 +1,83 @@
+# Small hard wall regression case.
+# Grid/CAP/propagation parameters from J. Phys. Chem. C, Table 1, H2/Cu(211), column "0.2-0.6 eV, v0".
+# nX, nY, JMax, MJMax reduced to very small values; analysis settings chosen to satisfy the input checks.
+# Fields not pre-registered in InputNew.f90 ReadInput need an explicit type: "Name : TYPE : value;".
+# HardWallPES fixes: zasymp = 7.0, alat = 6.23966, blat = 5.23966, 90 deg cell, C2v.
+
+Title       : "Hard wall small test (Cu211 table, v0 0.2-0.6 eV)";
+SystemID    : "HardWallPES";
+NewCalc     : TRUE;
+
+ZDoF        : TRUE;
+RDoF        : TRUE;
+XDoF        : TRUE;
+YDoF        : TRUE;
+ThetaDoF    : TRUE;
+PhiDoF      : TRUE;
+
+# H2
+Mass1       : 1.0078;
+Mass2       : 1.0078;
+HomoNuc     : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : -2.0;
+dZ          : 0.08;
+nZ          : 176;
+nZSpecular  : 280;
+
+# Grid in r
+RStart      : 0.8;
+dR          : 0.15;
+nR          : 56;
+
+# Grid in x, y (reduced)
+nX          : 4;
+nY          : 4;
+
+# Rotational basis (reduced)
+JMax        : 4;
+MJMax       : INTEGER : 4;
+
+ProjOp      : 2;
+
+# Propagation
+tStart      : 0.0;
+tEnd        : 14000.0;
+dtStep      : 2.0;
+nStep       : 7000;
+
+# Analysis
+dtAna       : 10.0;
+dtAve       : 100.0;
+DynamZSpAna : TRUE;
+Zana        : 8.0;
+NrOfEs      : 41;
+
+# Initial wave packet and state
+EMinWP      : 0.2;
+EMaxWP      : 0.6;
+Z0          : 11.44;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : 0.0;
+PhiParallel : 0.0;
+
+# Complex absorbing potentials
+ZOptStart   : 8.88;
+ZOptEnd     : 12.0;
+ZOptEnergy  : REAL : 0.3;
+ZSpOptStart : 16.8;
+ZSpOptEnd   : 20.32;
+ZSpOptEnergy: REAL : 0.3;
+ROptStart   : 4.55;
+ROptEnd     : 9.05;
+ROptEnergy  : REAL : 0.3;
+
+# No default exists in the Fortran code for TolSp; must be given.
+TolSp       : REAL : 1.0E-07;
+
+writeSMatrix: FALSE;
+writeProbs  : TRUE;
+writeRDProbs: TRUE;

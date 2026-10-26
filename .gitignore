@@ -1,0 +1,18 @@
+build/
+build-*/
+.claude/settings.local.json
+*.o
+*.a
+*.so
+compile_commands.json
+.cache/
+*.swp
+*.swo
+*~
+# run outputs
+*.dat
+fil10*
+fil21*
+fort.*
+# reference data is tracked
+!tests/reference/**
