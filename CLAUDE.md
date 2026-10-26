@@ -14,8 +14,13 @@ for the incoming channel).
 - Sources: `~/work/SPO-DVR/procfiles.dir/SOURCES.dir/` (active build: GFORTRAN.mk, OpenMP, FFTW,
   `-fdefault-real-8` ⇒ every Fortran `REAL`/`COMPLEX` is double).
 - Active input reader: `InputNew.f90` (`__USE_NEW_INPUT_FORMAT__` defined). `Input.f90` is dead.
-- Ignore: MPI code (`MPI_*.f90`, `#if defined(USE_MPI)` blocks), `*_hack.f90`, `fftw_2_scs.f90`,
+- Ignore: MPI code (`MPI_*.f90`, `#if defined(USE_MPI)` blocks), `*_hack.f90`,
   all PES modules except `HardWallPES.f90`, CRPlibrary, PES4Cu100.
+- **`fftw_2_scs.f90` is NOT dead**: it is the FFTW wrapper behind every `ffts.f90` call in the active
+  build (FFTW_ESTIMATE plans). It emulates the SCS sign convention: r2c with Sign = +1 returns
+  `Scale·conj(FFTW r2c)`; c2r with Sign = −1 conjugates the input before FFTW c2r; output ×Scale.
+  `Inverse…FFT` uses scale `1/(Scale·N)`. Check the complex (`zzfftm`) wrapper before porting the
+  propagator FFTs.
 - Key files ↔ C++ responsibility:
   - `Main.f90` → program driver / run modes
   - `InputNew.f90` (ReadInput/ValidateInput/ProcessInput) → `input/` (JSON + validation)
@@ -23,6 +28,7 @@ for the incoming channel).
   - `setupdvr.f90`, `angulargrid.f90`, `legendre.f90`, `transform.f90` → angular grid + FBR⇄DVR
   - `SplitOperator.f90` → propagator; `KineticOp.f90`, `GridEnergies.f90` → kinetic operators
   - `Potential.f90` (setup + PerformEXPPotentialOp) → potential operator; `HardWallPES.f90` → hard wall
+  - `FourierGridHamiltonian.f90` + `jacobi.f90` → `gasphase/` FGH (C++ diagonalises with LAPACK)
   - `TwoGrids.f90` → specular⇄scattering projection; `Absorption.f90` → optical potentials
   - `MomentumShifting.f90`, `WaveFunction.f90` (CoherentStateFunc, save/read), `GasPhase.f90` (FGH)
   - `Analyzor.f90`, `AsympInfo.f90`, `RotDifBasis.f90`, `FluxAnalyzor.f90`, `Averages.f90` → analysis
@@ -65,6 +71,7 @@ for the incoming channel).
   potential `(iφ+nφ*iθ, ixy, ir+nr*iz)`. This keeps FFT strides and summation order identical.
 - **Constants**: one simple `Constants` object (header-only, `constexpr`): π, 2π, √π, √(2π), deg→rad,
   imaginary unit, `nen95` sentinel (−95). Values copied verbatim from `constants.f90`.
+  `Constants_EPS` is computed at run time in Fortran (2⁻⁵⁴): use `fortran_machine_epsilon()`.
 - **UnitConversion**: one simple object holding the conversion factors plus straightforward named
   procedures (`ev_to_hartree(x)`, `hartree_to_ev(x)`, `amu_to_me(x)`, `bohr_to_angstrom(x)`,
   `angstrom_to_bohr(x)`, `hartree_to_wavenumber(x)`, `deg_to_rad(x)`, …). Two named instances:
@@ -78,9 +85,12 @@ for the incoming channel).
   1e-12. Provide equivalent helpers and use them in input validation so accept/reject decisions match.
 - **Pointers**: the only pointer types allowed are `std::unique_ptr` and `std::shared_ptr`. No raw
   pointers (owning or non-owning), no `new`/`delete`. Non-owning access uses references or
-  `std::span`. The single exception is the C-API boundary inside the FFTW implementation
-  (`fftw_plan`, `vector.data()` passed to FFTW calls); keep it local to that file and wrap plans in
-  `std::unique_ptr` with a custom deleter (`fftw_destroy_plan`).
+  `std::span`. The only exceptions are the C-API boundaries inside the FFTW implementation
+  (`src/fft/fftw_fft.cpp`: `fftw_plan`, `vector.data()` passed to FFTW calls; plans wrapped in
+  `std::unique_ptr` with a custom deleter `fftw_destroy_plan`) and the LAPACK backend
+  (`src/linalg/lapack_eigensolver.cpp`). Keep them local to those files.
+- **Eigensolvers**: abstract `SymmetricEigensolver` interface; only concrete impl `LapackEigensolver`
+  (dsyevd). Other backends (e.g. a port of `jacobi.f90`) plug in without touching callers.
 - **No globals.** Configuration is an immutable struct produced by input processing; pass explicitly.
 - Parallelism: OpenMP only (no MPI). Results must not depend on thread count.
 - Precision: `double` / `std::complex<double>` everywhere.
@@ -126,6 +136,21 @@ derived from exactly the same parameters.
 - Error message `'EMaxFluxAna < EMinWP'` for the check `EMaxFluxAna < EMaxWP`.
 - `InitGenComplexTransform` silently returns on invalid nφ.
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
+- `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.
+- Kept on purpose (Fortran semantics reproduced): `MJMax <= 0` ⇒ the basis/grid uses MJMax = JMax
+  (`setupdvr.f90`/`transform.f90` "MjMax < 1"), while ValidateInput checks |MJIn| ≤ |MJMax| with the
+  raw value. `VAna < 1` and absent `JAna` are replaced by the program-determined open-channel limits
+  (`GasPhase.f90`).
+- Not ported: `.pes` file caching (`ReadPesFromFile`/`WritePesToFile`); the potential is always
+  computed. `UseRCutOff` is silently forced off by Fortran `ProcessInput`; C++ rejects
+  `UseRCutOff: true` / `RCutOff`. Also rejected (NotSupportedError): `SystemMix` (+`SystemID2`,
+  `SystemMixCoeff`), `UseSymmetry`/`nPhisOptimal` (C2v symmetry is disabled in Fortran anyway),
+  `write2DPES` (+ coordinates), `PESMixingAlfa`, `CRPlibDataSet`.
+- Giving both `ZOptEnergy` and `ZOptFactor` (same for R/ZSp) is an error (Fortran silently ignores
+  the factor).
+- The check `ZSpOptStart < ZAsymptotic` is unreachable (implied by the Z0 checks); kept for parity.
+- The CoherentStateFunc check (initial norm outside region < tolsp) is not done yet; it belongs to
+  the wave-packet milestone.
 
 ## Build & test
 ```
@@ -134,7 +159,12 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 - C++20, CMake ≥ 3.24, Ninja. GCC 13 on this machine.
-- Dependencies: FFTW3 (system, `libfftw3-dev`), nlohmann/json and GoogleTest via FetchContent.
+- Dependencies: FFTW3 (system, `libfftw3-dev`), LAPACK (system, `liblapack-dev`), nlohmann/json and
+  GoogleTest via FetchContent.
+- Compiled with `-ffp-contract=off` (no FMA contraction) to stay comparable with the Fortran build.
+- Fortran reference data: `tools/fortran_reference/run_setup_reference.sh` (potential-only run with
+  DoDump; writes `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` into
+  `tests/reference/hardwall_small/`). Regression tests skip when these files are missing.
 - Warnings on (`-Wall -Wextra -Wpedantic`); treat as errors in CI.
 - Unit tests live in `tests/`, one test file per module; regression tests compare against reference
   output from the Fortran code (stored under `tests/reference/`, small hard wall cases only).
