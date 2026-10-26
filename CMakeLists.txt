@@ -61,6 +61,7 @@ add_library(spodvr_core
   src/grids/angular_grid.cpp
   src/grids/rotational_basis.cpp
   src/propagation/angular_transform.cpp
+  src/propagation/propagation_tables.cpp
   src/potential/hard_wall_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp
