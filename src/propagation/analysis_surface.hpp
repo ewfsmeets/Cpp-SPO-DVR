@@ -8,6 +8,14 @@
 
 namespace spodvr {
 
+// The complete state of the analysis surface, for checkpoints. 0-based indices.
+struct AnalysisSurfaceState {
+  int index;            // Fortran: izanlySpecChan - 1
+  int previous_index;   // Fortran: oldValZanly - 1
+  bool fixed;           // Fortran: FixedZAnalysisSpec
+  double norm_tolerance;  // Fortran: anlyTol
+};
+
 // Position of the analysis surface on the specular grid (ProjOp = 2). With DynamZSpAna it
 // starts just before the specular absorber and moves inwards (towards the surface) as long as
 // the wave packet still has significant norm beyond it; once it can no longer move it is fixed.
@@ -26,6 +34,10 @@ class AnalysisSurface {
   // if the surface became fixed during this call. Fortran: FindNewAnalysisPoint
   std::optional<double> update(const SpecularWave& specular);
 
+  [[nodiscard]] AnalysisSurfaceState state() const { return {index_, previous_index_, fixed_, norm_tolerance_}; }
+  // Continues from a saved state (restart).
+  void restore(const AnalysisSurfaceState& state);
+
  private:
   const UniformGrid& z_;
   int iz_analysis_;     // Fortran: izanly - 1
@@ -35,6 +47,7 @@ class AnalysisSurface {
   bool fixed_;
   int index_;
   int previous_index_;  // Fortran: oldValZanly - 1
+  double volume_;       // dZ dR
 };
 
 }  // namespace spodvr

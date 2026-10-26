@@ -110,6 +110,11 @@ struct InputParameters {
   bool do_dump = false;                 // DoDump
   bool full_s_matrix = false;           // FullSMatrix
 
+  // --- checkpoint / restart (C++ only) -----------------------------------------------------
+  std::string restart_dir;                 // RestartDir: checkpoint of the run to continue (NewCalc = false)
+  std::string restart_format = "native";   // RestartFormat: native | fortran (fort.8 + fort.22)
+  std::string checkpoint_format = "native";  // CheckpointFormat: native | fortran | both
+
   // --- tolerances -------------------------------------------------------------------------
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)
 };

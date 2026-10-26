@@ -27,9 +27,10 @@ AnalysisSurface::AnalysisSurface(const Config& config, const SpatialGrids& grids
       tolerance_(0.0),
       fixed_(config.derived.fixed_z_analysis_specular),
       index_(last_before_absorber_),
-      previous_index_(last_before_absorber_) {
+      previous_index_(last_before_absorber_),
+      volume_(config.input.dz * config.input.dr) {
   const InputParameters& p = config.input;
-  const double volume = p.dz * p.dr;
+  const double volume = volume_;
 
   if (fixed_) {
     // Fixed by the input: just before ZAnaSp if given, else at the start of the absorber.
@@ -79,6 +80,14 @@ std::optional<double> AnalysisSurface::update(const SpecularWave& specular) {
     }
   }
   return fixed_at;
+}
+
+void AnalysisSurface::restore(const AnalysisSurfaceState& state) {
+  index_ = state.index;
+  previous_index_ = state.previous_index;
+  fixed_ = state.fixed;
+  norm_tolerance_ = state.norm_tolerance;
+  tolerance_ = norm_tolerance_ * volume_;
 }
 
 }  // namespace spodvr

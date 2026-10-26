@@ -57,6 +57,12 @@ class WavePacketPropagation {
   // Propagates from tStart to tEnd, analysing the wave packet after every analysis step.
   void run(const PropagationObserver& observer);
 
+  // Restart: overwrite the wave packet with a checkpoint, continue with the saved analysis
+  // surface, and add the BK coefficients of the earlier runs to the S-matrix.
+  [[nodiscard]] WavePacket& wave_packet_for_restart() { return psi_; }
+  void restore_analysis_surface(const AnalysisSurfaceState& state) { surface_.restore(state); }
+  void add_earlier_analysis_step(double time, const BkCoefficients& bk) { s_matrix_.add(bk, time); }
+
   // S-matrix and probabilities from the analysis steps done so far.
   [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(); }
 

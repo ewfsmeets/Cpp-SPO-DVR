@@ -95,6 +95,12 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(p.new_calculation && rne(p.t_start, 0.0), "tStart",
         "This is a new calculation but tStart /= 0.");
   check(!p.new_calculation && req(p.t_start, 0.0), "tStart", "This is a restart but tStart = 0.");
+  check(!p.new_calculation && p.restart_dir.empty(), "RestartDir",
+        "This is a restart (NewCalc = false) but RestartDir is not given.");
+  check(p.restart_format != "native" && p.restart_format != "fortran", "RestartFormat",
+        "RestartFormat must be \"native\" or \"fortran\".");
+  check(p.checkpoint_format != "native" && p.checkpoint_format != "fortran" && p.checkpoint_format != "both",
+        "CheckpointFormat", "CheckpointFormat must be \"native\", \"fortran\" or \"both\".");
   check(rlt(p.t_end, 0.0), "tEnd", "tEnd < 0.");
   check(rgt(p.t_start, p.t_end), "tStart", "tStart > tEnd.");
   check(rne(p.t_end, p.t_start + n_steps * p.time_step), "tEnd", "tEnd /= tStart + nStep*dtStep.");

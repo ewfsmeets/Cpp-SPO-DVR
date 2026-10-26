@@ -5,10 +5,12 @@ of a diatomic molecule scattering from a surface (coordinates Z, r, x, y, θ, φ
 split-operator propagation, FFT grids in Z, r, x and y, and a Gauss-Legendre/FFT DVR in θ and φ.
 
 Status:
-- Implemented: set-up, the hard wall test potential, the gas-phase rovibrational states and the
-  wave-packet propagation. All of them are checked against the Fortran code.
-- In progress: the asymptotic analysis (S-matrix, state-to-state probabilities) and
-  checkpoint/restart.
+- Implemented and checked against the Fortran code: set-up, the hard wall test potential, the
+  gas-phase rovibrational states, the wave-packet propagation and the on-the-fly asymptotic
+  analysis (S-matrix and state-to-state probabilities).
+- Implemented: checkpoint/restart (native format).
+- In progress: restart files compatible with the Fortran code; the fine analysis (onlyAnalysis /
+  alsoAnalysis).
 
 ## Dependencies
 
@@ -81,12 +83,28 @@ spodvr <input.json> [--threads N] [--output-dir DIR] [--no-color] [--help] [--ve
 - `--output-dir DIR`: where the data files are written (default: the current directory).
 
 Output:
-- **Screen:** an input summary, the grids, the asymptotic potential, the gas-phase states, the
-  initial wave packet, and a table of averages during the propagation.
-- **Data files** (in the output directory, full precision):
-  - `asymptotic_potential.dat`;
-  - `gas_phase_states.dat`;
-  - `averages.dat` (time, norm, ⟨Z⟩, ⟨r⟩, rest norm).
+- **Screen:** an input summary, the grids, the gas-phase states, the initial wave packet, the
+  analysis basis, a table of averages during the propagation, and compact probability tables
+  (one row per energy) at the end.
+- **Data files** (in the output directory, full precision, tab-separated with a commented header
+  that explains every column; they load with `pandas.read_csv(f, sep="\t", comment="#")`):
+
+| File | Content |
+|---|---|
+| `scattering_summary.tsv` | per energy: total scattering and reaction probability, P(v), average final energies |
+| `s_matrix.tsv` | per energy and open final state (v, j, mJ, n, m): S-matrix element, probability, phase |
+| `probabilities_rovib.tsv` | per energy and (v, j, mJ), summed over diffraction |
+| `probabilities_diffraction.tsv` | per energy, (v, j, mJ) and diffraction order |
+| `analysis.json` | run metadata: basis sizes, initial state, energy grid, file list |
+| `averages.dat` | time, norm, ⟨Z⟩, ⟨r⟩, rest norm during the propagation |
+| `checkpoint.bin`, `bk_coefficients.bin` | final wave packet and Balint-Kurti coefficients, for a restart |
+| `asymptotic_potential.dat`, `gas_phase_states.dat` | set-up data |
+
+### Continuing a run (restart)
+Set `"NewCalc": false`, `"tStart"` to the end time of the earlier run, and `"RestartDir"` to its
+output directory, and use a *different* `--output-dir`. All other parameters must stay the same
+(the program checks this). The S-matrix of the restarted run covers the whole propagation; a
+split run gives bitwise the same results as one long run.
 
 A run of the provided example (7000 time steps) takes about 3 minutes with 16 threads on a desktop machine (AMD Ryzen 7 5800X).
 

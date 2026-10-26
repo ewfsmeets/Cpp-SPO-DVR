@@ -141,6 +141,7 @@ add_library(spodvr_core
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
   src/analysis/s_matrix.cpp
+  src/io/checkpoint.cpp
   src/potential/hard_wall_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp
@@ -149,6 +150,8 @@ add_library(spodvr_core
   src/report/format.cpp
   src/report/sections.cpp
   src/report/propagation_report.cpp
+  src/report/analysis_report.cpp
+  src/report/analysis_files.cpp
   src/app/cli.cpp
   src/app/run.cpp
 )
