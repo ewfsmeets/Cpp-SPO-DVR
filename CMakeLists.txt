@@ -142,6 +142,8 @@ add_library(spodvr_core
   src/analysis/balint_kurti.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp
+  src/io/fortran_unformatted.cpp
+  src/io/fortran_files.cpp
   src/potential/hard_wall_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp
