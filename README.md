@@ -122,3 +122,7 @@ vector extensions (see docs/performance.md).
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
 | `docs/` | input schema, performance notes |
 | `inputs/` | example inputs |
+
+## License
+This program is free software, licensed under the GNU General Public License, version 3. See
+[LICENSE](LICENSE).
