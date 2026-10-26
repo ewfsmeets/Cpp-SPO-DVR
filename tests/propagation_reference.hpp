@@ -6,6 +6,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <complex>
+#include <utility>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -118,6 +120,9 @@ inline std::optional<FortranPropagationReference> read_fortran_reference(const s
 struct PropagationRun {
   InitialWavePacketInfo initial;
   std::vector<Averages> averages;
+  std::vector<std::vector<std::complex<double>>> bk;  // BK coefficients per analysis step
+  ScatteringResults scattering;
+  std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
 };
 
 inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_json) {
@@ -134,7 +139,12 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   run.initial = propagation.initial_wave_packet();
   PropagationObserver observer;
   observer.on_averages = [&](const Averages& a) { run.averages.push_back(a); };
+  observer.on_analysis_step = [&](double, const BkCoefficients& bk) { run.bk.push_back(bk.values); };
   propagation.run(observer);
+  run.scattering = propagation.scattering_results();
+  const AnalysisBasis& basis = propagation.analysis_basis();
+  for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
+    run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()), basis.mj(irotana * basis.n_diffraction()));
   return run;
 }
 

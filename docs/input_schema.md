@@ -14,7 +14,7 @@ Fortran default.
 |---|---|---|---|
 | `Title` | string | title | |
 | `SystemID` | string | systemID | PES; implemented: `HardWallPES` (case-insensitive) |
-| `NewCalc` | bool | newcalc | new calculation (else restart; restart not implemented yet) |
+| `NewCalc` | bool | newcalc | new calculation; `false`: restart from `RestartDir` (tStart = end of the earlier run) |
 | `ZDoF` `RDoF` `XDoF` `YDoF` `ThetaDoF` `PhiDoF` | bool | | must all be true (6D only) |
 | `Mass1` `Mass2` | real | amass1/2 | atom masses (amu) |
 | `HomoNuc` | bool | lhomo | homonuclear molecule |
@@ -35,7 +35,7 @@ Fortran default.
 | `ROptStart` `ROptEnd` | real | rsplmi, rsplma | CAP in r |
 | `ZSpOptStart` `ZSpOptEnd` | real | ssplmi, ssplma | CAP in Z, specular grid |
 | `EParallel` `PhiParallel` | real | epar, phipar | parallel energy (eV), azimuth (deg) |
-| `writeSMatrix` `writeProbs` `writeRDProbs` | bool | lwrit3, lwri25, lwdiro | output switches |
+| `writeSMatrix` `writeProbs` `writeRDProbs` | bool | lwrit3, lwri25, lwdiro | output switches: `writeProbs` writes probabilities_rovib.tsv, `writeRDProbs` probabilities_diffraction.tsv; `writeSMatrix` has no effect yet (s_matrix.tsv is always written; in Fortran it controls the unit 3 output of the fine analysis) |
 | `TolSp` | real | tolsp | specular-grid tolerance; also the maximum initial norm outside [ZAna, start of the specular absorber] (hard error) |
 
 For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROpt…`, `ZSpOpt…`) is required.
@@ -56,6 +56,18 @@ The energy is in eV, and the factor is the strength in hartree.
 | `ImposeVMax` `VMax` | bool, real | false, 10.0 eV | clamp the potential from above |
 | `UseSwitching` `ZminSwitch` `ZmaxSwitch` | bool, real, real | false, 6.0, 8.0 | switch V to the gas phase; zasymp becomes ZmaxSwitch |
 | `DoDump` `FullSMatrix` | bool | false | |
+
+## Checkpoint / restart keys (C++ only)
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `RestartDir` | string | — | output directory of the run to continue; required if `NewCalc` is false. It must differ from `--output-dir` |
+| `RestartFormat` | string | `"native"` | `"native"`: checkpoint.bin + bk_coefficients.bin; `"fortran"`: fort.8 (or fort.9) + fort.22 (or fort.21) written by the Fortran code or by this program |
+| `CheckpointFormat` | string | `"native"` | files written for a later restart: `"native"`, `"fortran"` (fort.9, fort.21) or `"both"`. bk_coefficients.bin is always written |
+
+A restart must use the same input as the earlier run except `NewCalc`, `tStart`, `tEnd`, `nStep`
+(and output switches); the program checks the grids, masses, time steps, wave packet and
+absorbers against the checkpoint and names any parameter that differs.
 
 ## Not supported
 These keys give a "not supported" error. Logical keys are accepted when set to `false`. The list

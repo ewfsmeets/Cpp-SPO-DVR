@@ -5,6 +5,8 @@
 # setup, propagation, analysis) in a scratch directory and copies into tests/reference/<case>/:
 #   fortran_stdout.txt     stdout of the run (initial wave packet info, averages vs time, ...)
 #   fortran_averages.out   averages.out (time, norm, <Z>, <r>, rest norm)
+#   fortran_fort21.bin     fort.21, the BK coefficients of every analysis step (gate 4)
+#   fortran_fort25.txt     fort.25, the state-resolved S-matrix elements and probabilities
 # All other Fortran output files stay in the scratch directory.
 #
 # Usage: tools/fortran_reference/run_propagation_reference.sh [case] [scratch_dir]
@@ -34,4 +36,6 @@ echo "* Run time: $(( $(date +%s) - start )) s"
 [[ -f "${scratch_dir}/averages.out" ]] || { echo "error: no averages.out written" >&2; exit 1; }
 cp "${scratch_dir}/fortran_stdout.txt" "${case_dir}/fortran_stdout.txt"
 cp "${scratch_dir}/averages.out" "${case_dir}/fortran_averages.out"
+[[ -f "${scratch_dir}/fort.21" ]] && cp "${scratch_dir}/fort.21" "${case_dir}/fortran_fort21.bin"
+[[ -f "${scratch_dir}/fort.25" ]] && cp "${scratch_dir}/fort.25" "${case_dir}/fortran_fort25.txt"
 echo "* Reference files written to ${case_dir}"

@@ -8,9 +8,9 @@ Status:
 - Implemented and checked against the Fortran code: set-up, the hard wall test potential, the
   gas-phase rovibrational states, the wave-packet propagation and the on-the-fly asymptotic
   analysis (S-matrix and state-to-state probabilities).
-- Implemented: checkpoint/restart (native format).
-- In progress: restart files compatible with the Fortran code; the fine analysis (onlyAnalysis /
-  alsoAnalysis).
+- Implemented: checkpoint/restart (native files and Fortran-compatible files).
+- Not yet implemented: the fine analysis (onlyAnalysis / alsoAnalysis), the flux analysis, and
+  potentials other than the hard wall test potential.
 
 ## Dependencies
 
@@ -100,11 +100,16 @@ Output:
 | `checkpoint.bin`, `bk_coefficients.bin` | final wave packet and Balint-Kurti coefficients, for a restart |
 | `asymptotic_potential.dat`, `gas_phase_states.dat` | set-up data |
 
+The file formats are described in [docs/output_files.md](docs/output_files.md).
+
 ### Continuing a run (restart)
 Set `"NewCalc": false`, `"tStart"` to the end time of the earlier run, and `"RestartDir"` to its
 output directory, and use a *different* `--output-dir`. All other parameters must stay the same
 (the program checks this). The S-matrix of the restarted run covers the whole propagation; a
-split run gives bitwise the same results as one long run.
+split run gives bitwise the same results as one long run. Runs can also be continued from the
+Fortran code's files (`"RestartFormat": "fortran"`: fort.8/fort.9 and fort.22/fort.21) and
+written for it (`"CheckpointFormat": "fortran"` or `"both"`); see
+[docs/input_schema.md](docs/input_schema.md).
 
 A run of the provided example (7000 time steps) takes about 3 minutes with 16 threads on a desktop machine (AMD Ryzen 7 5800X).
 
@@ -138,7 +143,7 @@ vector extensions (see docs/performance.md).
 | `src/` | the program: `input/`, `grids/`, `potential/`, `gasphase/`, `propagation/`, `analysis/`, `fft/`, `linalg/`, `report/`, `app/` |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
-| `docs/` | input schema, performance notes |
+| `docs/` | input schema, output files, performance notes |
 | `inputs/` | example inputs |
 
 ## License
