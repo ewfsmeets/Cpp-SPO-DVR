@@ -2,13 +2,13 @@
 // states, channel energies).
 #include <gtest/gtest.h>
 
+#include <omp.h>
 #include <algorithm>
 #include <cmath>
 #include <complex>
-#include <numbers>
-#include <omp.h>
 #include <cstdlib>
 #include <fstream>
+#include <numbers>
 #include <set>
 #include <utility>
 #include <vector>
@@ -18,9 +18,9 @@
 #include "analysis/analysis_basis.hpp"
 #include "analysis/balint_kurti.hpp"
 #include "analysis/s_matrix.hpp"
-#include "core/unit_conversion.hpp"
 #include "core/constants.hpp"
 #include "core/error.hpp"
+#include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -157,7 +157,8 @@ TEST(AnalysisBasis, RegularOrderIsJThenMjAscending) {
   const std::vector<int>& rotations = a.regular_rotation_order();
   ASSERT_EQ(static_cast<int>(rotations.size()), a.n_rotation());
   std::vector<std::pair<int, int>> labels;
-  for (const int irotana : rotations) labels.push_back({a.j(irotana * a.n_diffraction()), a.mj(irotana * a.n_diffraction())});
+  for (const int irotana : rotations)
+    labels.push_back({a.j(irotana * a.n_diffraction()), a.mj(irotana * a.n_diffraction())});
   EXPECT_TRUE(std::is_sorted(labels.begin(), labels.end()));
   EXPECT_EQ(labels.front(), std::make_pair(0, 0));
   EXPECT_EQ(labels.back(), std::make_pair(4, 4));
@@ -363,7 +364,8 @@ TEST(SMatrix, SumsAndAveragesAreConsistent) {
   const AnalysisBasis& a = s.analysis;
   SMatrixAccumulator acc(s.config, a, s.gas);
   BkCoefficients bk(a.n_states(), a.n_v());
-  for (int k = 0; k < static_cast<int>(bk.values.size()); ++k) bk.values[k] = cplx(std::sin(1.0 + k), std::cos(2.0 * k));
+  for (int k = 0; k < static_cast<int>(bk.values.size()); ++k)
+    bk.values[k] = cplx(std::sin(1.0 + k), std::cos(2.0 * k));
   acc.add(bk, 10.0);
   acc.add(bk, 20.0);
   const EnergyResult e = acc.results().energies[30];

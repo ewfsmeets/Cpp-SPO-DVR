@@ -23,8 +23,8 @@ class Potential {
 
   // V(x, y, Z, r, theta, phi) in eV. iz and ir are the 0-based grid indices of Z and r; only
   // grid-based PES implementations use them (Fortran: ZIndex, RIndex).
-  [[nodiscard]] virtual double value(double x, double y, double z, double r, double theta,
-                                     double phi, int iz, int ir) const = 0;
+  [[nodiscard]] virtual double value(double x, double y, double z, double r, double theta, double phi, int iz,
+                                     int ir) const = 0;
 
   [[nodiscard]] virtual const SystemParameters& system_parameters() const = 0;
 

@@ -49,8 +49,7 @@ TEST(GaussLegendre, IntegratesPolynomialsExactly) {
     const auto rule = gauss_associated_legendre(-1.0, 1.0, order, 0);
     for (int p = 0; p <= 2 * order - 1; ++p) {
       double sum = 0.0;
-      for (int i = 0; i < order; ++i)
-        sum += rule.weights[i] * std::pow(rule.roots[i], p);
+      for (int i = 0; i < order; ++i) sum += rule.weights[i] * std::pow(rule.roots[i], p);
       const double exact = p % 2 == 1 ? 0.0 : 2.0 / (p + 1);
       EXPECT_NEAR(sum, exact, 1e-14) << "order " << order << " power " << p;
     }

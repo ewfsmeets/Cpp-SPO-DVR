@@ -6,15 +6,15 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <complex>
-#include <utility>
 #include <cmath>
+#include <complex>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -104,13 +104,20 @@ inline std::optional<FortranPropagationReference> read_fortran_reference(const s
   std::string line;
   while (std::getline(file, line)) {
     const auto has = [&](const char* text) { return line.find(text) != std::string::npos; };
-    if (has("* Norm initial wave packet (Z,r) =")) ref.norm = parse_fortran_real(last_token(line));
-    else if (has("- at k = 0")) ref.k_at_zero = parse_fortran_real(last_token(line));
-    else if (has("- at the end/beginning of the grid")) ref.k_at_edge = parse_fortran_real(last_token(line));
-    else if (has("- maximum value =")) ref.k_maximum = parse_fortran_real(last_token(line));
-    else if (has("iLow =")) ref.i_low = std::stoi(last_token(line));
-    else if (has("iHigh =")) ref.i_high = std::stoi(last_token(line));
-    else if (has("* Norm of the initial wave packet between iLow and iHigh")) ref.norm_inside = parse_fortran_real(last_token(line));
+    if (has("* Norm initial wave packet (Z,r) ="))
+      ref.norm = parse_fortran_real(last_token(line));
+    else if (has("- at k = 0"))
+      ref.k_at_zero = parse_fortran_real(last_token(line));
+    else if (has("- at the end/beginning of the grid"))
+      ref.k_at_edge = parse_fortran_real(last_token(line));
+    else if (has("- maximum value ="))
+      ref.k_maximum = parse_fortran_real(last_token(line));
+    else if (has("iLow ="))
+      ref.i_low = std::stoi(last_token(line));
+    else if (has("iHigh ="))
+      ref.i_high = std::stoi(last_token(line));
+    else if (has("* Norm of the initial wave packet between iLow and iHigh"))
+      ref.norm_inside = parse_fortran_real(last_token(line));
   }
   ref.averages = read_fortran_averages(averages_file);
   return ref;
@@ -144,7 +151,8 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   run.scattering = propagation.scattering_results();
   const AnalysisBasis& basis = propagation.analysis_basis();
   for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
-    run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()), basis.mj(irotana * basis.n_diffraction()));
+    run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
+                                     basis.mj(irotana * basis.n_diffraction()));
   return run;
 }
 
@@ -168,8 +176,8 @@ inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropaga
     EXPECT_PRINTED_EQ(c.z_mean, f.z_mean) << "t = " << f.time;
     EXPECT_PRINTED_EQ(c.r_mean, f.r_mean) << "t = " << f.time;
     EXPECT_PRINTED_EQ(c.rest_norm, f.rest_norm) << "t = " << f.time;
-    for (const auto& [a, b] : {std::pair{c.norm, f.norm}, {c.z_mean, f.z_mean}, {c.r_mean, f.r_mean},
-                               {c.rest_norm, f.rest_norm}})
+    for (const auto& [a, b] :
+         {std::pair{c.norm, f.norm}, {c.z_mean, f.z_mean}, {c.r_mean, f.r_mean}, {c.rest_norm, f.rest_norm}})
       worst = std::max(worst, std::abs(a - b) / printed_half_unit(b));
   }
   std::cout << "  largest deviation from the Fortran averages: " << worst << " x (half printed unit)\n";

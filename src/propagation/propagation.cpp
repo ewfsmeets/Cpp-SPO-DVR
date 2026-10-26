@@ -20,8 +20,8 @@ AlignedVector<double> premultiplied(PotentialGrid potential, double time_step) {
 }  // namespace
 
 WavePacketPropagation::WavePacketPropagation(const Config& config, const SpatialGrids& grids,
-                                             const AngularGrid& angular, PotentialGrid potential,
-                                             const GasPhase& gas, const Fft& fft)
+                                             const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas,
+                                             const Fft& fft)
     : config_(config),
       grids_(grids),
       basis_(angular, config.input.j_in, config.input.mj_in),

@@ -85,8 +85,7 @@ struct GasPhase {
 };
 
 // Fortran: GasPhase.f90 SetupAsympWF. asymptotic_potential is vasy (hartree) on the r grid.
-[[nodiscard]] GasPhase compute_gas_phase(const Config& config, const SpatialGrids& grids,
-                                         const AngularGrid& angular,
+[[nodiscard]] GasPhase compute_gas_phase(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
                                          std::span<const double> asymptotic_potential, const Fft& fft,
                                          const SymmetricEigensolver& solver);
 

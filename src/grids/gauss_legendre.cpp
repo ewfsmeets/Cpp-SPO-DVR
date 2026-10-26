@@ -52,8 +52,8 @@ QuadratureRule gauss_associated_legendre(double a, double b, int order, int mj) 
     } else if (i == 2) {
       const double damj = amj;
       z = z - (1.0 - z) * (1.0 + 0.012 * damj * (1.0 + 0.25 * damj) / ord) *
-                  (1.0 + 0.06 * (order - 8) * (1.0 + 0.12 * damj) / ord) *
-                  (4.1 + damj) / ((1.0 + damj) * (1.0 + 0.156 * damj));
+                  (1.0 + 0.06 * (order - 8) * (1.0 + 0.12 * damj) / ord) * (4.1 + damj) /
+                  ((1.0 + damj) * (1.0 + 0.156 * damj));
     } else {
       z = (root(i - 2) - 2.0 * root(i - 1) + sb) / sa;
     }
@@ -68,9 +68,7 @@ QuadratureRule gauss_associated_legendre(double a, double b, int order, int mj) 
       for (int j = 1; j <= order; ++j) {
         const double p3 = p2;
         p2 = p1;
-        p1 = (j + amj) *
-             ((2 * (j + amj) - 1) * z * p2 - (j + amj - 1) * p3) /
-             (j * (j + 2 * amj));
+        p1 = (j + amj) * ((2 * (j + amj) - 1) * z * p2 - (j + amj - 1) * p3) / (j * (j + 2 * amj));
       }
       dp = (ord * z * p1 - (order + amj) * p2) / (z * z - 1.0);
       const double z_previous = z;

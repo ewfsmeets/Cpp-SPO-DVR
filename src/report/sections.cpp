@@ -49,8 +49,8 @@ void print_input_summary(std::ostream& out, const Style& style, const Config& co
   list.add("Skewing angle", fixed(rad_to_deg(d.system.skewing_angle), 6), "deg");
   list.add("Point group", d.system.point_group);
   list.add("Z asymptotic", fixed(d.z_asymptotic, 6), "bohr");
-  list.add("Switching to gas phase", p.use_switching ? fixed(p.z_min_switch, 4) + " .. " + fixed(p.z_max_switch, 4) + " bohr"
-                                                     : "no");
+  list.add("Switching to gas phase",
+           p.use_switching ? fixed(p.z_min_switch, 4) + " .. " + fixed(p.z_max_switch, 4) + " bohr" : "no");
   list.add("Time step", fixed(p.time_step, 6), "a.u.");
   list.add("Steps (total / per analysis)", std::to_string(p.n_steps) + " / " + std::to_string(d.steps_per_analysis));
   list.add("Translational energy", full_precision(d.translational_energy), "eV");
@@ -58,9 +58,10 @@ void print_input_summary(std::ostream& out, const Style& style, const Config& co
   list.add("Initial kz", full_precision(d.kz), "a.u.");
   list.add("95% confidence interval", fixed(d.confidence_e_min, 6) + " .. " + fixed(d.confidence_e_max, 6), "eV");
   list.add("Max. analysis energy", fixed(d.max_analysis_energy, 6), "eV");
-  list.add("CAP strengths (Z, r, Zsp)",
-           scientific(d.z_opt_factor, 8) + ", " + scientific(d.r_opt_factor, 8) + ", " +
-               scientific(d.zsp_opt_factor, 8), "hartree");
+  list.add(
+      "CAP strengths (Z, r, Zsp)",
+      scientific(d.z_opt_factor, 8) + ", " + scientific(d.r_opt_factor, 8) + ", " + scientific(d.zsp_opt_factor, 8),
+      "hartree");
   list.print(out, style);
 }
 
@@ -70,8 +71,8 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
   print_section(out, style, "GRIDS");
   KeyValueList list;
   auto grid_text = [](const UniformGrid& grid) {
-    return std::to_string(grid.size()) + " points, " + fixed(grid[0], 6) + " .. " + fixed(grid.back(), 6) +
-           ", step " + fixed(grid.spacing(), 6);
+    return std::to_string(grid.size()) + " points, " + fixed(grid[0], 6) + " .. " + fixed(grid.back(), 6) + ", step " +
+           fixed(grid.spacing(), 6);
   };
   list.add("Z (scattering)", grid_text(g.z_scattering), "bohr");
   list.add("Z (specular)", grid_text(g.z_specular), "bohr");
@@ -103,13 +104,12 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
 
   Table table({"itheta", "theta (rad)", "weight"});
   for (int t = 0; t < angular.n_theta(); ++t)
-    table.add_row({std::to_string(t), full_precision(angular.thetas()[t]),
-                   full_precision(angular.theta_weights()[t])});
+    table.add_row({std::to_string(t), full_precision(angular.thetas()[t]), full_precision(angular.theta_weights()[t])});
   table.print(out, style);
 }
 
-void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config,
-                                const SpatialGrids& grids, const PotentialGrid& potential) {
+void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
+                                const PotentialGrid& potential) {
   const auto& units = units::legacy;
   print_section(out, style, "GAS-PHASE POTENTIAL");
   out << "  V(r) at Z = " << fixed(config.derived.z_asymptotic, 6) << " bohr, theta = pi/2\n\n";
@@ -151,7 +151,8 @@ void write_asymptotic_potential_file(const std::filesystem::path& path, const Sp
                                      const PotentialGrid& potential) {
   const auto& units = units::legacy;
   auto file = open_output(path);
-  file << "# Gas-phase potential V(r) (Z = zasymp, theta = pi/2)\n# ir  r(bohr)  V(hartree)  V(eV) = V(hartree)*27.2114\n";
+  file << "# Gas-phase potential V(r) (Z = zasymp, theta = pi/2)\n# ir  r(bohr)  V(hartree)  V(eV) = "
+          "V(hartree)*27.2114\n";
   for (int ir = 0; ir < grids.r.size(); ++ir) {
     const double v = potential.asymptotic[ir];
     file << ir << ' ' << full_precision(grids.r[ir]) << ' ' << full_precision(v) << ' '

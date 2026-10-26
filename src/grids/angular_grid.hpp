@@ -13,8 +13,7 @@ class AngularGrid {
   // j_max: maximum J of the rotational basis; mj_max_basis: maximum |mJ| (already with the
   // 'MJMax < 1 -> JMax' rule applied); num_phis_multiple: nphi must be a multiple of this
   // (1 unless surface symmetry is exploited). Throws InputError for invalid combinations.
-  AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in, int mj_in,
-              int num_phis_multiple = 1);
+  AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in, int mj_in, int num_phis_multiple = 1);
 
   [[nodiscard]] int n_theta() const { return static_cast<int>(thetas_.size()); }
   [[nodiscard]] int n_phi() const { return static_cast<int>(phis_.size()); }

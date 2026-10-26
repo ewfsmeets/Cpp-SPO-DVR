@@ -33,8 +33,7 @@ struct PotentialGrid {
 // premultiplication), switchPotentialToGasPhase, ImposeLimitOnPotential(Asy),
 // setupTheAsymptoticPotential
 [[nodiscard]] PotentialGrid compute_potential_grid(const Potential& potential, const Config& config,
-                                                   const SpatialGrids& grids,
-                                                   const AngularGrid& angular);
+                                                   const SpatialGrids& grids, const AngularGrid& angular);
 
 // vdvr = -V * dt, the form used by the propagator. Fortran: Potential.f90 premultiplyWithTimestep
 void premultiply_with_time_step(std::span<double> values, double time_step);

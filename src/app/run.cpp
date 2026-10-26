@@ -7,8 +7,8 @@
 #include <chrono>
 #include <filesystem>
 #include <optional>
-#include <utility>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "app/banner.hpp"
@@ -89,8 +89,8 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
   if (fortran_compare::rne(checkpoint_time, p.t_start))
     throw CheckpointError("tStart = " + full_precision(p.t_start) + " but the checkpoint in '" + dir.string() +
                           "' is at t = " + full_precision(checkpoint_time));
-  out << "\n  Restarted from " << dir.string() << " (" << p.restart_format << " files) at t = "
-      << fixed(checkpoint_time, 2) << " a.u.\n";
+  out << "\n  Restarted from " << dir.string() << " (" << p.restart_format
+      << " files) at t = " << fixed(checkpoint_time, 2) << " a.u.\n";
   return records;
 }
 
@@ -100,7 +100,8 @@ void check_restart_directory(const Config& config, const std::filesystem::path& 
   const std::filesystem::path dir = config.input.restart_dir;
   if (std::filesystem::exists(dir) && std::filesystem::exists(output_dir) &&
       std::filesystem::equivalent(dir, output_dir))
-    throw InputError("RestartDir", "the output directory must differ from RestartDir (the checkpoint would be overwritten)");
+    throw InputError("RestartDir",
+                     "the output directory must differ from RestartDir (the checkpoint would be overwritten)");
 }
 
 // The BK coefficient files of this run: native always, Fortran fort.21 on request.

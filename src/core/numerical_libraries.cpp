@@ -53,8 +53,9 @@ std::string numerical_libraries_summary() {
   configure_numerical_libraries();
 #ifdef SPODVR_HAVE_MKL
   const std::string source = std::getenv("MKL_CBWR") != nullptr ? "from MKL_CBWR" : "default";
-  std::string text = std::string("BLAS/LAPACK: oneMKL ") + SPODVR_MKL_VERSION + " (sequential), reproducibility branch " + cnr_branch_name(mkl_cbwr_get(MKL_CBWR_BRANCH)) +
-                     " (" + source + ")";
+  std::string text = std::string("BLAS/LAPACK: oneMKL ") + SPODVR_MKL_VERSION +
+                     " (sequential), reproducibility branch " + cnr_branch_name(mkl_cbwr_get(MKL_CBWR_BRANCH)) + " (" +
+                     source + ")";
 #else
   std::string text = "BLAS/LAPACK: system libraries";
 #endif

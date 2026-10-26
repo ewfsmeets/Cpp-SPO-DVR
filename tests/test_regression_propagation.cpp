@@ -17,8 +17,9 @@ namespace {
 void run_gate(const std::string& case_name) {
   const fs::path dir = fs::path(SPODVR_REFERENCE_DIR) / case_name;
   const auto ref = read_fortran_reference(dir / "fortran_stdout.txt", dir / "fortran_averages.out");
-  if (!ref) GTEST_SKIP() << "no Fortran reference in " << dir << "; run "
-                         << "tools/fortran_reference/run_propagation_reference.sh " << case_name;
+  if (!ref)
+    GTEST_SKIP() << "no Fortran reference in " << dir << "; run "
+                 << "tools/fortran_reference/run_propagation_reference.sh " << case_name;
   ASSERT_FALSE(ref->averages.empty()) << "no averages found in fortran_averages.out";
   const PropagationRun cpp = run_cpp_propagation(dir / "input.json");
   compare_with_fortran(cpp, *ref);  // gate 3

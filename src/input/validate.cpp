@@ -43,10 +43,8 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   // --- masses -----------------------------------------------------------------------------
   check(rle(p.mass1, 0.0), "Mass1", "Mass of atom 1 <= 0.");
   check(rle(p.mass2, 0.0), "Mass2", "Mass of atom 2 <= 0.");
-  if (p.homonuclear)
-    check(rne(p.mass1, p.mass2), "HomoNuc", "masses are different, but molecule is homo-nuclear.");
-  if (!p.homonuclear)
-    check(req(p.mass1, p.mass2), "HomoNuc", "masses are the same, but molecule is hetero-nuclear.");
+  if (p.homonuclear) check(rne(p.mass1, p.mass2), "HomoNuc", "masses are different, but molecule is homo-nuclear.");
+  if (!p.homonuclear) check(req(p.mass1, p.mass2), "HomoNuc", "masses are the same, but molecule is hetero-nuclear.");
 
   // --- scattering and specular grid in Z --------------------------------------------------
   check(p.nz < 1, "nZ", "nZ < 1.");
@@ -67,8 +65,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(p.ny < 1, "nY", "nY < 1.");
   check(!is_valid_fft_size(p.nx), "nX", "nX is not a valid FFT size.");
   check(!is_valid_fft_size(p.ny), "nY", "nY is not a valid FFT size.");
-  if (seq(system.point_group, "C4v") || seq(system.point_group, "C6v") ||
-      seq(system.point_group, "C3v"))
+  if (seq(system.point_group, "C4v") || seq(system.point_group, "C6v") || seq(system.point_group, "C3v"))
     check(p.x_dof && p.y_dof && p.nx != p.ny, "nY", "nX /= nY.");
 
   // --- rotational basis -------------------------------------------------------------------
@@ -86,14 +83,13 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
           "the molecule is homo-nuclear, but JMax is even and |MJMax| is odd, or vice versa.");
 
   // --- projection operator ----------------------------------------------------------------
-  check(p.projection_operator != 0 && p.projection_operator != 1 && p.projection_operator != 2,
-        "ProjOp", "ProjOp must be 0, 1 or 2.");
+  check(p.projection_operator != 0 && p.projection_operator != 1 && p.projection_operator != 2, "ProjOp",
+        "ProjOp must be 0, 1 or 2.");
 
   // --- split operator propagation ---------------------------------------------------------
   const double n_steps = p.n_steps;
   check(rlt(p.t_start, 0.0), "tStart", "tStart < 0.");
-  check(p.new_calculation && rne(p.t_start, 0.0), "tStart",
-        "This is a new calculation but tStart /= 0.");
+  check(p.new_calculation && rne(p.t_start, 0.0), "tStart", "This is a new calculation but tStart /= 0.");
   check(!p.new_calculation && req(p.t_start, 0.0), "tStart", "This is a restart but tStart = 0.");
   check(!p.new_calculation && p.restart_dir.empty(), "RestartDir",
         "This is a restart (NewCalc = false) but RestartDir is not given.");
@@ -115,12 +111,11 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   if (p.j_analysis) check(*p.j_analysis < 0, "JAna", "JAna < 0.");
   if (p.v_analysis) check(*p.v_analysis < 0, "VAna", "VAna < 0.");
-  if (p.diffraction_order_analysis)
-    check(*p.diffraction_order_analysis < 0, "DifOrdAna", "DifOrdAna < 0.");
+  if (p.diffraction_order_analysis) check(*p.diffraction_order_analysis < 0, "DifOrdAna", "DifOrdAna < 0.");
   if (p.n_energies != Constants::nen95_sentinel) check(p.n_energies < 0, "NrOfEs", "NrOfEs < 0.");
 
-  check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step),
-        "dtAna", "Propagation time must be an integer times dtAna.");
+  check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step), "dtAna",
+        "Propagation time must be an integer times dtAna.");
   check(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.");
   check(rne(nint(p.dt_averages / p.dt_analysis) * p.dt_analysis, p.dt_averages), "dtAve",
         "dtAve must be an integer times dtAna.");
@@ -129,8 +124,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(rne(nint((p.z_analysis - p.z_start) / p.dz) * p.dz, p.z_analysis - p.z_start), "Zana",
         "ZAna not on a grid point.");
   check(rlt(p.z_analysis, p.z_start), "Zana", "ZAna < ZStart.");
-  check(rgt(p.z_analysis, p.z_start + (p.nz - 1) * p.dz), "Zana",
-        "ZAnalysis is too big for the scattering grid in Z.");
+  check(rgt(p.z_analysis, p.z_start + (p.nz - 1) * p.dz), "Zana", "ZAnalysis is too big for the scattering grid in Z.");
   check(rgt(p.z_analysis, p.z_opt_start), "Zana", "ZAnalysis > ZOptStart.");
 
   if (p.j_analysis) check(*p.j_analysis > p.j_max, "JAna", "JAna > JMax.");
@@ -145,18 +139,16 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   // --- flux analysis ----------------------------------------------------------------------
   if (p.do_flux_analysis) {
     check(rlt(p.r_flux_analysis, p.r_start), "rFluxAnalysis", "rFluxAnalysis < rmin");
-    check(rgt(p.r_flux_analysis, p.r_start + (p.nr - 1) * p.dr),
-          "rFluxAnalysis", "rFluxAnalysis > rmax");
-    check(rne(nint((p.r_flux_analysis - p.r_start) / p.dr) * p.dr, p.r_flux_analysis - p.r_start),
-          "rFluxAnalysis", "rFluxAnalysis not on a grid point.");
+    check(rgt(p.r_flux_analysis, p.r_start + (p.nr - 1) * p.dr), "rFluxAnalysis", "rFluxAnalysis > rmax");
+    check(rne(nint((p.r_flux_analysis - p.r_start) / p.dr) * p.dr, p.r_flux_analysis - p.r_start), "rFluxAnalysis",
+          "rFluxAnalysis not on a grid point.");
     check(rlt(p.e_min_flux_analysis, p.e_min_wave_packet), "EMinFluxAna", "EMinFluxAna < EMinWP");
     // Fortran message says 'EMaxFluxAna < EMinWP' for this check.
     check(rlt(p.e_max_flux_analysis, p.e_max_wave_packet), "EMaxFluxAna", "EMaxFluxAna < EMaxWP");
-    check(rge(p.e_min_flux_analysis, p.e_max_flux_analysis), "EMinFluxAna",
-          "EMinFluxAna >= EMaxFluxAna");
+    check(rge(p.e_min_flux_analysis, p.e_max_flux_analysis), "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna");
     check(p.delta_e_flux_analysis < 0.0, "DeltaEFluxAna", "DeltaEFluxAna < 0");
-    check(rgt(p.delta_e_flux_analysis, p.e_max_flux_analysis - p.e_min_flux_analysis),
-          "DeltaEFluxAna", "DeltaEFluxAna > EMaxFluxAna-EMinFluxAna");
+    check(rgt(p.delta_e_flux_analysis, p.e_max_flux_analysis - p.e_min_flux_analysis), "DeltaEFluxAna",
+          "DeltaEFluxAna > EMaxFluxAna-EMinFluxAna");
     check(rgt(p.r_flux_analysis, p.r_opt_start), "rFluxAnalysis", "rFluxAnalysis > ROptStart");
   }
 
@@ -189,14 +181,13 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   // --- optical potential in r -------------------------------------------------------------
   check(rgt(p.r_opt_start, p.r_opt_end), "ROptStart", "ROptStart > ROptEnd.");
-  check(rgt(p.r_opt_end, p.r_start + (p.nr - 1) * p.dr), "ROptEnd",
-        "ROptEnd is too big for the grid in r.");
+  check(rgt(p.r_opt_end, p.r_start + (p.nr - 1) * p.dr), "ROptEnd", "ROptEnd is too big for the grid in r.");
 
   // --- optical potential in Z, specular grid (used throughout for ProjOp = 2) -------------
   if (p.projection_operator == 2) {
     check(rgt(p.zsp_opt_start, p.zsp_opt_end), "ZSpOptStart", "ZSpOptStart > ZSpOptEnd.");
-    check(rgt(p.zsp_opt_end, p.z_start + (p.nz_specular - 1) * p.dz),
-          "ZSpOptEnd", "ZSpOptEnd is too big for the specular grid in Z.");
+    check(rgt(p.zsp_opt_end, p.z_start + (p.nz_specular - 1) * p.dz), "ZSpOptEnd",
+          "ZSpOptEnd is too big for the specular grid in Z.");
     check(rlt(p.zsp_opt_start, zasymp), "ZSpOptStart", "ZSpOptStart < ZAsymptotic.");
   }
 
@@ -206,8 +197,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(rgt(p.phi_parallel, 360.0), "PhiParallel", "PhiParallel > 360 degrees.");
 
   // --- switching function -----------------------------------------------------------------
-  if (p.use_switching)
-    check(rge(p.z_min_switch, p.z_max_switch), "ZminSwitch", "ZminSwitch >= ZmaxSwitch.");
+  if (p.use_switching) check(rge(p.z_min_switch, p.z_max_switch), "ZminSwitch", "ZminSwitch >= ZmaxSwitch.");
 }
 
 }  // namespace spodvr

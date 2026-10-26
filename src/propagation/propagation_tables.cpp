@@ -71,8 +71,8 @@ std::vector<double> parallel_kinetic_energies(const Config& config) {
 // exp(-V_opt dt) for the quadratic (power nabpow) absorbing potential
 // V_opt = vabs (n+1)/2 ((q - start) / (end - start))^n on [start, end], 0 elsewhere.
 // Fortran: Absorption.f90 SetupAbsorpPot (vimag, vimar, vimas and EXPOpt*)
-std::vector<double> optical_factors(const UniformGrid& grid, double start, double end, double strength,
-                                    int power, double dt) {
+std::vector<double> optical_factors(const UniformGrid& grid, double start, double end, double strength, int power,
+                                    double dt) {
   const double length = end - start;
   std::vector<double> f;
   for (int i = 0; i < grid.size(); ++i) {
@@ -101,8 +101,7 @@ std::vector<double> parallel_phases(const Config& config) {
 
 }  // namespace
 
-PropagationTables make_propagation_tables(const Config& config, const SpatialGrids& grids,
-                                          const RotationalBasis& basis,
+PropagationTables make_propagation_tables(const Config& config, const SpatialGrids& grids, const RotationalBasis& basis,
                                           std::span<const double> asymptotic_potential) {
   const InputParameters& p = config.input;
   const DerivedParameters& d = config.derived;
@@ -146,8 +145,7 @@ PropagationTables make_propagation_tables(const Config& config, const SpatialGri
   const int power = d.optical_potential_power;
   t.z_optical = optical_factors(grids.z_scattering, p.z_opt_start, p.z_opt_end, d.z_opt_factor, power, dt);
   t.r_optical = optical_factors(grids.r, p.r_opt_start, p.r_opt_end, d.r_opt_factor, power, dt);
-  t.z_specular_optical =
-      optical_factors(grids.z_specular, p.zsp_opt_start, p.zsp_opt_end, d.zsp_opt_factor, power, dt);
+  t.z_specular_optical = optical_factors(grids.z_specular, p.zsp_opt_start, p.zsp_opt_end, d.zsp_opt_factor, power, dt);
 
   for (const double v : asymptotic_potential) t.gas_phase.push_back(exp_minus_i(v * dt));
 

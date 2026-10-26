@@ -17,7 +17,7 @@ void print_analysis_setup(std::ostream& out, const Style& style, const Config& c
 // Compact result tables (all details are in the data files): one summary row per energy, the
 // rovibrationally resolved probabilities of the open (v, j) states, and the diffraction orders
 // of the initial (v, j). Replaces the per-energy blocks of Fortran smatrix_combine.
-void print_scattering_results(std::ostream& out, const Style& style, const Config& config,
-                              const AnalysisBasis& basis, const ScatteringResults& results);
+void print_scattering_results(std::ostream& out, const Style& style, const Config& config, const AnalysisBasis& basis,
+                              const ScatteringResults& results);
 
 }  // namespace spodvr

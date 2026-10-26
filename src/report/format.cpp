@@ -31,7 +31,9 @@ std::string scientific(double x, int decimals) { return format("%.*e", decimals,
 
 void print_section(std::ostream& out, const Style& style, std::string_view title) {
   const std::string rule(80, '=');
-  out << '\n' << style.heading(rule) << '\n' << style.heading(std::string("  ") + std::string(title)) << '\n'
+  out << '\n'
+      << style.heading(rule) << '\n'
+      << style.heading(std::string("  ") + std::string(title)) << '\n'
       << style.heading(rule) << "\n\n";
 }
 

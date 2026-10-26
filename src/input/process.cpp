@@ -34,33 +34,31 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
   d.r_opt_factor = p.r_opt_factor.value_or(0.0);
   d.zsp_opt_factor = p.zsp_opt_factor.value_or(0.0);
   if (p.z_opt_energy && *p.z_opt_energy > 0.0)
-    d.z_opt_factor = optical_potential_strength(units.ev_to_hartree(*p.z_opt_energy),
-                                                p.z_opt_end - p.z_opt_start, total_mass);
+    d.z_opt_factor =
+        optical_potential_strength(units.ev_to_hartree(*p.z_opt_energy), p.z_opt_end - p.z_opt_start, total_mass);
   if (p.r_opt_energy && *p.r_opt_energy > 0.0)
-    d.r_opt_factor = optical_potential_strength(units.ev_to_hartree(*p.r_opt_energy),
-                                                p.r_opt_end - p.r_opt_start, reduced_mass);
+    d.r_opt_factor =
+        optical_potential_strength(units.ev_to_hartree(*p.r_opt_energy), p.r_opt_end - p.r_opt_start, reduced_mass);
   if (p.zsp_opt_energy && *p.zsp_opt_energy > 0.0)
-    d.zsp_opt_factor = optical_potential_strength(units.ev_to_hartree(*p.zsp_opt_energy),
-                                                  p.zsp_opt_end - p.zsp_opt_start, total_mass);
+    d.zsp_opt_factor =
+        optical_potential_strength(units.ev_to_hartree(*p.zsp_opt_energy), p.zsp_opt_end - p.zsp_opt_start, total_mass);
 
   d.rotational_constant = units.wavenumber_to_hartree(59.304);
 
   d.dx = d.system.lattice_constant_x / p.nx;
   d.dy = d.system.lattice_constant_y / p.ny;
 
-  d.translational_energy =
-      p.e_parallel + units.hartree_to_ev(wave_packet_average_energy(
-                         units.ev_to_hartree(p.e_min_wave_packet),
-                         units.ev_to_hartree(p.e_max_wave_packet), total_mass));
-  d.wave_packet_alpha = wave_packet_alpha(units.ev_to_hartree(p.e_min_wave_packet),
-                                          units.ev_to_hartree(p.e_max_wave_packet), total_mass);
+  d.translational_energy = p.e_parallel + units.hartree_to_ev(wave_packet_average_energy(
+                                              units.ev_to_hartree(p.e_min_wave_packet),
+                                              units.ev_to_hartree(p.e_max_wave_packet), total_mass));
+  d.wave_packet_alpha =
+      wave_packet_alpha(units.ev_to_hartree(p.e_min_wave_packet), units.ev_to_hartree(p.e_max_wave_packet), total_mass);
   // In degrees here; converted to radians in the Setup part below (as in the Fortran code).
   d.theta_incidence = rad_to_deg(std::asin(std::sqrt(p.e_parallel / d.translational_energy)));
   d.phi_incidence = p.phi_parallel;
 
   d.analysis_energy_start = p.e_min_wave_packet + p.e_parallel;
-  d.analysis_energy_step =
-      (p.e_max_wave_packet - p.e_min_wave_packet) / (p.n_energies - 1);
+  d.analysis_energy_step = (p.e_max_wave_packet - p.e_min_wave_packet) / (p.n_energies - 1);
 
   d.steps_per_analysis = static_cast<int>(p.dt_analysis / p.time_step);
   d.analyses_per_average = static_cast<int>(p.dt_averages / p.dt_analysis);

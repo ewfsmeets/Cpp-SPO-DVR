@@ -5,9 +5,9 @@
 #include <complex>
 #include <vector>
 
+#include "core/aligned_vector.hpp"
 #include "core/constants.hpp"
 #include "fft/fft_sizes.hpp"
-#include "core/aligned_vector.hpp"
 #include "fft/fftw_fft.hpp"
 
 using namespace spodvr;
@@ -29,7 +29,8 @@ std::vector<cplx> naive_dft(const std::vector<cplx>& x, double sign, double scal
 
 std::vector<double> test_signal(std::size_t n, double phase) {
   std::vector<double> x(n);
-  for (std::size_t i = 0; i < n; ++i) x[i] = std::sin(0.7 * static_cast<double>(i) + phase) + 0.1 * static_cast<double>(i);
+  for (std::size_t i = 0; i < n; ++i)
+    x[i] = std::sin(0.7 * static_cast<double>(i) + phase) + 0.1 * static_cast<double>(i);
   return x;
 }
 
@@ -77,8 +78,7 @@ TEST(Fftw, StridedBatchedComplex) {
     std::vector<cplx> x(n);
     for (int i = 0; i < n; ++i) x[i] = data[(b + howmany * i)];
     const auto ref = naive_dft(x, 1.0, 1.0);
-    for (int k = 0; k < n; ++k)
-      EXPECT_NEAR(std::abs(y[(b + howmany * k)] - ref[k]), 0.0, 1e-13);
+    for (int k = 0; k < n; ++k) EXPECT_NEAR(std::abs(y[(b + howmany * k)] - ref[k]), 0.0, 1e-13);
   }
 }
 
@@ -91,8 +91,7 @@ TEST(Fftw, RealToComplexSignConventions) {
     std::vector<cplx> y(n / 2 + 1);
     fft.plan_real_to_complex({n}, {n}, sign, 2.0)->execute(x, y);
     const auto ref = naive_dft(xc, s, 2.0);
-    for (int k = 0; k <= n / 2; ++k)
-      EXPECT_NEAR(std::abs(y[k] - ref[k]), 0.0, 1e-12);
+    for (int k = 0; k <= n / 2; ++k) EXPECT_NEAR(std::abs(y[k] - ref[k]), 0.0, 1e-12);
   }
 }
 

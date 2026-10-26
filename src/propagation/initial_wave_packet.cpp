@@ -77,8 +77,8 @@ InitialWavePacket make_initial_wave_packet(const Config& config, const SpatialGr
   info.norm_inside = norm_sum(gaussian, info.i_low, info.i_high) * p.dz;
   if ((1.0 - info.norm_inside) > p.tol_specular) {
     std::ostringstream message;
-    message << "too much norm of the initial wave packet outside the allowed region (Z = " << z[info.i_low]
-            << " .. " << z[info.i_high] << "): 1 - norm = " << (1.0 - info.norm_inside)
+    message << "too much norm of the initial wave packet outside the allowed region (Z = " << z[info.i_low] << " .. "
+            << z[info.i_high] << "): 1 - norm = " << (1.0 - info.norm_inside)
             << " > tolsp; move Z0, widen the energy range or enlarge the specular grid";
     throw InputError("TolSp", message.str());
   }

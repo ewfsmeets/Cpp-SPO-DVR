@@ -12,8 +12,7 @@
 namespace spodvr {
 
 // Fortran: transform.f90 InitGenComplexTransform
-AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasis& basis, const Fft& fft,
-                                   int n_columns)
+AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasis& basis, const Fft& fft, int n_columns)
     : n_theta_(grid.n_theta()),
       n_phi_(grid.n_phi()),
       n_rot_(basis.size()),
@@ -70,8 +69,7 @@ void AngularTransform::fbr_to_dvr(std::span<const std::complex<double>> fbr,
 }
 
 // Fortran: transform.f90 DVRToFBRGenComplexTransform
-void AngularTransform::dvr_to_fbr(std::span<std::complex<double>> dvr,
-                                  std::span<std::complex<double>> fbr) const {
+void AngularTransform::dvr_to_fbr(std::span<std::complex<double>> dvr, std::span<std::complex<double>> fbr) const {
   to_fbr_fft_->execute(dvr);
 
   const int ld = leading_dimension();

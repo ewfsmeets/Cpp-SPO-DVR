@@ -59,8 +59,8 @@ void impose_limits(std::span<double> v, const Config& config) {
 
 }  // namespace
 
-PotentialGrid compute_potential_grid(const Potential& potential, const Config& config,
-                                     const SpatialGrids& grids, const AngularGrid& angular) {
+PotentialGrid compute_potential_grid(const Potential& potential, const Config& config, const SpatialGrids& grids,
+                                     const AngularGrid& angular) {
   const double ev2au = units::legacy.ev_to_hartree(1.0);  // Fortran multiplies by 1/chaev here
 
   const int n_theta = angular.n_theta();

@@ -68,8 +68,8 @@ TEST(PropagationTables, SizesOfTheReferenceCase) {
 
 TEST(PropagationTables, KineticFactorsAreUnitaryAndHalfStepsSquareToFullSteps) {
   const TablesSetup s(reference_json());
-  for (const StepFactors* f : {&s.tables.z_kinetic, &s.tables.r_kinetic, &s.tables.xy_kinetic,
-                               &s.tables.specular_kinetic, &s.tables.rotation})
+  for (const StepFactors* f :
+       {&s.tables.z_kinetic, &s.tables.r_kinetic, &s.tables.xy_kinetic, &s.tables.specular_kinetic, &s.tables.rotation})
     expect_consistent_steps(*f);
 }
 

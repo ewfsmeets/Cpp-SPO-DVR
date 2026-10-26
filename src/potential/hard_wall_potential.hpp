@@ -11,8 +11,8 @@ class HardWallPotential final : public Potential {
  public:
   HardWallPotential();
 
-  [[nodiscard]] double value(double x, double y, double z, double r, double theta, double phi,
-                             int iz, int ir) const override;
+  [[nodiscard]] double value(double x, double y, double z, double r, double theta, double phi, int iz,
+                             int ir) const override;
   [[nodiscard]] const SystemParameters& system_parameters() const override { return parameters_; }
   [[nodiscard]] std::string name() const override { return "HardWallPES"; }
 

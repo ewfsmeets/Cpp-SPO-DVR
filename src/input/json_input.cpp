@@ -208,8 +208,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
 void reject_unsupported_keys(JsonReader& in) {
   for (const char* key : {"SystemMix", "UseSymmetry", "nPhisOptimal", "UseRCutOff", "write2DPES"})
     in.reject_logical_if_true(key);
-  for (const char* key : {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES",
-                          "phi2DPES", "PESMixingAlfa", "CRPlibDataSet"})
+  for (const char* key : {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES",
+                          "PESMixingAlfa", "CRPlibDataSet"})
     in.reject_if_present(key);
 }
 
@@ -244,8 +244,7 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
 
   if (p.z_analysis_specular) {
     const double z_ana_sp = *p.z_analysis_specular;
-    if (p.dynamical_zsp_analysis)
-      throw InputError("ZAnaSp", "ZAnaSp can only be used with DynamZSpAna set to FALSE");
+    if (p.dynamical_zsp_analysis) throw InputError("ZAnaSp", "ZAnaSp can only be used with DynamZSpAna set to FALSE");
     if (z_ana_sp > p.zsp_opt_start) throw InputError("ZAnaSp", "ZAnaSp was set > ZSpOptStart");
     if (z_ana_sp < p.z0) throw InputError("ZAnaSp", "ZAnaSp was set < Z0");
   }

@@ -6,8 +6,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
-#include <sstream>
 #include <span>
+#include <sstream>
 #include <string>
 #include <vector>
 

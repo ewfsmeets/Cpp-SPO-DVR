@@ -23,8 +23,8 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
       tables_(tables),
       transform_(transform),
       potential_(premultiplied_potential) {
-  const std::size_t expected = std::size_t(transform.n_theta()) * transform.n_phi() * shape.nx * shape.ny *
-                               std::size_t(nz_potential) * shape.nr;
+  const std::size_t expected =
+      std::size_t(transform.n_theta()) * transform.n_phi() * shape.nx * shape.ny * std::size_t(nz_potential) * shape.nr;
   if (potential_.size() != expected) throw std::invalid_argument("PotentialOperator: potential has the wrong size");
 
   if ((shape.nx * shape.ny) % transform.n_columns() != 0)

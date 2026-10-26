@@ -43,9 +43,7 @@ void check_size(std::size_t have, std::size_t need) {
   if (have < need) throw std::invalid_argument("FftwFft: array too small for the FFT layout");
 }
 
-fftw_complex* as_fftw(std::vector<std::complex<double>>& v) {
-  return reinterpret_cast<fftw_complex*>(v.data());
-}
+fftw_complex* as_fftw(std::vector<std::complex<double>>& v) { return reinterpret_cast<fftw_complex*>(v.data()); }
 
 // One dimension of a transform: length and stride (in complex elements).
 struct Dimension {
@@ -115,8 +113,8 @@ class FftwComplexPlan final : public ComplexFftPlan {
     for (int b = 0; b < batch_.length; ++b)
       for (int o = 0; o < outer.length; ++o)
         for (int i = 0; i < inner.length; ++i) {
-          std::complex<double>& v = data[std::size_t(b) * batch_.stride + std::size_t(o) * outer.stride +
-                                         std::size_t(i) * inner.stride];
+          std::complex<double>& v =
+              data[std::size_t(b) * batch_.stride + std::size_t(o) * outer.stride + std::size_t(i) * inner.stride];
           v = scale_ * v;
         }
   }
@@ -143,9 +141,8 @@ class FftwRealToComplexPlan final : public RealToComplexFftPlan {
         out_buffer_(out_size_) {
     int n = in.length;
     plan_.reset(fftw_plan_many_dft_r2c(1, &n, in.howmany, in_buffer_.data(), nullptr, in.stride,
-                                       distance_of(in, in.length), as_fftw(out_buffer_), nullptr,
-                                       out.stride, distance_of(out, in.length / 2 + 1),
-                                       FFTW_ESTIMATE));
+                                       distance_of(in, in.length), as_fftw(out_buffer_), nullptr, out.stride,
+                                       distance_of(out, in.length / 2 + 1), FFTW_ESTIMATE));
     if (!plan_) throw std::runtime_error("FftwFft: r2c plan creation failed");
   }
 
@@ -185,9 +182,8 @@ class FftwComplexToRealPlan final : public ComplexToRealFftPlan {
         out_buffer_(out_size_) {
     int n = out.length;
     plan_.reset(fftw_plan_many_dft_c2r(1, &n, out.howmany, as_fftw(in_buffer_), nullptr, in.stride,
-                                       distance_of(in, out.length / 2 + 1), out_buffer_.data(),
-                                       nullptr, out.stride, distance_of(out, out.length),
-                                       FFTW_ESTIMATE));
+                                       distance_of(in, out.length / 2 + 1), out_buffer_.data(), nullptr, out.stride,
+                                       distance_of(out, out.length), FFTW_ESTIMATE));
     if (!plan_) throw std::runtime_error("FftwFft: c2r plan creation failed");
   }
 
@@ -218,15 +214,13 @@ class FftwComplexToRealPlan final : public ComplexToRealFftPlan {
 
 }  // namespace
 
-std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex(const FftLayout& layout, FftSign sign,
-                                                      double scale) const {
+std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex(const FftLayout& layout, FftSign sign, double scale) const {
   check_layout(layout);
   return std::make_unique<FftwComplexPlan>(std::vector<Dimension>{{layout.length, layout.stride}},
                                            Dimension{layout.howmany, distance_of(layout, layout.length)}, sign, scale);
 }
 
-std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex_2d(const FftLayout2D& layout, FftSign sign,
-                                                         double scale) const {
+std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex_2d(const FftLayout2D& layout, FftSign sign, double scale) const {
   if (layout.outer_length < 1 || layout.inner_length < 1 || layout.howmany < 1 || layout.outer_stride < 1 ||
       layout.inner_stride < 1 || layout.distance < 1)
     throw std::invalid_argument("FftwFft: invalid 2D FFT layout");
@@ -235,22 +229,20 @@ std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex_2d(const FftLayout2D& layo
       Dimension{layout.howmany, layout.distance}, sign, scale);
 }
 
-std::unique_ptr<RealToComplexFftPlan> FftwFft::plan_real_to_complex(const FftLayout& in,
-                                                                    const FftLayout& out,
+std::unique_ptr<RealToComplexFftPlan> FftwFft::plan_real_to_complex(const FftLayout& in, const FftLayout& out,
                                                                     FftSign sign, double scale) const {
   check_layout(in);
   if (out.howmany != in.howmany) throw std::invalid_argument("FftwFft: howmany mismatch");
-  return std::make_unique<FftwRealToComplexPlan>(in, FftLayout{in.length, out.howmany, out.stride, out.distance},
-                                                 sign, scale);
+  return std::make_unique<FftwRealToComplexPlan>(in, FftLayout{in.length, out.howmany, out.stride, out.distance}, sign,
+                                                 scale);
 }
 
-std::unique_ptr<ComplexToRealFftPlan> FftwFft::plan_complex_to_real(const FftLayout& in,
-                                                                    const FftLayout& out,
+std::unique_ptr<ComplexToRealFftPlan> FftwFft::plan_complex_to_real(const FftLayout& in, const FftLayout& out,
                                                                     FftSign sign, double scale) const {
   check_layout(out);
   if (out.howmany != in.howmany) throw std::invalid_argument("FftwFft: howmany mismatch");
-  return std::make_unique<FftwComplexToRealPlan>(FftLayout{out.length, in.howmany, in.stride, in.distance},
-                                                 out, sign, scale);
+  return std::make_unique<FftwComplexToRealPlan>(FftLayout{out.length, in.howmany, in.stride, in.distance}, out, sign,
+                                                 scale);
 }
 
 }  // namespace spodvr

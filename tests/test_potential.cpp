@@ -74,9 +74,9 @@ TEST(PotentialGrid, LayoutAndValues) {
   EXPECT_EQ(grid.index.n2, 113u * 56u);
   const double ev2au = units::legacy.ev_to_hartree(1.0);
   // Spot check (itp, ixy, izr) = (iphi=3 + 10*itheta=1, iy=2 + 4*ix=1, ir=7 + 56*iz=50).
-  const double expected =
-      v.value(s.grids.x[1], s.grids.y[2], s.grids.z_scattering[50], s.grids.r[7], s.angular.thetas()[1],
-              s.angular.phis()[3], 50, 7) * ev2au;
+  const double expected = v.value(s.grids.x[1], s.grids.y[2], s.grids.z_scattering[50], s.grids.r[7],
+                                  s.angular.thetas()[1], s.angular.phis()[3], 50, 7) *
+                          ev2au;
   EXPECT_EQ(grid(3 + 10 * 1, 2 + 4 * 1, 7 + 56 * 50), expected);
   // Asymptotic potential: V/chaev (division, not multiplication by 1/chaev).
   EXPECT_EQ(grid.asymptotic[10], units::legacy.ev_to_hartree(HardWallPotential::gas_phase(s.grids.r[10])));

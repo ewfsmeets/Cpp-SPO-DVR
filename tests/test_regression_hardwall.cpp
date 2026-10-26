@@ -65,8 +65,8 @@ const Calculation& calculation() {
     std::ifstream file(reference_dir / "input.json");
     Config config = build_config(parse_input(nlohmann::json::parse(file)));
     SpatialGrids grids = make_spatial_grids(config);
-    AngularGrid angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear,
-                        config.input.j_in, config.input.mj_in);
+    AngularGrid angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
+                        config.input.mj_in);
     PotentialGrid potential = compute_potential_grid(HardWallPotential(), config, grids, angular);
     GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, FftwFft(), LapackEigensolver());
     return Calculation{std::move(config), std::move(grids), std::move(angular), std::move(potential), std::move(gas)};
@@ -74,8 +74,8 @@ const Calculation& calculation() {
   return calc;
 }
 
-#define REQUIRE_REFERENCE(file)                                                                       \
-  if (!fs::exists(reference_dir / (file)))                                                            \
+#define REQUIRE_REFERENCE(file)            \
+  if (!fs::exists(reference_dir / (file))) \
   GTEST_SKIP() << "reference file " << (file) << " missing; run tools/fortran_reference/run_setup_reference.sh"
 
 }  // namespace
@@ -138,8 +138,7 @@ TEST(RegressionHardWall, Gate1FullPotentialAndAngularGrid) {
   std::size_t pos = 1;
   for (int t = 0; t < ntheta; ++t, ++pos)
     EXPECT_NEAR(c.angular.thetas()[t], parse_fortran_real(lines.at(pos)), 1e-15) << t;
-  for (int p = 0; p < nphi; ++p, ++pos)
-    EXPECT_EQ(c.angular.phis()[p], parse_fortran_real(lines.at(pos))) << p;
+  for (int p = 0; p < nphi; ++p, ++pos) EXPECT_EQ(c.angular.phis()[p], parse_fortran_real(lines.at(pos))) << p;
 
   double max_rel = 0.0;
   const std::size_t block = c.potential.index.n0 * c.potential.index.n1;

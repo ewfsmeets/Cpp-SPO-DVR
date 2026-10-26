@@ -60,14 +60,16 @@ class ComplexToRealFftPlan {
 class Fft {
  public:
   virtual ~Fft() = default;
-  [[nodiscard]] virtual std::unique_ptr<ComplexFftPlan> plan_complex(const FftLayout& layout,
-                                                                     FftSign sign, double scale) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<ComplexFftPlan> plan_complex(const FftLayout& layout, FftSign sign,
+                                                                     double scale) const = 0;
   [[nodiscard]] virtual std::unique_ptr<ComplexFftPlan> plan_complex_2d(const FftLayout2D& layout, FftSign sign,
                                                                         double scale) const = 0;
-  [[nodiscard]] virtual std::unique_ptr<RealToComplexFftPlan> plan_real_to_complex(
-      const FftLayout& in, const FftLayout& out, FftSign sign, double scale) const = 0;
-  [[nodiscard]] virtual std::unique_ptr<ComplexToRealFftPlan> plan_complex_to_real(
-      const FftLayout& in, const FftLayout& out, FftSign sign, double scale) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<RealToComplexFftPlan> plan_real_to_complex(const FftLayout& in,
+                                                                                   const FftLayout& out, FftSign sign,
+                                                                                   double scale) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<ComplexToRealFftPlan> plan_complex_to_real(const FftLayout& in,
+                                                                                   const FftLayout& out, FftSign sign,
+                                                                                   double scale) const = 0;
 };
 
 }  // namespace spodvr

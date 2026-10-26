@@ -26,23 +26,40 @@ constexpr std::uint64_t end_marker = 0x454e44'4f46'4350ULL;  // marks a complete
 std::vector<std::pair<std::string, double>> restart_parameters(const Config& config) {
   const InputParameters& p = config.input;
   const DerivedParameters& d = config.derived;
-  return {{"ZStart", p.z_start},       {"dZ", p.dz},
-          {"nZ", p.nz},                {"nZSpecular", p.nz_specular},
-          {"RStart", p.r_start},       {"dR", p.dr},
-          {"nR", p.nr},                {"nX", p.nx},
-          {"nY", p.ny},                {"JMax", p.j_max},
-          {"MJMax", d.mj_max_basis},   {"Mass1", p.mass1},
-          {"Mass2", p.mass2},          {"HomoNuc", p.homonuclear ? 1.0 : 0.0},
-          {"dtStep", p.time_step},     {"dtAna", p.dt_analysis},
-          {"Zana", p.z_analysis},      {"Z0", p.z0},
-          {"EMinWP", p.e_min_wave_packet}, {"EMaxWP", p.e_max_wave_packet},
-          {"EParallel", p.e_parallel}, {"PhiParallel", p.phi_parallel},
-          {"VIn", p.v_in},             {"JIn", p.j_in},
-          {"MJIn", p.mj_in},           {"ZOptStart", p.z_opt_start},
-          {"ZOptEnd", p.z_opt_end},    {"ROptStart", p.r_opt_start},
-          {"ROptEnd", p.r_opt_end},    {"ZSpOptStart", p.zsp_opt_start},
-          {"ZSpOptEnd", p.zsp_opt_end}, {"ZOptFactor (effective)", d.z_opt_factor},
-          {"ROptFactor (effective)", d.r_opt_factor}, {"ZSpOptFactor (effective)", d.zsp_opt_factor}};
+  return {{"ZStart", p.z_start},
+          {"dZ", p.dz},
+          {"nZ", p.nz},
+          {"nZSpecular", p.nz_specular},
+          {"RStart", p.r_start},
+          {"dR", p.dr},
+          {"nR", p.nr},
+          {"nX", p.nx},
+          {"nY", p.ny},
+          {"JMax", p.j_max},
+          {"MJMax", d.mj_max_basis},
+          {"Mass1", p.mass1},
+          {"Mass2", p.mass2},
+          {"HomoNuc", p.homonuclear ? 1.0 : 0.0},
+          {"dtStep", p.time_step},
+          {"dtAna", p.dt_analysis},
+          {"Zana", p.z_analysis},
+          {"Z0", p.z0},
+          {"EMinWP", p.e_min_wave_packet},
+          {"EMaxWP", p.e_max_wave_packet},
+          {"EParallel", p.e_parallel},
+          {"PhiParallel", p.phi_parallel},
+          {"VIn", p.v_in},
+          {"JIn", p.j_in},
+          {"MJIn", p.mj_in},
+          {"ZOptStart", p.z_opt_start},
+          {"ZOptEnd", p.z_opt_end},
+          {"ROptStart", p.r_opt_start},
+          {"ROptEnd", p.r_opt_end},
+          {"ZSpOptStart", p.zsp_opt_start},
+          {"ZSpOptEnd", p.zsp_opt_end},
+          {"ZOptFactor (effective)", d.z_opt_factor},
+          {"ROptFactor (effective)", d.r_opt_factor},
+          {"ZSpOptFactor (effective)", d.zsp_opt_factor}};
 }
 
 void write_header(BinaryWriter& file, const Magic& magic, const Config& config) {
@@ -137,7 +154,8 @@ BkFileWriter::BkFileWriter(const std::filesystem::path& path, const Config& conf
   file_.write(static_cast<std::int32_t>(basis.n_v()));
   for (int is = 0; is < basis.n_states(); ++is) {
     const DiffractionChannel& c = basis.channel(is);
-    for (const int label : {basis.j(is), basis.mj(is), c.n, c.m, c.order}) file_.write(static_cast<std::int32_t>(label));
+    for (const int label : {basis.j(is), basis.mj(is), c.n, c.m, c.order})
+      file_.write(static_cast<std::int32_t>(label));
   }
   for (int v = 0; v < basis.n_v(); ++v)
     for (int is = 0; is < basis.n_states(); ++is) file_.write(basis.channel_energy(is, v));
@@ -150,8 +168,7 @@ void BkFileWriter::append(double time, const BkCoefficients& bk) {
   file_.flush();
 }
 
-std::optional<double> read_bk_file(const std::filesystem::path& path, const Config& config,
-                                   const AnalysisBasis& basis,
+std::optional<double> read_bk_file(const std::filesystem::path& path, const Config& config, const AnalysisBasis& basis,
                                    const std::function<void(double, const BkCoefficients&)>& on_record) {
   BinaryReader file(path);
   read_header(file, bk_magic, "BK coefficient file", config);

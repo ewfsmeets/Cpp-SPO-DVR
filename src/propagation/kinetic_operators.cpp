@@ -87,7 +87,8 @@ void ScatteringKineticOperator::apply_zr(ScatteringWave& psi, TimeStep step) con
 
       for (int iz = 0; iz < nz; ++iz)
         for (int ir = 0; ir < nr; ++ir)
-          for (int e = 0; e < c; ++e) unit[e + c * (ir + nr * iz)] = psi.values[first + e + r_stride * ir + z_stride * iz];
+          for (int e = 0; e < c; ++e)
+            unit[e + c * (ir + nr * iz)] = psi.values[first + e + r_stride * ir + z_stride * iz];
 
       zr_to_momentum_->execute(unit);
       for (int k = 0; k < nr * nz; ++k)
@@ -96,7 +97,8 @@ void ScatteringKineticOperator::apply_zr(ScatteringWave& psi, TimeStep step) con
 
       for (int iz = 0; iz < nz; ++iz)
         for (int ir = 0; ir < nr; ++ir)
-          for (int e = 0; e < c; ++e) psi.values[first + e + r_stride * ir + z_stride * iz] = unit[e + c * (ir + nr * iz)];
+          for (int e = 0; e < c; ++e)
+            psi.values[first + e + r_stride * ir + z_stride * iz] = unit[e + c * (ir + nr * iz)];
     }
   }
 }

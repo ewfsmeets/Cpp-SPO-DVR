@@ -3,8 +3,8 @@
 #include <complex>
 #include <cstddef>
 #include <limits>
-#include <type_traits>
 #include <new>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -53,8 +53,10 @@ struct AlignedAllocator {
   template <class U>
   static U poison() {
     constexpr double nan = std::numeric_limits<double>::quiet_NaN();
-    if constexpr (std::is_same_v<U, std::complex<double>>) return U(nan, nan);
-    else return U(nan);
+    if constexpr (std::is_same_v<U, std::complex<double>>)
+      return U(nan, nan);
+    else
+      return U(nan);
   }
 };
 

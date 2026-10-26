@@ -33,12 +33,8 @@ class UnitConversion {
   [[nodiscard]] constexpr double me_to_amu(double x) const { return x / amu_to_me_; }
   [[nodiscard]] constexpr double bohr_to_angstrom(double x) const { return x * bohr_to_angstrom_; }
   [[nodiscard]] constexpr double angstrom_to_bohr(double x) const { return x / bohr_to_angstrom_; }
-  [[nodiscard]] constexpr double hartree_to_wavenumber(double x) const {
-    return x * hartree_to_wavenumber_;
-  }
-  [[nodiscard]] constexpr double wavenumber_to_hartree(double x) const {
-    return x / hartree_to_wavenumber_;
-  }
+  [[nodiscard]] constexpr double hartree_to_wavenumber(double x) const { return x * hartree_to_wavenumber_; }
+  [[nodiscard]] constexpr double wavenumber_to_hartree(double x) const { return x / hartree_to_wavenumber_; }
 
   // The raw factors, for printing and for tests.
   [[nodiscard]] constexpr double energy_factor() const { return energy_factor_; }
@@ -55,13 +51,12 @@ class UnitConversion {
 namespace units {
 
 // Fortran: constants.f90 chaev, camau, cboan, chacm.
-inline constexpr UnitConversion legacy{27.2114, UnitConversion::EnergyFactorKind::HartreeToEv,
-                                       1822.89, 0.529177, 219475.0};
+inline constexpr UnitConversion legacy{27.2114, UnitConversion::EnergyFactorKind::HartreeToEv, 1822.89, 0.529177,
+                                       219475.0};
 
 // Fortran: constants.f90 Constants_eV2Ha, Constants_u2aum, Constants_Bohr2Ang, Constants_Ha2cmInv.
-inline constexpr UnitConversion precise{0.036749308286,
-                                        UnitConversion::EnergyFactorKind::EvToHartree,
-                                        1822.88853006, 0.529177249, 219475.0};
+inline constexpr UnitConversion precise{0.036749308286, UnitConversion::EnergyFactorKind::EvToHartree, 1822.88853006,
+                                        0.529177249, 219475.0};
 
 }  // namespace units
 

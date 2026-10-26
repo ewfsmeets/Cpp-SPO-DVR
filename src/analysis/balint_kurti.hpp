@@ -37,8 +37,8 @@ struct BkCoefficients {
 // Fortran: Analyzor.f90 BalintKurtiCoeffs (the part before the S-matrix accumulation)
 class BalintKurtiAnalyzer {
  public:
-  BalintKurtiAnalyzer(const Config& config, const SpatialGrids& grids, const AnalysisBasis& basis,
-                      const GasPhase& gas, const PropagationTables& tables, const Fft& fft);
+  BalintKurtiAnalyzer(const Config& config, const SpatialGrids& grids, const AnalysisBasis& basis, const GasPhase& gas,
+                      const PropagationTables& tables, const Fft& fft);
 
   [[nodiscard]] BkCoefficients coefficients(const WavePacket& psi, const AnalysisSurface& surface) const;
 

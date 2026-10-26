@@ -12,8 +12,7 @@ constexpr double z_asymptotic = 7.0;  // Fortran: ZAsymptotic
 }
 
 // Fortran: HardWallPES.f90 module parameters and getParamsForHardwallPES
-HardWallPotential::HardWallPotential()
-    : parameters_{6.239660, 5.239660, z_asymptotic, Constants::pi / 2.0, "C2v"} {}
+HardWallPotential::HardWallPotential() : parameters_{6.239660, 5.239660, z_asymptotic, Constants::pi / 2.0, "C2v"} {}
 
 // Fortran: HardWallPES.f90 getVHardwallPESAsymptotic. The expression (including the real
 // exponents r**2.0, r**3.0) is kept literally so that the result is bitwise identical.
@@ -30,8 +29,8 @@ double HardWallPotential::gas_phase(double r_in) {
 }
 
 // Fortran: HardWallPES.f90 getVHardwallPES
-double HardWallPotential::value(double /*x*/, double /*y*/, double z, double r,
-                                double /*theta*/, double /*phi*/, int /*iz*/, int /*ir*/) const {
+double HardWallPotential::value(double /*x*/, double /*y*/, double z, double r, double /*theta*/, double /*phi*/,
+                                int /*iz*/, int /*ir*/) const {
   const double vr = gas_phase(r);
   const double vz = 1.0 / (z * z * z * z + 0.001);
 

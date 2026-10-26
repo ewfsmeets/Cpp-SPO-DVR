@@ -12,11 +12,10 @@
 namespace spodvr {
 
 // Operations on the specular (incoming channel) grid in one time step: exp(-i T dt) by a 2D FFT
-// in (r, Z) (T includes the parallel energy; Fortran: 1D FFTs in Z, then r), then, except on the last half step, the gas-phase
-// propagator rot(dt/2) . exp(-i vasy dt) . rot(dt/2) beyond the interaction region and the
-// absorbing potentials. Fortran: SplitOperator.f90 SpecularChannelOps; KineticOp.f90
-// PerformEXPKinOpSpec; GasPhase.f90 PerformEXPGasPhaseOnSpecGrid; Absorption.f90
-// PerformEXPOpticalOpSpec
+// in (r, Z) (T includes the parallel energy; Fortran: 1D FFTs in Z, then r), then, except on the last half step, the
+// gas-phase propagator rot(dt/2) . exp(-i vasy dt) . rot(dt/2) beyond the interaction region and the absorbing
+// potentials. Fortran: SplitOperator.f90 SpecularChannelOps; KineticOp.f90 PerformEXPKinOpSpec; GasPhase.f90
+// PerformEXPGasPhaseOnSpecGrid; Absorption.f90 PerformEXPOpticalOpSpec
 class SpecularOperator {
  public:
   SpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel, const IndexRange& z_absorber,

@@ -11,8 +11,7 @@
 
 namespace spodvr {
 
-AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in, int mj_in,
-                         int num_phis_multiple)
+AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in, int mj_in, int num_phis_multiple)
     : j_max_(j_max), j_min_(0), delta_j_(1), mj_max_(mj_max_basis), homonuclear_(homonuclear) {
   // Fortran: setupdvr.f90 SetupDVRProj input checks (also covered by ValidateInput).
   if (j_in < 0) throw InputError("JIn", "JIn cannot be negative.");
@@ -20,8 +19,7 @@ AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in
   if (std::abs(mj_in) > j_in) throw InputError("MJIn", "The absolute value of MjIn is bigger than JIn.");
   if (homonuclear && (j_in % 2) != (j_max % 2))
     throw InputError("JMax", "JMax and JIn must have the same parity for a homonuclear molecule.");
-  if (mj_max_basis > j_max)
-    throw InputError("MJMax", "The MjMax parameter was set higher than the JMax parameter.");
+  if (mj_max_basis > j_max) throw InputError("MJMax", "The MjMax parameter was set higher than the JMax parameter.");
   if (j_max < j_in) throw InputError("JIn", "JIn > JMax.");  // Fortran: silent RETURN in InitAngularGrid
 
   // Number of phi points. Fortran: setupdvr.f90 Setup_FFTSize, Setup_dPhi
@@ -32,8 +30,7 @@ AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in
   // are hard errors.
   if (n_phi != nearest_fft_size(n_phi, num_phis_multiple))
     throw InputError("MJMax", "the number of phi points is not a valid FFT size");
-  if (n_phi < 2 * mj_max_basis + 1)
-    throw InputError("MJMax", "the number of phi points must be at least 2*MJMax+1");
+  if (n_phi < 2 * mj_max_basis + 1) throw InputError("MJMax", "the number of phi points must be at least 2*MJMax+1");
 
   // Fortran: angulargrid.f90 InitAngularGrid (SymInPhi = .FALSE. => JMin = 0)
   int n_theta = 0;

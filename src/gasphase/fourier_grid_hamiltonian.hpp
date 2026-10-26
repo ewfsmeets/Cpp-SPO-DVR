@@ -13,8 +13,7 @@ namespace spodvr {
 // Fortran: FourierGridHamiltonian.f90
 class FourierGridHamiltonian {
  public:
-  FourierGridHamiltonian(int n_approx, double lower_bound, double upper_bound, double reduced_mass,
-                         const Fft& fft);
+  FourierGridHamiltonian(int n_approx, double lower_bound, double upper_bound, double reduced_mass, const Fft& fft);
 
   [[nodiscard]] int size() const { return n_; }
   [[nodiscard]] double spacing() const { return dx_; }

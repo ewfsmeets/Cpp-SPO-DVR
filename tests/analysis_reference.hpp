@@ -70,11 +70,16 @@ inline std::vector<FortranEnergyBlock> read_fortran_probabilities(const std::fil
     }
     if (blocks.empty()) continue;
     FortranEnergyBlock& b = blocks.back();
-    if (has("rotation-diffraction summed probabilities")) section = "v";
-    else if (has("diffraction summed probabilities")) section = "rotation";
-    else if (has("probabilities as function of diffraction order")) section.clear();
-    else if (has("sum of the probabilities =")) b.p_total = last_token(line);
-    else if (has("the reaction probability =")) b.p_reaction = last_token(line);
+    if (has("rotation-diffraction summed probabilities"))
+      section = "v";
+    else if (has("diffraction summed probabilities"))
+      section = "rotation";
+    else if (has("probabilities as function of diffraction order"))
+      section.clear();
+    else if (has("sum of the probabilities ="))
+      b.p_total = last_token(line);
+    else if (has("the reaction probability ="))
+      b.p_reaction = last_token(line);
     const std::vector<std::string> t = split(line);
     if (section == "v" && t.size() == 4 && all_digits(t[0])) b.p_vibration[std::stoi(t[0])] = t[1];
     if (section == "rotation" && t.size() == 5 && all_digits(t[0]))
@@ -134,8 +139,8 @@ inline std::vector<std::vector<std::complex<double>>> read_fortran_bk_records(co
 // coefficient of the run. The coefficients are amplitudes of at most ~1; before the wave packet
 // reaches the analysis line they are rounding noise (hardwall_short: all below 2e-15), so the
 // reference scale is at least 1e-4, i.e. noise is compared absolutely at tolerance * 1e-4.
-inline void compare_bk_with_fortran(const PropagationRun& cpp, const std::vector<std::vector<std::complex<double>>>& ref,
-                                    double tolerance) {
+inline void compare_bk_with_fortran(const PropagationRun& cpp,
+                                    const std::vector<std::vector<std::complex<double>>>& ref, double tolerance) {
   ASSERT_EQ(cpp.bk.size(), ref.size());
   double largest = 0.0;
   for (const auto& record : ref)
@@ -144,7 +149,8 @@ inline void compare_bk_with_fortran(const PropagationRun& cpp, const std::vector
   double worst = 0.0;
   for (std::size_t step = 0; step < ref.size(); ++step) {
     ASSERT_EQ(cpp.bk[step].size(), ref[step].size());
-    for (std::size_t k = 0; k < ref[step].size(); ++k) worst = std::max(worst, std::abs(cpp.bk[step][k] - ref[step][k]));
+    for (std::size_t k = 0; k < ref[step].size(); ++k)
+      worst = std::max(worst, std::abs(cpp.bk[step][k] - ref[step][k]));
   }
   EXPECT_LE(worst, tolerance * scale);
   std::cout << "  " << ref.size() << " BK records compared; max|c| = " << largest

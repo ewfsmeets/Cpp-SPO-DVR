@@ -96,8 +96,8 @@ void print_rovib_table(std::ostream& out, const Style& style, const AnalysisBasi
   out << '\n';
 }
 
-void print_diffraction_table(std::ostream& out, const Style& style, const Config& config,
-                             const AnalysisBasis& basis, const ScatteringResults& results) {
+void print_diffraction_table(std::ostream& out, const Style& style, const Config& config, const AnalysisBasis& basis,
+                             const ScatteringResults& results) {
   const int v = config.input.v_in;
   const int j = config.input.j_in;
   const int n_orders = basis.max_order() + 1;
@@ -131,27 +131,27 @@ void print_analysis_setup(std::ostream& out, const Style& style, const Config& c
   list.add("Highest j analysed (jana)", std::to_string(basis.j_max()));
   list.add("Rotational states analysed (nana)", std::to_string(basis.n_rotation()));
   list.add("Highest diffraction order analysed (mdifa)", std::to_string(basis.max_order()));
-  list.add("Diffraction channels analysed (ndifa)", std::to_string(basis.n_diffraction()) + " of " +
-                                                        std::to_string(basis.diffraction_channels().size()));
+  list.add("Diffraction channels analysed (ndifa)",
+           std::to_string(basis.n_diffraction()) + " of " + std::to_string(basis.diffraction_channels().size()));
   list.add("Rotation-diffraction states (nstata)", std::to_string(basis.n_states()));
   const int is0 = basis.initial_state();
-  list.add("Initial channel (index)", std::to_string(is0) + ": " +
-                                          state_label(p.v_in, basis.j(is0), basis.mj(is0), 0, 0));
+  list.add("Initial channel (index)",
+           std::to_string(is0) + ": " + state_label(p.v_in, basis.j(is0), basis.mj(is0), 0, 0));
   list.add("Analysis surface (scattering grid)", fixed(p.z_analysis, 6), "bohr");
   if (energies.size() > 0) {
-    list.add("Analysis energies (collision)", fixed(energies.collision.front(), 6) + " .. " +
-                                                  fixed(energies.collision.back(), 6),
-             "eV");
+    list.add("Analysis energies (collision)",
+             fixed(energies.collision.front(), 6) + " .. " + fixed(energies.collision.back(), 6), "eV");
     const double step = energies.size() > 1 ? energies.collision[1] - energies.collision[0] : 0.0;
     list.add("  number, step", std::to_string(energies.size()) + ", " + fixed(step, 6), "eV");
   }
   list.print(out, style);
   if (basis.diffraction_basis_too_small())
-    out << "\n  " << style.warning("Warning") << ": the diffraction basis is too small to describe all open channels.\n";
+    out << "\n  " << style.warning("Warning")
+        << ": the diffraction basis is too small to describe all open channels.\n";
 }
 
-void print_scattering_results(std::ostream& out, const Style& style, const Config& config,
-                              const AnalysisBasis& basis, const ScatteringResults& results) {
+void print_scattering_results(std::ostream& out, const Style& style, const Config& config, const AnalysisBasis& basis,
+                              const ScatteringResults& results) {
   print_section(out, style, "SCATTERING PROBABILITIES");
   if (energy_stride(static_cast<int>(results.energies.size())) > 1)
     out << "  Every " << energy_stride(static_cast<int>(results.energies.size()))

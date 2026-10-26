@@ -7,7 +7,8 @@
 namespace spodvr {
 
 // Equidistant grid x_i = start + i * spacing, i = 0 .. size-1. The Fortran `start + dfloat(i-1)*delta`
-// is evaluated in quad precision, so points can differ by 1 ulp (accepted, see CLAUDE.md). Fortran: Setup.f90 zgrid, rgrid, xgrid, ygrid
+// is evaluated in quad precision, so points can differ by 1 ulp (accepted, see CLAUDE.md). Fortran: Setup.f90 zgrid,
+// rgrid, xgrid, ygrid
 class UniformGrid {
  public:
   UniformGrid(double start, double spacing, int size) : start_(start), spacing_(spacing) {

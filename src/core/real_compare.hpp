@@ -36,9 +36,7 @@ inline constexpr double tolerance = 1.0e-12;
   b = trim(b);
   if (a.size() != b.size()) return false;
   for (std::size_t i = 0; i < a.size(); ++i) {
-    if (std::tolower(static_cast<unsigned char>(a[i])) !=
-        std::tolower(static_cast<unsigned char>(b[i])))
-      return false;
+    if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) return false;
   }
   return true;
 }

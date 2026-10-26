@@ -62,13 +62,13 @@ int main(int argc, char** argv) {
                                   *grids.z_specular_optical, grids.r_optical, tables, fft);
   const SplitOperatorPropagator propagator(config.derived.steps_per_analysis, kinetic, potential_op, specular);
 
-  WavePacket psi{ScatteringWave(shape.n_rot, p.nx * p.ny, p.nr * p.nz), make_initial_wave_packet(config, grids, gas, fft).specular};
+  WavePacket psi{ScatteringWave(shape.n_rot, p.nx * p.ny, p.nr * p.nz),
+                 make_initial_wave_packet(config, grids, gas, fft).specular};
   for (auto& c : psi.scattering.values) c = 1e-3;  // arbitrary non-zero data
 
   std::printf("%s\n", numerical_libraries_summary().c_str());
   std::printf("%d OpenMP threads, %d rotational states, nx = ny = %d, nr = %d, nz = %d (%.2f GB wave function)\n",
-              omp_get_max_threads(), shape.n_rot, p.nx, p.nr, p.nz,
-              double(psi.scattering.values.size()) * 16.0 / 1e9);
+              omp_get_max_threads(), shape.n_rot, p.nx, p.nr, p.nz, double(psi.scattering.values.size()) * 16.0 / 1e9);
   time_call("T_Z + T_r (2D FFT)", repetitions, [&] { kinetic.apply_zr(psi.scattering, TimeStep::Full); });
   time_call("T_xy (2D FFT)", repetitions, [&] { kinetic.apply_xy(psi.scattering, TimeStep::Full); });
   time_call("potential incl. transforms", repetitions, [&] { potential_op.apply(psi); });

@@ -16,8 +16,8 @@ namespace {
 // Solves the FGH eigenproblem for every j with the centrifugal term j(j+1)/(2 mu r^2) added to
 // the gas-phase potential. Fortran: SetupAsympWF loop over Jlevel, CopyAsympPotentialToFGHType
 RovibrationalStates solve_rovibrational_states(const FourierGridHamiltonian& fgh, int j_max,
-                                               std::span<const double> asymptotic_potential,
-                                               double reduced_mass, const SymmetricEigensolver& solver) {
+                                               std::span<const double> asymptotic_potential, double reduced_mass,
+                                               const SymmetricEigensolver& solver) {
   const int nr = fgh.size();
   RovibrationalStates states(nr, j_max);
   std::vector<double> potential(nr);
@@ -75,8 +75,8 @@ int highest_open_rotational_level(const RovibrationalStates& states, int delta_j
 }
 
 // Norm and <r> of one state with the scattering r grid spacing (as in the Fortran table).
-RovibrationalStateSummary summarise_state(const RovibrationalStates& states, int v, int j,
-                                          const UniformGrid& r_grid, double e_initial) {
+RovibrationalStateSummary summarise_state(const RovibrationalStates& states, int v, int j, const UniformGrid& r_grid,
+                                          double e_initial) {
   const auto psi = states.wave_function(v, j);
   double norm = 0.0;
   double r_mean = 0.0;
@@ -93,8 +93,7 @@ RovibrationalStateSummary summarise_state(const RovibrationalStates& states, int
 // <V>, <E_rot> and <r> of the initial state, normalised with its norm.
 InitialStateProperties initial_state_properties(const RovibrationalStates& states, int v, int j,
                                                 const UniformGrid& r_grid, double norm,
-                                                std::span<const double> asymptotic_potential,
-                                                double reduced_mass) {
+                                                std::span<const double> asymptotic_potential, double reduced_mass) {
   const auto psi = states.wave_function(v, j);
   double erot = 0.0;
   double r_in = 0.0;
@@ -152,8 +151,8 @@ GasPhase compute_gas_phase(const Config& config, const SpatialGrids& grids, cons
     for (int j = 0; j <= p.j_max; ++j) {
       gas.summary.push_back(summarise_state(states, v, j, grids.r, e_initial));
       if (v == p.v_in && j == p.j_in)
-        gas.initial = initial_state_properties(states, v, j, grids.r, gas.summary.back().norm,
-                                               asymptotic_potential, reduced_mass);
+        gas.initial = initial_state_properties(states, v, j, grids.r, gas.summary.back().norm, asymptotic_potential,
+                                               reduced_mass);
     }
   }
 

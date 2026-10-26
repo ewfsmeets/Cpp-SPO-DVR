@@ -16,7 +16,8 @@ int diffraction_order(const std::string& point_group, int n, int m) {
   const int abs_n = std::abs(n);
   const int abs_m = std::abs(m);
   if (fortran_compare::seq(point_group, "C2v") || fortran_compare::seq(point_group, "C4v")) return abs_n + abs_m;
-  if (fortran_compare::seq(point_group, "C3") || fortran_compare::seq(point_group, "C3v") || fortran_compare::seq(point_group, "C6v")) {
+  if (fortran_compare::seq(point_group, "C3") || fortran_compare::seq(point_group, "C3v") ||
+      fortran_compare::seq(point_group, "C6v")) {
     if (n * m > 0) return std::max(abs_n, abs_m);
     return abs_n + abs_m;
   }

@@ -46,8 +46,7 @@ class BkFileWriter {
 
 // Calls on_record(time, coefficients) for every record of a BK file written for the same
 // input and analysis basis. Returns the time of the last record (none: empty file).
-std::optional<double> read_bk_file(const std::filesystem::path& path, const Config& config,
-                                   const AnalysisBasis& basis,
+std::optional<double> read_bk_file(const std::filesystem::path& path, const Config& config, const AnalysisBasis& basis,
                                    const std::function<void(double, const BkCoefficients&)>& on_record);
 
 }  // namespace spodvr

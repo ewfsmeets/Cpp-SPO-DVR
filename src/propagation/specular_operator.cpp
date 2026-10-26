@@ -43,7 +43,8 @@ void SpecularOperator::apply(SpecularWave& psi, TimeStep step, bool kinetic_only
 
 // Fortran: KineticOp.f90 PerformEXPKinOpSpec
 void SpecularOperator::apply_kinetic(SpecularWave& psi, TimeStep step) const {
-  const std::vector<cplx>& factors = step == TimeStep::Full ? tables_.specular_kinetic.full : tables_.specular_kinetic.half;
+  const std::vector<cplx>& factors =
+      step == TimeStep::Full ? tables_.specular_kinetic.full : tables_.specular_kinetic.half;
   to_momentum_->execute(psi.values);
   for (std::size_t i = 0; i < psi.values.size(); ++i) psi.values[i] = factors[i] * psi.values[i];
   to_coordinate_->execute(psi.values);

@@ -18,7 +18,6 @@ namespace spodvr {
 //   analysis.json                   run and basis metadata, file and column descriptions
 // Returns the files written. Format description: docs/output_files.md
 std::vector<std::filesystem::path> write_scattering_files(const std::filesystem::path& dir, const Config& config,
-                                                          const AnalysisBasis& basis,
-                                                          const ScatteringResults& results);
+                                                          const AnalysisBasis& basis, const ScatteringResults& results);
 
 }  // namespace spodvr
