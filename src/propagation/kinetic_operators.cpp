@@ -1,6 +1,10 @@
-// Kinetic energy propagators on the scattering grid (FFT in Z and r over the whole wave
-// function, FFT in x and y per (Z, r) point). Fortran: KineticOp.f90, SplitOperator.f90
+// Kinetic energy propagators on the scattering grid: 2D FFT in (r, Z) on gathered work units,
+// 2D FFT in (x, y) per (Z, r) point. Fortran: KineticOp.f90, SplitOperator.f90
 #include "propagation/kinetic_operators.hpp"
+
+#include <algorithm>
+
+#include "core/aligned_vector.hpp"
 
 namespace spodvr {
 
@@ -12,97 +16,129 @@ const std::vector<cplx>& factors_for(const StepFactors& f, TimeStep step) {
   return step == TimeStep::Full ? f.full : f.half;
 }
 
-}  // namespace
-
-// Fortran: KineticOp.f90 SetupFFTs. The FFT along one coordinate is planned for a fixed work
-// unit (all (irot, iy) values of one (ix, ir), resp. (ix, iz), resp. (Z, r) point), so results
-// do not depend on how the units are distributed over threads.
-ScatteringKineticOperator::ScatteringKineticOperator(const ScatteringShape& shape, const PropagationTables& tables,
-                                                     const Fft& fft)
-    : shape_(shape), tables_(tables) {
-  const int n_roty = shape.n_rot * shape.ny;
-  const int n_rotxy = n_roty * shape.nx;
-  const int z_stride = n_rotxy * shape.nr;
-
-  const FftLayout z_layout{shape.nz, n_roty, z_stride, 1};
-  z_to_momentum_ = fft.plan_complex(z_layout, FftSign::Minus, tables.fft_scale_z);
-  z_to_coordinate_ = fft.plan_complex(z_layout, FftSign::Plus, 1.0 / (shape.nz * tables.fft_scale_z));
-
-  const FftLayout r_layout{shape.nr, n_roty, n_rotxy, 1};
-  r_to_momentum_ = fft.plan_complex(r_layout, FftSign::Minus, tables.fft_scale_r);
-  r_to_coordinate_ = fft.plan_complex(r_layout, FftSign::Plus, 1.0 / (shape.nr * tables.fft_scale_r));
-
-  const FftLayout x_layout{shape.nx, n_roty, n_roty, 1};
-  x_to_momentum_ = fft.plan_complex(x_layout, FftSign::Minus, tables.fft_scale_x);
-  x_to_coordinate_ = fft.plan_complex(x_layout, FftSign::Plus, 1.0 / (shape.nx * tables.fft_scale_x));
-
-  const FftLayout y_layout{shape.ny, shape.n_rot, shape.n_rot, 1};
-  y_to_momentum_ = fft.plan_complex(y_layout, FftSign::Minus, tables.fft_scale_y);
-  y_to_coordinate_ = fft.plan_complex(y_layout, FftSign::Plus, 1.0 / (shape.ny * tables.fft_scale_y));
+// Number of adjacent (irot, iy) values gathered per (r, Z) work unit: up to 4 (one 64-byte
+// cache line), and a divisor of n_roty so that all units have the same shape.
+int chunk_size(int n_roty) {
+  for (int c = std::min(4, n_roty); c > 1; --c)
+    if (n_roty % c == 0) return c;
+  return 1;
 }
 
-// Fortran: KineticOp.f90 PerformEXPKinOpZScat, then PerformEXPKinOpRScat
+bool is_one(const cplx& c) { return c.real() == 1.0 && c.imag() == 0.0; }
+
+}  // namespace
+
+// Fortran: KineticOp.f90 SetupFFTs, SetupScaleFactors
+ScatteringKineticOperator::ScatteringKineticOperator(const ScatteringShape& shape, const PropagationTables& tables,
+                                                     const Fft& fft)
+    : shape_(shape),
+      tables_(tables),
+      chunk_(chunk_size(shape.n_rot * shape.ny)),
+      shift_(!std::all_of(tables.shift_forward.begin(), tables.shift_forward.end(), is_one)) {
+  // (r, Z) unit buffer: (e, ir, iz) with e = 0 .. chunk-1 fastest.
+  const FftLayout2D zr_layout{shape.nz, chunk_ * shape.nr, shape.nr, chunk_, chunk_, 1};
+  const double scale_z = tables.fft_scale_z;
+  const double scale_r = tables.fft_scale_r;
+  zr_to_momentum_ = fft.plan_complex_2d(zr_layout, FftSign::Minus, scale_z * scale_r);
+  zr_to_coordinate_ =
+      fft.plan_complex_2d(zr_layout, FftSign::Plus, (1.0 / (shape.nz * scale_z)) * (1.0 / (shape.nr * scale_r)));
+
+  // (x, y) for one group, gathered as (k, iy, ix) with k = irot + n_rot * ir fastest. A single
+  // grid point in x or y is not transformed (and not scaled) in the Fortran code.
+  const int k_count = shape.n_rot * shape.nr;
+  const FftLayout2D xy_layout{shape.nx, k_count * shape.ny, shape.ny, k_count, k_count, 1};
+  const double scale_x = shape.nx > 1 ? tables.fft_scale_x : 1.0;
+  const double scale_y = shape.ny > 1 ? tables.fft_scale_y : 1.0;
+  xy_to_momentum_ = fft.plan_complex_2d(xy_layout, FftSign::Minus, scale_x * scale_y);
+  xy_to_coordinate_ =
+      fft.plan_complex_2d(xy_layout, FftSign::Plus, (1.0 / (shape.nx * scale_x)) * (1.0 / (shape.ny * scale_y)));
+}
+
+// Every work unit (a chunk of adjacent (irot, iy) values at one ix) is gathered into a
+// contiguous buffer, transformed in (r, Z), multiplied by exp(-i (T_Z + T_r) dt), transformed
+// back and scattered. Fixed units, so the result does not depend on the number of threads.
+// Fortran: KineticOp.f90 PerformEXPKinOpZScat, PerformEXPKinOpRScat
 void ScatteringKineticOperator::apply_zr(ScatteringWave& psi, TimeStep step) const {
   const int n_roty = shape_.n_rot * shape_.ny;
-  const int n_rotxy = n_roty * shape_.nx;
-  const int z_stride = n_rotxy * shape_.nr;
-  const std::span<cplx> values(psi.values);
+  const std::size_t r_stride = std::size_t(n_roty) * shape_.nx;
+  const std::size_t z_stride = r_stride * shape_.nr;
+  const int nr = shape_.nr;
+  const int nz = shape_.nz;
+  const int c = chunk_;
+  const int chunks_per_x = n_roty / c;
+  const std::vector<cplx>& factors = factors_for(tables_.zr_kinetic, step);
 
-  // Along Z: one unit per (ix, ir), holding all (irot, iy) values at every iz.
-  const std::vector<cplx>& ez = factors_for(tables_.z_kinetic, step);
-#pragma omp parallel for schedule(static)
-  for (int unit = 0; unit < shape_.nx * shape_.nr; ++unit) {
-    const std::span<cplx> column = values.subspan(n_roty * unit);
-    z_to_momentum_->execute(column);
-    for (int iz = 0; iz < shape_.nz; ++iz)
-      for (int e = 0; e < n_roty; ++e) column[e + z_stride * iz] = ez[iz] * column[e + z_stride * iz];
-    z_to_coordinate_->execute(column);
-  }
+#pragma omp parallel
+  {
+    ComplexVector unit(std::size_t(c) * nr * nz);
+#pragma omp for schedule(static)
+    for (int u = 0; u < chunks_per_x * shape_.nx; ++u) {
+      const int ix = u / chunks_per_x;
+      const std::size_t first = std::size_t(c) * (u % chunks_per_x) + std::size_t(n_roty) * ix;
 
-  // Along r: one unit per (ix, iz).
-  const std::vector<cplx>& er = factors_for(tables_.r_kinetic, step);
-#pragma omp parallel for schedule(static)
-  for (int unit = 0; unit < shape_.nx * shape_.nz; ++unit) {
-    const int ix = unit % shape_.nx;
-    const int iz = unit / shape_.nx;
-    const std::span<cplx> column = values.subspan(n_roty * ix + z_stride * iz);
-    r_to_momentum_->execute(column);
-    for (int ir = 0; ir < shape_.nr; ++ir)
-      for (int e = 0; e < n_roty; ++e) column[e + n_rotxy * ir] = er[ir] * column[e + n_rotxy * ir];
-    r_to_coordinate_->execute(column);
+      for (int iz = 0; iz < nz; ++iz)
+        for (int ir = 0; ir < nr; ++ir)
+          for (int e = 0; e < c; ++e) unit[e + c * (ir + nr * iz)] = psi.values[first + e + r_stride * ir + z_stride * iz];
+
+      zr_to_momentum_->execute(unit);
+      for (int k = 0; k < nr * nz; ++k)
+        for (int e = 0; e < c; ++e) unit[e + c * k] = factors[k] * unit[e + c * k];
+      zr_to_coordinate_->execute(unit);
+
+      for (int iz = 0; iz < nz; ++iz)
+        for (int ir = 0; ir < nr; ++ir)
+          for (int e = 0; e < c; ++e) psi.values[first + e + r_stride * ir + z_stride * iz] = unit[e + c * (ir + nr * iz)];
+    }
   }
 }
 
 void ScatteringKineticOperator::apply_xy(ScatteringWave& psi, TimeStep step) const {
-#pragma omp parallel for schedule(static)
-  for (int izr = 0; izr < psi.n_blocks(); ++izr) apply_xy_block(psi.block(izr), step);
+  const std::size_t group_size = std::size_t(psi.block_size()) * shape_.nr;
+#pragma omp parallel
+  {
+    ComplexVector work(group_work_size());
+#pragma omp for schedule(static)
+    for (int iz = 0; iz < shape_.nz; ++iz)
+      apply_xy_group(std::span(psi.values).subspan(group_size * iz, group_size), step, work);
+  }
 }
 
-// One (Z, r) point: shift to the moving frame, FFT x then y, multiply by exp(-i T_xy dt),
-// back to coordinates, shift back. Fortran: SplitOperator.f90 PerformEXPKineticOp
-void ScatteringKineticOperator::apply_xy_block(std::span<cplx> block, TimeStep step) const {
+std::size_t ScatteringKineticOperator::group_work_size() const {
+  return std::size_t(shape_.n_rot) * shape_.nx * shape_.ny * shape_.nr;
+}
+
+// The nr points of one Z value: gather their blocks (irot, ixy) into the work array as
+// (k, ixy) with k = irot + n_rot * ir, shift to the moving frame, FFT (x, y), multiply by
+// exp(-i T_xy dt), back to coordinates, shift back, scatter. The shift is exactly 1 without
+// parallel momentum and then skipped. Fortran: SplitOperator.f90 PerformEXPKineticOp
+void ScatteringKineticOperator::apply_xy_group(std::span<cplx> group, TimeStep step, std::span<cplx> work) const {
   const std::vector<cplx>& factors = factors_for(tables_.xy_kinetic, step);
   const int n_rot = shape_.n_rot;
   const int n_xy = shape_.nx * shape_.ny;
+  const int k_count = n_rot * shape_.nr;
 
+  for (int ir = 0; ir < shape_.nr; ++ir)
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      for (int irot = 0; irot < n_rot; ++irot)
+        work[irot + n_rot * ir + k_count * ixy] = group[irot + n_rot * (ixy + n_xy * ir)];
+
+  if (shift_)
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      for (int k = 0; k < k_count; ++k) work[k + k_count * ixy] = work[k + k_count * ixy] * tables_.shift_forward[ixy];
+
+  xy_to_momentum_->execute(work);  // Fortran: TransToMomenta
   for (int ixy = 0; ixy < n_xy; ++ixy)
-    for (int irot = 0; irot < n_rot; ++irot) block[irot + n_rot * ixy] = block[irot + n_rot * ixy] * tables_.shift_forward[ixy];
+    for (int k = 0; k < k_count; ++k) work[k + k_count * ixy] = factors[ixy] * work[k + k_count * ixy];
+  xy_to_coordinate_->execute(work);  // Fortran: TransToCoords
 
-  // Fortran: TransToMomenta (FFTAlongX, FFTAlongY); no transform for a single point.
-  if (shape_.nx > 1) x_to_momentum_->execute(block);
-  if (shape_.ny > 1)
-    for (int ix = 0; ix < shape_.nx; ++ix) y_to_momentum_->execute(block.subspan(n_rot * shape_.ny * ix));
+  if (shift_)
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      for (int k = 0; k < k_count; ++k) work[k + k_count * ixy] = work[k + k_count * ixy] * tables_.shift_backward[ixy];
 
-  for (int ixy = 0; ixy < n_xy; ++ixy)
-    for (int irot = 0; irot < n_rot; ++irot) block[irot + n_rot * ixy] = factors[ixy] * block[irot + n_rot * ixy];
-
-  // Fortran: TransToCoords (FFTAlongX, FFTAlongY)
-  if (shape_.nx > 1) x_to_coordinate_->execute(block);
-  if (shape_.ny > 1)
-    for (int ix = 0; ix < shape_.nx; ++ix) y_to_coordinate_->execute(block.subspan(n_rot * shape_.ny * ix));
-
-  for (int ixy = 0; ixy < n_xy; ++ixy)
-    for (int irot = 0; irot < n_rot; ++irot) block[irot + n_rot * ixy] = block[irot + n_rot * ixy] * tables_.shift_backward[ixy];
+  for (int ir = 0; ir < shape_.nr; ++ir)
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      for (int irot = 0; irot < n_rot; ++irot)
+        group[irot + n_rot * (ixy + n_xy * ir)] = work[irot + n_rot * ir + k_count * ixy];
 }
 
 }  // namespace spodvr

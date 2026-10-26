@@ -113,6 +113,12 @@ PropagationTables make_propagation_tables(const Config& config, const SpatialGri
   // Kinetic energies. Fortran: SetupGridEnergies
   t.z_kinetic = step_factors(grids.kz_scattering.kinetic_energies(), dt, HalfStep::SquareRoot);
   t.r_kinetic = step_factors(grids.kr.kinetic_energies(), dt, HalfStep::SquareRoot);
+  // T_Z and T_r applied together after a 2D FFT: exp(-i T_Z dt) exp(-i T_r dt) per (kr, kZ).
+  for (std::size_t iz = 0; iz < t.z_kinetic.full.size(); ++iz)
+    for (std::size_t ir = 0; ir < t.r_kinetic.full.size(); ++ir) {
+      t.zr_kinetic.full.push_back(t.z_kinetic.full[iz] * t.r_kinetic.full[ir]);
+      t.zr_kinetic.half.push_back(t.z_kinetic.half[iz] * t.r_kinetic.half[ir]);
+    }
 
   t.xy_kinetic_energies = parallel_kinetic_energies(config);
   t.parallel_energy = t.xy_kinetic_energies[0];

@@ -27,6 +27,21 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
                                std::size_t(nz_potential) * shape.nr;
   if (potential_.size() != expected) throw std::invalid_argument("PotentialOperator: potential has the wrong size");
 
+  if ((shape.nx * shape.ny) % transform.n_columns() != 0)
+    throw std::invalid_argument("PotentialOperator: nx*ny must be a multiple of the transform's columns");
+
+  // Merged per-(irot, ir) factors (one multiplication instead of several):
+  //   interaction region: exp(-V_opt,r dt) rot(dt/2)  (before the DVR step)
+  //   beyond it:          exp(-V_opt,r dt) rot(dt/2) exp(-i vasy dt) rot(dt/2)
+  const int n_rot = shape.n_rot;
+  for (int ir = 0; ir < shape.nr; ++ir)
+    for (int irot = 0; irot < n_rot; ++irot) {
+      const cplx rot = tables.rotation.half[irot + n_rot * ir];
+      const double optical_r = shape.nr != 1 ? tables.r_optical[ir] : 1.0;
+      before_interaction_.push_back(optical_r * rot);
+      gas_phase_step_.push_back(optical_r * rot * tables.gas_phase[ir] * rot);
+    }
+
   if (expected * sizeof(cplx) <= table_limit) {
     exp_potential_.resize(expected);
 #pragma omp parallel for schedule(static)
@@ -42,50 +57,56 @@ std::size_t PotentialOperator::work_size() const {
 void PotentialOperator::apply(WavePacket& psi) const {
 #pragma omp parallel
   {
-    std::vector<cplx> work(work_size());
+    ComplexVector work(work_size());
 #pragma omp for schedule(static)
     for (int izr = 0; izr < psi.scattering.n_blocks(); ++izr)
       apply_block(izr, psi.scattering.block(izr), psi.specular, work);
   }
 }
 
-// Fortran: Potential.f90 PerformEXPPotentialOp (called per izr in KineticAndPotentialOp)
+// Fortran: Potential.f90 PerformEXPPotentialOp (called per izr in KineticAndPotentialOp), with
+// the scalar factors merged: optical Z (real) times the per-(irot, ir) tables of the constructor.
 void PotentialOperator::apply_block(int izr, std::span<cplx> block, SpecularWave& spec, std::span<cplx> work) const {
   const int n_rot = shape_.n_rot;
   const int n_xy = shape_.nx * shape_.ny;
   const int ichn = initial_channel_;
   const int ir = izr % shape_.nr;
   const int iz = izr / shape_.nr;
-  const bool interaction_region = iz < nz_potential_;
+  const double optical_z = tables_.z_optical[iz];
+  const auto rot_half = std::span(tables_.rotation.half).subspan(std::size_t(n_rot) * ir, n_rot);
 
-  // Absorbing potentials. Fortran: PerformEXPOpticalZ, PerformEXPOpticalR
-  for (cplx& v : block) v = tables_.z_optical[iz] * v;
-  if (shape_.nr != 1)
-    for (cplx& v : block) v = tables_.r_optical[ir] * v;
-
-  // Add the specular wave to the initial channel. Fortran: AddSpecToScat
-  if (interaction_region)
+  if (iz >= nz_potential_) {
+    // Beyond the interaction region: absorption and the free molecule.
+    // Fortran: PerformEXPOpticalZ/R, PerformEXPGasPhaseOnScatGrid between rot(dt/2)
+    const auto factor = std::span(gas_phase_step_).subspan(std::size_t(n_rot) * ir, n_rot);
     for (int ixy = 0; ixy < n_xy; ++ixy)
-      block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] + tables_.specular_to_scattering[ixy] * spec(ir, iz);
+      for (int irot = 0; irot < n_rot; ++irot)
+        block[irot + n_rot * ixy] = optical_z * (factor[irot] * block[irot + n_rot * ixy]);
+    return;
+  }
+
+  // Absorption, rot(dt/2), and the specular wave added to the initial channel (it enters after
+  // the absorption, before rot(dt/2)). Fortran: PerformEXPOpticalZ/R, AddSpecToScat
+  const auto factor = std::span(before_interaction_).subspan(std::size_t(n_rot) * ir, n_rot);
+  const cplx incoming = spec(ir, iz);
+  for (int ixy = 0; ixy < n_xy; ++ixy) {
+    for (int irot = 0; irot < n_rot; ++irot)
+      block[irot + n_rot * ixy] = optical_z * (factor[irot] * block[irot + n_rot * ixy]);
+    block[ichn + n_rot * ixy] =
+        block[ichn + n_rot * ixy] + rot_half[ichn] * (tables_.specular_to_scattering[ixy] * incoming);
+  }
 
   // Fortran: PerformEXPInteractionOp
-  apply_rotation_half_step(block, ir);
-  if (interaction_region) {
-    apply_interaction(block, izr, work);
-  } else {
-    for (cplx& v : block) v = v * tables_.gas_phase[ir];  // Fortran: PerformEXPGasPhaseOnScatGrid
-  }
+  apply_interaction(block, izr, work);
   apply_rotation_half_step(block, ir);
 
   // Project the initial channel back onto the specular grid. Fortran: SubSpecFromScat
-  if (interaction_region) {
-    cplx projection(0.0, 0.0);
-    for (int ixy = 0; ixy < n_xy; ++ixy)
-      projection = projection + tables_.scattering_to_specular[ixy] * block[ichn + n_rot * ixy];
-    spec(ir, iz) = projection;
-    for (int ixy = 0; ixy < n_xy; ++ixy)
-      block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] - tables_.specular_to_scattering[ixy] * projection;
-  }
+  cplx projection(0.0, 0.0);
+  for (int ixy = 0; ixy < n_xy; ++ixy)
+    projection = projection + tables_.scattering_to_specular[ixy] * block[ichn + n_rot * ixy];
+  spec(ir, iz) = projection;
+  for (int ixy = 0; ixy < n_xy; ++ixy)
+    block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] - tables_.specular_to_scattering[ixy] * projection;
 }
 
 // exp(-i E_rot dt/2) for every rotational state. Fortran: EXPKinEn%halfStep%RotChan
@@ -108,8 +129,9 @@ void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::s
   const int dvr_size = transform_.dvr_block_size();
   const std::size_t n_tp = std::size_t(n_theta) * n_phi;
 
-  for (int ixy = 0; ixy < n_xy; ++ixy)
-    transform_.fbr_to_dvr(block.subspan(n_rot * ixy, n_rot), dvr.subspan(dvr_size * ixy, dvr_size));
+  const int n_col = transform_.n_columns();
+  for (int c0 = 0; c0 < n_xy; c0 += n_col)
+    transform_.fbr_to_dvr(block.subspan(n_rot * c0, n_rot * n_col), dvr.subspan(dvr_size * c0, dvr_size * n_col));
 
   const bool precomputed = uses_precomputed_exponentials();
   for (int ixy = 0; ixy < n_xy; ++ixy) {
@@ -123,8 +145,8 @@ void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::s
       }
   }
 
-  for (int ixy = 0; ixy < n_xy; ++ixy)
-    transform_.dvr_to_fbr(dvr.subspan(dvr_size * ixy, dvr_size), block.subspan(n_rot * ixy, n_rot));
+  for (int c0 = 0; c0 < n_xy; c0 += n_col)
+    transform_.dvr_to_fbr(dvr.subspan(dvr_size * c0, dvr_size * n_col), block.subspan(n_rot * c0, n_rot * n_col));
 }
 
 }  // namespace spodvr

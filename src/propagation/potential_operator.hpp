@@ -55,6 +55,8 @@ class PotentialOperator {
   int initial_channel_;  // Fortran: ichn - 1
   const PropagationTables& tables_;
   const AngularTransform& transform_;
+  std::vector<std::complex<double>> before_interaction_;  // (irot, ir): exp(-V_opt,r dt) rot(dt/2)
+  std::vector<std::complex<double>> gas_phase_step_;      // (irot, ir): ... rot exp(-i vasy dt) rot
   std::span<const double> potential_;              // A = -V dt (when not precomputed)
   std::vector<std::complex<double>> exp_potential_;  // exp(i A) (when precomputed)
 };

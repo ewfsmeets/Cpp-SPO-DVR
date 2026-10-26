@@ -21,9 +21,10 @@ class SplitOperatorPropagator {
   void propagate_analysis_step(WavePacket& psi) const;
 
  private:
-  // T_xy, then (unless kinetic_only) V, at every (Z, r) point in one pass: each point's block
-  // stays in cache. Bitwise identical to applying the two stages one after the other, since the
-  // points are independent. (A GPU backend would replace this fused stage as a whole.)
+  // T_xy, then (unless kinetic_only) V, at every (Z, r) point in one pass over the wave function,
+  // Z value by Z value, so the data stay in cache. Bitwise identical to applying the two stages
+  // one after the other, since the points are independent. (A GPU backend would replace this
+  // fused stage as a whole.)
   void apply_xy_and_potential(WavePacket& psi, TimeStep step, bool kinetic_only) const;
 
   int steps_per_analysis_;  // Fortran: nanspo

@@ -25,6 +25,7 @@ struct PropagationTables {
   // --- kinetic and rotational energy factors (Fortran: EXPKinEn%fullStep / %halfStep) -------
   StepFactors z_kinetic;          // nz. Fortran: ZScat
   StepFactors r_kinetic;          // nr. Fortran: RScat
+  StepFactors zr_kinetic;         // (ir, iz): products of the Z and r factors (2D FFT kinetic step)
   StepFactors xy_kinetic;         // nx*ny. Fortran: XY
   StepFactors specular_kinetic;   // nr*nzsp, includes the parallel energy. Fortran: Spec
   StepFactors rotation;           // nrot*nr. Fortran: RotChan

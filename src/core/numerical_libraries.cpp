@@ -8,6 +8,10 @@
 #ifdef SPODVR_HAVE_MKL
 #include <mkl_service.h>
 #endif
+#ifdef SPODVR_FFT_FROM_MKL
+#include <fftw3_mkl.h>
+#include <omp.h>
+#endif
 
 namespace spodvr {
 
@@ -38,6 +42,9 @@ void configure_numerical_libraries() {
   std::call_once(once, [] {
 #ifdef SPODVR_HAVE_MKL
     if (std::getenv("MKL_CBWR") == nullptr) mkl_cbwr_set(MKL_CBWR_AUTO);
+#endif
+#ifdef SPODVR_FFT_FROM_MKL
+    fftw3_mkl.number_of_user_threads = omp_get_max_threads();  // plans executed from all threads
 #endif
   });
 }

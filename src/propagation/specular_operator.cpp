@@ -19,13 +19,18 @@ SpecularOperator::SpecularOperator(int nr, int nz_specular, int nz_potential, in
       z_absorber_(z_absorber),
       r_absorber_(r_absorber),
       tables_(tables) {
-  // Along Z: nr transforms with stride nr; along r: nzsp contiguous transforms.
-  const FftLayout z_layout{nz_, nr_, nr_, 1};
-  z_to_momentum_ = fft.plan_complex(z_layout, FftSign::Minus, tables.fft_scale_z);
-  z_to_coordinate_ = fft.plan_complex(z_layout, FftSign::Plus, 1.0 / (nz_ * tables.fft_scale_z));
-  const FftLayout r_layout{nr_, nz_, 1, nr_};
-  r_to_momentum_ = fft.plan_complex(r_layout, FftSign::Minus, tables.fft_scale_r);
-  r_to_coordinate_ = fft.plan_complex(r_layout, FftSign::Plus, 1.0 / (nr_ * tables.fft_scale_r));
+  // The wave function (ir, iz) as one 2D transform: Z outer (stride nr), r inner (stride 1).
+  const FftLayout2D layout{nz_, nr_, nr_, 1, 1, 1};
+  const double scale_z = tables.fft_scale_z;
+  const double scale_r = tables.fft_scale_r;
+  to_momentum_ = fft.plan_complex_2d(layout, FftSign::Minus, scale_z * scale_r);
+  to_coordinate_ = fft.plan_complex_2d(layout, FftSign::Plus, (1.0 / (nz_ * scale_z)) * (1.0 / (nr_ * scale_r)));
+
+  const int n_rot = static_cast<int>(tables.rotation.half.size()) / nr_;
+  for (int ir = 0; ir < nr_; ++ir) {
+    const cplx rot = tables.rotation.half[initial_channel_ + n_rot * ir];
+    gas_phase_step_.push_back(rot * tables.gas_phase[ir] * rot);
+  }
 }
 
 // Fortran: SplitOperator.f90 SpecularChannelOps (kinetic_only on the last half step)
@@ -39,25 +44,16 @@ void SpecularOperator::apply(SpecularWave& psi, TimeStep step, bool kinetic_only
 // Fortran: KineticOp.f90 PerformEXPKinOpSpec
 void SpecularOperator::apply_kinetic(SpecularWave& psi, TimeStep step) const {
   const std::vector<cplx>& factors = step == TimeStep::Full ? tables_.specular_kinetic.full : tables_.specular_kinetic.half;
-  z_to_momentum_->execute(psi.values);
-  if (nr_ != 1) r_to_momentum_->execute(psi.values);
+  to_momentum_->execute(psi.values);
   for (std::size_t i = 0; i < psi.values.size(); ++i) psi.values[i] = factors[i] * psi.values[i];
-  z_to_coordinate_->execute(psi.values);
-  if (nr_ != 1) r_to_coordinate_->execute(psi.values);
+  to_coordinate_->execute(psi.values);
 }
 
 // Free molecule beyond the interaction region: rot(dt/2) exp(-i vasy dt) rot(dt/2) for the
 // initial rotational state. Fortran: GasPhase.f90 PerformEXPGasPhaseOnSpecGrid
 void SpecularOperator::apply_gas_phase(SpecularWave& psi) const {
-  const int n_rot = static_cast<int>(tables_.rotation.half.size()) / nr_;
   for (int iz = nz_potential_; iz < nz_; ++iz)
-    for (int ir = 0; ir < nr_; ++ir) {
-      const cplx rot = tables_.rotation.half[initial_channel_ + n_rot * ir];
-      cplx& v = psi(ir, iz);
-      v = v * rot;
-      v = v * tables_.gas_phase[ir];
-      v = v * rot;
-    }
+    for (int ir = 0; ir < nr_; ++ir) psi(ir, iz) = gas_phase_step_[ir] * psi(ir, iz);
 }
 
 // Fortran: Absorption.f90 PerformEXPOpticalOpSpec (nproj = 2)

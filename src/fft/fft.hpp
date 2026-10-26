@@ -20,6 +20,19 @@ struct FftLayout {
   int distance = 0;  // 0 means: length (contiguous transforms)
 };
 
+// A batch of `howmany` 2D transforms of outer_length x inner_length points; element (o, i) of
+// transform b is at offset b * distance + o * outer_stride + i * inner_stride.
+// (Maps onto cufftPlanMany for the layouts used: inner_stride = howmany-interleave,
+// outer_stride = inner_length * inner_stride.)
+struct FftLayout2D {
+  int outer_length;
+  int outer_stride;
+  int inner_length;
+  int inner_stride;
+  int howmany = 1;
+  int distance = 1;
+};
+
 // In-place complex transform. execute() may be called concurrently on different arrays.
 class ComplexFftPlan {
  public:
@@ -49,6 +62,8 @@ class Fft {
   virtual ~Fft() = default;
   [[nodiscard]] virtual std::unique_ptr<ComplexFftPlan> plan_complex(const FftLayout& layout,
                                                                      FftSign sign, double scale) const = 0;
+  [[nodiscard]] virtual std::unique_ptr<ComplexFftPlan> plan_complex_2d(const FftLayout2D& layout, FftSign sign,
+                                                                        double scale) const = 0;
   [[nodiscard]] virtual std::unique_ptr<RealToComplexFftPlan> plan_real_to_complex(
       const FftLayout& in, const FftLayout& out, FftSign sign, double scale) const = 0;
   [[nodiscard]] virtual std::unique_ptr<ComplexToRealFftPlan> plan_complex_to_real(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "core/index_range.hpp"
 #include "fft/fft.hpp"
@@ -10,8 +11,8 @@
 
 namespace spodvr {
 
-// Operations on the specular (incoming channel) grid in one time step: exp(-i T dt) by FFT in
-// Z and r (T includes the parallel energy), then, except on the last half step, the gas-phase
+// Operations on the specular (incoming channel) grid in one time step: exp(-i T dt) by a 2D FFT
+// in (r, Z) (T includes the parallel energy; Fortran: 1D FFTs in Z, then r), then, except on the last half step, the gas-phase
 // propagator rot(dt/2) . exp(-i vasy dt) . rot(dt/2) beyond the interaction region and the
 // absorbing potentials. Fortran: SplitOperator.f90 SpecularChannelOps; KineticOp.f90
 // PerformEXPKinOpSpec; GasPhase.f90 PerformEXPGasPhaseOnSpecGrid; Absorption.f90
@@ -35,8 +36,9 @@ class SpecularOperator {
   IndexRange z_absorber_;  // Fortran: nschsp .. nschmx
   IndexRange r_absorber_;  // Fortran: nrchsp .. nrchmx
   const PropagationTables& tables_;
-  std::unique_ptr<ComplexFftPlan> z_to_momentum_, z_to_coordinate_;  // Fortran: BackwSpecFFTz / ForwSpecFFTz
-  std::unique_ptr<ComplexFftPlan> r_to_momentum_, r_to_coordinate_;  // Fortran: BackwSpecFFTr / ForwSpecFFTr
+  std::vector<std::complex<double>> gas_phase_step_;  // per ir: rot(dt/2) exp(-i vasy dt) rot(dt/2)
+  // 2D (r, Z) FFTs. Fortran: BackwSpecFFTz/r (to momentum), ForwSpecFFTz/r (back)
+  std::unique_ptr<ComplexFftPlan> to_momentum_, to_coordinate_;
 };
 
 }  // namespace spodvr

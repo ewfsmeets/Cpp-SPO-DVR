@@ -11,26 +11,31 @@
 
 namespace spodvr {
 
-// Transformation of one rotational wave-function column between the FBR basis |J mJ>
-// (RotationalBasis order) and the (theta, phi) DVR grid. The DVR block has the Fortran layout
-// (iphi, itheta) with leading dimension nphi + 1 (one padding element per theta).
+// Transformation of rotational wave-function columns between the FBR basis |J mJ>
+// (RotationalBasis order) and the (theta, phi) DVR grid. A DVR block has the Fortran layout
+// (iphi, itheta) with leading dimension nphi + 1 (one padding element per theta). n_columns
+// columns are transformed together (e.g. all (x, y) points of one (Z, r) point), so the phi
+// FFTs of all of them are one batched call: column c is at fbr[n_rot * c ...] and
+// dvr[dvr_block_size() * c ...].
 //   FBR -> DVR: psi(theta_t, phi_k) = sum_{J,m} sqrt(w_t / nphi) P_J^m(theta_t) exp(i m phi_k) c_{Jm}
 //   DVR -> FBR: the adjoint, so DVR -> FBR after FBR -> DVR is the identity.
 // Both directions may be called concurrently on different arrays.
 // Fortran: transform.f90 (FBRToDVRGenComplexTransform, DVRToFBRGenComplexTransform)
 class AngularTransform {
  public:
-  AngularTransform(const AngularGrid& grid, const RotationalBasis& basis, const Fft& fft);
+  AngularTransform(const AngularGrid& grid, const RotationalBasis& basis, const Fft& fft, int n_columns = 1);
 
   [[nodiscard]] int n_theta() const { return n_theta_; }
   [[nodiscard]] int n_phi() const { return n_phi_; }
   [[nodiscard]] int leading_dimension() const { return n_phi_ + 1; }
   [[nodiscard]] int dvr_block_size() const { return (n_phi_ + 1) * n_theta_; }
   [[nodiscard]] int fbr_size() const { return n_rot_; }
+  [[nodiscard]] int n_columns() const { return n_columns_; }
 
-  // fbr: n_rot values; dvr: dvr_block_size() values (overwritten, padding left untouched).
+  // fbr: n_rot * n_columns values; dvr: dvr_block_size() * n_columns values (overwritten,
+  // padding left untouched).
   void fbr_to_dvr(std::span<const std::complex<double>> fbr, std::span<std::complex<double>> dvr) const;
-  // dvr is used as work space (overwritten); fbr: n_rot values (overwritten).
+  // dvr is used as work space (overwritten); fbr: n_rot * n_columns values (overwritten).
   void dvr_to_fbr(std::span<std::complex<double>> dvr, std::span<std::complex<double>> fbr) const;
 
  private:
@@ -44,6 +49,7 @@ class AngularTransform {
   int n_phi_;
   int n_rot_;
   int mj_max_;
+  int n_columns_;
   std::vector<MjBlock> blocks_;
   // sqrt(w_t / nphi) P_J^m(theta_t), ordered (mJ block, theta, J). Fortran: FBRToDVRMatrices
   std::vector<double> matrix_;

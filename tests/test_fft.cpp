@@ -7,6 +7,7 @@
 
 #include "core/constants.hpp"
 #include "fft/fft_sizes.hpp"
+#include "core/aligned_vector.hpp"
 #include "fft/fftw_fft.hpp"
 
 using namespace spodvr;
@@ -147,4 +148,31 @@ TEST(Fftw, ComplexPlanIsSafeToUseConcurrently) {
 #pragma omp parallel for
   for (int a = 0; a < arrays; ++a) plan->execute(parallel[a]);
   EXPECT_EQ(serial, parallel);
+}
+
+TEST(Fftw, Complex2dBatchedStridedMatchesNaiveDft) {
+  // 3 interleaved transforms of 4 (outer) x 6 (inner) points: element (o, i) of transform b at
+  // b + 3 * (i + 6 * o), i.e. the layout of the gathered (Z, r) blocks of the propagator.
+  // Checked on an aligned array and on an unaligned one (offset by one element).
+  const FftwFft fft;
+  const int howmany = 3, n_outer = 4, n_inner = 6;
+  const FftLayout2D layout{n_outer, howmany * n_inner, n_inner, howmany, howmany, 1};
+  const auto plan = fft.plan_complex_2d(layout, FftSign::Minus, 0.5);
+  for (const int offset : {0, 1}) {
+    ComplexVector storage(offset + howmany * n_outer * n_inner);
+    const std::span<cplx> data = std::span(storage).subspan(offset);
+    for (std::size_t i = 0; i < data.size(); ++i) data[i] = cplx(std::cos(0.7 * double(i)), 0.1 * double(i % 5));
+    const std::vector<cplx> x(data.begin(), data.end());
+    plan->execute(data);
+    for (int b = 0; b < howmany; ++b)
+      for (int ko = 0; ko < n_outer; ++ko)
+        for (int ki = 0; ki < n_inner; ++ki) {
+          cplx ref(0.0, 0.0);
+          for (int o = 0; o < n_outer; ++o)
+            for (int i = 0; i < n_inner; ++i)
+              ref += x[b + howmany * (i + n_inner * o)] *
+                     std::exp(cplx(0.0, -2.0 * M_PI * (double(ko * o) / n_outer + double(ki * i) / n_inner)));
+          EXPECT_NEAR(std::abs(data[b + howmany * (ki + n_inner * ko)] - 0.5 * ref), 0.0, 1e-13) << offset;
+        }
+  }
 }

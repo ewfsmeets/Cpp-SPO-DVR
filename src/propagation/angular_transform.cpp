@@ -12,8 +12,13 @@
 namespace spodvr {
 
 // Fortran: transform.f90 InitGenComplexTransform
-AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasis& basis, const Fft& fft)
-    : n_theta_(grid.n_theta()), n_phi_(grid.n_phi()), n_rot_(basis.size()), mj_max_(basis.mj_max()) {
+AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasis& basis, const Fft& fft,
+                                   int n_columns)
+    : n_theta_(grid.n_theta()),
+      n_phi_(grid.n_phi()),
+      n_rot_(basis.size()),
+      mj_max_(basis.mj_max()),
+      n_columns_(n_columns) {
   if (n_phi_ < 2 * mj_max_ + 1) throw std::invalid_argument("AngularTransform: nphi < 2*MjMax+1");
 
   for (int m = -mj_max_; m <= mj_max_; ++m) {
@@ -32,8 +37,8 @@ AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasi
     }
   }
 
-  // One FFT of length nphi per theta, the theta columns nphi + 1 elements apart.
-  const FftLayout layout{n_phi_, n_theta_, 1, n_phi_ + 1};
+  // One FFT of length nphi per theta and column, nphi + 1 elements apart.
+  const FftLayout layout{n_phi_, n_theta_ * n_columns_, 1, n_phi_ + 1};
   to_dvr_fft_ = fft.plan_complex(layout, FftSign::Plus, 1.0);
   to_fbr_fft_ = fft.plan_complex(layout, FftSign::Minus, 1.0);
 }
@@ -42,21 +47,24 @@ AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasi
 void AngularTransform::fbr_to_dvr(std::span<const std::complex<double>> fbr,
                                   std::span<std::complex<double>> dvr) const {
   const int ld = leading_dimension();
-  int index = 0;
+  const int block_size = dvr_block_size();
+  int index = 0;  // start of the (theta, J) matrix of the current mJ block
   for (const MjBlock& block : blocks_) {
+    const int n_j = block.fbr.size();
     for (int t = 0; t < n_theta_; ++t) {
-      std::complex<double> sum(0.0, 0.0);
-      for (int irot = block.fbr.first; irot <= block.fbr.last; ++irot) {
-        sum = sum + matrix_[index] * fbr[irot];
-        ++index;
+      for (int c = 0; c < n_columns_; ++c) {
+        std::complex<double> sum(0.0, 0.0);
+        for (int j = 0; j < n_j; ++j) sum = sum + matrix_[index + j] * fbr[block.fbr.first + j + n_rot_ * c];
+        dvr[block.phi_slot + ld * t + block_size * c] = sum;
       }
-      dvr[block.phi_slot + ld * t] = sum;
+      index += n_j;
     }
   }
 
   // The phi slots of |mJ| > MjMax carry no basis function.
-  for (int t = 0; t < n_theta_; ++t)
-    for (int k = mj_max_ + 1; k <= n_phi_ - mj_max_ - 1; ++k) dvr[k + ld * t] = 0.0;
+  for (int c = 0; c < n_columns_; ++c)
+    for (int t = 0; t < n_theta_; ++t)
+      for (int k = mj_max_ + 1; k <= n_phi_ - mj_max_ - 1; ++k) dvr[k + ld * t + block_size * c] = 0.0;
 
   to_dvr_fft_->execute(dvr);
 }
@@ -67,15 +75,20 @@ void AngularTransform::dvr_to_fbr(std::span<std::complex<double>> dvr,
   to_fbr_fft_->execute(dvr);
 
   const int ld = leading_dimension();
-  std::fill_n(fbr.begin(), n_rot_, std::complex<double>(0.0, 0.0));
+  const int block_size = dvr_block_size();
+  std::fill_n(fbr.begin(), std::size_t(n_rot_) * n_columns_, std::complex<double>(0.0, 0.0));
   int index = 0;
   for (const MjBlock& block : blocks_) {
+    const int n_j = block.fbr.size();
     for (int t = 0; t < n_theta_; ++t) {
-      const std::complex<double> value = dvr[block.phi_slot + ld * t];
-      for (int irot = block.fbr.first; irot <= block.fbr.last; ++irot) {
-        fbr[irot] = fbr[irot] + matrix_[index] * value;
-        ++index;
+      for (int c = 0; c < n_columns_; ++c) {
+        const std::complex<double> value = dvr[block.phi_slot + ld * t + block_size * c];
+        for (int j = 0; j < n_j; ++j) {
+          std::complex<double>& out = fbr[block.fbr.first + j + n_rot_ * c];
+          out = out + matrix_[index + j] * value;
+        }
       }
+      index += n_j;
     }
   }
 }

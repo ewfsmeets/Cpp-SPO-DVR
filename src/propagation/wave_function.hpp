@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 
+#include "core/aligned_vector.hpp"
 #include "core/array_index.hpp"
 
 namespace spodvr {
@@ -13,7 +14,7 @@ namespace spodvr {
 // (Z, r) point. Fortran: WaveFunction.f90 ScatWave
 struct ScatteringWave {
   Index3D index;
-  std::vector<std::complex<double>> values;
+  ComplexVector values;  // 64-byte aligned (fast SIMD FFTs)
 
   ScatteringWave(int n_rot, int n_xy, int n_zr) : index(n_rot, n_xy, n_zr), values(index.size()) {}
 
@@ -31,7 +32,7 @@ struct ScatteringWave {
 // Fortran: WaveFunction.f90 SpecWave
 struct SpecularWave {
   Index2D index;
-  std::vector<std::complex<double>> values;
+  ComplexVector values;  // 64-byte aligned (fast SIMD FFTs)
 
   SpecularWave(int n_r, int n_z) : index(n_r, n_z), values(index.size()) {}
 

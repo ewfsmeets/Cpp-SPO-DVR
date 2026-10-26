@@ -47,59 +47,86 @@ fftw_complex* as_fftw(std::vector<std::complex<double>>& v) {
   return reinterpret_cast<fftw_complex*>(v.data());
 }
 
-// In-place transforms executed directly on the caller's array with FFTW's new-array interface.
-// The plan is created FFTW_UNALIGNED, so it may be applied to any array (e.g. one block of the
-// wave function), and execute() is safe to call concurrently on different arrays.
-// oneMKL's FFTW3 interface stores the arrays of a new-array execute in the plan and therefore
-// serialises concurrent calls on one plan; so every OpenMP thread gets its own (identical) copy
-// of the plan. A thread without a copy (more threads than when the plan was made) uses the
-// shared copy under a lock.
-// As in the Fortran wrapper, the scale is applied afterwards and only when it differs from 1,
-// and only to the transformed elements (not to padding between transforms).
+// One dimension of a transform: length and stride (in complex elements).
+struct Dimension {
+  int length;
+  int stride;
+};
+
+// Memory from fftw_malloc (aligned for FFTW's SIMD code), freed with fftw_free.
+struct FftwFree {
+  void operator()(void* p) const { fftw_free(p); }
+};
+using FftwBuffer = std::unique_ptr<void, FftwFree>;
+
+// In-place complex transforms (rank 1 or 2, batched) executed directly on the caller's array
+// with FFTW's new-array interface; execute() is safe to call concurrently on different arrays.
+//   - Two variants of the plan: one for arrays with FFTW's SIMD alignment (fast) and an
+//     FFTW_UNALIGNED one for any other array. Which one runs depends only on the address of
+//     the array, so results are reproducible (arrays of the propagator are allocated aligned).
+//   - oneMKL's FFTW3 interface stores the arrays of a new-array execute in the plan and
+//     serialises concurrent calls on one plan; so every OpenMP thread gets its own (identical)
+//     copies. A thread without a copy (more threads than when the plan was made) uses the
+//     shared copy under a lock.
+//   - As in the Fortran wrapper, the scale is applied afterwards and only when it differs from
+//     1, and only to the transformed elements (not to padding between transforms).
 // Fortran: fftw_2_scs.f90 fftw_2_zzfftm
 class FftwComplexPlan final : public ComplexFftPlan {
  public:
-  FftwComplexPlan(const FftLayout& layout, FftSign sign, double scale)
-      : layout_(layout), scale_(scale), size_(extent(layout, layout.length)) {
-    std::vector<std::complex<double>> work(size_);  // only used to create the plans
-    int n = layout.length;
-    const int dist = distance_of(layout, layout.length);
+  FftwComplexPlan(std::vector<Dimension> dims, Dimension batch, FftSign sign, double scale)
+      : dims_(std::move(dims)), batch_(batch), scale_(scale), size_(1 + std::size_t(batch.length - 1) * batch.stride) {
+    for (const Dimension& d : dims_) size_ += std::size_t(d.length - 1) * d.stride;
+
+    std::vector<fftw_iodim> iodims;
+    for (const Dimension& d : dims_) iodims.push_back({d.length, d.stride, d.stride});
+    const fftw_iodim howmany{batch.length, batch.stride, batch.stride};
     const int fftw_sign = sign == FftSign::Minus ? FFTW_FORWARD : FFTW_BACKWARD;
+    const int rank = static_cast<int>(iodims.size());
+
+    const FftwBuffer work(fftw_malloc(size_ * sizeof(fftw_complex)));  // only used for planning
+    auto* w = static_cast<fftw_complex*>(work.get());
     for (int thread = 0; thread < omp_get_max_threads(); ++thread) {
-      plans_.emplace_back(fftw_plan_many_dft(1, &n, layout.howmany, as_fftw(work), nullptr, layout.stride, dist,
-                                             as_fftw(work), nullptr, layout.stride, dist, fftw_sign,
-                                             FFTW_ESTIMATE | FFTW_UNALIGNED));
-      if (!plans_.back()) throw std::runtime_error("FftwFft: complex plan creation failed");
+      aligned_.emplace_back(fftw_plan_guru_dft(rank, iodims.data(), 1, &howmany, w, w, fftw_sign, FFTW_ESTIMATE));
+      unaligned_.emplace_back(
+          fftw_plan_guru_dft(rank, iodims.data(), 1, &howmany, w, w, fftw_sign, FFTW_ESTIMATE | FFTW_UNALIGNED));
+      if (!aligned_.back() || !unaligned_.back()) throw std::runtime_error("FftwFft: complex plan creation failed");
     }
   }
 
   void execute(std::span<std::complex<double>> data) const override {
     check_size(data.size(), size_);
     auto* p = reinterpret_cast<fftw_complex*>(data.data());
+    const bool aligned = fftw_alignment_of(reinterpret_cast<double*>(data.data())) == 0;
+    const std::vector<PlanPtr>& plans = aligned ? aligned_ : unaligned_;
     const auto thread = static_cast<std::size_t>(omp_get_thread_num());
-    if (thread < plans_.size()) {
-      fftw_execute_dft(plans_[thread].get(), p, p);
+    if (thread < plans.size()) {
+      fftw_execute_dft(plans[thread].get(), p, p);
     } else {
       const std::lock_guard<std::mutex> lock(shared_plan_mutex_);
-      fftw_execute_dft(plans_[0].get(), p, p);
+      fftw_execute_dft(plans[0].get(), p, p);
     }
     if (scale_ != 1.0) apply_scale(data);
   }
 
  private:
   void apply_scale(std::span<std::complex<double>> data) const {
-    const int dist = distance_of(layout_, layout_.length);
-    for (int b = 0; b < layout_.howmany; ++b)
-      for (int i = 0; i < layout_.length; ++i) {
-        std::complex<double>& v = data[b * dist + i * layout_.stride];
-        v = scale_ * v;
-      }
+    const Dimension outer = dims_.size() == 2 ? dims_[0] : Dimension{1, 0};
+    const Dimension inner = dims_.back();
+    for (int b = 0; b < batch_.length; ++b)
+      for (int o = 0; o < outer.length; ++o)
+        for (int i = 0; i < inner.length; ++i) {
+          std::complex<double>& v = data[std::size_t(b) * batch_.stride + std::size_t(o) * outer.stride +
+                                         std::size_t(i) * inner.stride];
+          v = scale_ * v;
+        }
   }
 
-  FftLayout layout_;
+  std::vector<Dimension> dims_;  // outer first
+  Dimension batch_;
   double scale_;
   std::size_t size_;
-  std::vector<PlanPtr> plans_;  // one per OpenMP thread
+  std::vector<PlanPtr> aligned_;    // one per OpenMP thread
+  std::vector<PlanPtr> unaligned_;  // one per OpenMP thread
   mutable std::mutex shared_plan_mutex_;
 };
 
@@ -194,7 +221,18 @@ class FftwComplexToRealPlan final : public ComplexToRealFftPlan {
 std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex(const FftLayout& layout, FftSign sign,
                                                       double scale) const {
   check_layout(layout);
-  return std::make_unique<FftwComplexPlan>(layout, sign, scale);
+  return std::make_unique<FftwComplexPlan>(std::vector<Dimension>{{layout.length, layout.stride}},
+                                           Dimension{layout.howmany, distance_of(layout, layout.length)}, sign, scale);
+}
+
+std::unique_ptr<ComplexFftPlan> FftwFft::plan_complex_2d(const FftLayout2D& layout, FftSign sign,
+                                                         double scale) const {
+  if (layout.outer_length < 1 || layout.inner_length < 1 || layout.howmany < 1 || layout.outer_stride < 1 ||
+      layout.inner_stride < 1 || layout.distance < 1)
+    throw std::invalid_argument("FftwFft: invalid 2D FFT layout");
+  return std::make_unique<FftwComplexPlan>(
+      std::vector<Dimension>{{layout.outer_length, layout.outer_stride}, {layout.inner_length, layout.inner_stride}},
+      Dimension{layout.howmany, layout.distance}, sign, scale);
 }
 
 std::unique_ptr<RealToComplexFftPlan> FftwFft::plan_real_to_complex(const FftLayout& in,

@@ -25,7 +25,7 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
     : config_(config),
       grids_(grids),
       basis_(angular, config.input.j_in, config.input.mj_in),
-      transform_(angular, basis_, fft),
+      transform_(angular, basis_, fft, config.input.nx * config.input.ny),
       tables_(make_propagation_tables(config, grids, basis_, potential.asymptotic)),
       premultiplied_potential_(premultiplied(std::move(potential), config.input.time_step)),
       kinetic_(scattering_shape(config, basis_), tables_, fft),

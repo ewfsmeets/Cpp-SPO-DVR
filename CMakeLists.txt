@@ -144,7 +144,7 @@ target_link_libraries(spodvr_core
 if(SPODVR_FFT_LIBRARY_USED STREQUAL "FFTW")
   target_link_libraries(spodvr_core PUBLIC PkgConfig::FFTW3)
 else()
-  target_include_directories(spodvr_core PRIVATE ${MKL_INCLUDE}/fftw)
+  target_include_directories(spodvr_core PRIVATE ${MKL_INCLUDE}/fftw ${MKL_INCLUDE})
   target_compile_definitions(spodvr_core PUBLIC SPODVR_FFT_FROM_MKL)
 endif()
 if(SPODVR_HAVE_MKL)
