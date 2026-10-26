@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
 
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft);
-  propagation.run([](const Averages&) {}, [](double) {});
+  propagation.run({});
 
   std::ofstream out(argv[2], std::ios::binary);
   write_values(out, propagation.wave_packet().scattering.values);

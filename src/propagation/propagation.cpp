@@ -38,7 +38,10 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
       // The initial wave packet lives on the specular grid; the scattering grid starts empty.
       psi_{ScatteringWave(basis_.size(), config.input.nx * config.input.ny, config.input.nr * config.input.nz),
            initial_.specular},
-      surface_(config, grids, psi_.specular) {
+      surface_(config, grids, psi_.specular),
+      analysis_basis_(config, angular, basis_, gas, tables_.xy_kinetic_energies),
+      balint_kurti_(config, grids, analysis_basis_, gas, tables_, fft),
+      s_matrix_(config, analysis_basis_, gas) {
   // With precomputed exp(-i V dt) the real potential is no longer needed.
   if (potential_.uses_precomputed_exponentials()) {
     premultiplied_potential_.clear();
@@ -47,25 +50,31 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
 }
 
 // Fortran: Main.f90 DO propStep = nanspo, nstep, nanspo
-void WavePacketPropagation::run(const std::function<void(const Averages&)>& on_averages,
-                                const std::function<void(double)>& on_surface_fixed) {
+void WavePacketPropagation::run(const PropagationObserver& observer) {
   const InputParameters& p = config_.input;
   const int n_per_analysis = config_.derived.steps_per_analysis;
   const int n_per_average = config_.derived.analyses_per_average;
 
-  on_averages(compute_averages(p.t_end - p.n_steps * p.time_step, psi_, config_, grids_, surface_.index()));
+  auto report_averages = [&](double time) {
+    if (observer.on_averages) observer.on_averages(compute_averages(time, psi_, config_, grids_, surface_.index()));
+  };
+  report_averages(p.t_end - p.n_steps * p.time_step);
 
   int analysis_count = 0;
   for (int step = n_per_analysis; step <= p.n_steps; step += n_per_analysis) {
     const double time = p.t_end + (step - p.n_steps) * p.time_step;
     propagator_.propagate_analysis_step(psi_);
 
-    // Fortran: BalintKurtiCoeffs (only its FindNewAnalysisPoint part so far)
-    if (const auto z_fixed = surface_.update(psi_.specular)) on_surface_fixed(*z_fixed);
+    // Analysis: move the specular analysis surface, project onto the asymptotic channels and
+    // accumulate the S-matrix. Fortran: BalintKurtiCoeffs
+    if (const auto z_fixed = surface_.update(psi_.specular); z_fixed && observer.on_surface_fixed)
+      observer.on_surface_fixed(*z_fixed);
+    const BkCoefficients bk = balint_kurti_.coefficients(psi_, surface_);
+    s_matrix_.add(bk, time);
+    if (observer.on_analysis_step) observer.on_analysis_step(time, bk);
 
     analysis_count = analysis_count + 1;
-    if (analysis_count % n_per_average == 0)
-      on_averages(compute_averages(time, psi_, config_, grids_, surface_.index()));
+    if (analysis_count % n_per_average == 0) report_averages(time);
   }
 }
 

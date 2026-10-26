@@ -132,7 +132,9 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft);
   PropagationRun run;
   run.initial = propagation.initial_wave_packet();
-  propagation.run([&](const Averages& a) { run.averages.push_back(a); }, [](double) {});
+  PropagationObserver observer;
+  observer.on_averages = [&](const Averages& a) { run.averages.push_back(a); };
+  propagation.run(observer);
   return run;
 }
 

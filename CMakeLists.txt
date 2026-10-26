@@ -139,6 +139,8 @@ add_library(spodvr_core
   src/propagation/averages.cpp
   src/propagation/propagation.cpp
   src/analysis/analysis_basis.cpp
+  src/analysis/balint_kurti.cpp
+  src/analysis/s_matrix.cpp
   src/potential/hard_wall_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp

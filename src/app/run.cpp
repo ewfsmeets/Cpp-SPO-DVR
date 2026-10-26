@@ -39,12 +39,15 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   table.print_header();
   std::vector<Averages> averages;
   const auto start = std::chrono::steady_clock::now();
-  propagation.run(
-      [&](const Averages& a) {
-        table.print_row(a);
-        averages.push_back(a);
-      },
-      [&](double z) { table.print_note("analysis surface on the specular grid fixed at Z = " + fixed(z, 6) + " bohr"); });
+  PropagationObserver observer;
+  observer.on_averages = [&](const Averages& a) {
+    table.print_row(a);
+    averages.push_back(a);
+  };
+  observer.on_surface_fixed = [&](double z) {
+    table.print_note("analysis surface on the specular grid fixed at Z = " + fixed(z, 6) + " bohr");
+  };
+  propagation.run(observer);
   const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
 
   write_averages_file(output_dir / "averages.dat", averages);
