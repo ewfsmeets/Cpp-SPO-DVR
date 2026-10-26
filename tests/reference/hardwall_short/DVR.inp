@@ -1,0 +1,87 @@
+# Short hard wall propagation case (gate 3): identical to ../hardwall_small/DVR.inp except
+# tEnd/nStep (2000 a.u., 1000 steps), so the C++ regression test runs in seconds.
+# Grid/CAP/propagation parameters from J. Phys. Chem. C, Table 1, H2/Cu(211), column "0.2-0.6 eV, v0".
+# nX, nY, JMax, MJMax reduced to very small values; analysis settings chosen to satisfy the input checks.
+# Every field carries an explicit type ("Name : TYPE : value;"); InputNew.f90 accepts this for
+# pre-registered fields as long as the type matches, and requires it for all other fields.
+# HardWallPES fixes: zasymp = 7.0, alat = 6.23966, blat = 5.23966, 90 deg cell, C2v.
+# The C++ equivalent of this file is input.json in this directory; keep both in sync.
+
+Title       : STRING  : "Hard wall short propagation test (Cu211 table, v0 0.2-0.6 eV)";
+SystemID    : STRING  : "HardWallPES";
+NewCalc     : LOGICAL : TRUE;
+
+ZDoF        : LOGICAL : TRUE;
+RDoF        : LOGICAL : TRUE;
+XDoF        : LOGICAL : TRUE;
+YDoF        : LOGICAL : TRUE;
+ThetaDoF    : LOGICAL : TRUE;
+PhiDoF      : LOGICAL : TRUE;
+
+# H2
+Mass1       : REAL    : 1.0078;
+Mass2       : REAL    : 1.0078;
+HomoNuc     : LOGICAL : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : REAL    : -2.0;
+dZ          : REAL    : 0.08;
+nZ          : INTEGER : 176;
+nZSpecular  : INTEGER : 280;
+
+# Grid in r
+RStart      : REAL    : 0.8;
+dR          : REAL    : 0.15;
+nR          : INTEGER : 56;
+
+# Grid in x, y (reduced)
+nX          : INTEGER : 4;
+nY          : INTEGER : 4;
+
+# Rotational basis (reduced). MJMax is set explicitly equal to JMax: the Fortran code treats
+# MJMax <= 0 as MJMax = JMax (setupdvr.f90 / transform.f90).
+JMax        : INTEGER : 4;
+MJMax       : INTEGER : 4;
+
+ProjOp      : INTEGER : 2;
+
+# Propagation
+tStart      : REAL    : 0.0;
+tEnd        : REAL    : 2000.0;
+dtStep      : REAL    : 2.0;
+nStep       : INTEGER : 1000;
+
+# Analysis
+dtAna       : REAL    : 10.0;
+dtAve       : REAL    : 100.0;
+DynamZSpAna : LOGICAL : TRUE;
+Zana        : REAL    : 8.0;
+NrOfEs      : INTEGER : 41;
+
+# Initial wave packet and state
+EMinWP      : REAL    : 0.2;
+EMaxWP      : REAL    : 0.6;
+Z0          : REAL    : 11.44;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : REAL    : 0.0;
+PhiParallel : REAL    : 0.0;
+
+# Complex absorbing potentials
+ZOptStart   : REAL    : 8.88;
+ZOptEnd     : REAL    : 12.0;
+ZOptEnergy  : REAL    : 0.3;
+ZSpOptStart : REAL    : 16.8;
+ZSpOptEnd   : REAL    : 20.32;
+ZSpOptEnergy: REAL    : 0.3;
+ROptStart   : REAL    : 4.55;
+ROptEnd     : REAL    : 9.05;
+ROptEnergy  : REAL    : 0.3;
+
+# No default exists in the Fortran code for TolSp; must be given.
+TolSp       : REAL    : 1.0E-07;
+
+writeSMatrix: LOGICAL : FALSE;
+writeProbs  : LOGICAL : TRUE;
+writeRDProbs: LOGICAL : TRUE;

@@ -1,0 +1,31 @@
+{
+  "Title": "Hard wall short propagation test (Cu211 table, v0 0.2-0.6 eV)",
+  "SystemID": "HardWallPES",
+  "NewCalc": true,
+
+  "ZDoF": true, "RDoF": true, "XDoF": true, "YDoF": true, "ThetaDoF": true, "PhiDoF": true,
+
+  "Mass1": 1.0078, "Mass2": 1.0078, "HomoNuc": true,
+
+  "ZStart": -2.0, "dZ": 0.08, "nZ": 176, "nZSpecular": 280,
+  "RStart": 0.8, "dR": 0.15, "nR": 56,
+  "nX": 4, "nY": 4,
+  "JMax": 4, "MJMax": 4,
+  "ProjOp": 2,
+
+  "tStart": 0.0, "tEnd": 2000.0, "dtStep": 2.0, "nStep": 1000,
+
+  "dtAna": 10.0, "dtAve": 100.0, "DynamZSpAna": true, "Zana": 8.0, "NrOfEs": 41,
+
+  "EMinWP": 0.2, "EMaxWP": 0.6, "Z0": 11.44,
+  "VIn": 0, "JIn": 0, "MJIn": 0,
+  "EParallel": 0.0, "PhiParallel": 0.0,
+
+  "ZOptStart": 8.88, "ZOptEnd": 12.0, "ZOptEnergy": 0.3,
+  "ZSpOptStart": 16.8, "ZSpOptEnd": 20.32, "ZSpOptEnergy": 0.3,
+  "ROptStart": 4.55, "ROptEnd": 9.05, "ROptEnergy": 0.3,
+
+  "TolSp": 1.0e-7,
+
+  "writeSMatrix": false, "writeProbs": true, "writeRDProbs": true
+}
