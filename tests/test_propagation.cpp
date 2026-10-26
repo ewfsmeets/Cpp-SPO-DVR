@@ -263,3 +263,55 @@ TEST(Averages, NormAndMeanPositionsOfASimpleState) {
   EXPECT_NEAR(a.r_mean, 0.25 * s.grids.r[4] + 0.75 * s.grids.r[7], 1e-13);
   EXPECT_NEAR(a.rest_norm, 200 > s.grids.iz_analysis && 200 <= surface ? 0.25 : 0.0, 1e-14);
 }
+
+TEST(PotentialOperator, PrecomputedAndOnTheFlyExponentialsAreBitwiseIdentical) {
+  const OperatorSetup& s = reference_setup();
+  std::vector<double> potential = s.potential.values;
+  premultiply_with_time_step(potential, s.config.input.time_step);
+  const int ichn = s.basis.initial_index();
+  const PotentialOperator precomputed(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential);
+  const PotentialOperator on_the_fly(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential, 0);
+  EXPECT_TRUE(precomputed.uses_precomputed_exponentials());
+  EXPECT_FALSE(on_the_fly.uses_precomputed_exponentials());
+
+  WavePacket a{s.empty_wave(), SpecularWave(s.shape.nr, s.grids.z_specular.size())};
+  fill_pseudo_random(a.scattering.values);
+  fill_pseudo_random(a.specular.values);
+  WavePacket b = a;
+  precomputed.apply(a);
+  on_the_fly.apply(b);
+  EXPECT_EQ(a.scattering.values, b.scattering.values);
+  EXPECT_EQ(a.specular.values, b.specular.values);
+}
+
+TEST(SplitOperator, FusedPerPointStageEqualsStageByStage) {
+  // The propagator applies T_xy and V per (Z, r) point in one pass; applying the two stages
+  // over the whole wave function one after the other must give the same bits.
+  const OperatorSetup& s = reference_setup();
+  std::vector<double> potential = s.potential.values;
+  premultiply_with_time_step(potential, s.config.input.time_step);
+  const int ichn = s.basis.initial_index();
+  const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);
+  const PotentialOperator potential_op(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential);
+  const SpecularOperator specular(s.shape.nr, s.grids.z_specular.size(), s.grids.nz_potential, ichn,
+                                  *s.grids.z_specular_optical, s.grids.r_optical, s.tables, s.fft);
+  const SplitOperatorPropagator propagator(1, kinetic, potential_op, specular);  // T/2 V T/2
+
+  WavePacket fused{s.empty_wave(), SpecularWave(s.shape.nr, s.grids.z_specular.size())};
+  fill_pseudo_random(fused.scattering.values);
+  fill_pseudo_random(fused.specular.values);
+  WavePacket staged = fused;
+
+  propagator.propagate_analysis_step(fused);
+
+  specular.apply(staged.specular, TimeStep::Half, false);
+  kinetic.apply_zr(staged.scattering, TimeStep::Half);
+  kinetic.apply_xy(staged.scattering, TimeStep::Half);
+  potential_op.apply(staged);
+  specular.apply(staged.specular, TimeStep::Half, true);
+  kinetic.apply_zr(staged.scattering, TimeStep::Half);
+  kinetic.apply_xy(staged.scattering, TimeStep::Half);
+
+  EXPECT_EQ(fused.scattering.values, staged.scattering.values);
+  EXPECT_EQ(fused.specular.values, staged.specular.values);
+}

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Checks that a refactor did not change any numerical result: builds a base commit (default HEAD)
-# and the working tree, runs the potential-only hard wall case with both, and requires the data
-# files to be bitwise identical (and the printed output identical apart from paths). The working
+# and the working tree, runs the potential-only hard wall case and a short propagation (50 time
+# steps of the hard wall case) with both, and requires the data files to be bitwise identical
+# (and the potential-only printed output identical apart from paths and timings). The working
 # tree is also run with several threads, which must not change the results either.
 #
-# Only code exercised by the potential-only run is covered; check other code paths (e.g. the
-# quadrature with mj > 0) with a direct old-vs-new comparison.
+# Code paths not exercised by these runs need a direct old-vs-new comparison.
 #
 # Usage: tools/check_bitwise_refactor.sh [base-ref]
 set -euo pipefail
@@ -36,6 +36,14 @@ config["Potential"] = True
 json.dump(config, open(sys.argv[2], "w"), indent=2)
 ' "$repo/tests/reference/hardwall_small/input.json" "$scratch/input.json"
 
+# Short propagation: 50 steps, averages after every analysis step.
+python3 -c '
+import json, sys
+config = json.load(open(sys.argv[1]))
+config.update({"tEnd": 100.0, "nStep": 50, "dtAve": 10.0})
+json.dump(config, open(sys.argv[2], "w"), indent=2)
+' "$repo/tests/reference/hardwall_short/input.json" "$scratch/propagation.json"
+
 run() {  # <build dir> <output name> <threads>
   "$1/spodvr" "$scratch/input.json" --no-color --threads "$3" --output-dir "$scratch/$2" \
     | grep -v "Data files written to" | sed 's/[0-9]* OpenMP thread(s)//' > "$scratch/$2.txt"
@@ -43,6 +51,14 @@ run() {  # <build dir> <output name> <threads>
 run "$scratch/base-build" base 1
 run "$scratch/new-build" new 1
 run "$scratch/new-build" new-threads 4
+
+propagate() {  # <build dir> <output name> <threads>
+  "$1/spodvr" "$scratch/propagation.json" --no-color --threads "$3" --output-dir "$scratch/$2" > /dev/null
+}
+echo "Running the short propagation ..."
+propagate "$scratch/base-build" prop-base 4
+propagate "$scratch/new-build" prop-new 1
+propagate "$scratch/new-build" prop-new-threads 4
 
 status=0
 for file in asymptotic_potential.dat gas_phase_states.dat; do
@@ -52,10 +68,15 @@ for file in asymptotic_potential.dat gas_phase_states.dat; do
     fi
   done
 done
+for other in prop-new prop-new-threads; do
+  if ! cmp -s "$scratch/prop-base/averages.dat" "$scratch/$other/averages.dat"; then
+    echo "DIFFERENT: averages.dat of the propagation ($other vs base)"; status=1
+  fi
+done
 for other in new new-threads; do
   if ! diff -q "$scratch/base.txt" "$scratch/$other.txt" >/dev/null; then
     echo "DIFFERENT: printed output ($other vs base):"; diff "$scratch/base.txt" "$scratch/$other.txt" | head -20; status=1
   fi
 done
-[[ $status -eq 0 ]] && echo "OK: results are bitwise identical to $base_ref (1 and 4 threads)"
+[[ $status -eq 0 ]] && echo "OK: potential-only and propagation results are bitwise identical to $base_ref (1 and 4 threads)"
 exit $status

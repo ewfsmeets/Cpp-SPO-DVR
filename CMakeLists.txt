@@ -37,10 +37,31 @@ if(SPODVR_WARNINGS_AS_ERRORS)
   target_compile_options(spodvr_warnings INTERFACE -Werror)
 endif()
 
-# No floating-point contraction (FMA) so that results stay comparable with the Fortran
-# reference and independent of the target CPU.
+# Floating-point semantics. No contraction (FMA) and no fast-math, so that results stay
+# comparable with the Fortran reference and independent of the target CPU. The other flags do
+# not change any result, they only enable optimisations (see docs/performance.md):
+#   -fcx-fortran-rules  complex * and / without the C99 NaN-recovery call (__muldc3), i.e. the
+#                       gfortran semantics; lets GCC vectorise complex multiplication loops
+#   -fno-math-errno     math functions need not set errno (sqrt is inlined)
+#   -fno-trapping-math  no floating-point traps are assumed (more if-conversion/vectorisation)
 add_library(spodvr_fp INTERFACE)
-target_compile_options(spodvr_fp INTERFACE -ffp-contract=off -fno-fast-math)
+target_compile_options(spodvr_fp INTERFACE -ffp-contract=off -fno-fast-math -fcx-fortran-rules
+                                           -fno-math-errno -fno-trapping-math)
+
+# Target instruction set. The default x86-64-v3 (AVX2) runs on any recent x86-64 CPU; "native"
+# uses everything the build machine has (e.g. AVX-512). With -ffp-contract=off the results of
+# our own code do not depend on this choice.
+set(SPODVR_ARCH "x86-64-v3" CACHE STRING "Value for -march (e.g. x86-64-v3, x86-64-v4, native; empty: compiler default)")
+if(SPODVR_ARCH)
+  target_compile_options(spodvr_fp INTERFACE -march=${SPODVR_ARCH})
+endif()
+
+# Link-time optimisation for optimised builds.
+include(CheckIPOSupported)
+check_ipo_supported(RESULT spodvr_ipo_supported OUTPUT spodvr_ipo_output)
+if(spodvr_ipo_supported)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
 
 # ---------------------------------------------------------------------------------------------
 # Core library

@@ -31,9 +31,10 @@ class ScatteringKineticOperator {
   void apply_zr(ScatteringWave& psi, TimeStep step) const;
   // exp(-i T_xy dt) at every (Z, r) point. Fortran: PerformEXPKineticOp
   void apply_xy(ScatteringWave& psi, TimeStep step) const;
+  // exp(-i T_xy dt) at one (Z, r) point; block = its (irot, ixy) values.
+  void apply_xy_block(std::span<std::complex<double>> block, TimeStep step) const;
 
  private:
-  void apply_xy_block(std::span<std::complex<double>> block, const std::vector<std::complex<double>>& factors) const;
 
   ScatteringShape shape_;
   const PropagationTables& tables_;

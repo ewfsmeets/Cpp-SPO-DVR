@@ -4,17 +4,19 @@
 
 #include <cmath>
 #include <stdexcept>
-#include <vector>
 
 namespace spodvr {
 
 namespace {
 using cplx = std::complex<double>;
+
+// exp(i A) as the Fortran code forms it: B = COS(A) + ima*SIN(A).
+cplx exp_i(double a) { return cplx(std::cos(a), std::sin(a)); }
 }  // namespace
 
 PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
                                      const PropagationTables& tables, const AngularTransform& transform,
-                                     std::span<const double> premultiplied_potential)
+                                     std::span<const double> premultiplied_potential, std::size_t table_limit)
     : shape_(shape),
       nz_potential_(nz_potential),
       initial_channel_(initial_channel),
@@ -24,55 +26,65 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
   const std::size_t expected = std::size_t(transform.n_theta()) * transform.n_phi() * shape.nx * shape.ny *
                                std::size_t(nz_potential) * shape.nr;
   if (potential_.size() != expected) throw std::invalid_argument("PotentialOperator: potential has the wrong size");
+
+  if (expected * sizeof(cplx) <= table_limit) {
+    exp_potential_.resize(expected);
+#pragma omp parallel for schedule(static)
+    for (std::size_t i = 0; i < expected; ++i) exp_potential_[i] = exp_i(potential_[i]);
+    potential_ = {};
+  }
+}
+
+std::size_t PotentialOperator::work_size() const {
+  return std::size_t(transform_.dvr_block_size()) * shape_.nx * shape_.ny;
+}
+
+void PotentialOperator::apply(WavePacket& psi) const {
+#pragma omp parallel
+  {
+    std::vector<cplx> work(work_size());
+#pragma omp for schedule(static)
+    for (int izr = 0; izr < psi.scattering.n_blocks(); ++izr)
+      apply_block(izr, psi.scattering.block(izr), psi.specular, work);
+  }
 }
 
 // Fortran: Potential.f90 PerformEXPPotentialOp (called per izr in KineticAndPotentialOp)
-void PotentialOperator::apply(WavePacket& psi) const {
+void PotentialOperator::apply_block(int izr, std::span<cplx> block, SpecularWave& spec, std::span<cplx> work) const {
   const int n_rot = shape_.n_rot;
   const int n_xy = shape_.nx * shape_.ny;
   const int ichn = initial_channel_;
-  ScatteringWave& scat = psi.scattering;
-  SpecularWave& spec = psi.specular;
+  const int ir = izr % shape_.nr;
+  const int iz = izr / shape_.nr;
+  const bool interaction_region = iz < nz_potential_;
 
-#pragma omp parallel
-  {
-    std::vector<cplx> dvr(std::size_t(transform_.dvr_block_size()) * n_xy);  // work space per thread
-#pragma omp for schedule(static)
-    for (int izr = 0; izr < scat.n_blocks(); ++izr) {
-      const int ir = izr % shape_.nr;
-      const int iz = izr / shape_.nr;
-      const std::span<cplx> block = scat.block(izr);
-      const bool interaction_region = iz < nz_potential_;
+  // Absorbing potentials. Fortran: PerformEXPOpticalZ, PerformEXPOpticalR
+  for (cplx& v : block) v = tables_.z_optical[iz] * v;
+  if (shape_.nr != 1)
+    for (cplx& v : block) v = tables_.r_optical[ir] * v;
 
-      // Absorbing potentials. Fortran: PerformEXPOpticalZ, PerformEXPOpticalR
-      for (cplx& v : block) v = tables_.z_optical[iz] * v;
-      if (shape_.nr != 1)
-        for (cplx& v : block) v = tables_.r_optical[ir] * v;
+  // Add the specular wave to the initial channel. Fortran: AddSpecToScat
+  if (interaction_region)
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] + tables_.specular_to_scattering[ixy] * spec(ir, iz);
 
-      // Add the specular wave to the initial channel. Fortran: AddSpecToScat
-      if (interaction_region)
-        for (int ixy = 0; ixy < n_xy; ++ixy)
-          block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] + tables_.specular_to_scattering[ixy] * spec(ir, iz);
+  // Fortran: PerformEXPInteractionOp
+  apply_rotation_half_step(block, ir);
+  if (interaction_region) {
+    apply_interaction(block, izr, work);
+  } else {
+    for (cplx& v : block) v = v * tables_.gas_phase[ir];  // Fortran: PerformEXPGasPhaseOnScatGrid
+  }
+  apply_rotation_half_step(block, ir);
 
-      // Fortran: PerformEXPInteractionOp
-      apply_rotation_half_step(block, ir);
-      if (interaction_region) {
-        apply_interaction(block, izr, dvr);
-      } else {
-        for (cplx& v : block) v = v * tables_.gas_phase[ir];  // Fortran: PerformEXPGasPhaseOnScatGrid
-      }
-      apply_rotation_half_step(block, ir);
-
-      // Project the initial channel back onto the specular grid. Fortran: SubSpecFromScat
-      if (interaction_region) {
-        cplx projection(0.0, 0.0);
-        for (int ixy = 0; ixy < n_xy; ++ixy)
-          projection = projection + tables_.scattering_to_specular[ixy] * block[ichn + n_rot * ixy];
-        spec(ir, iz) = projection;
-        for (int ixy = 0; ixy < n_xy; ++ixy)
-          block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] - tables_.specular_to_scattering[ixy] * projection;
-      }
-    }
+  // Project the initial channel back onto the specular grid. Fortran: SubSpecFromScat
+  if (interaction_region) {
+    cplx projection(0.0, 0.0);
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      projection = projection + tables_.scattering_to_specular[ixy] * block[ichn + n_rot * ixy];
+    spec(ir, iz) = projection;
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      block[ichn + n_rot * ixy] = block[ichn + n_rot * ixy] - tables_.specular_to_scattering[ixy] * projection;
   }
 }
 
@@ -99,12 +111,13 @@ void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::s
   for (int ixy = 0; ixy < n_xy; ++ixy)
     transform_.fbr_to_dvr(block.subspan(n_rot * ixy, n_rot), dvr.subspan(dvr_size * ixy, dvr_size));
 
+  const bool precomputed = uses_precomputed_exponentials();
   for (int ixy = 0; ixy < n_xy; ++ixy) {
     const std::size_t v0 = n_tp * (ixy + std::size_t(n_xy) * izr);
     for (int itheta = 0; itheta < n_theta; ++itheta)
       for (int iphi = 0; iphi < n_phi; ++iphi) {
-        const double a = potential_[v0 + iphi + n_phi * itheta];
-        const cplx b(std::cos(a), std::sin(a));
+        const std::size_t i = v0 + iphi + n_phi * itheta;
+        const cplx b = precomputed ? exp_potential_[i] : exp_i(potential_[i]);
         cplx& v = dvr[dvr_size * ixy + iphi + ld * itheta];
         v = b * v;
       }

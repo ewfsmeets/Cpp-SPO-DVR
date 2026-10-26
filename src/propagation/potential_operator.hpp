@@ -1,6 +1,9 @@
 #pragma once
 
+#include <complex>
+#include <cstddef>
 #include <span>
+#include <vector>
 
 #include "propagation/angular_transform.hpp"
 #include "propagation/kinetic_operators.hpp"
@@ -20,13 +23,28 @@ namespace spodvr {
 // PerformEXPOpticalZ/R; TwoGrids.f90 AddSpecToScat, SubSpecFromScat
 class PotentialOperator {
  public:
-  // premultiplied_potential: -V dt on (itp, ixy, izr) for the nzpot*nr points of the
+  // Default limit for the precomputed exp(i A) table (see below).
+  static constexpr std::size_t default_table_limit = std::size_t(4) << 30;  // 4 GiB
+
+  // premultiplied_potential: A = -V dt on (itp, ixy, izr) for the nzpot*nr points of the
   // interaction region (PotentialGrid after premultiply_with_time_step).
+  // exp(i A) = (cos A, sin A) is precomputed once if that table needs at most table_limit
+  // bytes; otherwise it is evaluated in every step (as the Fortran code does). Both give
+  // bitwise identical results. Only in the second case is premultiplied_potential used
+  // after construction (it must then stay alive).
   PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
                     const PropagationTables& tables, const AngularTransform& transform,
-                    std::span<const double> premultiplied_potential);
+                    std::span<const double> premultiplied_potential, std::size_t table_limit = default_table_limit);
 
+  [[nodiscard]] bool uses_precomputed_exponentials() const { return !exp_potential_.empty(); }
+  // Size of the work array that apply_block needs (one per thread).
+  [[nodiscard]] std::size_t work_size() const;
+
+  // All (Z, r) points.
   void apply(WavePacket& psi) const;
+  // One (Z, r) point izr: block = its (irot, ixy) values; work: work_size() elements.
+  void apply_block(int izr, std::span<std::complex<double>> block, SpecularWave& specular,
+                   std::span<std::complex<double>> work) const;
 
  private:
   void apply_interaction(std::span<std::complex<double>> block, int izr, std::span<std::complex<double>> dvr) const;
@@ -37,7 +55,8 @@ class PotentialOperator {
   int initial_channel_;  // Fortran: ichn - 1
   const PropagationTables& tables_;
   const AngularTransform& transform_;
-  std::span<const double> potential_;
+  std::span<const double> potential_;              // A = -V dt (when not precomputed)
+  std::vector<std::complex<double>> exp_potential_;  // exp(i A) (when precomputed)
 };
 
 }  // namespace spodvr

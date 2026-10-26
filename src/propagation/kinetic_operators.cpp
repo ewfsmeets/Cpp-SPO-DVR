@@ -74,14 +74,14 @@ void ScatteringKineticOperator::apply_zr(ScatteringWave& psi, TimeStep step) con
 }
 
 void ScatteringKineticOperator::apply_xy(ScatteringWave& psi, TimeStep step) const {
-  const std::vector<cplx>& exy = factors_for(tables_.xy_kinetic, step);
 #pragma omp parallel for schedule(static)
-  for (int izr = 0; izr < psi.n_blocks(); ++izr) apply_xy_block(psi.block(izr), exy);
+  for (int izr = 0; izr < psi.n_blocks(); ++izr) apply_xy_block(psi.block(izr), step);
 }
 
 // One (Z, r) point: shift to the moving frame, FFT x then y, multiply by exp(-i T_xy dt),
 // back to coordinates, shift back. Fortran: SplitOperator.f90 PerformEXPKineticOp
-void ScatteringKineticOperator::apply_xy_block(std::span<cplx> block, const std::vector<cplx>& factors) const {
+void ScatteringKineticOperator::apply_xy_block(std::span<cplx> block, TimeStep step) const {
+  const std::vector<cplx>& factors = factors_for(tables_.xy_kinetic, step);
   const int n_rot = shape_.n_rot;
   const int n_xy = shape_.nx * shape_.ny;
 

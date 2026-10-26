@@ -38,7 +38,13 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
       // The initial wave packet lives on the specular grid; the scattering grid starts empty.
       psi_{ScatteringWave(basis_.size(), config.input.nx * config.input.ny, config.input.nr * config.input.nz),
            initial_.specular},
-      surface_(config, grids, psi_.specular) {}
+      surface_(config, grids, psi_.specular) {
+  // With precomputed exp(-i V dt) the real potential is no longer needed.
+  if (potential_.uses_precomputed_exponentials()) {
+    premultiplied_potential_.clear();
+    premultiplied_potential_.shrink_to_fit();
+  }
+}
 
 // Fortran: Main.f90 DO propStep = nanspo, nstep, nanspo
 void WavePacketPropagation::run(const std::function<void(const Averages&)>& on_averages,
