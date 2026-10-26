@@ -17,8 +17,39 @@ option(SPODVR_BUILD_TESTS "Build the unit and regression tests" ON)
 # ---------------------------------------------------------------------------------------------
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFTW3 REQUIRED IMPORTED_TARGET fftw3)
-find_package(LAPACK REQUIRED)
+
+# Intel oneMKL (sequential: the program calls it from inside its own OpenMP threads; LP64:
+# 32-bit integers). If found it provides BLAS/LAPACK, replacing the system libraries, and by
+# default also the FFTs through its FFTW3 interface. See docs/performance.md.
+option(SPODVR_USE_MKL "Use Intel oneMKL when it is found" ON)
+set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "Implementation of the FFTW3 API: AUTO (oneMKL if found), MKL or FFTW")
+set_property(CACHE SPODVR_FFT_LIBRARY PROPERTY STRINGS AUTO MKL FFTW)
+if(SPODVR_USE_MKL)
+  set(MKL_THREADING sequential)
+  set(MKL_INTERFACE lp64)
+  set(MKL_LINK dynamic)
+  find_package(MKL CONFIG QUIET HINTS $ENV{MKLROOT} /opt/intel/oneapi/mkl/latest)
+endif()
+set(SPODVR_HAVE_MKL ${MKL_FOUND})  # MKL_FOUND is unset when SPODVR_USE_MKL is OFF
+
+if(SPODVR_FFT_LIBRARY STREQUAL "AUTO")
+  if(SPODVR_HAVE_MKL)
+    set(SPODVR_FFT_LIBRARY_USED MKL)
+  else()
+    set(SPODVR_FFT_LIBRARY_USED FFTW)
+  endif()
+else()
+  set(SPODVR_FFT_LIBRARY_USED ${SPODVR_FFT_LIBRARY})
+endif()
+if(SPODVR_FFT_LIBRARY_USED STREQUAL "MKL" AND NOT SPODVR_HAVE_MKL)
+  message(FATAL_ERROR "SPODVR_FFT_LIBRARY=MKL but oneMKL was not found")
+endif()
+if(SPODVR_FFT_LIBRARY_USED STREQUAL "FFTW")
+  pkg_check_modules(FFTW3 REQUIRED IMPORTED_TARGET fftw3)
+endif()
+if(NOT SPODVR_HAVE_MKL)
+  find_package(LAPACK REQUIRED)
+endif()
 
 include(FetchContent)
 FetchContent_Declare(nlohmann_json
@@ -68,6 +99,7 @@ endif()
 # ---------------------------------------------------------------------------------------------
 add_library(spodvr_core
   src/core/machine_epsilon.cpp
+  src/core/numerical_libraries.cpp
   src/input/json_input.cpp
   src/input/validate.cpp
   src/input/process.cpp
@@ -106,7 +138,26 @@ target_include_directories(spodvr_core PUBLIC src)
 target_compile_definitions(spodvr_core PUBLIC SPODVR_VERSION="${PROJECT_VERSION}")
 target_link_libraries(spodvr_core
   PUBLIC nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
-  PRIVATE PkgConfig::FFTW3 LAPACK::LAPACK spodvr_warnings spodvr_fp)
+  PRIVATE spodvr_warnings spodvr_fp)
+# The real FFTW must come before oneMKL in the link line: oneMKL also exports the fftw_*
+# functions, and the first library that defines a symbol wins.
+if(SPODVR_FFT_LIBRARY_USED STREQUAL "FFTW")
+  target_link_libraries(spodvr_core PUBLIC PkgConfig::FFTW3)
+else()
+  target_include_directories(spodvr_core PRIVATE ${MKL_INCLUDE}/fftw)
+  target_compile_definitions(spodvr_core PUBLIC SPODVR_FFT_FROM_MKL)
+endif()
+if(SPODVR_HAVE_MKL)
+  target_link_libraries(spodvr_core PUBLIC MKL::MKL)
+  target_compile_definitions(spodvr_core PUBLIC SPODVR_HAVE_MKL SPODVR_MKL_VERSION="${MKL_VERSION}")
+else()
+  target_link_libraries(spodvr_core PUBLIC LAPACK::LAPACK)
+endif()
+if(SPODVR_HAVE_MKL)
+  message(STATUS "SPO-DVR: BLAS/LAPACK from oneMKL ${MKL_VERSION} (sequential), FFT library ${SPODVR_FFT_LIBRARY_USED}")
+else()
+  message(STATUS "SPO-DVR: BLAS/LAPACK from the system, FFT library ${SPODVR_FFT_LIBRARY_USED}")
+endif()
 
 add_executable(spodvr src/app/main.cpp)
 target_link_libraries(spodvr PRIVATE spodvr_core spodvr_warnings spodvr_fp)

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "core/error.hpp"
+#include "core/numerical_libraries.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -60,6 +61,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
 
     out << style.emphasis("SPO-DVR (C++) version " SPODVR_VERSION) << "  -  " << omp_get_max_threads()
         << " OpenMP thread(s)\n";
+    out << "  " << numerical_libraries_summary() << '\n';
 
     const Config config = build_config(read_input_file(command_line.input_file));
     print_input_summary(out, style, config);

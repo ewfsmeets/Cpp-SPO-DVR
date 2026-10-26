@@ -4,6 +4,8 @@
 #include <span>
 #include <vector>
 
+#include "core/numerical_libraries.hpp"
+
 namespace spodvr {
 
 // Eigenpairs of a real symmetric n x n matrix, eigenvalues in ascending order.
@@ -31,6 +33,7 @@ class SymmetricEigensolver {
 // LAPACK dsyevd (divide and conquer).
 class LapackEigensolver final : public SymmetricEigensolver {
  public:
+  LapackEigensolver() { configure_numerical_libraries(); }
   [[nodiscard]] EigenDecomposition solve(std::span<const double> matrix, int n) const override;
 };
 
