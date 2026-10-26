@@ -122,4 +122,3 @@ vector extensions (see docs/performance.md).
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
 | `docs/` | input schema, performance notes |
 | `inputs/` | example inputs |
-| `CLAUDE.md` | development guidelines: architecture, Fortran correspondence, known Fortran quirks, acceptance gates |
