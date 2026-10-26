@@ -14,7 +14,7 @@ Fortran default.
 |---|---|---|---|
 | `Title` | string | title | |
 | `SystemID` | string | systemID | PES; implemented: `HardWallPES` (case-insensitive) |
-| `NewCalc` | bool | newcalc | new calculation (else restart) |
+| `NewCalc` | bool | newcalc | new calculation (else restart; restart not implemented yet) |
 | `ZDoF` `RDoF` `XDoF` `YDoF` `ThetaDoF` `PhiDoF` | bool | | must all be true (6D only) |
 | `Mass1` `Mass2` | real | amass1/2 | atom masses (amu) |
 | `HomoNuc` | bool | lhomo | homonuclear molecule |
@@ -23,7 +23,7 @@ Fortran default.
 | `RStart` `dR` `nR` | real, real, int | rmin, delr, nr | r grid |
 | `nX` `nY` | int | nx, ny | x, y points (valid FFT sizes) |
 | `JMax` | int | jmaxw | maximum J of the rotational basis |
-| `ProjOp` | int | nproj | 1 or 2 (0 rejected) |
+| `ProjOp` | int | nproj | must be 2 (0 and 1 are rejected; 1 is a legacy option that is not ported) |
 | `tStart` `tEnd` `dtStep` `nStep` | real×3, int | starttime, tottym, dtlan, nstep | propagation |
 | `dtAna` `dtAve` | real | dtAnalysis, dtAverages | analysis / averages interval |
 | `DynamZSpAna` | bool | dynamicalZSpAna | dynamical analysis surface on the specular grid |
@@ -36,7 +36,7 @@ Fortran default.
 | `ZSpOptStart` `ZSpOptEnd` | real | ssplmi, ssplma | CAP in Z, specular grid |
 | `EParallel` `PhiParallel` | real | epar, phipar | parallel energy (eV), azimuth (deg) |
 | `writeSMatrix` `writeProbs` `writeRDProbs` | bool | lwrit3, lwri25, lwdiro | output switches |
-| `TolSp` | real | tolsp | specular-grid tolerance |
+| `TolSp` | real | tolsp | specular-grid tolerance; also the maximum initial norm outside [ZAna, start of the specular absorber] (hard error) |
 
 For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROpt…`, `ZSpOpt…`) is required.
 The energy is in eV, and the factor is the strength in hartree.

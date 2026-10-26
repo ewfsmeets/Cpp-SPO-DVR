@@ -9,6 +9,9 @@ for the incoming channel).
 1. Reproduce Fortran results to within numerical limits (target: ~1e-10 relative on
    wavefunction norms/averages and S-matrix elements for the hard wall test system).
 2. Clean, structured, readable, easy to modify, with an extensive unit test suite.
+- Future (explicitly NOT a goal now): after the port, a CUDA implementation of the heavy parts
+  (propagation operators, FFTs) may be investigated. Design decisions must not block it; see
+  "Propagation design" under Architecture rules.
 
 ## Fortran reference
 - Sources: `~/work/SPO-DVR/procfiles.dir/SOURCES.dir/` (active build: GFORTRAN.mk, OpenMP, FFTW,
@@ -54,8 +57,10 @@ for the incoming channel).
 - FFT naming in Fortran is inverted: "Backward" = coordinate→momentum. Scale factors are explicit:
   z,r: `d/√(2π)`; x,y: `√(dx/nx)`. Verify sign convention against `ffts.f90` before porting.
 - Run modes (Fortran `nread`): 0 new, 1 restart, 2 analysis-only, 6 potential-only.
-  `nproj`: 1 = merge specular into scattering grid once norm beyond scat grid < tolsp; 2 = two grids
-  throughout. `nproj = 0` is rejected by the input reader.
+  Implemented: 0 (propagation; asymptotic analysis still to do) and 6.
+  `nproj` (ProjOp): only 2 (two grids throughout) is supported. 0 and 1 (merge the specular wave
+  into the scattering grid once its norm beyond the scattering grid < tolsp; a legacy option,
+  decided not to port) are rejected by the input reader.
 
 ## Architecture rules
 - **Potentials**: abstract `Potential` interface (V(x,y,Z,r,θ,φ) in eV, asymptotic V(r), system
@@ -89,6 +94,15 @@ for the incoming channel).
   (`src/fft/fftw_fft.cpp`: `fftw_plan`, `vector.data()` passed to FFTW calls; plans wrapped in
   `std::unique_ptr` with a custom deleter `fftw_destroy_plan`) and the LAPACK backend
   (`src/linalg/lapack_eigensolver.cpp`). Keep them local to those files.
+- **Propagation design** (`src/propagation/`): one class per operator stage
+  (`ScatteringKineticOperator`, `PotentialOperator`, `SpecularOperator`, `AngularTransform`),
+  each owning plain precomputed tables (`PropagationTables`) and applied to the *whole* wave
+  function (OpenMP over (Z, r) points or FFT work units inside). This is the unit a CUDA backend
+  would replace. Applying the stages one after another over all points is bitwise identical to
+  the Fortran per-(Z, r) interleaving because every point is independent. No virtual calls or
+  callbacks inside inner loops. FFT plans have a fixed batch shape per work unit and run in place
+  on strided views of the wave function, so results do not depend on the thread count; reductions
+  (norms, averages) use a fixed summation order.
 - **Eigensolvers**: abstract `SymmetricEigensolver` interface; only concrete impl `LapackEigensolver`
   (dsyevd). Other backends (e.g. a port of `jacobi.f90`) plug in without touching callers.
 - **No globals.** Configuration is an immutable struct produced by input processing; pass explicitly.
@@ -129,7 +143,16 @@ derived from exactly the same parameters.
    STATES"), e.g. e(0,0) = 0.258378 eV, e(1,0) = 0.762842 eV; also ⟨r⟩, psi(1), psi(nr), norms.
    The printed Fortran values have only 6 digits — dump full precision from Fortran when a tighter
    gate is needed.
-3. Later gates (to be defined): initial wavepacket norms, averages vs time, S-matrix / probabilities.
+3. **Propagation** (`tests/test_regression_propagation.cpp`): initial wave-packet block
+   (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
+   rest norm) against the Fortran stdout, to the 8 printed digits (relative 1e-8; the Fortran
+   prints E15.8 and is not patched). Default case `tests/reference/hardwall_short` (same as
+   hardwall_small but 1000 steps); the full 7000-step hardwall_small run only with
+   `SPODVR_LONG_TESTS=1`. The hard wall has no θ/φ/x/y coupling, so gate 3 only checks that the
+   angular transform and x/y FFTs act as the identity there; their correctness rests on the
+   analytic unit tests (test_angular, test_propagation). A corrugated-PES gate comes with the
+   first real PES.
+4. Later gates (to be defined): S-matrix / probabilities.
    Note: the associated Gauss-Legendre quadrature for |mJ| > 0 is dead code in the Fortran
    (`setupdvr.f90` forces `SymmetryInPhi = .FALSE.`, so only mJ = 0 is used). The rotational
    basis uses `legendre.f90 AssociatedLegendre` instead (C++ `associated_legendre`), tested
@@ -170,8 +193,19 @@ derived from exactly the same parameters.
   PerformEXPInteractionOp. C++ uses the scalar functions, so these agree only to a few ulp.
   Real`**`integer is libgcc `__powidf2` (repeated squaring): use `fortran_integer_power`, not
   `std::pow`.
-- The CoherentStateFunc check (initial norm outside region < tolsp) is not done yet; it belongs to
-  the wave-packet milestone.
+- More quad-precision sites (same policy, plain double in C++): `erot = dfloat(j(j+1))/(...)`
+  (GridEnergies.f90; in practice bitwise equal), the CAP profiles `vimag/vimar/vimas`
+  (complex × `dfloat(nabpow+1)` → complex(16), Absorption.f90), `scalFacX/Y = sqrt(delx/dfloat(nx))`
+  (KineticOp.f90), `kinx(nx/2+1)` (GridEnergies.f90) and `conx/conxy` in TwoGrids.f90
+  (MomentumShifting.f90 computes the same phase with integer `(ix-1)`, i.e. in double).
+- ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
+  option); the input reader rejects it.
+- Kept on purpose (`Analyzor.f90 FindNewAnalysisPoint`): the clamp of `izanlySpecChan` to `nschmi`
+  is overwritten on the next line, and reaching `izanly` fixes the surface without leaving the
+  loop. The rest norm of the averages depends on this dynamic analysis surface.
+- Reference-case property (not a bug, same in Fortran): the FGH grid is periodic, so the decay of
+  ψ_v below r_min wraps around to r_max (ψ_00(r_max) ≈ 7e-4, a ~1e-7 plateau in between). The r
+  absorber (ROptStart = 4.55) removes this tail, ≈ 5e-8 of norm per 10 a.u. of propagation.
 
 ## Build & test
 ```
@@ -185,7 +219,10 @@ ctest --test-dir build --output-on-failure
 - Compiled with `-ffp-contract=off` (no FMA contraction) to stay comparable with the Fortran build.
 - Fortran reference data: `tools/fortran_reference/run_setup_reference.sh` (potential-only run with
   DoDump; writes `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` into
-  `tests/reference/hardwall_small/`). Regression tests skip when these files are missing.
+  `tests/reference/hardwall_small/`) and `tools/fortran_reference/run_propagation_reference.sh
+  [case]` (full run of `<case>/DVR.inp`, default hardwall_short; writes `fortran_stdout.txt`,
+  `fortran_averages.out`). Regression tests skip when these files are missing.
+- `SPODVR_LONG_TESTS=1 ctest --test-dir build -R Long` runs the long (full 7000-step) gate.
 - Warnings on (`-Wall -Wextra -Wpedantic`); treat as errors in CI.
 - `tools/check_bitwise_refactor.sh [base-ref]`: bitwise before/after check for refactors (see
   Conventions).
