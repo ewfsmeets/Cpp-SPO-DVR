@@ -66,8 +66,13 @@ for the incoming channel).
 - **Potentials**: abstract `Potential` interface (V(x,y,Z,r,θ,φ) in eV, asymptotic V(r), system
   parameters: alat, blat, zasymp, skew angle, point group). Concrete impls only. Currently only
   `HardWallPotential`. Factory selects by `SystemID` string.
-- **FFT**: abstract FFT interface (plan creation for strided/batched 1D complex transforms, in-place
-  execute, explicit scale). Concrete impl only `FftwFft` (FFTW3, double). No other library code.
+- **FFT**: abstract FFT interface (plan creation for strided/batched 1D and 2D complex transforms
+  with ONE batch dimension, in-place execute, explicit scale). Concrete impl only `FftwFft`
+  (FFTW3 API, double), linked against oneMKL's FFTW3 interface (default when oneMKL is found) or
+  FFTW (`SPODVR_FFT_LIBRARY`). oneMKL's FFTW3 interface supports only one batch dimension
+  (`howmany_rank = 1`), serialises concurrent execution of one plan (hence one plan copy per
+  thread, and `fftw3_mkl.number_of_user_threads`), and ignores planner flags. cuFFT has the same
+  one-batch-dimension limit. No other library code.
 - **Grids**: grid objects (uniform 1D grid, momentum grid, specular/scattering Z grids, angular grid,
   rotational FBR basis) expose points, spacing, size, k-values, kinetic energies. No free-floating
   grid arrays.
@@ -92,17 +97,25 @@ for the incoming channel).
   pointers (owning or non-owning), no `new`/`delete`. Non-owning access uses references or
   `std::span`. The only exceptions are the C-API boundaries inside the FFTW implementation
   (`src/fft/fftw_fft.cpp`: `fftw_plan`, `vector.data()` passed to FFTW calls; plans wrapped in
-  `std::unique_ptr` with a custom deleter `fftw_destroy_plan`) and the LAPACK backend
-  (`src/linalg/lapack_eigensolver.cpp`). Keep them local to those files.
+  `std::unique_ptr` with a custom deleter `fftw_destroy_plan`), the LAPACK backend
+  (`src/linalg/lapack_eigensolver.cpp`) and the allocator interface of `AlignedAllocator`
+  (`src/core/aligned_vector.hpp`). Keep them local to those files.
 - **Propagation design** (`src/propagation/`): one class per operator stage
   (`ScatteringKineticOperator`, `PotentialOperator`, `SpecularOperator`, `AngularTransform`),
   each owning plain precomputed tables (`PropagationTables`) and applied to the *whole* wave
-  function (OpenMP over (Z, r) points or FFT work units inside). This is the unit a CUDA backend
-  would replace. Applying the stages one after another over all points is bitwise identical to
-  the Fortran per-(Z, r) interleaving because every point is independent. No virtual calls or
-  callbacks inside inner loops. FFT plans have a fixed batch shape per work unit and run in place
-  on strided views of the wave function, so results do not depend on the thread count; reductions
-  (norms, averages) use a fixed summation order.
+  function (OpenMP over fixed work units inside). This is the unit a CUDA backend would replace.
+  On the CPU, T_xy and V are fused per group of (Z, r) points (`SplitOperatorPropagator::
+  apply_xy_and_potential`); this is bitwise identical to applying the stages one after another
+  because every point is independent (tested). No virtual calls or callbacks inside inner loops.
+  Work units have a fixed shape (cache-sized, see docs/performance.md): T_Z + T_r is one 2D FFT
+  on gathered contiguous units, T_xy one 2D FFT per gathered group; results do not depend on the
+  thread count; reductions (norms, averages) use a fixed summation order.
+- **Memory** (production grids need > 64 GB): large arrays are `AlignedVector` (64-byte aligned, not
+  zeroed on allocation, first written in parallel with the static schedule of the loops that use
+  them: NUMA first touch). Every element must be written before it is read; check with
+  `-DSPODVR_POISON_UNINITIALISED=ON` (NaN fill) when touching that code. Keep per-thread work
+  arrays cache-sized; precomputed tables that scale with the grid need a size limit with an
+  on-the-fly fallback (as exp(−iV dt), 4 GiB).
 - **Eigensolvers**: abstract `SymmetricEigensolver` interface; only concrete impl `LapackEigensolver`
   (dsyevd). Other backends (e.g. a port of `jacobi.f90`) plug in without touching callers.
 - **No globals.** Configuration is an immutable struct produced by input processing; pass explicitly.
@@ -215,9 +228,16 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 - C++20, CMake ≥ 3.24, Ninja. GCC 13 on this machine.
-- Dependencies: FFTW3 (system, `libfftw3-dev`), LAPACK (system, `liblapack-dev`), nlohmann/json and
-  GoogleTest via FetchContent.
-- Compiled with `-ffp-contract=off` (no FMA contraction) to stay comparable with the Fortran build.
+- Dependencies: Intel oneMKL (optional, preferred: `/opt/intel/oneapi/mkl/latest`, sequential, LP64;
+  provides BLAS/LAPACK and by default the FFTs), otherwise FFTW3 (`libfftw3-dev`) and LAPACK
+  (`liblapack-dev`); nlohmann/json and GoogleTest via FetchContent. The program prints the
+  libraries and oneMKL's reproducibility branch (CNR: `AUTO` unless `MKL_CBWR` is set; results
+  may then differ in the last bits between machines with different vector extensions; set
+  `MKL_CBWR=AVX2` for identical results across machines). Details: docs/performance.md.
+- Compiled with `-ffp-contract=off -fno-fast-math` (no FMA contraction) to stay comparable with
+  the Fortran build, plus result-neutral `-fcx-fortran-rules -fno-math-errno -fno-trapping-math`,
+  `-march=${SPODVR_ARCH}` (default x86-64-v3) and LTO; optional PGO (`SPODVR_PGO`). Never
+  `-ffast-math`.
 - Fortran reference data: `tools/fortran_reference/run_setup_reference.sh` (potential-only run with
   DoDump; writes `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` into
   `tests/reference/hardwall_small/`) and `tools/fortran_reference/run_propagation_reference.sh
@@ -227,6 +247,8 @@ ctest --test-dir build --output-on-failure
 - Warnings on (`-Wall -Wextra -Wpedantic`); treat as errors in CI.
 - `tools/check_bitwise_refactor.sh [base-ref]`: bitwise before/after check for refactors (see
   Conventions).
+- Performance work: measure with a realistic grid, not only the tiny test grids (they are far too
+  small to be representative; e.g. FFT library rankings flip). See docs/performance.md.
 - Unit tests live in `tests/`, one test file per module; regression tests compare against reference
   output from the Fortran code (stored under `tests/reference/`, small hard wall cases only).
 
@@ -259,5 +281,8 @@ ctest --test-dir build --output-on-failure
 - Refactors that are meant to keep the numbers unchanged must leave them *bitwise* unchanged.
   Passing tests is not enough (e.g. a wrong Newton starting guess still converges). Run
   `tools/check_bitwise_refactor.sh [base-ref]`, which compares the potential-only output files
-  of the base commit and the working tree (1 and 4 threads). Code paths not exercised by that run
-  need a direct old-vs-new bitwise comparison.
+  and a 50-step propagation of the base commit and the working tree (1 and 4 threads). Code paths
+  not exercised by these runs need a direct old-vs-new bitwise comparison.
+- Optimisations that change rounding (different summation order, FFT algorithm, library) are
+  allowed after a gate exists, if the result stays within ~1e-13 of the previous version and all
+  gates pass. Never introduce FMA contraction or fast-math.

@@ -88,6 +88,19 @@ if(SPODVR_ARCH)
   target_compile_options(spodvr_fp INTERFACE -march=${SPODVR_ARCH})
 endif()
 
+# Profile-guided optimisation (two builds, see docs/performance.md): GENERATE builds an
+# instrumented program that writes profiles to SPODVR_PGO_DIR when run; USE rebuilds with them.
+set(SPODVR_PGO "OFF" CACHE STRING "Profile-guided optimisation: OFF, GENERATE or USE")
+set_property(CACHE SPODVR_PGO PROPERTY STRINGS OFF GENERATE USE)
+set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of the PGO profile data")
+if(SPODVR_PGO STREQUAL "GENERATE")
+  target_compile_options(spodvr_fp INTERFACE -fprofile-generate=${SPODVR_PGO_DIR} -fprofile-update=atomic)
+  target_link_options(spodvr_fp INTERFACE -fprofile-generate=${SPODVR_PGO_DIR})
+elseif(SPODVR_PGO STREQUAL "USE")
+  target_compile_options(spodvr_fp INTERFACE -fprofile-use=${SPODVR_PGO_DIR} -fprofile-correction
+                                             -Wno-missing-profile)
+endif()
+
 # Link-time optimisation for optimised builds.
 include(CheckIPOSupported)
 check_ipo_supported(RESULT spodvr_ipo_supported OUTPUT spodvr_ipo_output)
