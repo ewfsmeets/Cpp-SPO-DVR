@@ -147,7 +147,7 @@ derived from exactly the same parameters.
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
    digits: |C++ − Fortran| ≤ half a unit in the 8th mantissa digit of E15.8 (the Fortran is not
-   patched). Passes for hardwall_short (all 21 rows). Default case `tests/reference/hardwall_short` (same as
+   patched). Passes for hardwall_short (21 rows) and the full hardwall_small run (7000 steps, 141 rows). Default case `tests/reference/hardwall_short` (same as
    hardwall_small but 1000 steps); the full 7000-step hardwall_small run only with
    `SPODVR_LONG_TESTS=1`. The hard wall has no θ/φ/x/y coupling, so gate 3 only checks that the
    angular transform and x/y FFTs act as the identity there; their correctness rests on the
