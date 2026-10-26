@@ -130,6 +130,9 @@ derived from exactly the same parameters.
    The printed Fortran values have only 6 digits — dump full precision from Fortran when a tighter
    gate is needed.
 3. Later gates (to be defined): initial wavepacket norms, averages vs time, S-matrix / probabilities.
+   Open item: the associated Gauss-Legendre quadrature for |mJ| > 0 (`gauss_associated_legendre`)
+   is only checked for exactness and against the earlier C++ port, not against Fortran. The
+   rotational FBR basis needs it, so that milestone needs a Fortran reference for it.
 
 ## Known Fortran bugs/quirks (fixed in C++; record every deviation here)
 - `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2).
@@ -155,6 +158,11 @@ derived from exactly the same parameters.
   Fortran r grid differs from plain-double `rmin + i*dr` by 1 ulp at 13 of 56 points). Accepted by
   the user as within numerical limits: C++ keeps plain double grids. Effect on gate 1: vasy table
   agrees to ≤1e-14, the full 6D potential to ~5e-14 relative (gate tolerance 1e-13).
+  The same applies to every momentum quantity in Setup.f90 (lines ~129–131, 454–525): delkz,
+  delksp, delkr, the kinetic energies ekinz/ekinr/ensp used in exp(−iT·dt), and zk/rkg/zksp. These
+  are ~1 ulp off in C++ too (≈1e-12 phase after 7000 steps): first suspect if a propagation gate
+  drifts. When porting any routine, look for `DFLOAT`, `DBLE`, `…d0` literals and
+  `DOUBLE PRECISION`; all are quad precision in this build.
 - The CoherentStateFunc check (initial norm outside region < tolsp) is not done yet; it belongs to
   the wave-packet milestone.
 
@@ -172,6 +180,8 @@ ctest --test-dir build --output-on-failure
   DoDump; writes `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` into
   `tests/reference/hardwall_small/`). Regression tests skip when these files are missing.
 - Warnings on (`-Wall -Wextra -Wpedantic`); treat as errors in CI.
+- `tools/check_bitwise_refactor.sh [base-ref]`: bitwise before/after check for refactors (see
+  Conventions).
 - Unit tests live in `tests/`, one test file per module; regression tests compare against reference
   output from the Fortran code (stored under `tests/reference/`, small hard wall cases only).
 
@@ -186,6 +196,10 @@ ctest --test-dir build --output-on-failure
 - Prefer plain loops and simple data structures over clever templates, variant tables,
   member-pointer tricks or dense lambdas. Avoid deep nesting; return early.
 - Keep index arithmetic in named helpers (`Index3D`, grid accessors), not inline in kernels.
+- No cast noise: `-Wno-sign-conversion` is set, so index containers with `int` directly and let
+  int→double convert implicitly. But declare floating-point variables as `double`, never `auto`,
+  when initialised from an `int` (`auto ord = order;` silently turns `amj / ord` into integer
+  division).
 - Each `.cpp` file starts with a 1–3 line comment stating its responsibility and Fortran origin;
   headers document each type/function they declare (with its Fortran origin).
 
@@ -197,3 +211,8 @@ ctest --test-dir build --output-on-failure
   name in the declaration comment when porting.
 - Do not "optimize" summation order or fuse loops in numerical kernels before a regression test
   exists for them.
+- Refactors that are meant to keep the numbers unchanged must leave them *bitwise* unchanged.
+  Passing tests is not enough (e.g. a wrong Newton starting guess still converges). Run
+  `tools/check_bitwise_refactor.sh [base-ref]`, which compares the potential-only output files
+  of the base commit and the working tree (1 and 4 threads). Code paths not exercised by that run
+  need a direct old-vs-new bitwise comparison.
