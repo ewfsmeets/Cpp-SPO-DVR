@@ -63,6 +63,20 @@ header line.
   `spread` to use all sockets' memory bandwidth); with first touch this keeps data local. On a single
   socket pinning made no difference.
 
+## Benchmarking checklist
+- Use a realistic grid: `tools/benchmark/run_benchmark.sh [build-dir] [threads] [steps]` (the
+  "medium" grid below; ~5 GB of memory). The tiny test grids give misleading rankings (on them
+  FFTW beats oneMKL; at realistic sizes it is the other way round or equal).
+- **Rebuild every build directory you compare** (`cmake --build build-xxx`); a stale binary once led
+  to a wrong conclusion here.
+- Repeat each timing at least twice: on WSL2 the same run varies by 20% and occasionally by 2x.
+- Compare the printed "Propagation time", not the wall time (which includes set-up and the
+  potential grid).
+- `spodvr_operator_timing <input.json>` (built in `build/tools/`) shows where the time goes.
+- Check the results of every change: `tools/check_bitwise_refactor.sh` (must be bitwise identical)
+  or `tools/compare_propagation.sh` (rounding-level changes, ≤ 1e-13), then the gates
+  (`ctest`, and `SPODVR_LONG_TESTS=1 ctest -R Long` for the full 7000-step run).
+
 ## Measurements (AMD Ryzen 7 5800X, 16 threads, WSL2; propagation time only)
 | Case | Baseline (faithful port) | Optimised, oneMKL FFT | Optimised, FFTW | Optimised + PGO (oneMKL) |
 |---|---|---|---|---|

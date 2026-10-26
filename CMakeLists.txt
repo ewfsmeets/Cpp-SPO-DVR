@@ -12,6 +12,7 @@ endif()
 option(SPODVR_WARNINGS_AS_ERRORS "Treat compiler warnings as errors (CI)" OFF)
 option(SPODVR_BUILD_TESTS "Build the unit and regression tests" ON)
 option(SPODVR_POISON_UNINITIALISED "Debug: fill uninitialised AlignedVector elements with NaN" OFF)
+option(SPODVR_BUILD_TOOLS "Build the developer tools (operator timing, wave function dump/compare)" ON)
 
 # ---------------------------------------------------------------------------------------------
 # Dependencies
@@ -185,4 +186,7 @@ target_link_libraries(spodvr PRIVATE spodvr_core spodvr_warnings spodvr_fp)
 if(SPODVR_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+if(SPODVR_BUILD_TOOLS)
+  add_subdirectory(tools)
 endif()

@@ -44,6 +44,11 @@ for the incoming channel).
   others need `Name : INTEGER|REAL|LOGICAL|STRING : value;` (else "ERROR CODE RETURNED: 4").
   Valid FFT sizes (`ffts.f90 GetNearestFFTSize`): even, 2^h·3^i·5^j·7^k·11^m with i ≤ 2, j,k,m ≤ 1.
 - When porting a routine, cite the Fortran origin in a short comment (`// Fortran: SplitOperator.f90 Propagate`).
+- Comparing with Fortran output: values printed in E/F format (e.g. E15.8, mantissa 0.dddddddd)
+  are compared to half a unit in the last printed digit, not with a fixed relative tolerance
+  (for 0.147E+01 the last digit is worth 3.4e-8 relative). Read tables from the dedicated
+  output files (e.g. `averages.out`): the stdout contains other tables in the same format
+  (e.g. five-column probability tables after the propagation).
 
 ## Algorithm essentials (do not change semantics without a reference comparison)
 - Propagate one analysis step = `[T(dt/2) V(dt) T(dt/2)]^nanspo` with adjacent half steps merged:
@@ -248,7 +253,18 @@ ctest --test-dir build --output-on-failure
 - `tools/check_bitwise_refactor.sh [base-ref]`: bitwise before/after check for refactors (see
   Conventions).
 - Performance work: measure with a realistic grid, not only the tiny test grids (they are far too
-  small to be representative; e.g. FFT library rankings flip). See docs/performance.md.
+  small to be representative; e.g. FFT library rankings flip): `tools/benchmark/run_benchmark.sh
+  [build-dir] [threads] [steps]` (medium grid, ~5 GB; repeats the run and prints per-operator
+  timings via `spodvr_operator_timing`). See the checklist in docs/performance.md.
+- `tools/compare_propagation.sh [base-ref] [tolerance]`: for changes that may alter rounding
+  (default tolerance 1e-13 on a 50-step propagation's averages). `build/tools/spodvr_dump_wave`
+  and `spodvr_compare_wave` compare the final wave function of two builds directly.
+- Build variants used during development (all `build-*/` are git-ignored; same CMake options as
+  above): `build-fftw` (`-DSPODVR_FFT_LIBRARY=FFTW`: oneMKL LAPACK + real FFTW),
+  `build-nomkl` (`-DSPODVR_USE_MKL=OFF`: system LAPACK + FFTW, the fallback that must keep
+  working), `build-poison` (`-DSPODVR_POISON_UNINITIALISED=ON`: run the tests after touching
+  `AlignedVector` code), `build-pgo` (`-DSPODVR_PGO=GENERATE/USE`). Rebuild a variant before using
+  it for a comparison.
 - Unit tests live in `tests/`, one test file per module; regression tests compare against reference
   output from the Fortran code (stored under `tests/reference/`, small hard wall cases only).
 
