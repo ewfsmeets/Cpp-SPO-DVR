@@ -27,36 +27,38 @@ Status:
 
 ## Dependencies
 
-| Dependency | Version | Notes |
-|---|---|---|
-| C++ compiler | GCC ≥ 13 (C++20, OpenMP) | |
-| CMake | ≥ 3.24 | |
-| Ninja | any | the recommended generator |
-| pkg-config | any | |
-| **Intel oneMKL** | 2024 or later | **recommended**: BLAS/LAPACK and the FFTs (through its FFTW3 interface) |
-| FFTW3 + LAPACK | any | the fallback when oneMKL is not installed |
-| nlohmann/json, GoogleTest | — | downloaded automatically by CMake (internet access needed on the first configure) |
+- **Build tools**: GCC ≥ 13 (C++20, OpenMP), CMake ≥ 3.24, Ninja, pkg-config.
+- **Math libraries**, one of:
+  - **Intel oneMKL** 2024 or later (recommended): BLAS/LAPACK and the FFTs (through its FFTW3
+    interface);
+  - FFTW3 + LAPACK (fallback when oneMKL is not installed).
+- nlohmann/json and GoogleTest are downloaded by CMake (internet access needed on the first
+  configure).
 
-### Intel oneMKL (recommended)
-On Debian/Ubuntu (also under WSL2), install oneMKL from Intel's apt repository:
+On Debian/Ubuntu (also under WSL2):
+
+**1. Build tools** (always needed):
+```bash
+sudo apt install build-essential cmake ninja-build pkg-config
+```
+
+**2a. Intel oneMKL** (recommended), from Intel's apt repository:
 ```bash
 wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
   | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg]" \
+     "https://apt.repos.intel.com/oneapi all main" \
   | sudo tee /etc/apt/sources.list.d/oneAPI.list
 sudo apt update
 sudo apt install intel-oneapi-mkl-devel
 ```
-- CMake finds oneMKL in `$MKLROOT` or in `/opt/intel/oneapi/mkl/latest`; no `setvars.sh` is
-  needed for building.
-- The program always uses the sequential, LP64 oneMKL.
+CMake finds oneMKL in `$MKLROOT` or in `/opt/intel/oneapi/mkl/latest` (no `setvars.sh` needed for
+building). The program always uses the sequential, LP64 oneMKL.
 
-### Without oneMKL
+**2b. Without oneMKL**, FFTW3 and LAPACK instead:
 ```bash
-sudo apt install build-essential cmake ninja-build pkg-config libfftw3-dev liblapack-dev
+sudo apt install libfftw3-dev liblapack-dev
 ```
-The build tools themselves (`build-essential cmake ninja-build pkg-config`) are also needed with
-oneMKL.
 
 ## Building
 ```bash
