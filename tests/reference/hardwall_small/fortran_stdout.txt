@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261026 at 124628.778 ***
+*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261026 at 150730.915 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -19,7 +19,7 @@
 
 * Setting up global data...
 * Calculated machines precision: 0.55511151E-16
-* Using a maximum number of 8 threads in this run.
+* Using a maximum number of 16 threads in this run.
 * Setting up global data...
 * Preparing module inputfields for reading the input file ...
 * Trying to read input file "DVR.inp" ...
@@ -242,7 +242,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  * Initialising the HardwallPES module
 
- Total time for potential initialisation =  0.18959001E-04 secs
+ Total time for potential initialisation =  0.36015001E-04 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -264,24 +264,24 @@ reaches the gas phase, is the new asymptotic Z-value.
  Number of points in phi for which the potential is calculated   =  10
 
  iz =   1
- iz =   2
  iz =   3
- iz =   4
+ iz =   2
  iz =   5
- iz =   6
+ iz =   4
  iz =   7
- iz =   8
+ iz =   6
  iz =   9
- iz =  10
+ iz =   8
  iz =  11
- iz =  12
+ iz =  10
  iz =  13
- iz =  14
+ iz =  12
  iz =  15
- iz =  16
+ iz =  14
  iz =  17
- iz =  18
+ iz =  16
  iz =  19
+ iz =  18
  iz =  20
  iz =  21
  iz =  22
@@ -320,65 +320,65 @@ reaches the gas phase, is the new asymptotic Z-value.
  iz =  55
  iz =  56
  iz =  57
- iz =  58
  iz =  59
- iz =  60
  iz =  61
- iz =  62
+ iz =  58
  iz =  63
- iz =  64
+ iz =  60
  iz =  65
- iz =  66
+ iz =  62
  iz =  67
- iz =  68
+ iz =  64
  iz =  69
- iz =  70
+ iz =  66
  iz =  71
- iz =  72
+ iz =  68
  iz =  73
- iz =  74
+ iz =  70
  iz =  75
- iz =  76
+ iz =  72
  iz =  77
- iz =  78
+ iz =  74
  iz =  79
- iz =  80
+ iz =  76
  iz =  81
- iz =  82
+ iz =  78
  iz =  83
- iz =  84
+ iz =  80
  iz =  85
- iz =  86
+ iz =  82
  iz =  87
- iz =  88
+ iz =  84
  iz =  89
- iz =  90
+ iz =  86
  iz =  91
- iz =  92
+ iz =  88
  iz =  93
- iz =  94
+ iz =  90
  iz =  95
- iz =  96
+ iz =  92
  iz =  97
- iz =  98
+ iz =  94
  iz =  99
- iz = 100
+ iz =  96
  iz = 101
- iz = 102
+ iz =  98
  iz = 103
- iz = 104
+ iz = 100
  iz = 105
- iz = 106
+ iz = 102
  iz = 107
- iz = 108
+ iz = 104
  iz = 109
- iz = 110
+ iz = 106
  iz = 111
- iz = 112
+ iz = 108
  iz = 113
+ iz = 110
+ iz = 112
  Saving HardWallPES PES into file : ./HardWallPES_113_-2.000_0.080_56_0.800_0.150_4_4_6.240_4_4.pes
 
- Total time setting up the potential =  0.10804499E-01 secs
+ Total time setting up the potential =  0.86284620E-02 secs
 
 
 
@@ -13306,21 +13306,21 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                         168.9109 (a)
+ Total computation                         127.8329 (a)
 
                ...
 
- Propagating the wavefunction              168.3114 (b)
+ Propagating the wavefunction              127.2305 (b)
 
- Setup time                                  0.0838
+ Setup time                                  0.1008
 
- Saving the wave function for rerun          0.0161
+ Saving the wave function for rerun          0.0206
 
- Calculating averages                        0.0382
+ Calculating averages                        0.0146
 
- Calculating and saving BK-coeffs            0.1660
+ Calculating and saving BK-coeffs            0.2199
 
- Asymptotic analysis                         0.0204
+ Asymptotic analysis                         0.0198
 
  Saving the flux coefficients                0.0000
 
@@ -13328,43 +13328,43 @@ WARNING: Diffractional basis too small to describe all open channels!
 
 -----------------------------------------------------
 
- Sum                                       168.6360 (a)
+ Sum                                       127.6062 (a)
 
                ...
 
- FFTs along X and Y                         12.5775
+ FFTs along X and Y                          9.9637
 
- Kinetic energy operation along Z           40.4299
+ Kinetic energy operation along Z           31.3425
 
- Kinetic energy operation along r           30.9428
+ Kinetic energy operation along r           22.1826
 
- Potential energy multiplication            26.3885
+ Potential energy multiplication            19.4814
 
- Legengre transforms                        25.6671
+ Legengre transforms                        19.7078
 
- Shifting the wavefunction                   4.4916
+ Shifting the wavefunction                   3.3768
 
- Kinetic energy multiplications (xy)         1.9684
+ Kinetic energy multiplications (xy)         1.5515
 
- Absorbing the wavefunction                  2.9728
+ Absorbing the wavefunction                  2.3387
 
- Projection formalism                        0.6077
+ Projection formalism                        0.4206
 
- Operations on specular grid                 0.3081
+ Operations on specular grid                 0.2093
 
 -----------------------------------------------------
 
- Sum                                       146.3544 (b)
+ Sum                                       110.5749 (b)
 
                ...
 
  Potential initialisation time               0.0000
 
- Potential setup time                        0.0108
+ Potential setup time                        0.0086
 
- FFTs along X                                5.7422
+ FFTs along X                                4.5435
 
- FFTs along Y                                6.8352
+ FFTs along Y                                5.4202
 
- Time spent on FGH for asympwf               0.0262
+ Time spent on FGH for asympwf               0.0290
 
