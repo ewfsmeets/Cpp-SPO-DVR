@@ -1,0 +1,11 @@
+# Formatting style (clang-format version pinned in .pre-commit-config.yaml)
+BasedOnStyle: Google
+ColumnLimit: 120
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AlignTrailingComments:
+  Kind: Leave                        # keep hand-aligned comments (member/field tables)
+DerivePointerAlignment: false
+PointerAlignment: Left
+IncludeBlocks: Preserve

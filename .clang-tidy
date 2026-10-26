@@ -1,0 +1,42 @@
+# Static analysis (clang-tidy version pinned in .pre-commit-config.yaml). Run:
+#   pre-commit run clang-tidy --hook-stage manual --all-files
+# Off on purpose: narrowing conversions (int -> double is implicit by policy), magic numbers
+# (physics constants), trailing return types and use-auto (floating-point variables are declared
+# double), signed-bitwise (FFTW flags), enum-size and misc-const-correctness (noise).
+# Kept although frequent: implicit-widening-of-multiplication-result (int index products overflow
+# on production grids > 2^31 elements).
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-signed-bitwise,
+  performance-*,
+  -performance-enum-size,
+  cppcoreguidelines-owning-memory,
+  cppcoreguidelines-no-malloc,
+  modernize-make-unique,
+  modernize-make-shared,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-emplace,
+  openmp-use-default-none,
+  openmp-exception-escape,
+  readability-identifier-naming,
+  readability-function-cognitive-complexity,
+  readability-else-after-return,
+  readability-redundant-*
+WarningsAsErrors: '*'               # findings fail the pre-commit hook (else its output is hidden)
+HeaderFilterRegex: '.*/(src|tests|tools)/.*'
+CheckOptions:
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.FunctionIgnoredRegexp: '^(dsyevd_|PrintTo)$'   # LAPACK, GoogleTest
+  readability-identifier-naming.VariableCase: lower_case
+  readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.PrivateMemberCase: lower_case
+  readability-identifier-naming.PrivateMemberSuffix: _
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-function-cognitive-complexity.Threshold: 40

@@ -69,6 +69,16 @@ Useful CMake options:
 Performance notes, reproducibility across machines and the PGO workflow are in
 [docs/performance.md](docs/performance.md).
 
+### Formatting and linting
+clang-format runs as a git pre-commit hook; clang-tidy is run on demand. Both versions are pinned
+in `.pre-commit-config.yaml` and installed by pre-commit itself (no system packages needed):
+```bash
+pipx install pre-commit                                      # once per machine
+pre-commit install                                           # once per clone
+pre-commit run --all-files                                   # format everything
+pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build/compile_commands.json)
+```
+
 ## Running
 The program reads one JSON input file:
 ```bash
