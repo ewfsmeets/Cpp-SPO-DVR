@@ -58,7 +58,7 @@ struct InputParameters {
   double z_analysis = 7.0;              // Zana / ZAnalysis
   std::optional<int> j_analysis;        // JAna / jana (absent: determined by the program)
   std::optional<int> v_analysis;        // VAna / nviba (absent: determined by the program)
-  std::optional<int> diffraction_order_analysis;  // DifOrdAna / mdifa (absent: all orders)
+  std::optional<int> diffraction_order_analysis;  // DifOrdAna / mdifa (absent: all open orders)
   int n_energies = 41;                  // NrOfEs / nenrgy
   std::optional<double> z_analysis_specular;  // ZAnaSp / ZAnalysisSp
 

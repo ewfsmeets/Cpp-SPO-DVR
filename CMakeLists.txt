@@ -138,6 +138,7 @@ add_library(spodvr_core
   src/propagation/split_operator.cpp
   src/propagation/averages.cpp
   src/propagation/propagation.cpp
+  src/analysis/analysis_basis.cpp
   src/potential/hard_wall_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp
