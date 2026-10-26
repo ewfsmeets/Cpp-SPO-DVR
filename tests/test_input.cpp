@@ -177,6 +177,7 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ParityJ", [](Json& j) { j["JMax"] = 5; j["MJMax"] = 5; }, "JMax"},
         Violation{"ParityMJ", [](Json& j) { j["MJMax"] = 3; }, "MJMax"},
         Violation{"ProjOp0", [](Json& j) { j["ProjOp"] = 0; }, "ProjOp"},
+        Violation{"ProjOp1", [](Json& j) { j["ProjOp"] = 1; }, "ProjOp"},
         Violation{"ProjOp3", [](Json& j) { j["ProjOp"] = 3; }, "ProjOp"},
         Violation{"tStartNew", [](Json& j) { j["tStart"] = 10.0; j["tEnd"] = 14010.0; }, "tStart"},
         Violation{"tStartRestart", [](Json& j) { j["NewCalc"] = false; }, "tStart"},

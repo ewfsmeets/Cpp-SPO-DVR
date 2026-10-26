@@ -214,6 +214,10 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
   using fortran_compare::rlt;
 
   if (p.projection_operator == 0) throw InputError("ProjOp", "ProjOp = 0 is not supported anymore.");
+  // ProjOp = 1 (merge the specular wave into the scattering grid once the norm beyond the
+  // scattering grid drops below tolsp) is a legacy option of the Fortran code; not ported.
+  if (p.projection_operator == 1)
+    throw InputError("ProjOp", "ProjOp = 1 is a legacy option and not supported; use ProjOp = 2.");
 
   if (p.do_flux_analysis) {
     for (const char* key : {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"})
