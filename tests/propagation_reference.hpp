@@ -9,6 +9,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -29,8 +30,17 @@
 
 namespace spodvr::testing {
 
-// The Fortran prints these values with 8 decimals (E15.8): compare to that precision.
-constexpr double printed_tolerance = 1e-8;  // relative
+// The Fortran prints these values as E15.8, i.e. a mantissa 0.dddddddd: the C++ value must
+// agree to all printed digits, |c - f| <= half a unit in the 8th mantissa digit (the 1% margin
+// covers the decimal conversion of the printed value).
+inline double printed_half_unit(double fortran_value) {
+  if (fortran_value == 0.0) return 0.5e-8 * 1e-99;
+  const double exponent = std::floor(std::log10(std::abs(fortran_value))) + 1.0;
+  return 1.01 * 0.5 * std::pow(10.0, exponent - 8.0);
+}
+
+#define EXPECT_PRINTED_EQ(cpp_value, fortran_value) \
+  EXPECT_LE(std::abs((cpp_value) - (fortran_value)), printed_half_unit(fortran_value))
 
 struct FortranPropagationReference {
   double norm = 0.0;           // '* Norm initial wave packet (Z,r) ='
@@ -72,11 +82,23 @@ inline std::optional<Averages> parse_averages_row(const std::string& line) {
   }
 }
 
-inline std::optional<FortranPropagationReference> read_fortran_reference(const std::filesystem::path& stdout_file) {
+// Averages rows of a Fortran averages.out (only the table, no other output).
+inline std::vector<Averages> read_fortran_averages(const std::filesystem::path& averages_file) {
+  std::ifstream file(averages_file);
+  std::vector<Averages> rows;
+  std::string line;
+  while (std::getline(file, line))
+    if (const auto row = parse_averages_row(line)) rows.push_back(*row);
+  return rows;
+}
+
+// Initial wave-packet block from the Fortran stdout, the averages from averages.out
+// (the stdout also has five-column probability tables after the propagation).
+inline std::optional<FortranPropagationReference> read_fortran_reference(const std::filesystem::path& stdout_file,
+                                                                         const std::filesystem::path& averages_file) {
   std::ifstream file(stdout_file);
-  if (!file) return std::nullopt;
+  if (!file || !std::filesystem::exists(averages_file)) return std::nullopt;
   FortranPropagationReference ref;
-  bool in_averages = false;
   std::string line;
   while (std::getline(file, line)) {
     const auto has = [&](const char* text) { return line.find(text) != std::string::npos; };
@@ -87,17 +109,9 @@ inline std::optional<FortranPropagationReference> read_fortran_reference(const s
     else if (has("iLow =")) ref.i_low = std::stoi(last_token(line));
     else if (has("iHigh =")) ref.i_high = std::stoi(last_token(line));
     else if (has("* Norm of the initial wave packet between iLow and iHigh")) ref.norm_inside = parse_fortran_real(last_token(line));
-    else if (has("time") && has("norm") && has("rest norm")) in_averages = true;
-    else if (has("CPU TIMES")) in_averages = false;
-    else if (in_averages)
-      if (const auto row = parse_averages_row(line)) ref.averages.push_back(*row);
   }
+  ref.averages = read_fortran_averages(averages_file);
   return ref;
-}
-
-inline double relative_difference(double a, double b) {
-  if (a == b) return 0.0;
-  return std::abs(a - b) / std::max(std::abs(a), std::abs(b));
 }
 
 // The C++ run of a reference case, up to tEnd.
@@ -122,26 +136,31 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   return run;
 }
 
-// Gate 3: initial wave packet block and the averages table against the Fortran stdout.
+// Gate 3: initial wave packet block and the averages table against the Fortran output.
 inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropagationReference& ref) {
-  EXPECT_LE(relative_difference(cpp.initial.norm, ref.norm), printed_tolerance);
-  EXPECT_LE(relative_difference(cpp.initial.k_space_at_zero, ref.k_at_zero), printed_tolerance);
-  EXPECT_LE(relative_difference(cpp.initial.k_space_maximum, ref.k_maximum), printed_tolerance);
+  EXPECT_PRINTED_EQ(cpp.initial.norm, ref.norm);
+  EXPECT_PRINTED_EQ(cpp.initial.k_space_at_zero, ref.k_at_zero);
+  EXPECT_PRINTED_EQ(cpp.initial.k_space_maximum, ref.k_maximum);
   EXPECT_NEAR(cpp.initial.k_space_at_edge, ref.k_at_edge, 1e-15);  // ~0: only absolute makes sense
   EXPECT_EQ(cpp.initial.i_low + 1, ref.i_low);
   EXPECT_EQ(cpp.initial.i_high + 1, ref.i_high);
-  EXPECT_LE(relative_difference(cpp.initial.norm_inside, ref.norm_inside), printed_tolerance);
+  EXPECT_PRINTED_EQ(cpp.initial.norm_inside, ref.norm_inside);
 
   ASSERT_EQ(cpp.averages.size(), ref.averages.size());
+  double worst = 0.0;  // largest |c - f| in units of the printed half unit
   for (std::size_t i = 0; i < ref.averages.size(); ++i) {
     const Averages& c = cpp.averages[i];
     const Averages& f = ref.averages[i];
-    EXPECT_LE(relative_difference(c.time, f.time), printed_tolerance) << "row " << i;
-    EXPECT_LE(relative_difference(c.norm, f.norm), printed_tolerance) << "t = " << f.time;
-    EXPECT_LE(relative_difference(c.z_mean, f.z_mean), printed_tolerance) << "t = " << f.time;
-    EXPECT_LE(relative_difference(c.r_mean, f.r_mean), printed_tolerance) << "t = " << f.time;
-    EXPECT_LE(relative_difference(c.rest_norm, f.rest_norm), printed_tolerance) << "t = " << f.time;
+    EXPECT_PRINTED_EQ(c.time, f.time) << "row " << i;
+    EXPECT_PRINTED_EQ(c.norm, f.norm) << "t = " << f.time;
+    EXPECT_PRINTED_EQ(c.z_mean, f.z_mean) << "t = " << f.time;
+    EXPECT_PRINTED_EQ(c.r_mean, f.r_mean) << "t = " << f.time;
+    EXPECT_PRINTED_EQ(c.rest_norm, f.rest_norm) << "t = " << f.time;
+    for (const auto& [a, b] : {std::pair{c.norm, f.norm}, {c.z_mean, f.z_mean}, {c.r_mean, f.r_mean},
+                               {c.rest_norm, f.rest_norm}})
+      worst = std::max(worst, std::abs(a - b) / printed_half_unit(b));
   }
+  std::cout << "  largest deviation from the Fortran averages: " << worst << " x (half printed unit)\n";
 }
 
 }  // namespace spodvr::testing
