@@ -77,6 +77,7 @@ add_library(spodvr_core
   src/gasphase/gas_phase.cpp
   src/report/format.cpp
   src/report/sections.cpp
+  src/report/propagation_report.cpp
   src/app/cli.cpp
   src/app/run.cpp
 )

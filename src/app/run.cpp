@@ -1,9 +1,12 @@
-// Program driver: input -> grids -> potential -> gas-phase states -> output. Fortran: Main.f90
+// Program driver: input -> grids -> potential -> gas-phase states -> propagation -> output.
+// Fortran: Main.f90
 #include "app/run.hpp"
 
 #include <omp.h>
 
+#include <chrono>
 #include <filesystem>
+#include <vector>
 
 #include "core/error.hpp"
 #include "fft/fftw_fft.hpp"
@@ -15,11 +18,41 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "propagation/propagation.hpp"
+#include "report/propagation_report.hpp"
 #include "report/sections.hpp"
 
 namespace spodvr {
 
-// Fortran: Main.f90, up to and including SetupAsympWF (the complete nread = 6 run).
+namespace {
+
+// A new propagation (nread = 0) from tStart to tEnd; writes averages.dat.
+// Fortran: Main.f90 from SetupRDBasis to the end of the propagation loop
+void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
+                     const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
+                     const std::filesystem::path& output_dir) {
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft);
+  print_propagation_setup(out, style, grids, propagation);
+
+  const AveragesTable table(out, style);
+  table.print_header();
+  std::vector<Averages> averages;
+  const auto start = std::chrono::steady_clock::now();
+  propagation.run(
+      [&](const Averages& a) {
+        table.print_row(a);
+        averages.push_back(a);
+      },
+      [&](double z) { table.print_note("analysis surface on the specular grid fixed at Z = " + fixed(z, 6) + " bohr"); });
+  const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+
+  write_averages_file(output_dir / "averages.dat", averages);
+  out << "\n  Propagation time: " << fixed(elapsed.count(), 1) << " s\n";
+}
+
+}  // namespace
+
+// Fortran: Main.f90 (new runs and potential-only runs).
 int run_program(const CommandLine& command_line, std::ostream& out, std::ostream& err, bool color) {
   const Style style{color};
   try {
@@ -40,7 +73,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (config.derived.run_mode == 2)
       throw NotSupportedError("analysis-only runs (onlyAnalysis) are not implemented yet");
 
-    const PotentialGrid potential_grid = compute_potential_grid(*potential, config, grids, angular);
+    PotentialGrid potential_grid = compute_potential_grid(*potential, config, grids, angular);
     print_asymptotic_potential(out, style, config, grids, potential_grid);
 
     const FftwFft fft;
@@ -53,10 +86,15 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     write_gas_phase_file(command_line.output_dir / "gas_phase_states.dat", grids, gas);
     out << "\n  Data files written to " << command_line.output_dir.string() << "\n";
 
-    if (config.derived.run_mode != 6)
-      throw NotSupportedError("propagation is not implemented yet; only potential-only runs (\"Potential\": true) "
-                              "are supported");
-    out << '\n' << style.emphasis("Potential-only run finished.") << '\n';
+    if (config.derived.run_mode == 6) {
+      out << '\n' << style.emphasis("Potential-only run finished.") << '\n';
+      return 0;
+    }
+    if (config.derived.run_mode == 1)
+      throw NotSupportedError("restart runs (NewCalc = false) are not implemented yet");
+
+    run_propagation(out, style, config, grids, angular, std::move(potential_grid), gas, fft, command_line.output_dir);
+    out << '\n' << style.emphasis("Propagation finished (the asymptotic analysis is not implemented yet).") << '\n';
     return 0;
   } catch (const InputError& e) {
     err << style.warning("Input error") << ": " << e.what() << '\n';
