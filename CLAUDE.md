@@ -145,8 +145,9 @@ derived from exactly the same parameters.
    gate is needed.
 3. **Propagation** (`tests/test_regression_propagation.cpp`): initial wave-packet block
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
-   rest norm) against the Fortran stdout, to the 8 printed digits (relative 1e-8; the Fortran
-   prints E15.8 and is not patched). Default case `tests/reference/hardwall_short` (same as
+   rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
+   digits: |C++ − Fortran| ≤ half a unit in the 8th mantissa digit of E15.8 (the Fortran is not
+   patched). Passes for hardwall_short (all 21 rows). Default case `tests/reference/hardwall_short` (same as
    hardwall_small but 1000 steps); the full 7000-step hardwall_small run only with
    `SPODVR_LONG_TESTS=1`. The hard wall has no θ/φ/x/y coupling, so gate 3 only checks that the
    angular transform and x/y FFTs act as the identity there; their correctness rests on the
