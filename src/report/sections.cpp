@@ -108,6 +108,29 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
   table.print(out, style);
 }
 
+void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
+                           std::optional<std::size_t> physical_bytes) {
+  print_section(out, style, "MEMORY ESTIMATE");
+  Table table({"array", "values", "size", "note"});
+  for (const MemoryItem& item : estimate.items)
+    table.add_row({item.name, std::to_string(item.values), format_bytes(item.bytes), item.note});
+  table.print(out, style);
+  out << "\n";
+  KeyValueList list;
+  if (estimate.propagation_bytes == 0) {  // potential-only run
+    list.add("Total", format_bytes(estimate.setup_bytes));
+  } else {
+    list.add("Setting up the propagation", format_bytes(estimate.setup_bytes));
+    list.add("During the propagation", format_bytes(estimate.propagation_bytes));
+  }
+  list.add("Physical memory", physical_bytes ? format_bytes(*physical_bytes) : "unknown");
+  list.print(out, style);
+  out << "\n  Small tables and FFT plans are not included.\n";
+  if (physical_bytes && estimate.peak_bytes > *physical_bytes)
+    out << "  " << style.warning("Warning") << ": the run needs " << format_bytes(estimate.peak_bytes)
+        << ", more than the physical memory.\n";
+}
+
 void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                                 const PotentialGrid& potential) {
   const auto& units = units::legacy;

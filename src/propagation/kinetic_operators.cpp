@@ -16,15 +16,15 @@ const std::vector<cplx>& factors_for(const StepFactors& f, TimeStep step) {
   return step == TimeStep::Full ? f.full : f.half;
 }
 
-// Number of adjacent (irot, iy) values gathered per (r, Z) work unit: up to 4 (one 64-byte
-// cache line), and a divisor of n_roty so that all units have the same shape.
-int chunk_size(int n_roty) {
+bool is_one(const cplx& c) { return c.real() == 1.0 && c.imag() == 0.0; }
+
+}  // namespace
+
+int zr_chunk_size(int n_roty) {
   for (int c = std::min(4, n_roty); c > 1; --c)
     if (n_roty % c == 0) return c;
   return 1;
 }
-
-bool is_one(const cplx& c) { return c.real() == 1.0 && c.imag() == 0.0; }
 
 int xy_group_points(const ScatteringShape& shape) {
   constexpr std::size_t max_bytes = std::size_t(1) << 20;
@@ -34,14 +34,12 @@ int xy_group_points(const ScatteringShape& shape) {
   return 1;
 }
 
-}  // namespace
-
 // Fortran: KineticOp.f90 SetupFFTs, SetupScaleFactors
 ScatteringKineticOperator::ScatteringKineticOperator(const ScatteringShape& shape, const PropagationTables& tables,
                                                      const Fft& fft)
     : shape_(shape),
       tables_(tables),
-      chunk_(chunk_size(shape.n_rot * shape.ny)),
+      chunk_(zr_chunk_size(shape.n_rot * shape.ny)),
       shift_(!std::all_of(tables.shift_forward.begin(), tables.shift_forward.end(), is_one)),
       group_points_(xy_group_points(shape)) {
   // (r, Z) unit buffer: (e, ir, iz) with e = 0 .. chunk-1 fastest.

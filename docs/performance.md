@@ -56,6 +56,11 @@ header line.
   used and the memory is that of the real potential). Both paths give bitwise identical results.
 - Work arrays per thread are cache-sized: (r, Z) units of ≤ 4 adjacent (irot, iy) values,
   (x, y) groups of r points ≤ 1 MiB; the DVR work array of one (Z, r) point (as in the Fortran code).
+- The program prints a "MEMORY ESTIMATE" block before it computes the potential
+  (`propagation/memory_estimate.*`): the size of each large array, the total while the propagation
+  is set up (potential and exp(−iV dt) table exist together) and during the time loop, and the
+  physical memory, with a warning if the run does not fit. Small tables and FFT plans are not
+  counted; the medium grid estimate (5.0 GiB) matches the measured peak resident size (4.99 GiB).
 
 ## Threads
 - Use all hardware threads: on the 8-core/16-thread Ryzen 5800X, 16 threads are ~20% faster than 8.

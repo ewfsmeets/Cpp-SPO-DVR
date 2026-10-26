@@ -15,6 +15,7 @@
 #include "core/error.hpp"
 #include "core/numerical_libraries.hpp"
 #include "core/real_compare.hpp"
+#include "core/system_memory.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -26,6 +27,7 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 #include "report/analysis_files.hpp"
 #include "report/analysis_report.hpp"
@@ -199,6 +201,8 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
 
     if (config.derived.run_mode == 2)
       throw NotSupportedError("analysis-only runs (onlyAnalysis) are not implemented yet");
+    print_memory_estimate(out, style, estimate_memory(config, grids, angular, omp_get_max_threads()),
+                          physical_memory_bytes());
 
     PotentialGrid potential_grid = compute_potential_grid(*potential, config, grids, angular);
     print_asymptotic_potential(out, style, config, grids, potential_grid);

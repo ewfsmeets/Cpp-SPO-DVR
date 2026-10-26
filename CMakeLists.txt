@@ -115,6 +115,7 @@ endif()
 add_library(spodvr_core
   src/core/machine_epsilon.cpp
   src/core/numerical_libraries.cpp
+  src/core/system_memory.cpp
   src/input/json_input.cpp
   src/input/validate.cpp
   src/input/process.cpp
@@ -138,6 +139,7 @@ add_library(spodvr_core
   src/propagation/split_operator.cpp
   src/propagation/averages.cpp
   src/propagation/propagation.cpp
+  src/propagation/memory_estimate.cpp
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
   src/analysis/s_matrix.cpp

@@ -2,6 +2,7 @@
 #include "report/format.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 
 namespace spodvr {
@@ -27,6 +28,18 @@ std::string Style::warning(std::string_view text) const { return wrap(color, "1;
 
 std::string full_precision(double x) { return format("%.*e", 16, x); }
 std::string fixed(double x, int decimals) { return format("%.*f", decimals, x); }
+
+std::string format_bytes(std::size_t bytes) {
+  if (bytes < 1024) return std::to_string(bytes) + " B";
+  const std::array<std::string, 4> units = {"KiB", "MiB", "GiB", "TiB"};
+  double size = static_cast<double>(bytes) / 1024.0;
+  int unit = 0;
+  while (size >= 1024.0 && unit < 3) {
+    size = size / 1024.0;
+    unit = unit + 1;
+  }
+  return fixed(size, 1) + " " + units[unit];
+}
 std::string scientific(double x, int decimals) { return format("%.*e", decimals, x); }
 
 void print_section(std::ostream& out, const Style& style, std::string_view title) {

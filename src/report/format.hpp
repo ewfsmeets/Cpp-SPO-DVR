@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -21,6 +22,8 @@ struct Style {
 // Fixed or scientific formatting with the given number of significant/decimal digits.
 [[nodiscard]] std::string fixed(double x, int decimals);
 [[nodiscard]] std::string scientific(double x, int decimals);
+// Memory size in binary units: "512 B", "3.2 MiB", "4.0 GiB".
+[[nodiscard]] std::string format_bytes(std::size_t bytes);
 
 // Section header with a rule above and below.
 void print_section(std::ostream& out, const Style& style, std::string_view title);

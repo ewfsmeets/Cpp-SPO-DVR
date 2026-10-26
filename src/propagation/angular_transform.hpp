@@ -28,7 +28,9 @@ class AngularTransform {
   [[nodiscard]] int n_theta() const { return n_theta_; }
   [[nodiscard]] int n_phi() const { return n_phi_; }
   [[nodiscard]] int leading_dimension() const { return n_phi_ + 1; }
-  [[nodiscard]] int dvr_block_size() const { return (n_phi_ + 1) * n_theta_; }
+  [[nodiscard]] int dvr_block_size() const { return dvr_block_size(n_theta_, n_phi_); }
+  // Size of one DVR block (with padding) for a grid of n_theta x n_phi points.
+  [[nodiscard]] static int dvr_block_size(int n_theta, int n_phi) { return (n_phi + 1) * n_theta; }
   [[nodiscard]] int fbr_size() const { return n_rot_; }
   [[nodiscard]] int n_columns() const { return n_columns_; }
 

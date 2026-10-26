@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <ostream>
 
 #include "gasphase/gas_phase.hpp"
@@ -8,6 +10,7 @@
 #include "grids/spatial_grids.hpp"
 #include "input/config.hpp"
 #include "potential/potential_grid.hpp"
+#include "propagation/memory_estimate.hpp"
 #include "report/format.hpp"
 
 namespace spodvr {
@@ -16,6 +19,9 @@ namespace spodvr {
 void print_input_summary(std::ostream& out, const Style& style, const Config& config);
 void print_grids(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                  const AngularGrid& angular);
+// The expected memory, with a warning if the peak exceeds the physical memory (if known).
+void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
+                           std::optional<std::size_t> physical_bytes);
 void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                                 const PotentialGrid& potential);
 void print_gas_phase(std::ostream& out, const Style& style, const Config& config, const GasPhase& gas);
