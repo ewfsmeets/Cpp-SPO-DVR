@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "app/banner.hpp"
 #include "app/cli.hpp"
 #include "app/run.hpp"
 
@@ -19,7 +20,7 @@ int main(int argc, char** argv) {
     return 2;
   }
   if (command_line.help) {
-    std::cout << spodvr::usage();
+    std::cout << spodvr::banner << '\n' << spodvr::usage();
     return 0;
   }
   if (command_line.version) {

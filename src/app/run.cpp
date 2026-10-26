@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/banner.hpp"
 #include "core/error.hpp"
 #include "core/numerical_libraries.hpp"
 #include "core/real_compare.hpp"
@@ -181,6 +182,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
   try {
     if (command_line.threads) omp_set_num_threads(*command_line.threads);
 
+    out << banner << '\n';
     out << style.emphasis("SPO-DVR (C++) version " SPODVR_VERSION) << "  -  " << omp_get_max_threads()
         << " OpenMP thread(s)\n";
     out << "  " << numerical_libraries_summary() << '\n';
