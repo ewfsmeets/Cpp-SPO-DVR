@@ -208,7 +208,7 @@ TEST(SplitOperator, AnalysisStepKeepsTheNormAndDoesNotDependOnThreads) {
   // One analysis step (5 time steps) of the initial wave packet: no norm reaches an absorber
   // yet, and the result must be bitwise identical for 1 and 4 threads.
   const OperatorSetup& s = reference_setup();
-  std::vector<double> potential = s.potential.values;
+  AlignedVector<double> potential = s.potential.values;
   premultiply_with_time_step(potential, s.config.input.time_step);
   const int ichn = s.basis.initial_index();
   const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);
@@ -266,7 +266,7 @@ TEST(Averages, NormAndMeanPositionsOfASimpleState) {
 
 TEST(PotentialOperator, PrecomputedAndOnTheFlyExponentialsAreBitwiseIdentical) {
   const OperatorSetup& s = reference_setup();
-  std::vector<double> potential = s.potential.values;
+  AlignedVector<double> potential = s.potential.values;
   premultiply_with_time_step(potential, s.config.input.time_step);
   const int ichn = s.basis.initial_index();
   const PotentialOperator precomputed(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential);
@@ -288,7 +288,7 @@ TEST(SplitOperator, FusedPerPointStageEqualsStageByStage) {
   // The propagator applies T_xy and V per (Z, r) point in one pass; applying the two stages
   // over the whole wave function one after the other must give the same bits.
   const OperatorSetup& s = reference_setup();
-  std::vector<double> potential = s.potential.values;
+  AlignedVector<double> potential = s.potential.values;
   premultiply_with_time_step(potential, s.config.input.time_step);
   const int ichn = s.basis.initial_index();
   const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);

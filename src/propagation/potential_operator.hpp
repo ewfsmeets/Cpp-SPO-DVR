@@ -5,6 +5,7 @@
 #include <span>
 #include <vector>
 
+#include "core/aligned_vector.hpp"
 #include "propagation/angular_transform.hpp"
 #include "propagation/kinetic_operators.hpp"
 #include "propagation/propagation_tables.hpp"
@@ -58,7 +59,7 @@ class PotentialOperator {
   std::vector<std::complex<double>> before_interaction_;  // (irot, ir): exp(-V_opt,r dt) rot(dt/2)
   std::vector<std::complex<double>> gas_phase_step_;      // (irot, ir): ... rot exp(-i vasy dt) rot
   std::span<const double> potential_;              // A = -V dt (when not precomputed)
-  std::vector<std::complex<double>> exp_potential_;  // exp(i A) (when precomputed)
+  ComplexVector exp_potential_;                    // exp(i A) (when precomputed)
 };
 
 }  // namespace spodvr

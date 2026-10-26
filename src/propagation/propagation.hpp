@@ -49,7 +49,7 @@ class WavePacketPropagation {
   RotationalBasis basis_;
   AngularTransform transform_;
   PropagationTables tables_;
-  std::vector<double> premultiplied_potential_;  // -V dt. Fortran: vdvr
+  AlignedVector<double> premultiplied_potential_;  // -V dt. Fortran: vdvr
   ScatteringKineticOperator kinetic_;
   PotentialOperator potential_;
   SpecularOperator specular_;

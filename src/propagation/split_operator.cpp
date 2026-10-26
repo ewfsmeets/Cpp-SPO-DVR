@@ -27,24 +27,23 @@ void SplitOperatorPropagator::propagate_analysis_step(WavePacket& psi) const {
   apply_xy_and_potential(psi, TimeStep::Half, true);
 }
 
-// Fortran: SplitOperator.f90 KineticAndPotentialOp. Processed per Z value: T_xy for its nr
-// points at once, then V point by point, while the data are in cache.
+// Fortran: SplitOperator.f90 KineticAndPotentialOp. Processed in groups of consecutive (Z, r)
+// points: T_xy for the group at once, then V point by point, while the data are in cache.
 void SplitOperatorPropagator::apply_xy_and_potential(WavePacket& psi, TimeStep step, bool kinetic_only) const {
-  const int nr = psi.specular.n_r();
+  const int group_points = kinetic_.group_points();
   const std::size_t block_size = psi.scattering.block_size();
 #pragma omp parallel
   {
     ComplexVector xy_work(kinetic_.group_work_size());
     ComplexVector potential_work(potential_.work_size());
 #pragma omp for schedule(static)
-    for (int iz = 0; iz < psi.scattering.n_blocks() / nr; ++iz) {
-      kinetic_.apply_xy_group(std::span(psi.scattering.values).subspan(block_size * nr * iz, block_size * nr), step,
-                              xy_work);
+    for (int g = 0; g < psi.scattering.n_blocks() / group_points; ++g) {
+      const int first = g * group_points;
+      kinetic_.apply_xy_group(std::span(psi.scattering.values).subspan(block_size * first, block_size * group_points),
+                              step, xy_work);
       if (kinetic_only) continue;
-      for (int ir = 0; ir < nr; ++ir) {
-        const int izr = ir + nr * iz;
+      for (int izr = first; izr < first + group_points; ++izr)
         potential_.apply_block(izr, psi.scattering.block(izr), psi.specular, potential_work);
-      }
     }
   }
 }

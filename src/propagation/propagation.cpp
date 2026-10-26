@@ -12,7 +12,7 @@ ScatteringShape scattering_shape(const Config& config, const RotationalBasis& ba
   return {basis.size(), p.nx, p.ny, p.nr, p.nz};
 }
 
-std::vector<double> premultiplied(PotentialGrid potential, double time_step) {
+AlignedVector<double> premultiplied(PotentialGrid potential, double time_step) {
   premultiply_with_time_step(potential.values, time_step);
   return std::move(potential.values);
 }

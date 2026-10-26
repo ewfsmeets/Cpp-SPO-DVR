@@ -11,6 +11,7 @@ endif()
 
 option(SPODVR_WARNINGS_AS_ERRORS "Treat compiler warnings as errors (CI)" OFF)
 option(SPODVR_BUILD_TESTS "Build the unit and regression tests" ON)
+option(SPODVR_POISON_UNINITIALISED "Debug: fill uninitialised AlignedVector elements with NaN" OFF)
 
 # ---------------------------------------------------------------------------------------------
 # Dependencies
@@ -136,6 +137,9 @@ add_library(spodvr_core
 )
 target_include_directories(spodvr_core PUBLIC src)
 target_compile_definitions(spodvr_core PUBLIC SPODVR_VERSION="${PROJECT_VERSION}")
+if(SPODVR_POISON_UNINITIALISED)
+  target_compile_definitions(spodvr_core PUBLIC SPODVR_POISON_UNINITIALISED)
+endif()
 target_link_libraries(spodvr_core
   PUBLIC nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
   PRIVATE spodvr_warnings spodvr_fp)

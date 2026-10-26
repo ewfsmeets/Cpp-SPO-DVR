@@ -1,8 +1,11 @@
-// Tests: constants, unit conversion, machine epsilon and the Fortran real comparisons.
+// Tests: constants, unit conversion, machine epsilon, the Fortran real comparisons and the
+// aligned vector.
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
 
+#include "core/aligned_vector.hpp"
 #include "core/constants.hpp"
 #include "core/machine_epsilon.hpp"
 #include "core/real_compare.hpp"
@@ -43,4 +46,17 @@ TEST(Core, FortranComparisonsUseAbsoluteTolerance) {
   EXPECT_TRUE(rle(1.0 + 5e-13, 1.0));
   EXPECT_TRUE(seq("  HardWallPES ", "hardwallpes"));
   EXPECT_FALSE(seq("HardWallPES", "HardWall"));
+}
+
+TEST(AlignedVector, AlignedAndPoisonedInDebugBuilds) {
+  spodvr::AlignedVector<double> v(5);
+  spodvr::ComplexVector c(3);
+  EXPECT_EQ(reinterpret_cast<std::uintptr_t>(v.data()) % 64, 0u);
+  EXPECT_EQ(reinterpret_cast<std::uintptr_t>(c.data()) % 64, 0u);
+#ifdef SPODVR_POISON_UNINITIALISED
+  EXPECT_TRUE(std::isnan(v[2]));
+  EXPECT_TRUE(std::isnan(c[1].imag()));
+#endif
+  const spodvr::AlignedVector<double> filled(4, 1.5);  // explicit values are constructed
+  EXPECT_EQ(filled[3], 1.5);
 }

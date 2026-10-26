@@ -3,6 +3,7 @@
 #include <span>
 #include <vector>
 
+#include "core/aligned_vector.hpp"
 #include "core/array_index.hpp"
 #include "grids/angular_grid.hpp"
 #include "grids/spatial_grids.hpp"
@@ -17,7 +18,7 @@ namespace spodvr {
 // Fortran: Potential.f90 vdvr (before PremultiplyWithTimestep) and GlobalData vasy
 struct PotentialGrid {
   Index3D index;                // extents (ntheta*nphi, nx*ny, nzpot*nr)
-  std::vector<double> values;   // Fortran: vdvr
+  AlignedVector<double> values;  // Fortran: vdvr (first touch in parallel, see AlignedAllocator)
   std::vector<double> asymptotic;  // V(r) at Z = zasymp, theta = pi/2 (hartree). Fortran: vasy
 
   [[nodiscard]] double operator()(std::size_t itp, std::size_t ixy, std::size_t izr) const {

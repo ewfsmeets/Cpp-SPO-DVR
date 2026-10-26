@@ -71,7 +71,7 @@ PotentialGrid compute_potential_grid(const Potential& potential, const Config& c
   const int n_zr = grids.nz_potential * nr;
 
   PotentialGrid grid{Index3D(n_theta * n_phi, nx * ny, n_zr), {}, {}};
-  grid.values.resize(grid.index.size());
+  grid.values.resize(grid.index.size());  // uninitialised; every element is written below
 
   // Every (Z, r) block is filled independently, so the result does not depend on the threads.
 #pragma omp parallel for schedule(static)

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <complex>
+#include <cstddef>
 #include <span>
 #include <vector>
 
@@ -16,7 +18,14 @@ struct ScatteringWave {
   Index3D index;
   ComplexVector values;  // 64-byte aligned (fast SIMD FFTs)
 
-  ScatteringWave(int n_rot, int n_xy, int n_zr) : index(n_rot, n_xy, n_zr), values(index.size()) {}
+  // Zero wave function. Initialised in parallel, block by block (first touch, see
+  // AlignedAllocator).
+  ScatteringWave(int n_rot, int n_xy, int n_zr) : index(n_rot, n_xy, n_zr), values(index.size()) {
+    const std::size_t block = index.n0 * index.n1;
+#pragma omp parallel for schedule(static)
+    for (int izr = 0; izr < n_zr; ++izr)
+      std::fill_n(values.begin() + static_cast<std::ptrdiff_t>(block * izr), block, std::complex<double>(0.0, 0.0));
+  }
 
   [[nodiscard]] int block_size() const { return static_cast<int>(index.n0 * index.n1); }
   [[nodiscard]] int n_blocks() const { return static_cast<int>(index.n2); }
@@ -34,7 +43,7 @@ struct SpecularWave {
   Index2D index;
   ComplexVector values;  // 64-byte aligned (fast SIMD FFTs)
 
-  SpecularWave(int n_r, int n_z) : index(n_r, n_z), values(index.size()) {}
+  SpecularWave(int n_r, int n_z) : index(n_r, n_z), values(index.size(), std::complex<double>(0.0, 0.0)) {}
 
   [[nodiscard]] int n_r() const { return static_cast<int>(index.n0); }
   [[nodiscard]] int n_z() const { return static_cast<int>(index.n1); }
