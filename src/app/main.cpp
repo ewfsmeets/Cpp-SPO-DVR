@@ -1,3 +1,4 @@
+// Program entry point: parses the command line and runs the calculation.
 #include <unistd.h>
 
 #include <iostream>

@@ -1,3 +1,4 @@
+// Tests: FFT sizes and the FFTW backend against a naive DFT (signs, scales, strides).
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -67,16 +68,16 @@ TEST(Fftw, StridedBatchedComplex) {
   // 3 transforms of length 8 interleaved: element n of transform b at b + 3*n.
   const int n = 8;
   const int howmany = 3;
-  std::vector<cplx> data(static_cast<std::size_t>(n * howmany));
+  std::vector<cplx> data((n * howmany));
   for (std::size_t i = 0; i < data.size(); ++i) data[i] = cplx(static_cast<double>(i % 5), static_cast<double>(i % 3));
   std::vector<cplx> y = data;
   fft.plan_complex({n, howmany, howmany, 1}, FftSign::Plus, 1.0)->execute(y);
   for (int b = 0; b < howmany; ++b) {
-    std::vector<cplx> x(static_cast<std::size_t>(n));
-    for (int i = 0; i < n; ++i) x[static_cast<std::size_t>(i)] = data[static_cast<std::size_t>(b + howmany * i)];
+    std::vector<cplx> x(n);
+    for (int i = 0; i < n; ++i) x[i] = data[(b + howmany * i)];
     const auto ref = naive_dft(x, 1.0, 1.0);
     for (int k = 0; k < n; ++k)
-      EXPECT_NEAR(std::abs(y[static_cast<std::size_t>(b + howmany * k)] - ref[static_cast<std::size_t>(k)]), 0.0, 1e-13);
+      EXPECT_NEAR(std::abs(y[(b + howmany * k)] - ref[k]), 0.0, 1e-13);
   }
 }
 
@@ -90,7 +91,7 @@ TEST(Fftw, RealToComplexSignConventions) {
     fft.plan_real_to_complex({n}, {n}, sign, 2.0)->execute(x, y);
     const auto ref = naive_dft(xc, s, 2.0);
     for (int k = 0; k <= n / 2; ++k)
-      EXPECT_NEAR(std::abs(y[static_cast<std::size_t>(k)] - ref[static_cast<std::size_t>(k)]), 0.0, 1e-12);
+      EXPECT_NEAR(std::abs(y[k] - ref[k]), 0.0, 1e-12);
   }
 }
 
@@ -100,8 +101,8 @@ TEST(Fftw, RoundTripLikeFortranInverse) {
   const FftwFft fft;
   const int n = 14;
   const int howmany = 2;
-  std::vector<double> x = test_signal(static_cast<std::size_t>(n * howmany), 0.4);
-  std::vector<cplx> y(static_cast<std::size_t>((n / 2 + 1) * howmany));
+  std::vector<double> x = test_signal((n * howmany), 0.4);
+  std::vector<cplx> y(((n / 2 + 1) * howmany));
   const FftLayout real_layout{n, howmany, 1, n};
   const FftLayout half_layout{n, howmany, 1, n / 2 + 1};
   fft.plan_real_to_complex(real_layout, half_layout, FftSign::Plus, 1.0)->execute(x, y);

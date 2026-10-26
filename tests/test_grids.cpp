@@ -1,3 +1,4 @@
+// Tests: uniform, momentum, Gauss-Legendre, angular and spatial grids.
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -37,8 +38,8 @@ TEST(MomentumGrid, FftOrderingAndEnergies) {
   EXPECT_EQ(g.spacing(), dk);
   const double expected_k[] = {0, dk, 2 * dk, 3 * dk, 4 * dk, -3 * dk, -2 * dk, -dk};
   for (int i = 0; i < 8; ++i) {
-    EXPECT_DOUBLE_EQ(g.k()[static_cast<std::size_t>(i)], expected_k[i]);
-    EXPECT_DOUBLE_EQ(g.kinetic_energies()[static_cast<std::size_t>(i)], 0.25 * expected_k[i] * expected_k[i]);
+    EXPECT_DOUBLE_EQ(g.k()[i], expected_k[i]);
+    EXPECT_DOUBLE_EQ(g.kinetic_energies()[i], 0.25 * expected_k[i] * expected_k[i]);
   }
   EXPECT_DOUBLE_EQ(g.max_kinetic_energy(), 0.25 * 16 * dk * dk);
 }
@@ -49,9 +50,33 @@ TEST(GaussLegendre, IntegratesPolynomialsExactly) {
     for (int p = 0; p <= 2 * order - 1; ++p) {
       double sum = 0.0;
       for (int i = 0; i < order; ++i)
-        sum += rule.weights[static_cast<std::size_t>(i)] * std::pow(rule.roots[static_cast<std::size_t>(i)], p);
+        sum += rule.weights[i] * std::pow(rule.roots[i], p);
       const double exact = p % 2 == 1 ? 0.0 : 2.0 / (p + 1);
       EXPECT_NEAR(sum, exact, 1e-14) << "order " << order << " power " << p;
+    }
+  }
+}
+
+// For |mj| > 0 the rule is Gauss-Gegenbauer: it integrates (1 - x^2)^|mj| * x^p exactly for
+// p <= 2*order - 1 (the weight function is included in the weights).
+TEST(GaussLegendre, AssociatedRuleIntegratesWithWeightFunction) {
+  for (const int mj : {1, 2, 3}) {
+    for (int order = 2; order <= 8; ++order) {
+      const auto rule = gauss_associated_legendre(-1.0, 1.0, order, mj);
+      for (int p = 0; p <= 2 * order - 1; ++p) {
+        double sum = 0.0;
+        for (int i = 0; i < order; ++i) sum += rule.weights[i] * std::pow(rule.roots[i], p);
+        // integral of (1 - x^2)^mj x^p over [-1, 1], by expanding (1 - x^2)^mj
+        double exact = 0.0;
+        if (p % 2 == 0) {
+          double binomial = 1.0;
+          for (int k = 0; k <= mj; ++k) {
+            exact += binomial * (k % 2 == 0 ? 1.0 : -1.0) * 2.0 / (p + 2 * k + 1);
+            binomial = binomial * (mj - k) / (k + 1);
+          }
+        }
+        EXPECT_NEAR(sum, exact, 1e-13) << "mj " << mj << " order " << order << " power " << p;
+      }
     }
   }
 }

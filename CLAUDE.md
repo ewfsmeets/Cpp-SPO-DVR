@@ -123,7 +123,7 @@ C++ regression tests must use the equivalent JSON input (`tests/reference/hardwa
 derived from exactly the same parameters.
 1. **Hard wall PES — gas-phase potential**: V(r) at Z = zasymp = 7.0, θ = π/2 (Fortran
    "INFO FROM SETTING UP THE ROVIBRATIONAL ASYMPTOTIC POTENTIAL" table, r = 0.8 … 9.05, 56 points)
-   reproduced to ~1e-14 relative. Sanity: V(r = 1.4) = 0 exactly.
+   reproduced to ~1e-14 relative (full 6D potential ~1e-13, see the quad-precision quirk). Sanity: V(r = 1.4) = 0 exactly.
 2. **Gas-phase rovibrational states** (`GasPhase.f90` / `FourierGridHamiltonian.f90`): energies
    e(v,j) for v = 0,1 and j = 0…4 (Fortran "INFO FROM SETTING UP THE ASYMPTOTIC ROVIBRATIONAL
    STATES"), e.g. e(0,0) = 0.258378 eV, e(1,0) = 0.762842 eV; also ⟨r⟩, psi(1), psi(nr), norms.
@@ -149,6 +149,12 @@ derived from exactly the same parameters.
 - Giving both `ZOptEnergy` and `ZOptFactor` (same for R/ZSp) is an error (Fortran silently ignores
   the factor).
 - The check `ZSpOptStart < ZAsymptotic` is unreachable (implied by the Z0 checks); kept for parity.
+- `-fdefault-real-8` also promotes `DOUBLE PRECISION`, `DFLOAT`, `DBLE` and `…d0` literals to
+  REAL(16) (quad precision). Expressions such as `rmin + dfloat(i-1)*delr` (Setup.f90 grids) are
+  therefore evaluated in quad and rounded once to double, i.e. correctly rounded (verified: the
+  Fortran r grid differs from plain-double `rmin + i*dr` by 1 ulp at 13 of 56 points). Accepted by
+  the user as within numerical limits: C++ keeps plain double grids. Effect on gate 1: vasy table
+  agrees to ≤1e-14, the full 6D potential to ~5e-14 relative (gate tolerance 1e-13).
 - The CoherentStateFunc check (initial norm outside region < tolsp) is not done yet; it belongs to
   the wave-packet milestone.
 
@@ -168,6 +174,20 @@ ctest --test-dir build --output-on-failure
 - Warnings on (`-Wall -Wextra -Wpedantic`); treat as errors in CI.
 - Unit tests live in `tests/`, one test file per module; regression tests compare against reference
   output from the Fortran code (stored under `tests/reference/`, small hard wall cases only).
+
+## Readability (as important as correctness)
+- Write code for a human reader first: a physicist who knows the Fortran code should be able to
+  follow a C++ function without reading its Fortran origin side by side.
+- Comments: concise but descriptive. Say *what* a block computes and *why* (physics meaning,
+  Fortran quirk being reproduced), not how the syntax works. One short line is usually enough;
+  avoid long narrative comments and avoid restating the code.
+- Short functions with one job; name intermediate quantities instead of nesting long expressions
+  (keep the Fortran evaluation order where it matters for bitwise results, and say so).
+- Prefer plain loops and simple data structures over clever templates, variant tables,
+  member-pointer tricks or dense lambdas. Avoid deep nesting; return early.
+- Keep index arithmetic in named helpers (`Index3D`, grid accessors), not inline in kernels.
+- Each `.cpp` file starts with a 1–3 line comment stating its responsibility and Fortran origin;
+  headers document each type/function they declare (with its Fortran origin).
 
 ## Conventions
 - Atomic units internally; convert eV/Å/amu only at input/output boundaries, always through

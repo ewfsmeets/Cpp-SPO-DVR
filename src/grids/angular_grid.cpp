@@ -1,3 +1,4 @@
+// (theta, phi) DVR grid. Fortran: setupdvr.f90 SetupDVRProj, angulargrid.f90 InitAngularGrid
 #include "grids/angular_grid.hpp"
 
 #include <cmath>
@@ -25,7 +26,7 @@ AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in
 
   // Number of phi points. Fortran: setupdvr.f90 Setup_FFTSize, Setup_dPhi
   const int n_phi = nearest_fft_size(2 * mj_max_basis + 1, num_phis_multiple);
-  d_phi_ = Constants::two_pi / static_cast<double>(n_phi);
+  d_phi_ = Constants::two_pi / n_phi;
 
   // Fortran: transform.f90 InitGenComplexTransform silently returns in these cases; here they
   // are hard errors.
@@ -51,11 +52,11 @@ AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in
     delta_j_ = 1;
   }
 
-  phis_.resize(static_cast<std::size_t>(n_phi));
-  for (int i = 0; i < n_phi; ++i) phis_[static_cast<std::size_t>(i)] = static_cast<double>(i) * d_phi_;
+  phis_.resize(n_phi);
+  for (int i = 0; i < n_phi; ++i) phis_[i] = i * d_phi_;
 
   const QuadratureRule rule = gauss_associated_legendre(1.0, -1.0, j_max_ + 1, 0);
-  thetas_.resize(static_cast<std::size_t>(n_theta));
+  thetas_.resize(n_theta);
   weights_.assign(rule.weights.begin(), rule.weights.begin() + n_theta);
 
   double norm = -1.0;

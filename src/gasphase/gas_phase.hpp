@@ -1,7 +1,9 @@
+// Rovibrational states of the free molecule (the asymptotic channels). Fortran: GasPhase.f90
 #pragma once
 
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "fft/fft.hpp"
@@ -13,35 +15,29 @@
 namespace spodvr {
 
 // Rovibrational eigenstates of the free molecule for j = 0 .. JMax and all nr vibrational
-// levels. Wave functions are stored in the Fortran order (ir, j, iv). Atomic units.
+// levels. Wave functions are stored in the Fortran order (ir, j, v). Atomic units.
 // Fortran: GasPhase.f90 eivaa(0:jmaxw, nr), eivea(nr, 0:jmaxw, nr)
 class RovibrationalStates {
  public:
   RovibrationalStates(int n_r, int j_max)
-      : n_r_(n_r), j_max_(j_max),
-        energies_(static_cast<std::size_t>(n_r) * static_cast<std::size_t>(j_max + 1)),
-        wave_functions_(energies_.size() * static_cast<std::size_t>(n_r)) {}
+      : n_r_(n_r), j_max_(j_max), energies_(n_r * (j_max + 1)), wave_functions_(n_r * n_r * (j_max + 1)) {}
 
   [[nodiscard]] int n_r() const { return n_r_; }
   [[nodiscard]] int j_max() const { return j_max_; }
-  [[nodiscard]] int n_v() const { return n_r_; }
+  [[nodiscard]] int n_v() const { return n_r_; }  // one vibrational level per r grid point
 
-  [[nodiscard]] double energy(int v, int j) const { return energies_[energy_index(v, j)]; }
-  double& energy(int v, int j) { return energies_[energy_index(v, j)]; }
+  [[nodiscard]] double energy(int v, int j) const { return energies_[state_index(v, j)]; }
+  double& energy(int v, int j) { return energies_[state_index(v, j)]; }
+
   [[nodiscard]] std::span<const double> wave_function(int v, int j) const {
-    return std::span<const double>(wave_functions_).subspan(wave_function_offset(v, j), static_cast<std::size_t>(n_r_));
+    return std::span<const double>(wave_functions_).subspan(n_r_ * state_index(v, j), n_r_);
   }
   std::span<double> wave_function(int v, int j) {
-    return std::span<double>(wave_functions_).subspan(wave_function_offset(v, j), static_cast<std::size_t>(n_r_));
+    return std::span<double>(wave_functions_).subspan(n_r_ * state_index(v, j), n_r_);
   }
 
  private:
-  [[nodiscard]] std::size_t energy_index(int v, int j) const {
-    return static_cast<std::size_t>(j) + static_cast<std::size_t>(j_max_ + 1) * static_cast<std::size_t>(v);
-  }
-  [[nodiscard]] std::size_t wave_function_offset(int v, int j) const {
-    return static_cast<std::size_t>(n_r_) * energy_index(v, j);
-  }
+  [[nodiscard]] std::size_t state_index(int v, int j) const { return j + (j_max_ + 1) * v; }
 
   int n_r_;
   int j_max_;
@@ -61,21 +57,27 @@ struct RovibrationalStateSummary {
   double r_mean;            // sum r psi^2 * dr
 };
 
-struct GasPhase {
-  RovibrationalStates states;
-  int n_v_analysis;         // number of vibrational levels analysed. Fortran: nviba (ivmaxAnalysis)
-  int j_max_analysis;       // highest j analysed. Fortran: jana (jmaxAnalysis)
-  int v_max_open;           // Fortran: ivmaxAnalysis (count of open vibrational levels)
-  int j_max_open;           // Fortran: jmaxAnalysis
-  std::vector<RovibrationalStateSummary> summary;  // v < n_v_analysis, j = 0 .. JMax
+// Expectation values of the initial rovibrational state (vin, jin), hartree / bohr.
+// Fortran: eviroi, vpotin, erotin, evibin, ekvroi, rinvj
+struct InitialStateProperties {
+  double energy = 0.0;
+  double potential_energy = 0.0;
+  double rotational_energy = 0.0;
+  double vibrational_energy = 0.0;               // energy - potential - rotational
+  double rovibrational_kinetic_energy = 0.0;     // vibrational + rotational
+  double r_mean = 0.0;
+};
 
-  // Initial state (vin, jin). Fortran: eviroi, vpotin, erotin, evibin, ekvroi, rinvj
-  double initial_energy;
-  double initial_potential_energy;
-  double initial_rotational_energy;
-  double initial_vibrational_energy;
-  double initial_rovibrational_kinetic_energy;
-  double initial_r_mean;
+struct GasPhase {
+  explicit GasPhase(RovibrationalStates solved_states) : states(std::move(solved_states)) {}
+
+  RovibrationalStates states;
+  int v_max_open = 0;       // number of open vibrational levels. Fortran: ivmaxAnalysis
+  int j_max_open = 0;       // highest open j. Fortran: jmaxAnalysis
+  int n_v_analysis = 0;     // number of vibrational levels analysed. Fortran: nviba
+  int j_max_analysis = 0;   // highest j analysed. Fortran: jana
+  std::vector<RovibrationalStateSummary> summary;  // v < n_v_analysis, j = 0 .. JMax
+  InitialStateProperties initial;
 
   std::vector<double> vibrational_energies;  // E(v,0) - E(0,0), v < n_v_analysis. Fortran: aevib
   std::vector<double> rotational_energies;   // E(0,j) - E(0,0), j = 0..JMax. Fortran: aerot

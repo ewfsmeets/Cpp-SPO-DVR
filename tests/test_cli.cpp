@@ -1,3 +1,4 @@
+// Tests: command-line parsing.
 #include <gtest/gtest.h>
 
 #include <stdexcept>

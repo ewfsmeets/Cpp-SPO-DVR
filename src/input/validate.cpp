@@ -1,3 +1,4 @@
+// Input consistency checks. Fortran: InputNew.f90 ValidateInput
 #include "input/validate.hpp"
 
 #include <cmath>
@@ -89,7 +90,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
         "ProjOp", "ProjOp must be 0, 1 or 2.");
 
   // --- split operator propagation ---------------------------------------------------------
-  const double n_steps = static_cast<double>(p.n_steps);
+  const double n_steps = p.n_steps;
   check(rlt(p.t_start, 0.0), "tStart", "tStart < 0.");
   check(p.new_calculation && rne(p.t_start, 0.0), "tStart",
         "This is a new calculation but tStart /= 0.");
@@ -122,7 +123,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(rne(nint((p.z_analysis - p.z_start) / p.dz) * p.dz, p.z_analysis - p.z_start), "Zana",
         "ZAna not on a grid point.");
   check(rlt(p.z_analysis, p.z_start), "Zana", "ZAna < ZStart.");
-  check(rgt(p.z_analysis, p.z_start + static_cast<double>(p.nz - 1) * p.dz), "Zana",
+  check(rgt(p.z_analysis, p.z_start + (p.nz - 1) * p.dz), "Zana",
         "ZAnalysis is too big for the scattering grid in Z.");
   check(rgt(p.z_analysis, p.z_opt_start), "Zana", "ZAnalysis > ZOptStart.");
 
@@ -138,7 +139,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   // --- flux analysis ----------------------------------------------------------------------
   if (p.do_flux_analysis) {
     check(rlt(p.r_flux_analysis, p.r_start), "rFluxAnalysis", "rFluxAnalysis < rmin");
-    check(rgt(p.r_flux_analysis, p.r_start + static_cast<double>(p.nr - 1) * p.dr),
+    check(rgt(p.r_flux_analysis, p.r_start + (p.nr - 1) * p.dr),
           "rFluxAnalysis", "rFluxAnalysis > rmax");
     check(rne(nint((p.r_flux_analysis - p.r_start) / p.dr) * p.dr, p.r_flux_analysis - p.r_start),
           "rFluxAnalysis", "rFluxAnalysis not on a grid point.");
@@ -174,7 +175,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   if (p.impose_v_min && p.impose_v_max) check(rgt(p.v_min, p.v_max), "VMin", "VMin > VMax.");
 
   // --- optical potential in Z, scattering grid --------------------------------------------
-  const double z_end = p.z_start + static_cast<double>(p.nz - 1) * p.dz;
+  const double z_end = p.z_start + (p.nz - 1) * p.dz;
   check(rgt(p.z_opt_start, p.z_opt_end), "ZOptStart", "ZOptStart > ZOptEnd.");
   check(rgt(p.z_opt_end, z_end), "ZOptEnd", "ZOptEnd is too big for the scattering grid in Z.");
   check(rlt(p.z_opt_start, p.z_analysis), "ZOptStart", "ZOptStart < ZAna.");
@@ -182,13 +183,13 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   // --- optical potential in r -------------------------------------------------------------
   check(rgt(p.r_opt_start, p.r_opt_end), "ROptStart", "ROptStart > ROptEnd.");
-  check(rgt(p.r_opt_end, p.r_start + static_cast<double>(p.nr - 1) * p.dr), "ROptEnd",
+  check(rgt(p.r_opt_end, p.r_start + (p.nr - 1) * p.dr), "ROptEnd",
         "ROptEnd is too big for the grid in r.");
 
   // --- optical potential in Z, specular grid (used throughout for ProjOp = 2) -------------
   if (p.projection_operator == 2) {
     check(rgt(p.zsp_opt_start, p.zsp_opt_end), "ZSpOptStart", "ZSpOptStart > ZSpOptEnd.");
-    check(rgt(p.zsp_opt_end, p.z_start + static_cast<double>(p.nz_specular - 1) * p.dz),
+    check(rgt(p.zsp_opt_end, p.z_start + (p.nz_specular - 1) * p.dz),
           "ZSpOptEnd", "ZSpOptEnd is too big for the specular grid in Z.");
     check(rlt(p.zsp_opt_start, zasymp), "ZSpOptStart", "ZSpOptStart < ZAsymptotic.");
   }

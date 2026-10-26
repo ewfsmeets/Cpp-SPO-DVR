@@ -1,3 +1,5 @@
+// FFTW3 implementation of the Fft interface with the Fortran sign/scale conventions.
+// Fortran: fftw_2_scs.f90
 #include "fft/fftw_fft.hpp"
 
 #include <fftw3.h>

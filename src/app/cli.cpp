@@ -1,3 +1,4 @@
+// Command-line parsing for the spodvr executable.
 #include "app/cli.hpp"
 
 #include <stdexcept>

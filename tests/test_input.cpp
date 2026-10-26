@@ -1,3 +1,4 @@
+// Tests: JSON reading, every input consistency check (valid and violating case), derived parameters.
 #include <gtest/gtest.h>
 
 #include <cmath>

@@ -1,3 +1,4 @@
+// Valid FFT sizes (2^h 3^i 5^j 7^k 11^m, i <= 2, j,k,m <= 1). Fortran: ffts.f90 GetNearestFFTSize
 #include "fft/fft_sizes.hpp"
 
 #include <cstdint>

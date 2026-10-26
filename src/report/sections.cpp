@@ -1,3 +1,4 @@
+// Printed sections and full-precision data files of the setup results.
 #include "report/sections.hpp"
 
 #include <fstream>
@@ -11,6 +12,17 @@ namespace spodvr {
 namespace {
 
 std::string yes_no(bool b) { return b ? "yes" : "no"; }
+
+// Fortran nread: 0 new, 1 restart, 2 analysis only, 6 potential only.
+std::string run_mode_name(int run_mode) {
+  switch (run_mode) {
+    case 0: return "new calculation";
+    case 1: return "restart";
+    case 2: return "analysis only";
+    case 6: return "potential only";
+    default: return "unknown (" + std::to_string(run_mode) + ")";
+  }
+}
 
 std::ofstream open_output(const std::filesystem::path& path) {
   std::ofstream file(path);
@@ -27,10 +39,7 @@ void print_input_summary(std::ostream& out, const Style& style, const Config& co
   KeyValueList list;
   list.add("Title", p.title);
   list.add("System", p.system_id);
-  list.add("Run mode", d.run_mode == 0   ? "new calculation"
-                       : d.run_mode == 1 ? "restart"
-                       : d.run_mode == 2 ? "analysis only"
-                                         : "potential only");
+  list.add("Run mode", run_mode_name(d.run_mode));
   list.add("Masses", fixed(p.mass1, 6) + ", " + fixed(p.mass2, 6), "amu");
   list.add("Homonuclear", yes_no(p.homonuclear));
   list.add("Total mass", full_precision(d.total_mass), "m_e");
@@ -94,8 +103,8 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
 
   Table table({"itheta", "theta (rad)", "weight"});
   for (int t = 0; t < angular.n_theta(); ++t)
-    table.add_row({std::to_string(t), full_precision(angular.thetas()[static_cast<std::size_t>(t)]),
-                   full_precision(angular.theta_weights()[static_cast<std::size_t>(t)])});
+    table.add_row({std::to_string(t), full_precision(angular.thetas()[t]),
+                   full_precision(angular.theta_weights()[t])});
   table.print(out, style);
 }
 
@@ -107,7 +116,7 @@ void print_asymptotic_potential(std::ostream& out, const Style& style, const Con
   Table table({"ir", "r (bohr)", "V (eV)"});
   for (int ir = 0; ir < grids.r.size(); ++ir)
     table.add_row({std::to_string(ir), full_precision(grids.r[ir]),
-                   full_precision(units.hartree_to_ev(potential.asymptotic[static_cast<std::size_t>(ir)]))});
+                   full_precision(units.hartree_to_ev(potential.asymptotic[ir]))});
   table.print(out, style);
 }
 
@@ -127,13 +136,13 @@ void print_gas_phase(std::ostream& out, const Style& style, const Config& config
   list.add("Vibrational levels analysed", std::to_string(gas.n_v_analysis));
   list.add("Highest j analysed", std::to_string(gas.j_max_analysis));
   list.add("Initial state (v, j)", std::to_string(config.input.v_in) + ", " + std::to_string(config.input.j_in));
-  list.add("  energy", full_precision(units.hartree_to_ev(gas.initial_energy)), "eV");
-  list.add("  potential energy", full_precision(units.hartree_to_ev(gas.initial_potential_energy)), "eV");
-  list.add("  rotational energy", full_precision(units.hartree_to_ev(gas.initial_rotational_energy)), "eV");
-  list.add("  vibrational energy", full_precision(units.hartree_to_ev(gas.initial_vibrational_energy)), "eV");
+  list.add("  energy", full_precision(units.hartree_to_ev(gas.initial.energy)), "eV");
+  list.add("  potential energy", full_precision(units.hartree_to_ev(gas.initial.potential_energy)), "eV");
+  list.add("  rotational energy", full_precision(units.hartree_to_ev(gas.initial.rotational_energy)), "eV");
+  list.add("  vibrational energy", full_precision(units.hartree_to_ev(gas.initial.vibrational_energy)), "eV");
   list.add("  rovibrational kinetic energy",
-           full_precision(units.hartree_to_ev(gas.initial_rovibrational_kinetic_energy)), "eV");
-  list.add("  <r>", full_precision(gas.initial_r_mean), "bohr");
+           full_precision(units.hartree_to_ev(gas.initial.rovibrational_kinetic_energy)), "eV");
+  list.add("  <r>", full_precision(gas.initial.r_mean), "bohr");
   list.print(out, style);
   for (const auto& w : gas.warnings) out << "  " << style.warning("WARNING: " + w) << '\n';
 }
@@ -144,7 +153,7 @@ void write_asymptotic_potential_file(const std::filesystem::path& path, const Sp
   auto file = open_output(path);
   file << "# Gas-phase potential V(r) (Z = zasymp, theta = pi/2)\n# ir  r(bohr)  V(hartree)  V(eV) = V(hartree)*27.2114\n";
   for (int ir = 0; ir < grids.r.size(); ++ir) {
-    const double v = potential.asymptotic[static_cast<std::size_t>(ir)];
+    const double v = potential.asymptotic[ir];
     file << ir << ' ' << full_precision(grids.r[ir]) << ' ' << full_precision(v) << ' '
          << full_precision(units.hartree_to_ev(v)) << '\n';
   }

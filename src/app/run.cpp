@@ -1,3 +1,4 @@
+// Program driver: input -> grids -> potential -> gas-phase states -> output. Fortran: Main.f90
 #include "app/run.hpp"
 
 #include <omp.h>

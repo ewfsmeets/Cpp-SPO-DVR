@@ -1,3 +1,4 @@
+// Run-time machine epsilon as computed by the Fortran code. Fortran: constants.f90 Calculate_Constant_EPS
 #include "core/machine_epsilon.hpp"
 
 #include <cmath>

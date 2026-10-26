@@ -1,3 +1,4 @@
+// Optical-potential strength and Gaussian wave-packet parameters. Fortran: MyFunctions.f90
 #include "input/wave_packet_params.hpp"
 
 #include <array>

@@ -1,3 +1,4 @@
+// LAPACK (dsyevd) backend of the symmetric eigensolver; C-API boundary to LAPACK.
 #include <cstddef>
 #include <stdexcept>
 #include <string>

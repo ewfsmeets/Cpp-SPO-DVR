@@ -1,3 +1,4 @@
+// Tests: hard wall potential and the potential grid (layout, switching, limits, threads, -dt).
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -114,7 +115,7 @@ TEST(PotentialGrid, SwitchingToGasPhase) {
         const double f = 0.5 + 0.5 * std::cos(Constants::pi * (z - 3.0) / 2.0);
         expected = f * (raw - vr_unswitched) + vr_unswitched;
       }
-      EXPECT_EQ(grid.values[(static_cast<std::size_t>(ir) + 56u * static_cast<std::size_t>(iz)) * block + 5], expected);
+      EXPECT_EQ(grid.values[(ir + 56u * iz) * block + 5], expected);
     }
   }
   // vasy is evaluated at the switched zasymp (5.0), where the hard wall is not yet zero.

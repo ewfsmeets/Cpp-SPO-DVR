@@ -1,3 +1,4 @@
+// Hard wall test potential. Fortran: HardWallPES.f90
 #include "potential/hard_wall_potential.hpp"
 
 #include <cmath>

@@ -1,3 +1,5 @@
+// Derived parameters from the validated input. Fortran: InputNew.f90 ProcessInput,
+// Setup.f90 MiscellaneousSetup (scalar part)
 #include "input/process.hpp"
 
 #include <cmath>
@@ -43,8 +45,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
 
   d.rotational_constant = units.wavenumber_to_hartree(59.304);
 
-  d.dx = d.system.lattice_constant_x / static_cast<double>(p.nx);
-  d.dy = d.system.lattice_constant_y / static_cast<double>(p.ny);
+  d.dx = d.system.lattice_constant_x / p.nx;
+  d.dy = d.system.lattice_constant_y / p.ny;
 
   d.translational_energy =
       p.e_parallel + units.hartree_to_ev(wave_packet_average_energy(
@@ -58,7 +60,7 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
 
   d.analysis_energy_start = p.e_min_wave_packet + p.e_parallel;
   d.analysis_energy_step =
-      (p.e_max_wave_packet - p.e_min_wave_packet) / static_cast<double>(p.n_energies - 1);
+      (p.e_max_wave_packet - p.e_min_wave_packet) / (p.n_energies - 1);
 
   d.steps_per_analysis = static_cast<int>(p.dt_analysis / p.time_step);
   d.analyses_per_average = static_cast<int>(p.dt_averages / p.dt_analysis);
@@ -99,7 +101,7 @@ void miscellaneous_setup(const InputParameters& p, DerivedParameters& d) {
   d.v_min = units.ev_to_hartree(p.v_min);
   d.v_max = units.ev_to_hartree(p.v_max);
 
-  d.analysis_time_step = static_cast<double>(d.steps_per_analysis) * p.time_step;
+  d.analysis_time_step = d.steps_per_analysis * p.time_step;
   d.max_analysis_energy = units.hartree_to_ev(pi / d.analysis_time_step);
 
   const double k_max = d.kz + 2.0 * std::sqrt(d.wave_packet_alpha);

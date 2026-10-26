@@ -1,3 +1,4 @@
+// Text formatting: number formats, ANSI styles, aligned lists and tables.
 #include "report/format.hpp"
 
 #include <algorithm>

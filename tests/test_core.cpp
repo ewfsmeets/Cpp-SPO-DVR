@@ -1,3 +1,4 @@
+// Tests: constants, unit conversion, machine epsilon and the Fortran real comparisons.
 #include <gtest/gtest.h>
 
 #include <cmath>

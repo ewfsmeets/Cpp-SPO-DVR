@@ -1,3 +1,4 @@
+// Tests: eigensolver, Fourier grid Hamiltonian and gas-phase rovibrational states.
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -49,7 +50,7 @@ TEST(FourierGridHamiltonian, KineticMatrixMatchesAnalyticFgh) {
         const double s = std::sin(Constants::pi * (i - j) / n);
         expected = ((i - j) % 2 == 0 ? 1.0 : -1.0) * c / (n * n * s * s);
       }
-      EXPECT_NEAR(fgh.kinetic()[static_cast<std::size_t>(i + n * j)], expected, 1e-12 * c) << i << ' ' << j;
+      EXPECT_NEAR(fgh.kinetic()[(i + n * j)], expected, 1e-12 * c) << i << ' ' << j;
     }
   }
 }
@@ -60,15 +61,15 @@ TEST(FourierGridHamiltonian, HarmonicOscillator) {
   const double mass = 1.0;
   const double omega = 1.0;
   const FourierGridHamiltonian fgh(n, -8.0, 8.0, mass, fft);
-  std::vector<double> v(static_cast<std::size_t>(n));
-  for (int i = 0; i < n; ++i) v[static_cast<std::size_t>(i)] = 0.5 * mass * omega * omega * std::pow(fgh.grid()[static_cast<std::size_t>(i)], 2);
+  std::vector<double> v(n);
+  for (int i = 0; i < n; ++i) v[i] = 0.5 * mass * omega * omega * std::pow(fgh.grid()[i], 2);
   const auto e = fgh.eigenstates(v, LapackEigensolver());
-  for (int k = 0; k < 6; ++k) EXPECT_NEAR(e.values[static_cast<std::size_t>(k)], (k + 0.5) * omega, 1e-10);
+  for (int k = 0; k < 6; ++k) EXPECT_NEAR(e.values[k], (k + 0.5) * omega, 1e-10);
   // Normalisation with dx and sign rule (ground state positive everywhere).
   double norm = 0.0;
   for (const double y : e.vector(0)) norm += y * y;
   EXPECT_NEAR(norm * fgh.spacing(), 1.0, 1e-14);
-  EXPECT_GT(e.vector(0)[static_cast<std::size_t>(n / 2)], 0.0);
+  EXPECT_GT(e.vector(0)[(n / 2)], 0.0);
 }
 
 TEST(GasPhase, ReferenceCaseSixDigitValues) {

@@ -1,3 +1,5 @@
+// Coordinate/momentum grids in Z, r, x, y and the grid indices of analysis and absorbers.
+// Fortran: Setup.f90 MiscellaneousSetup
 #include "grids/spatial_grids.hpp"
 
 #include <cmath>
