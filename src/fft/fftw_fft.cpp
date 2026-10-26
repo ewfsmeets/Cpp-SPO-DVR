@@ -45,35 +45,46 @@ fftw_complex* as_fftw(std::vector<std::complex<double>>& v) {
   return reinterpret_cast<fftw_complex*>(v.data());
 }
 
-// Data are copied into plan-owned buffers before execution, so the plans can be applied to
-// any array (FFTW plans are tied to the alignment of the arrays they were created for).
-// A plan must not be executed concurrently from several threads.
+// In-place transforms executed directly on the caller's array with FFTW's new-array interface.
+// The plan is created FFTW_UNALIGNED, so it may be applied to any array (e.g. one block of the
+// wave function), and execute() is safe to call concurrently on different arrays.
+// As in the Fortran wrapper, the scale is applied afterwards and only when it differs from 1,
+// and only to the transformed elements (not to padding between transforms).
+// Fortran: fftw_2_scs.f90 fftw_2_zzfftm
 class FftwComplexPlan final : public ComplexFftPlan {
  public:
   FftwComplexPlan(const FftLayout& layout, FftSign sign, double scale)
-      : scale_(scale), size_(extent(layout, layout.length)), buffer_(size_) {
+      : layout_(layout), scale_(scale), size_(extent(layout, layout.length)) {
+    std::vector<std::complex<double>> work(size_);  // only used to create the plan
     int n = layout.length;
     const int dist = distance_of(layout, layout.length);
     const int fftw_sign = sign == FftSign::Minus ? FFTW_FORWARD : FFTW_BACKWARD;
-    plan_.reset(fftw_plan_many_dft(1, &n, layout.howmany, as_fftw(buffer_), nullptr, layout.stride,
-                                   dist, as_fftw(buffer_), nullptr, layout.stride, dist, fftw_sign,
-                                   FFTW_ESTIMATE));
+    plan_.reset(fftw_plan_many_dft(1, &n, layout.howmany, as_fftw(work), nullptr, layout.stride, dist,
+                                   as_fftw(work), nullptr, layout.stride, dist, fftw_sign,
+                                   FFTW_ESTIMATE | FFTW_UNALIGNED));
     if (!plan_) throw std::runtime_error("FftwFft: complex plan creation failed");
   }
 
   void execute(std::span<std::complex<double>> data) const override {
     check_size(data.size(), size_);
-    std::copy_n(data.begin(), size_, buffer_.begin());
-    fftw_execute(plan_.get());
-    if (scale_ != 1.0)
-      for (auto& v : buffer_) v *= scale_;
-    std::copy_n(buffer_.begin(), size_, data.begin());
+    auto* p = reinterpret_cast<fftw_complex*>(data.data());
+    fftw_execute_dft(plan_.get(), p, p);
+    if (scale_ != 1.0) apply_scale(data);
   }
 
  private:
+  void apply_scale(std::span<std::complex<double>> data) const {
+    const int dist = distance_of(layout_, layout_.length);
+    for (int b = 0; b < layout_.howmany; ++b)
+      for (int i = 0; i < layout_.length; ++i) {
+        std::complex<double>& v = data[b * dist + i * layout_.stride];
+        v = scale_ * v;
+      }
+  }
+
+  FftLayout layout_;
   double scale_;
   std::size_t size_;
-  mutable std::vector<std::complex<double>> buffer_;
   PlanPtr plan_;
 };
 

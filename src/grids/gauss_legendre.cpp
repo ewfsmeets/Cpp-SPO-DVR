@@ -7,21 +7,9 @@
 
 #include "core/constants.hpp"
 #include "core/machine_epsilon.hpp"
+#include "grids/associated_legendre.hpp"
 
 namespace spodvr {
-
-namespace {
-
-// log(n!) accumulated as in the Fortran code. Fortran: legendre.f90 SetupLegendreModule
-std::vector<double> log_factorials(int n_max) {
-  std::vector<double> lf(n_max + 1);
-  lf[0] = 0.0;
-  for (int n = 1; n <= n_max; ++n)
-    lf[n] = std::log(n) + lf[n - 1];
-  return lf;
-}
-
-}  // namespace
 
 // Fortran: legendre.f90 GaussAssociatedLegendreQuadr. Integer/real mixing of the Fortran
 // expressions is reproduced explicitly so that the floating-point operations are identical.

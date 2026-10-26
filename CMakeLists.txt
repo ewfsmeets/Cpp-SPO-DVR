@@ -56,8 +56,11 @@ add_library(spodvr_core
   src/linalg/lapack_eigensolver.cpp
   src/grids/momentum_grid.cpp
   src/grids/spatial_grids.cpp
+  src/grids/associated_legendre.cpp
   src/grids/gauss_legendre.cpp
   src/grids/angular_grid.cpp
+  src/grids/rotational_basis.cpp
+  src/propagation/angular_transform.cpp
   src/potential/hard_wall_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp

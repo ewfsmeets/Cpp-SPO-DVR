@@ -112,3 +112,39 @@ TEST(Fftw, RoundTripLikeFortranInverse) {
   for (std::size_t i = 0; i < x.size(); ++i) EXPECT_NEAR(back[i], x[i], 1e-13);
   EXPECT_EQ(y, y_copy);
 }
+
+TEST(Fftw, ComplexPaddedLayoutLeavesPaddingAndScalesOnlyTransforms) {
+  // Two transforms of length 4 with one padding element each (distance 5), as in the angular
+  // DVR blocks. The padding must be neither transformed nor scaled.
+  const FftwFft fft;
+  const int n = 4;
+  std::vector<cplx> data(2 * (n + 1));
+  for (std::size_t i = 0; i < data.size(); ++i) data[i] = cplx(0.5 * static_cast<double>(i), 1.0);
+  const cplx pad0 = data[4];
+  const cplx pad1 = data[9];
+  std::vector<cplx> y = data;
+  fft.plan_complex({n, 2, 1, n + 1}, FftSign::Minus, 3.0)->execute(y);
+  EXPECT_EQ(y[4], pad0);
+  EXPECT_EQ(y[9], pad1);
+  for (int b = 0; b < 2; ++b) {
+    const std::vector<cplx> x(data.begin() + b * (n + 1), data.begin() + b * (n + 1) + n);
+    const auto ref = naive_dft(x, -1.0, 3.0);
+    for (int k = 0; k < n; ++k) EXPECT_NEAR(std::abs(y[b * (n + 1) + k] - ref[k]), 0.0, 1e-13);
+  }
+}
+
+TEST(Fftw, ComplexPlanIsSafeToUseConcurrently) {
+  // One plan applied by several OpenMP threads to different arrays gives the serial results.
+  const FftwFft fft;
+  const int n = 16;
+  const int arrays = 32;
+  const auto plan = fft.plan_complex({n}, FftSign::Plus, 0.25);
+  std::vector<std::vector<cplx>> serial(arrays, std::vector<cplx>(n));
+  for (int a = 0; a < arrays; ++a)
+    for (int i = 0; i < n; ++i) serial[a][i] = cplx(std::cos(0.1 * a + i), std::sin(0.3 * i - a));
+  std::vector<std::vector<cplx>> parallel = serial;
+  for (auto& v : serial) plan->execute(v);
+#pragma omp parallel for
+  for (int a = 0; a < arrays; ++a) plan->execute(parallel[a]);
+  EXPECT_EQ(serial, parallel);
+}

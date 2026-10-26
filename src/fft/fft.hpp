@@ -20,7 +20,7 @@ struct FftLayout {
   int distance = 0;  // 0 means: length (contiguous transforms)
 };
 
-// In-place complex transform.
+// In-place complex transform. execute() may be called concurrently on different arrays.
 class ComplexFftPlan {
  public:
   virtual ~ComplexFftPlan() = default;

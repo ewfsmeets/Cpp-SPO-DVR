@@ -130,9 +130,10 @@ derived from exactly the same parameters.
    The printed Fortran values have only 6 digits — dump full precision from Fortran when a tighter
    gate is needed.
 3. Later gates (to be defined): initial wavepacket norms, averages vs time, S-matrix / probabilities.
-   Open item: the associated Gauss-Legendre quadrature for |mJ| > 0 (`gauss_associated_legendre`)
-   is only checked for exactness and against the earlier C++ port, not against Fortran. The
-   rotational FBR basis needs it, so that milestone needs a Fortran reference for it.
+   Note: the associated Gauss-Legendre quadrature for |mJ| > 0 is dead code in the Fortran
+   (`setupdvr.f90` forces `SymmetryInPhi = .FALSE.`, so only mJ = 0 is used). The rotational
+   basis uses `legendre.f90 AssociatedLegendre` instead (C++ `associated_legendre`), tested
+   analytically (closed forms, orthonormality, cos²θ matrix elements, transform round trip).
 
 ## Known Fortran bugs/quirks (fixed in C++; record every deviation here)
 - `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2).
@@ -163,6 +164,12 @@ derived from exactly the same parameters.
   are ~1 ulp off in C++ too (≈1e-12 phase after 7000 steps): first suspect if a propagation gate
   drifts. When porting any routine, look for `DFLOAT`, `DBLE`, `…d0` literals and
   `DOUBLE PRECISION`; all are quad precision in this build.
+- gfortran `-O3` vectorises some loops with glibc libmvec (`_ZGVbN2v_exp/sin/cos/acos`, up to a
+  few ulp from the scalar functions): `angulargrid.f90` acos (θ grid), `legendre.f90`
+  AssociatedLegendre exp, and the cos/sin of exp(−iV·dt) in `Potential.f90`
+  PerformEXPInteractionOp. C++ uses the scalar functions, so these agree only to a few ulp.
+  Real`**`integer is libgcc `__powidf2` (repeated squaring): use `fortran_integer_power`, not
+  `std::pow`.
 - The CoherentStateFunc check (initial norm outside region < tolsp) is not done yet; it belongs to
   the wave-packet milestone.
 

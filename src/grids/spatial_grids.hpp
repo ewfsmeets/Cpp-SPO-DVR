@@ -2,18 +2,12 @@
 
 #include <optional>
 
+#include "core/index_range.hpp"
 #include "grids/momentum_grid.hpp"
 #include "grids/uniform_grid.hpp"
 #include "input/config.hpp"
 
 namespace spodvr {
-
-// Inclusive 0-based index range [first, last] of grid points inside an optical potential.
-struct IndexRange {
-  int first;
-  int last;
-  [[nodiscard]] int size() const { return last - first + 1; }
-};
 
 // The coordinate and momentum grids in Z, r, x and y plus the grid indices derived from them.
 // All indices are 0-based (Fortran index - 1).
@@ -32,7 +26,7 @@ struct SpatialGrids {
   int iz_analysis;             // Fortran: izanly - 1
   double z_analysis;           // ZAna moved onto the grid. Fortran: ZAnalysis after Setup
   int nz_potential;            // number of Z points with Z < zasymp. Fortran: nzpot
-  IndexRange z_optical;        // Fortran: nzchsp .. nzchmx
+  IndexRange z_optical;        // grid points inside the optical potential. Fortran: nzchsp .. nzchmx
   std::optional<IndexRange> z_specular_optical;  // ProjOp = 2 only. Fortran: nschsp .. nschmx
   IndexRange r_optical;        // Fortran: nrchsp .. nrchmx
   std::optional<int> ir_flux_analysis;  // Fortran: irFluxAnalysis - 1
