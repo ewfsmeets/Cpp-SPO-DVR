@@ -16,26 +16,31 @@ double abs_squared(const std::complex<double>& c) {
 
 }  // namespace
 
-Averages compute_averages(double time, const WavePacket& psi, const Config& config, const SpatialGrids& grids,
-                          int analysis_surface_index) {
-  const InputParameters& p = config.input;
-  const int nr = p.nr;
-  const ScatteringWave& scat = psi.scattering;
-  const SpecularWave& spec = psi.specular;
-
-  // Density summed over (irot, x, y) at every (Z, r) point. Fortran: complexInnerProd(1, izr)
-  std::vector<double> density(scat.n_blocks(), 0.0);
+std::vector<double> block_densities(const ScatteringWave& psi) {
+  std::vector<double> density(psi.n_blocks(), 0.0);
 #pragma omp parallel for schedule(static)
-  for (int izr = 0; izr < scat.n_blocks(); ++izr) {
+  for (int izr = 0; izr < psi.n_blocks(); ++izr) {
     double sum = 0.0;
-    for (const auto& c : scat.block(izr)) sum = sum + abs_squared(c);
+    for (const auto& c : psi.block(izr)) sum = sum + abs_squared(c);
     density[izr] = sum;
   }
+  return density;
+}
+
+Averages compute_averages(double time, const WavePacket& psi, const Config& config, const SpatialGrids& grids,
+                          int analysis_surface_index) {
+  return compute_averages(time, block_densities(psi.scattering), psi.specular, config, grids, analysis_surface_index);
+}
+
+Averages compute_averages(double time, std::span<const double> density, const SpecularWave& spec, const Config& config,
+                          const SpatialGrids& grids, int analysis_surface_index) {
+  const InputParameters& p = config.input;
+  const int nr = p.nr;
 
   double norm_scat = 0.0;
   double z_scat = 0.0;
   double r_scat = 0.0;
-  for (int izr = 0; izr < scat.n_blocks(); ++izr) {
+  for (int izr = 0; izr < static_cast<int>(density.size()); ++izr) {
     const int ir = izr % nr;
     const int iz = izr / nr;
     norm_scat = norm_scat + density[izr];

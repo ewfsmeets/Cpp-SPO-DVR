@@ -31,10 +31,18 @@ BalintKurtiAnalyzer::BalintKurtiAnalyzer(const Config& config, const SpatialGrid
 }
 
 BkCoefficients BalintKurtiAnalyzer::coefficients(const WavePacket& psi, const AnalysisSurface& surface) const {
+  const std::size_t plane = psi.scattering.block_size() * std::size_t(nr_);
+  return coefficients(std::span<const cplx>(psi.scattering.values).subspan(plane * iz_analysis_, plane), psi.specular,
+                      surface);
+}
+
+BkCoefficients BalintKurtiAnalyzer::coefficients(std::span<const cplx> z_plane, const SpecularWave& specular,
+                                                 const AnalysisSurface& surface) const {
   const AnalysisBasis& a = basis_;
   const int n_xy = nx_ * ny_;
   const int n_rot = a.n_rotation();
-  const int n_rot_basis = static_cast<int>(psi.scattering.index.n0);  // stride of ixy in a (Z, r) block
+  const std::size_t block_size = z_plane.size() / nr_;
+  const int n_rot_basis = static_cast<int>(block_size / n_xy);  // stride of ixy in a (Z, r) block
   BkCoefficients bk(a.n_states(), a.n_v());
 
   // Scattering grid: every (v, irotana) is independent.
@@ -50,7 +58,7 @@ BkCoefficients BalintKurtiAnalyzer::coefficients(const WavePacket& psi, const An
     std::vector<cplx> overlap(n_xy, cplx(0.0, 0.0));  // Fortran: pft2d(iy, ix)
     for (int ir = 0; ir < nr_; ++ir) {
       const double r_weight = phi[ir] * dr_;  // Fortran: rwave
-      const auto block = psi.scattering.block(ir + nr_ * iz_analysis_);
+      const auto block = z_plane.subspan(block_size * ir, block_size);
       for (int ixy = 0; ixy < n_xy; ++ixy)
         overlap[ixy] = overlap[ixy] + tables_.shift_forward[ixy] * block[irot + n_rot_basis * ixy] * r_weight;
     }
@@ -68,7 +76,7 @@ BkCoefficients BalintKurtiAnalyzer::coefficients(const WavePacket& psi, const An
     for (int v = 0; v < a.n_v(); ++v) {
       const auto phi = gas_.states.wave_function(v, j_in_);
       cplx sum(0.0, 0.0);
-      for (int ir = 0; ir < nr_; ++ir) sum = sum + psi.specular(ir, iz) * phi[ir];
+      for (int ir = 0; ir < nr_; ++ir) sum = sum + specular(ir, iz) * phi[ir];
       bk(a.initial_state(), v) = sum * dr_;
     }
   }

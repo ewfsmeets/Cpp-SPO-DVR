@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "app/backend_factory.hpp"
 #include "app/banner.hpp"
 #include "app/fine_analysis_run.hpp"
 #include "core/error.hpp"
@@ -77,7 +78,8 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
 
   double checkpoint_time = 0.0;
   if (p.restart_format == "native") {
-    const CheckpointInfo info = read_checkpoint(dir / checkpoint_file, config, propagation.wave_packet_for_restart());
+    CheckpointInfo info{};
+    propagation.read_wave_packet([&](WavePacket& psi) { info = read_checkpoint(dir / checkpoint_file, config, psi); });
     propagation.restore_analysis_surface(info.surface);
     checkpoint_time = info.time;
     const auto last = read_bk_file(dir / bk_file, config, propagation.analysis_basis(), add_record);
@@ -87,8 +89,10 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
   } else {
     // The Fortran wave function file has no time: the BK records give it (n deltat).
     const AnalysisSurfaceState fresh = propagation.analysis_surface().state();
-    const AnalysisSurfaceState state = read_fortran_wave_function(first_existing(dir, "fort.8", "fort.9"),
-                                                                  propagation.wave_packet_for_restart(), fresh);
+    AnalysisSurfaceState state{};
+    propagation.read_wave_packet([&](WavePacket& psi) {
+      state = read_fortran_wave_function(first_existing(dir, "fort.8", "fort.9"), psi, fresh);
+    });
     propagation.restore_analysis_surface(state);
     read_fortran_bk_file(first_existing(dir, "fort.22", "fort.21"), config, propagation.rotational_basis(),
                          propagation.analysis_basis(), add_record);
@@ -127,9 +131,9 @@ struct BkOutput {
 // Fortran: Main.f90 from SetupRDBasis to StateToStateProbs
 void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                      const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
-                     const std::filesystem::path& output_dir) {
+                     const std::filesystem::path& output_dir, Device device) {
   check_restart_directory(config, output_dir);
-  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft);
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device));
   print_propagation_setup(out, style, grids, propagation);
   print_analysis_setup(out, style, config, propagation.analysis_basis(), propagation.analysis_energies());
 
@@ -165,9 +169,10 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   // Checkpoint for a restart. Fortran: SaveWaveFunc
   const AnalysisSurfaceState surface = propagation.analysis_surface().state();
   if (write_native)
-    write_checkpoint(output_dir / checkpoint_file, config, config.input.t_end, propagation.wave_packet(), surface);
+    write_checkpoint(output_dir / checkpoint_file, config, config.input.t_end, propagation.wave_packet_on_host(),
+                     surface);
   if (write_fortran)
-    write_fortran_wave_function(output_dir / fortran_wave_function_file, propagation.wave_packet(), surface);
+    write_fortran_wave_function(output_dir / fortran_wave_function_file, propagation.wave_packet_on_host(), surface);
 
   // Asymptotic analysis: S-matrix and probabilities at the analysis energies.
   const ScatteringResults results = propagation.scattering_results();
@@ -235,6 +240,11 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     out << "  " << numerical_libraries_summary() << '\n';
 
     const Config config = build_config(read_input_file(command_line.input_file));
+    // Checked before the (possibly long) set-up: a GPU device must be available in this build.
+    const Device device = parse_device(command_line.device);
+    if (device == Device::Cuda) (void)backend_factory(device);
+    if (device == Device::Cuda && (config.derived.run_mode == 2 || config.derived.run_mode == 6))
+      out << "  Note: --device cuda has no effect in this run mode (no propagation).\n";
     print_input_summary(out, style, config);
 
     const auto potential = make_potential(config.input.system_id);
@@ -287,7 +297,8 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       return 0;
     }
 
-    run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir);
+    run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir,
+                    device);
     // alsoAnalysis: the fine analysis of the BK file this run has just written (the
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)

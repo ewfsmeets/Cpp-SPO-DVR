@@ -10,7 +10,7 @@ set(SPODVR_REFERENCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/reference")
 
 function(spodvr_add_test name)
   add_executable(${name} ${name}.cpp ${ARGN})
-  target_link_libraries(${name} PRIVATE spodvr_core GTest::gtest_main spodvr_warnings spodvr_fp)
+  target_link_libraries(${name} PRIVATE spodvr_app GTest::gtest_main spodvr_warnings spodvr_fp)
   target_compile_definitions(${name} PRIVATE SPODVR_REFERENCE_DIR="${SPODVR_REFERENCE_DIR}")
   gtest_discover_tests(${name} DISCOVERY_TIMEOUT 60)
 endfunction()

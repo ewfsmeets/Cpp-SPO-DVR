@@ -146,6 +146,8 @@ add_library(spodvr_core
   src/propagation/potential_operator.cpp
   src/propagation/specular_operator.cpp
   src/propagation/split_operator.cpp
+  src/propagation/propagation_backend.cpp
+  src/propagation/cpu_backend.cpp
   src/propagation/averages.cpp
   src/propagation/propagation.cpp
   src/propagation/memory_estimate.cpp
@@ -174,9 +176,6 @@ add_library(spodvr_core
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp
   src/report/fine_analysis_report.cpp
-  src/app/cli.cpp
-  src/app/fine_analysis_run.cpp
-  src/app/run.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)
 target_compile_definitions(spodvr_core PUBLIC SPODVR_VERSION="${PROJECT_VERSION}")
@@ -206,8 +205,20 @@ else()
   message(STATUS "SPO-DVR: BLAS/LAPACK from the system, FFT library ${SPODVR_FFT_LIBRARY_USED}")
 endif()
 
+# ---------------------------------------------------------------------------------------------
+# Program driver (command line, run modes, choice of the propagation backend). A separate library
+# so that an optional GPU backend can sit between it and spodvr_core.
+# ---------------------------------------------------------------------------------------------
+add_library(spodvr_app
+  src/app/backend_factory.cpp
+  src/app/cli.cpp
+  src/app/fine_analysis_run.cpp
+  src/app/run.cpp
+)
+target_link_libraries(spodvr_app PUBLIC spodvr_core PRIVATE spodvr_warnings spodvr_fp)
+
 add_executable(spodvr src/app/main.cpp)
-target_link_libraries(spodvr PRIVATE spodvr_core spodvr_warnings spodvr_fp)
+target_link_libraries(spodvr PRIVATE spodvr_app spodvr_warnings spodvr_fp)
 
 # ---------------------------------------------------------------------------------------------
 # Tests

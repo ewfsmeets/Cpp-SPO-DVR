@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   propagation.run({});
 
   std::ofstream out(argv[2], std::ios::binary);
-  write_values(out, propagation.wave_packet().scattering.values);
-  write_values(out, propagation.wave_packet().specular.values);
+  write_values(out, propagation.wave_packet_on_host().scattering.values);
+  write_values(out, propagation.wave_packet_on_host().specular.values);
   return out ? 0 : 1;
 }

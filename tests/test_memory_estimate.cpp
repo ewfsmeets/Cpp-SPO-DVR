@@ -93,9 +93,9 @@ TEST(MemoryEstimate, MatchesAllocations) {
   const FftwFft fft;
   const GasPhase gas =
       compute_gas_phase(setup.config, setup.grids, setup.angular, potential.asymptotic, fft, LapackEigensolver());
-  const WavePacketPropagation propagation(setup.config, setup.grids, setup.angular, std::move(potential), gas, fft);
-  EXPECT_EQ(e.items[2].values, propagation.wave_packet().scattering.values.size());
-  EXPECT_EQ(e.items[3].bytes, 2 * propagation.wave_packet().specular.values.size() * complex_bytes);
+  WavePacketPropagation propagation(setup.config, setup.grids, setup.angular, std::move(potential), gas, fft);
+  EXPECT_EQ(e.items[2].values, propagation.wave_packet_on_host().scattering.values.size());
+  EXPECT_EQ(e.items[3].bytes, 2 * propagation.wave_packet_on_host().specular.values.size() * complex_bytes);
 }
 
 // Above 4 GiB the exp(-i V dt) table is not stored and the potential is kept instead.

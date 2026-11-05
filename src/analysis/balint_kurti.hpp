@@ -2,6 +2,7 @@
 
 #include <complex>
 #include <memory>
+#include <span>
 #include <vector>
 
 #include "analysis/analysis_basis.hpp"
@@ -40,6 +41,11 @@ class BalintKurtiAnalyzer {
   BalintKurtiAnalyzer(const Config& config, const SpatialGrids& grids, const AnalysisBasis& basis, const GasPhase& gas,
                       const PropagationTables& tables, const Fft& fft);
 
+  // z_plane: the nr scattering blocks at Zana, layout (irot, ixy, ir) (PropagationBackend::z_plane);
+  // specular: the specular wave.
+  [[nodiscard]] BkCoefficients coefficients(std::span<const std::complex<double>> z_plane, const SpecularWave& specular,
+                                            const AnalysisSurface& surface) const;
+  // The same for a wave packet in host memory.
   [[nodiscard]] BkCoefficients coefficients(const WavePacket& psi, const AnalysisSurface& surface) const;
 
  private:
