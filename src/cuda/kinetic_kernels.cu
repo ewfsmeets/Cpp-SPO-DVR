@@ -8,19 +8,28 @@ namespace spodvr::cuda {
 
 namespace {
 
-// One thread per element; consecutive threads take consecutive elements (coalesced).
+// data = (period, n / period): x over the position in the period (consecutive threads,
+// consecutive elements: coalesced), y over the periods (grid_2d).
 __global__ void multiply_by_periodic_factors_kernel(Complex* data, const Complex* factors, FftScales scales,
-                                                    std::int64_t period, std::int64_t n) {
-  const std::int64_t i = thread_index();
-  if (i >= n) return;
-  data[i] = factors[i % period] * (scales.backward * (scales.forward * data[i]));
+                                                    std::int64_t period, std::int64_t n_periods) {
+  const std::int64_t k = thread_index();
+  if (k >= period) return;
+  const Complex factor = factors[k];
+  for (std::int64_t p = blockIdx.y; p < n_periods; p += gridDim.y) {
+    Complex& v = data[k + period * p];
+    v = factor * (scales.backward * (scales.forward * v));
+  }
 }
 
+// data = (block, n / block): x over the position in the block, y over the blocks.
 __global__ void multiply_by_blocked_factors_kernel(Complex* data, const Complex* factors, FftScales scales,
-                                                   std::int64_t block, std::int64_t n) {
+                                                   std::int64_t block, std::int64_t n_blocks) {
   const std::int64_t i = thread_index();
-  if (i >= n) return;
-  data[i] = factors[i / block] * (scales.backward * (scales.forward * data[i]));
+  if (i >= block) return;
+  for (std::int64_t b = blockIdx.y; b < n_blocks; b += gridDim.y) {
+    Complex& v = data[i + block * b];
+    v = factors[b] * (scales.backward * (scales.forward * v));
+  }
 }
 
 }  // namespace
@@ -28,14 +37,16 @@ __global__ void multiply_by_blocked_factors_kernel(Complex* data, const Complex*
 // Fortran: KineticOp.f90 MultByEXPKinEnergy (Z, r and specular grid)
 void multiply_by_periodic_factors(Complex* data, const Complex* factors, FftScales scales, std::int64_t period,
                                   std::int64_t n) {
-  multiply_by_periodic_factors_kernel<<<blocks_for(n), threads_per_block>>>(data, factors, scales, period, n);
+  multiply_by_periodic_factors_kernel<<<grid_2d(period, n / period), threads_per_block>>>(data, factors, scales,
+                                                                                          period, n / period);
   check_kernel_launch("multiply_by_periodic_factors");
 }
 
 // Fortran: SplitOperator.f90 PerformEXPKineticOp (MomentumShiftWF, MultByEXPKinEnergy)
 void multiply_by_blocked_factors(Complex* data, const Complex* factors, FftScales scales, std::int64_t block,
                                  std::int64_t n) {
-  multiply_by_blocked_factors_kernel<<<blocks_for(n), threads_per_block>>>(data, factors, scales, block, n);
+  multiply_by_blocked_factors_kernel<<<grid_2d(block, n / block), threads_per_block>>>(data, factors, scales, block,
+                                                                                       n / block);
   check_kernel_launch("multiply_by_blocked_factors");
 }
 

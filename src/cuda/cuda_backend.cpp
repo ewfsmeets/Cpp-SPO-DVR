@@ -221,18 +221,44 @@ std::size_t free_gpu_memory() {
   return free;
 }
 
-std::size_t estimate_gpu_memory(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
-                                int n_representatives) {
+std::size_t total_gpu_memory() {
+  std::size_t free = 0;
+  std::size_t total = 0;
+  check_cuda_status(cudaMemGetInfo(&free, &total), "cudaMemGetInfo");
+  return total;
+}
+
+MemoryEstimate estimate_gpu_memory(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
+                                   int n_representatives) {
   const InputParameters& p = config.input;
   const RotationalBasis basis(angular, p.j_in, p.mj_in);
   const ScatteringShape shape = scattering_shape(config, basis.size());
   const DeviceLayout layout = device_layout(shape);
-  const std::size_t psi = sizeof(Complex) * layout.size();
-  const std::size_t specular = sizeof(Complex) * std::size_t(p.nr) * grids.z_specular.size();
-  const std::size_t plane = sizeof(Complex) * std::size_t(layout.n_rot) * layout.n_xy * p.nr;
-  const std::size_t potential = DevicePotentialOperator::memory_bytes(shape, grids.nz_potential, angular.n_theta(),
-                                                                      angular.n_phi(), n_representatives);
-  return psi + specular + plane + potential + fft_work_limit + staging_bytes;
+  const std::size_t n_tp = std::size_t(angular.n_theta()) * angular.n_phi();
+  const std::size_t table = n_tp * n_representatives * std::size_t(grids.nz_potential) * p.nr;
+  const std::int64_t slab = DevicePotentialOperator::slab_size(
+      shape, grids.nz_potential, angular.n_theta(), angular.n_phi(), DevicePotentialOperator::default_scratch_limit);
+  const std::size_t scratch = n_tp * std::size_t(layout.n_xy) * slab;
+  const std::size_t specular = std::size_t(p.nr) * grids.z_specular.size();
+  const std::size_t plane = std::size_t(layout.n_rot) * layout.n_xy * p.nr;
+  const std::size_t staging = std::size_t(staging_points(layout) * layout.n_rot * layout.n_xy);
+  const std::size_t c = sizeof(Complex);
+
+  MemoryEstimate e;
+  e.items = {
+      {"Wave function, scattering grid", std::size_t(layout.size()), c * layout.size(), "", true, true},
+      {"Wave function, specular grid", specular, c * specular, "", true, true},
+      {"exp(-i V dt) table", table, c * table, "computed on the host", true, true},
+      {"DVR scratch (one slab)", scratch, c * scratch, std::to_string(slab) + " (Z, r) points per slab", true, true},
+      {"cuFFT work area", fft_work_limit / c, fft_work_limit, "at most", true, true},
+      {"BK plane", plane, c * plane, "", true, true},
+      {"Copy buffer", staging, c * staging, "only while copying (restart, checkpoint)", true, true}};
+  for (const MemoryItem& item : e.items) {
+    if (item.during_setup) e.setup_bytes += item.bytes;
+    if (item.during_propagation) e.propagation_bytes += item.bytes;
+  }
+  e.peak_bytes = e.propagation_bytes;
+  return e;
 }
 
 std::unique_ptr<PropagationBackend> make_cuda_backend(const BackendInput& input, PotentialGrid potential,

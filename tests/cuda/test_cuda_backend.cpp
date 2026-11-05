@@ -20,6 +20,7 @@
 #include "propagation/averages.hpp"
 #include "propagation/cpu_backend.hpp"
 #include "propagation/initial_wave_packet.hpp"
+#include "propagation/memory_estimate.hpp"
 
 using namespace spodvr;
 using namespace spodvr::testing;
@@ -153,4 +154,23 @@ TEST(CudaBackend, TwoRunsAreBitwiseIdentical) {
   }
   EXPECT_EQ(relative_difference(a->wave_packet_on_host().scattering.values, b->wave_packet_on_host().scattering.values),
             0.0);
+}
+
+// The GPU memory estimate (printed before the potential is computed, and checked against the free
+// GPU memory) matches what the backend allocates: at least the exactly known arrays, at most the
+// estimate (which counts the cuFFT work area at its limit and the copy buffer).
+TEST(CudaBackend, MemoryEstimateMatchesTheAllocations) {
+  SPODVR_REQUIRE_GPU();
+  const BackendSetup s("cu111_dailight_short_sym");
+  const MemoryEstimate e =
+      cuda::estimate_gpu_memory(s.config, s.grids, s.angular, s.potential.symmetry.n_representatives());
+  std::size_t exact = 0;
+  for (const MemoryItem& item : e.items)
+    if (item.name != "cuFFT work area" && item.name != "Copy buffer") exact += item.bytes;
+  const std::size_t before = cuda::free_gpu_memory();
+  const auto gpu = s.gpu();
+  const std::size_t used = before - cuda::free_gpu_memory();
+  const std::size_t slack = std::size_t(64) << 20;  // allocation granularity, cuFFT plans
+  EXPECT_GE(used + slack, exact);
+  EXPECT_LE(used, e.peak_bytes + slack);
 }

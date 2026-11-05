@@ -41,6 +41,10 @@ class DevicePotentialOperator {
   [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();
   // (Z, r) points per slab.
   [[nodiscard]] std::int64_t slab_points() const { return args_.n_slab; }
+  // The kernels' arguments and the DVR scratch (for the timing tool, which runs the kernels of
+  // apply() one by one).
+  [[nodiscard]] const PotentialArgs& kernel_args() const { return args_; }
+  [[nodiscard]] Complex* scratch() const { return dvr_.data(); }
 
   // GPU memory of the tables and the scratch array (bytes).
   [[nodiscard]] static std::size_t memory_bytes(const ScatteringShape& shape, int nz_potential, int n_theta, int n_phi,

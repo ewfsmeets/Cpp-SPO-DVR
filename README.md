@@ -88,6 +88,7 @@ Useful CMake options:
 | `-DSPODVR_ARCH=native` | `x86-64-v3` | `-march` value (`x86-64-v3` = AVX2; `x86-64-v4` = AVX-512) |
 | `-DSPODVR_PGO=GENERATE/USE` | `OFF` | profile-guided optimisation, about 15% faster (see docs/performance.md) |
 | `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math`; about 10% faster, changes results at the 1e-12 level (see Benchmark) |
+| `-DSPODVR_USE_CUDA=ON` | `OFF` | build the GPU backend (`--device cuda`, NVIDIA GPU, CUDA toolkit; see [docs/cuda.md](docs/cuda.md)) |
 | `-DSPODVR_BUILD_TESTS=OFF` | `ON` | skip the tests |
 
 Performance notes, reproducibility across machines and the PGO workflow are in
@@ -111,8 +112,12 @@ The program reads one JSON input file:
 
 Command-line options:
 ```
-spodvr <input.json> [--threads N] [--schedule dynamic|static] [--output-dir DIR] [--no-color] [--help] [--version]
+spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda] [--output-dir DIR] [--no-color]
+       [--help] [--version]
 ```
+- `--device cpu|cuda`: propagate on the CPU (default) or on an NVIDIA GPU, where the wave packet
+  stays in GPU memory (needs a build with `-DSPODVR_USE_CUDA=ON`; see [docs/cuda.md](docs/cuda.md)).
+  The results agree with the CPU's to rounding (≈1e-13, the level of a different FFT library).
 - `--threads N`: number of OpenMP threads (default: all). The results do not depend on it. Use the
   number of physical cores: hyperthreads do not speed up these memory- and FFT-bound loops.
 - `--schedule dynamic|static`: how the (Z, r) points are shared out over the threads. `dynamic`
@@ -199,10 +204,10 @@ Details in [docs/performance.md](docs/performance.md).
 ## Repository layout
 | Path | Content |
 |---|---|
-| `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/` |
+| `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
-| `docs/` | input schema, output files, performance notes |
+| `docs/` | input schema, output files, performance notes, GPU backend |
 | `inputs/` | example inputs |
 
 ## License

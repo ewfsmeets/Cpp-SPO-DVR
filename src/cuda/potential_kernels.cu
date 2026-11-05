@@ -20,19 +20,19 @@ __device__ inline std::int64_t dvr_index(const PotentialArgs& a, std::int64_t co
   return col + n_columns * (itheta + std::int64_t(a.n_theta) * iphi);
 }
 
-// One thread per element of the gas-phase region izr >= n_zr_potential; i runs izr fastest.
-// CPU: PotentialOperator::apply_block, branch iz >= nz_potential.
+// The gas-phase region izr >= n_zr_potential: x over izr (coalesced), y over k = irot + n_rot*ixy
+// (grid_2d). CPU: PotentialOperator::apply_block, branch iz >= nz_potential.
 __global__ void gas_phase_step_kernel(PotentialArgs a, Complex* psi) {
-  const std::int64_t n_points = a.psi.n_zr - a.n_zr_potential;
-  const std::int64_t i = thread_index();
-  if (i >= n_points * a.psi.n_rot * a.psi.n_xy) return;
-  const std::int64_t izr = a.n_zr_potential + i % n_points;
-  const std::int64_t k = i / n_points;  // irot + n_rot * ixy
-  const std::int64_t irot = k % a.psi.n_rot;
-  const std::int64_t ir = izr % a.nr;
-  const std::int64_t iz = izr / a.nr;
-  Complex& v = psi[izr + a.psi.n_zr * k];
-  v = a.z_optical[iz] * (a.gas_phase_step[irot + a.psi.n_rot * ir] * v);
+  const std::int64_t izr = a.n_zr_potential + thread_index();
+  if (izr >= a.psi.n_zr) return;
+  const int ir = static_cast<int>(izr % a.nr);
+  const double optical_z = a.z_optical[izr / a.nr];
+  const int n_rot = static_cast<int>(a.psi.n_rot);
+  for (std::int64_t k = blockIdx.y; k < a.psi.n_rot * a.psi.n_xy; k += gridDim.y) {
+    const int irot = static_cast<int>(k % n_rot);
+    Complex& v = psi[izr + a.psi.n_zr * k];
+    v = optical_z * (a.gas_phase_step[irot + n_rot * ir] * v);
+  }
 }
 
 // One thread per DVR column (izr, ixy) of the slab; neighbouring threads take neighbouring izr,
@@ -78,25 +78,30 @@ __global__ void absorb_and_transform_to_dvr_kernel(PotentialArgs a, const Comple
     for (int k = a.mj_max + 1; k <= a.n_phi - a.mj_max - 1; ++k) dvr[dvr_index(a, col, t, k)] = Complex{0.0, 0.0};
 }
 
-// One thread per DVR value (col, theta, phi); i runs col fastest, so the exp(i A) reads (izr
-// fastest) are coalesced. Surface symmetry: the (x, y) point takes the value of its
-// representative at the rotated / mirrored phi.
+// x over the DVR columns col = (izr - izr_first) + n_slab * ixy of the slab, y over the
+// (theta, phi) points (grid_2d); neighbouring threads take neighbouring izr, so the exp(i A) reads
+// (izr fastest) and the DVR accesses are coalesced. Surface symmetry: the (x, y) point takes the
+// value of its representative at the rotated / mirrored phi. (32-bit indices within the slab:
+// the scratch has at most 2^26 columns, see DevicePotentialOperator.)
 // CPU: PotentialOperator::apply_interaction (the loop between the transforms).
 __global__ void multiply_by_exp_potential_kernel(PotentialArgs a, Complex* dvr) {
-  const std::int64_t n_columns = a.n_slab * a.psi.n_xy;
-  const std::int64_t i = thread_index();
-  if (i >= n_columns * a.n_theta * a.n_phi) return;
-  const std::int64_t col = i % n_columns;
-  const int itheta = static_cast<int>((i / n_columns) % a.n_theta);
-  const int iphi = static_cast<int>(i / (n_columns * a.n_theta));
-  const std::int64_t izr = a.izr_first + col % a.n_slab;
-  const std::int64_t ixy = col / a.n_slab;
-
+  const int n_slab = static_cast<int>(a.n_slab);
+  const int n_columns = n_slab * static_cast<int>(a.psi.n_xy);
+  const int col = static_cast<int>(thread_index());
+  if (col >= n_columns) return;
+  const std::int64_t izr = a.izr_first + col % n_slab;
+  const int ixy = col / n_slab;
+  const int* phi_of = a.phi_index + a.n_phi * a.operation_of[ixy];  // phi map of this (x, y) point
   const std::int64_t n_tp = std::int64_t(a.n_theta) * a.n_phi;
-  const int phi = a.phi_index[iphi + a.n_phi * a.operation_of[ixy]];
-  const std::int64_t itp = phi + std::int64_t(a.n_phi) * itheta;
-  const Complex b = a.exp_potential[izr + a.n_zr_potential * (itp + n_tp * a.representative_of[ixy])];
-  dvr[i] = b * dvr[i];
+  const Complex* exp_rep = a.exp_potential + izr + a.n_zr_potential * n_tp * a.representative_of[ixy];
+
+  for (int tp = blockIdx.y; tp < a.n_theta * a.n_phi; tp += gridDim.y) {  // tp = itheta + n_theta * iphi
+    const int itheta = tp % a.n_theta;
+    const int iphi = tp / a.n_theta;
+    const std::int64_t itp = phi_of[iphi] + std::int64_t(a.n_phi) * itheta;
+    Complex& v = dvr[col + std::int64_t(n_columns) * tp];
+    v = exp_rep[a.n_zr_potential * itp] * v;
+  }
 }
 
 // One thread per DVR column, as absorb_and_transform_to_dvr. For every FBR state J of a mJ
@@ -148,9 +153,9 @@ __global__ void project_onto_specular_kernel(PotentialArgs a, Complex* psi, Comp
 
 // Fortran: Absorption.f90 PerformEXPOpticalZ/R, GasPhase.f90 PerformEXPGasPhaseOnScatGrid
 void apply_gas_phase_step(const PotentialArgs& args, Complex* psi) {
-  const std::int64_t n = (args.psi.n_zr - args.n_zr_potential) * args.psi.n_rot * args.psi.n_xy;
-  if (n == 0) return;
-  gas_phase_step_kernel<<<blocks_for(n), threads_per_block>>>(args, psi);
+  const std::int64_t n_points = args.psi.n_zr - args.n_zr_potential;
+  if (n_points == 0) return;
+  gas_phase_step_kernel<<<grid_2d(n_points, args.psi.n_rot * args.psi.n_xy), threads_per_block>>>(args, psi);
   check_kernel_launch("apply_gas_phase_step");
 }
 
@@ -165,8 +170,9 @@ void absorb_and_transform_to_dvr(const PotentialArgs& args, const Complex* psi, 
 
 // Fortran: Potential.f90 PerformEXPInteractionOp
 void multiply_by_exp_potential(const PotentialArgs& args, Complex* dvr) {
-  const std::int64_t n = args.n_slab * args.psi.n_xy * args.n_theta * args.n_phi;
-  multiply_by_exp_potential_kernel<<<blocks_for(n), threads_per_block>>>(args, dvr);
+  const std::int64_t n_columns = args.n_slab * args.psi.n_xy;
+  multiply_by_exp_potential_kernel<<<grid_2d(n_columns, std::int64_t(args.n_theta) * args.n_phi),
+                                     threads_per_block>>>(args, dvr);
   check_kernel_launch("multiply_by_exp_potential");
 }
 

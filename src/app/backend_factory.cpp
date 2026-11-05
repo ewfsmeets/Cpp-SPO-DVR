@@ -4,6 +4,7 @@
 
 #include "core/error.hpp"
 #include "propagation/cpu_backend.hpp"
+#include "report/sections.hpp"
 #ifdef SPODVR_HAVE_CUDA
 #include "cuda/cuda_backend.hpp"
 #endif
@@ -38,18 +39,19 @@ std::string prepare_device(Device device) {
 #endif
 }
 
-void check_device_memory([[maybe_unused]] Device device, [[maybe_unused]] const Config& config,
+void check_device_memory([[maybe_unused]] std::ostream& out, [[maybe_unused]] const Style& style,
+                         [[maybe_unused]] Device device, [[maybe_unused]] const Config& config,
                          [[maybe_unused]] const SpatialGrids& grids, [[maybe_unused]] const AngularGrid& angular,
                          [[maybe_unused]] int n_representatives) {
 #ifdef SPODVR_HAVE_CUDA
   if (device != Device::Cuda) return;
-  const std::size_t needed = cuda::estimate_gpu_memory(config, grids, angular, n_representatives);
+  const MemoryEstimate estimate = cuda::estimate_gpu_memory(config, grids, angular, n_representatives);
+  print_memory_estimate(out, style, estimate, cuda::total_gpu_memory(), "GPU MEMORY ESTIMATE");
   const std::size_t free = cuda::free_gpu_memory();
-  if (needed > free) {
-    auto gib = [](std::size_t b) { return std::to_string(double(b) / double(1 << 30)).substr(0, 5) + " GiB"; };
-    throw NotSupportedError("--device cuda: this run needs about " + gib(needed) + " of GPU memory, but only " +
-                            gib(free) + " are free (use --device cpu, symmetry or a larger GPU)");
-  }
+  if (estimate.peak_bytes > free)
+    throw NotSupportedError("--device cuda: this run needs about " + format_bytes(estimate.peak_bytes) +
+                            " of GPU memory, but only " + format_bytes(free) +
+                            " are free (use --device cpu, surface symmetry or a larger GPU)");
 #endif
 }
 

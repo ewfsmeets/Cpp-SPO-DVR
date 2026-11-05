@@ -177,12 +177,5 @@ Not done:
   sums are written in a batched, GEMM-shaped form over the (x, y) columns, so a oneMKL/cuBLAS batched
   GEMM can replace them when profiling of production grids shows a need.
 
-## Notes for a future CUDA implementation
-- The stage classes (`ScatteringKineticOperator`, `PotentialOperator`, `SpecularOperator`,
-  `AngularTransform`) work on whole flat arrays; a GPU backend replaces a stage (or the fused
-  T_xy + V stage) as a whole.
-- All FFT layouts have one batch dimension (`FftLayout`, `FftLayout2D`) and map onto
-  `cufftPlanMany`; oneMKL's FFTW3 interface has the same restriction, which is why the (x, y)
-  groups are gathered first.
-- Tables are plain arrays; reductions use a fixed order (on a GPU this needs a deterministic
-  reduction scheme to keep thread-count independence).
+## GPU backend
+The CUDA backend (`--device cuda`) is described, with its measurements, in [cuda.md](cuda.md).

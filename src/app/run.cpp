@@ -269,7 +269,8 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       }
       print_memory_estimate(out, style, estimate_memory(config, grids, angular, symmetry, omp_get_max_threads()),
                             physical_memory_bytes());
-      check_device_memory(propagates ? device : Device::Cpu, config, grids, angular, symmetry.n_representatives());
+      check_device_memory(out, style, propagates ? device : Device::Cpu, config, grids, angular,
+                          symmetry.n_representatives());
       // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
       const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
       const ScatteringShape shape{basis.size(), config.input.nx, config.input.ny, config.input.nr, config.input.nz};
