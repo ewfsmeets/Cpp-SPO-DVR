@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <optional>
 #include <ostream>
+#include <span>
+#include <string_view>
 
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -21,15 +23,15 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
                  const AngularGrid& angular);
 // The expected memory, with a warning if the peak exceeds the physical memory (if known).
 void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
-                           std::optional<std::size_t> physical_bytes);
+                           std::optional<std::size_t> physical_bytes, std::string_view title = "MEMORY ESTIMATE");
 void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
-                                const PotentialGrid& potential);
+                                std::span<const double> asymptotic);
 void print_gas_phase(std::ostream& out, const Style& style, const Config& config, const GasPhase& gas);
 
 // Full-precision data files (regression gates). Fortran equivalents: the vasy table in stdout and
 // debug_asyp.dat.
 void write_asymptotic_potential_file(const std::filesystem::path& path, const SpatialGrids& grids,
-                                     const PotentialGrid& potential);
+                                     std::span<const double> asymptotic);
 void write_gas_phase_file(const std::filesystem::path& path, const SpatialGrids& grids, const GasPhase& gas);
 
 }  // namespace spodvr

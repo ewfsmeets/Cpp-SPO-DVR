@@ -38,10 +38,23 @@ energies and wave functions).
 |---|---|
 | stdout per-energy blocks (`smatrix_combine`) | screen summary tables; `scattering_summary.tsv`, `probabilities_rovib.tsv`, `probabilities_diffraction.tsv` |
 | fort.25 (state-to-state S-matrix, `writeProbs`) | `s_matrix.tsv` |
-| fil10 / unit 3 (fine analysis) | (next milestone, same table formats) |
+| fil10 / unit 3 (fine analysis, spectrum) | `fine_analysis/spectrum/` |
+| stdout blocks and fort.25 of a fine analysis (interpolated) | `fine_analysis/scattering_summary.tsv`, `s_matrix.tsv`, … |
 | averages.out | `averages.dat` |
 | fort.9 / fort.8 (wave function) | `checkpoint.bin` (or fort.9 with `CheckpointFormat`) |
 | fort.21 / fort.22 (BK coefficients) | `bk_coefficients.bin` (or fort.21 with `CheckpointFormat`) |
+
+## Fine analysis (`onlyAnalysis`, `alsoAnalysis`)
+Written to `fine_analysis/` in the output directory, in the same table formats as above:
+
+| Path | Content |
+|---|---|
+| `fine_analysis/spectrum/` | the four tables + analysis.json at every point E_k = k π / T of the spectral grid inside the 95% confidence interval (Fortran fil10 and unit 3). `E_z` is k·spres; `s_matrix.tsv` only with `writeSMatrix` |
+| `fine_analysis/*.tsv`, `analysis.json` | the spectrum interpolated linearly to the NrOfEs analysis energies (Fortran: stdout and fort.25 of the analysis run). Energies outside the grid or the confidence interval are left out |
+| `fine_analysis/grid.json` | records in the file / up to tEnd / used (ndused), transform length, time step, effective time, spectral resolution (eV), first and last grid index, number of points (nen95), skipped analysis energies with the reason, and the count of large phase steps |
+
+The interpolated S-matrix elements and phases differ from the Fortran fort.25 because two Fortran
+bugs are fixed; the probabilities are the same. See `docs/fortran_fine_analysis_bugs.md`.
 
 ## Checkpoint files (binary)
 Native files are in host byte order (little-endian on x86-64). Both start with a header: a

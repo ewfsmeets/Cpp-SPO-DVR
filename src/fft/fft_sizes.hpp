@@ -7,6 +7,10 @@ namespace spodvr {
 // length is always even). Fortran: ffts.f90 GetNearestFFTSize
 [[nodiscard]] int nearest_fft_size(int n, int dividable = 1);
 
+// Largest allowed FFT length <= n (2^h 3^i 5^j 7^k 11^m as above, so even), or 1 if there is
+// none (n < 2). Fortran: ffts.f90 GetLowestFFTSize (length of the fine-analysis transform)
+[[nodiscard]] int lowest_fft_size(int n);
+
 // True if n is an allowed FFT length (nearest_fft_size(n, 1) == n).
 [[nodiscard]] bool is_valid_fft_size(int n);
 

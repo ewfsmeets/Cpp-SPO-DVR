@@ -142,6 +142,7 @@ add_library(spodvr_core
   src/propagation/memory_estimate.cpp
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
+  src/analysis/fine_analysis.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp
   src/io/fortran_unformatted.cpp
@@ -156,7 +157,9 @@ add_library(spodvr_core
   src/report/propagation_report.cpp
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp
+  src/report/fine_analysis_report.cpp
   src/app/cli.cpp
+  src/app/fine_analysis_run.cpp
   src/app/run.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)

@@ -19,11 +19,12 @@ split-operator propagation, FFT grids in Z, r, x and y, and a Gauss-Legendre/FFT
 
 Status:
 - Implemented and checked against the Fortran code: set-up, the hard wall test potential, the
-  gas-phase rovibrational states, the wave-packet propagation and the on-the-fly asymptotic
-  analysis (S-matrix and state-to-state probabilities).
+  gas-phase rovibrational states, the wave-packet propagation, the on-the-fly asymptotic
+  analysis (S-matrix and state-to-state probabilities) and the fine analysis of the BK time series
+  (onlyAnalysis / alsoAnalysis; two Fortran interpolation bugs fixed, see
+  docs/fortran_fine_analysis_bugs.md).
 - Implemented: checkpoint/restart (native files and Fortran-compatible files).
-- Not yet implemented: the fine analysis (onlyAnalysis / alsoAnalysis), the flux analysis, and
-  potentials other than the hard wall test potential.
+- Not yet implemented: the flux analysis and potentials other than the hard wall test potential.
 
 ## Dependencies
 

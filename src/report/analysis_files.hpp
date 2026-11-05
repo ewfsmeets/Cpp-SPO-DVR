@@ -17,7 +17,9 @@ namespace spodvr {
 //   probabilities_diffraction.tsv   per (energy, v, j, mJ, order) (writeRDProbs)
 //   analysis.json                   run and basis metadata, file and column descriptions
 // Returns the files written. Format description: docs/output_files.md
+// with_s_matrix = false omits s_matrix.tsv (fine-analysis spectrum without writeSMatrix).
 std::vector<std::filesystem::path> write_scattering_files(const std::filesystem::path& dir, const Config& config,
-                                                          const AnalysisBasis& basis, const ScatteringResults& results);
+                                                          const AnalysisBasis& basis, const ScatteringResults& results,
+                                                          bool with_s_matrix = true);
 
 }  // namespace spodvr

@@ -51,6 +51,11 @@ struct EnergyResult {
   double e_diffraction;    // Fortran: avedif
 };
 
+// Probabilities, phases, sums over rotation / diffraction / vibration and average final
+// energies from e.s_matrix (and e.open), in the Fortran regular state order.
+// Fortran: Analyzor.f90 smatrix_combine (the same loops as the sums of probaf)
+void combine_s_matrix(EnergyResult& e, const AnalysisBasis& basis, const GasPhase& gas);
+
 struct ScatteringResults {
   std::vector<EnergyResult> energies;
 };

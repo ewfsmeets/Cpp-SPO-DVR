@@ -96,6 +96,16 @@ TEST(Input, UnsupportedFeatures) {
   EXPECT_THROW((void)build(json), NotSupportedError);
 }
 
+// Run mode precedence as in Fortran: Potential (6) > onlyAnalysis (2) > NewCalc (0 / 1).
+TEST(Input, AnalysisOnlyRunMode) {
+  Json json = reference_json();
+  json["onlyAnalysis"] = true;
+  json["RestartDir"] = "earlier_run";
+  EXPECT_EQ(build(json).derived.run_mode, 2);
+  json["Potential"] = true;
+  EXPECT_EQ(build(json).derived.run_mode, 6);
+}
+
 TEST(Input, MjMaxRules) {
   Json json = reference_json();
   json.erase("MJMax");  // default -1 -> JMax
@@ -181,6 +191,7 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ProjOp3", [](Json& j) { j["ProjOp"] = 3; }, "ProjOp"},
         Violation{"tStartNew", [](Json& j) { j["tStart"] = 10.0; j["tEnd"] = 14010.0; }, "tStart"},
         Violation{"tStartRestart", [](Json& j) { j["NewCalc"] = false; }, "tStart"},
+        Violation{"OnlyAnalysisNeedsRestartDir", [](Json& j) { j["onlyAnalysis"] = true; }, "RestartDir"},
         Violation{"tEnd", [](Json& j) { j["tEnd"] = 14002.0; }, "tEnd"},
         Violation{"dtStep", [](Json& j) { j["dtStep"] = 0.0; j["nStep"] = 0; j["tEnd"] = 0.0; }, "dtStep"},
         Violation{"nStep", [](Json& j) { j["nStep"] = -1; j["tEnd"] = -2.0; }, "tEnd"},

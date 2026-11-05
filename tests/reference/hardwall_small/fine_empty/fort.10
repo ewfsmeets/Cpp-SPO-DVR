@@ -1,0 +1,7 @@
+ ********************************************************************************
+                       WARNING
+ ********************************************************************************
+ Fine analysis (nread = 2 ) not possible because nen95 = 0! This means that no
+ scattering results can be calculated! The reason nen95 = 0 is probably because
+ you have not propagated long enough.
+ See also <info from reading or writing asymptotic info>

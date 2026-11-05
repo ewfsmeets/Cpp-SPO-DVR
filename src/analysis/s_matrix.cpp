@@ -77,8 +77,6 @@ EnergyResult SMatrixAccumulator::result_at(int ien) const {
   const double pi = Constants::pi;
   const int n_states = a.n_states();
   const int n_v = a.n_v();
-  const int n_rot = a.n_rotation();
-  const int n_orders = a.max_order() + 1;
 
   EnergyResult e;
   e.total_energy = energies_.total[ien];
@@ -110,7 +108,19 @@ EnergyResult SMatrixAccumulator::result_at(int ien) const {
       e.open[k] = 1;
     }
 
-  // Probabilities, phases, sums and averages, in the regular state order. Fortran: smatrix_combine
+  combine_s_matrix(e, a, gas_);
+  return e;
+}
+
+// Fortran: smatrix_combine
+void combine_s_matrix(EnergyResult& e, const AnalysisBasis& a, const GasPhase& gas) {
+  const double chaev = units::legacy.energy_factor();
+  const int n_states = a.n_states();
+  const int n_v = a.n_v();
+  const int n_rot = a.n_rotation();
+  const int n_orders = a.max_order() + 1;
+
+  // Probabilities, phases, sums and averages, in the regular state order.
   e.probability.assign(n_states * n_v, 0.0);
   e.phase.assign(n_states * n_v, 0.0);
   e.p_vibration.assign(n_v, 0.0);
@@ -129,9 +139,9 @@ EnergyResult SMatrixAccumulator::result_at(int ien) const {
       const cplx s = e.s_matrix[k];
       const double prob = s.real() * s.real() + s.imag() * s.imag();  // Fortran: selmnt * conjg(selmnt)
       const int irotana = a.state_rotation(is);
-      const double aerot = gas_.rotational_energies[a.j(is)];
+      const double aerot = gas.rotational_energies[a.j(is)];
       const double edif = a.diffraction_energy(a.state_diffraction(is));
-      e_vib = e_vib + gas_.vibrational_energies[v] * prob;
+      e_vib = e_vib + gas.vibrational_energies[v] * prob;
       e_rot = e_rot + aerot * prob;
       e_dif = e_dif + edif * prob;
       e.e_rotation_v[v] = e.e_rotation_v[v] + aerot * prob;
@@ -161,7 +171,6 @@ EnergyResult SMatrixAccumulator::result_at(int ien) const {
   e.e_vibration = sum != 0.0 ? e_vib * chaev / sum : 0.0;
   e.e_rotation = sum != 0.0 ? e_rot * chaev / sum : 0.0;
   e.e_diffraction = sum != 0.0 ? e_dif * chaev / sum : 0.0;
-  return e;
 }
 
 }  // namespace spodvr

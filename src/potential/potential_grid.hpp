@@ -35,6 +35,11 @@ struct PotentialGrid {
 [[nodiscard]] PotentialGrid compute_potential_grid(const Potential& potential, const Config& config,
                                                    const SpatialGrids& grids, const AngularGrid& angular);
 
+// The gas-phase potential V(r) alone (PotentialGrid::asymptotic, hartree), for runs that do not
+// need the 6D grid (fine analysis). Fortran: Potential.f90 setupTheAsymptoticPotential
+[[nodiscard]] std::vector<double> compute_asymptotic_potential(const Potential& potential, const Config& config,
+                                                               const SpatialGrids& grids);
+
 // vdvr = -V * dt, the form used by the propagator. Fortran: Potential.f90 premultiplyWithTimestep
 void premultiply_with_time_step(std::span<double> values, double time_step);
 

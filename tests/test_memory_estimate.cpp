@@ -8,6 +8,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "analysis/fine_analysis.hpp"
+#include "app/fine_analysis_run.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -124,4 +126,31 @@ TEST(FormatBytes, Units) {
   EXPECT_EQ(format_bytes(std::size_t(3) << 19), "1.5 MiB");
   EXPECT_EQ(format_bytes(std::size_t(4) << 30), "4.0 GiB");
   EXPECT_EQ(format_bytes(std::size_t(2048) << 30), "2.0 TiB");
+}
+
+// Fine analysis (hardwall_small, 1400 records: ndused 1386, 65 grid points; 240 states x 2 v).
+TEST(MemoryEstimate, FineAnalysisByHandAndAllocations) {
+  nlohmann::json json = reference_json("hardwall_small");
+  json["onlyAnalysis"] = true;
+  json["RestartDir"] = "unused";
+  const RunGrids setup(json);
+  const FftwFft fft;
+  const GasPhase gas = compute_gas_phase(
+      setup.config, setup.grids, setup.angular,
+      compute_asymptotic_potential(*make_potential(setup.config.input.system_id), setup.config, setup.grids), fft,
+      LapackEigensolver());
+  const AnalysisSetup analysis(setup.config, setup.angular, gas);
+  const FineAnalysisGrid grid = make_fine_analysis_grid(setup.config, 1400);
+  const MemoryEstimate e = estimate_fine_analysis_memory(grid, analysis.basis);
+  ASSERT_EQ(e.items.size(), 4U);
+  const std::size_t n_series = 240 * 2;
+  EXPECT_EQ(e.items[0].values, n_series * 1387);
+  EXPECT_EQ(e.items[1].values, n_series * 65);
+  EXPECT_EQ(e.items[3].values, std::size_t(2772) * 64);
+  EXPECT_EQ(e.peak_bytes, e.items[0].bytes + e.items[1].bytes + e.items[2].bytes + e.items[3].bytes);
+  EXPECT_EQ(e.propagation_bytes, 0U);
+
+  // Against the arrays that are allocated.
+  const BkSeries series(grid, analysis.basis, 0.0);
+  EXPECT_EQ(e.items[0].values, std::size_t(series.n_series()) * series.length());
 }

@@ -94,9 +94,15 @@ PotentialGrid compute_potential_grid(const Potential& potential, const Config& c
   if (config.input.use_switching) switch_to_gas_phase(grid, potential, config, grids);
   impose_limits(grid.values, config);
 
-  grid.asymptotic = gas_phase_potential(potential, config.derived.z_asymptotic, grids);
-  impose_limits(grid.asymptotic, config);
+  grid.asymptotic = compute_asymptotic_potential(potential, config, grids);
   return grid;
+}
+
+std::vector<double> compute_asymptotic_potential(const Potential& potential, const Config& config,
+                                                 const SpatialGrids& grids) {
+  std::vector<double> v = gas_phase_potential(potential, config.derived.z_asymptotic, grids);
+  impose_limits(v, config);
+  return v;
 }
 
 void premultiply_with_time_step(std::span<double> values, double time_step) {

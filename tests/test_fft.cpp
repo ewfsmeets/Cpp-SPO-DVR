@@ -52,6 +52,23 @@ TEST(FftSizes, NearestSizes) {
   EXPECT_FALSE(is_valid_fft_size(5));
 }
 
+// The fine-analysis transform length: the largest allowed size <= n.
+TEST(FftSizes, LowestSizes) {
+  EXPECT_EQ(lowest_fft_size(1400), 1386);  // 1400 = 2^3 5^2 7 is not allowed; 1386 = 2 3^2 7 11
+  EXPECT_EQ(lowest_fft_size(1386), 1386);
+  EXPECT_EQ(lowest_fft_size(80), 80);
+  EXPECT_EQ(lowest_fft_size(50), 48);
+  EXPECT_EQ(lowest_fft_size(2), 2);
+  EXPECT_EQ(lowest_fft_size(1), 1);  // no allowed size: Fortran returns 1 as well
+  // Against a brute-force search over the allowed sizes.
+  for (int n = 2; n <= 3000; ++n) {
+    int expected = 2;
+    for (int s = 2; s <= n; s += 2)
+      if (is_valid_fft_size(s)) expected = s;
+    ASSERT_EQ(lowest_fft_size(n), expected) << "n = " << n;
+  }
+}
+
 TEST(Fftw, ComplexMatchesNaiveDftBothSigns) {
   const FftwFft fft;
   const std::size_t n = 12;

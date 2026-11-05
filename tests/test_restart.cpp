@@ -110,7 +110,103 @@ const FirstRun& first_run() {
   return r;
 }
 
+// Fine analysis (alsoAnalysis / onlyAnalysis) on a short run with a large time step (dtStep =
+// dtAna = 10, 0 .. 600 a.u.: 60 BK records, 3 grid points in the confidence interval; the
+// values are not physical, the runs are only compared with each other):
+//   full          0 .. 600 with alsoAnalysis
+//   first/second  the same run split at 300 by a restart, alsoAnalysis in the second part
+//   only_native   onlyAnalysis of full/bk_coefficients.bin
+//   only_fortran  onlyAnalysis of full/fort.21
+//   in_place      onlyAnalysis with the output directory = RestartDir (a copy of full)
+struct FineAnalysisRuns {
+  fs::path root = fs::temp_directory_path() / ("spodvr_fine_analysis_test_" + std::to_string(::getpid()));
+  int code_full, code_first, code_second, code_native, code_fortran, code_in_place;
+  std::string err;
+
+  static nlohmann::json json(double t_start, double t_end) {
+    nlohmann::json j = short_json();
+    j["dtStep"] = 10.0;
+    j["dtAna"] = 10.0;
+    j["dtAve"] = 100.0;
+    j["CheckpointFormat"] = "both";
+    j["alsoAnalysis"] = true;
+    return with_times(j, t_start, t_end, static_cast<int>((t_end - t_start) / 10.0 + 0.5));
+  }
+  static nlohmann::json only_analysis(const fs::path& dir, const char* format) {
+    nlohmann::json j = json(0.0, 600.0);
+    j["alsoAnalysis"] = false;
+    j["onlyAnalysis"] = true;
+    j["RestartDir"] = dir.string();
+    j["RestartFormat"] = format;
+    return j;
+  }
+
+  FineAnalysisRuns() {
+    fs::remove_all(root);
+    code_full = run(json(0.0, 600.0), root / "full", err);
+    code_first = run(json(0.0, 300.0), root / "first", err);
+    code_second = run(restart_from(json(300.0, 600.0), root / "first"), root / "second", err);
+    code_native = run(only_analysis(root / "full", "native"), root / "only_native", err);
+    code_fortran = run(only_analysis(root / "full", "fortran"), root / "only_fortran", err);
+    fs::create_directories(root / "in_place");
+    fs::copy_file(root / "full" / "bk_coefficients.bin", root / "in_place" / "bk_coefficients.bin");
+    code_in_place = run(only_analysis(root / "in_place", "native"), root / "in_place", err);
+  }
+  ~FineAnalysisRuns() { fs::remove_all(root); }
+};
+
+const FineAnalysisRuns& fine_runs() {
+  static const FineAnalysisRuns r;
+  return r;
+}
+
+const std::vector<std::string> fine_analysis_files = {"fine_analysis/grid.json",
+                                                      "fine_analysis/scattering_summary.tsv",
+                                                      "fine_analysis/s_matrix.tsv",
+                                                      "fine_analysis/probabilities_rovib.tsv",
+                                                      "fine_analysis/probabilities_diffraction.tsv",
+                                                      "fine_analysis/spectrum/scattering_summary.tsv",
+                                                      "fine_analysis/spectrum/probabilities_rovib.tsv",
+                                                      "fine_analysis/spectrum/probabilities_diffraction.tsv"};
+
 }  // namespace
+
+// alsoAnalysis is the same fine analysis as onlyAnalysis of the BK file the run wrote, from the
+// native and from the Fortran file, and also after a restart.
+TEST(FineAnalysisRuns, AllRunModesGiveBitwiseIdenticalResults) {
+  const FineAnalysisRuns& r = fine_runs();
+  for (const int code : {r.code_full, r.code_first, r.code_second, r.code_native, r.code_fortran, r.code_in_place})
+    ASSERT_EQ(code, 0) << r.err;
+  ASSERT_TRUE(fs::exists(r.root / "full" / "fine_analysis" / "s_matrix.tsv"));  // grid points in the interval
+  for (const std::string& name : fine_analysis_files) {
+    const std::string full = read_file(r.root / "full" / name);
+    EXPECT_FALSE(full.empty()) << name;
+    for (const char* other : {"second", "only_native", "only_fortran", "in_place"})
+      EXPECT_EQ(full, read_file(r.root / other / name)) << other << "/" << name;
+  }
+  // The analysis-only run in RestartDir leaves the BK file alone and writes no propagation files.
+  EXPECT_EQ(read_file(r.root / "full" / "bk_coefficients.bin"), read_file(r.root / "in_place" / "bk_coefficients.bin"));
+  EXPECT_FALSE(fs::exists(r.root / "in_place" / "checkpoint.bin"));
+}
+
+TEST(FineAnalysisRuns, Errors) {
+  const FineAnalysisRuns& r = fine_runs();
+  ASSERT_EQ(r.code_full, 0) << r.err;
+  std::string err;
+  // tEnd beyond the records in the file.
+  nlohmann::json json = FineAnalysisRuns::only_analysis(r.root / "full", "native");
+  json = with_times(json, 0.0, 700.0, 70);
+  EXPECT_EQ(run(json, r.root / "too_long", err), 2);
+  EXPECT_NE(err.find("tEnd"), std::string::npos) << err;
+  // A BK file of a different input.
+  json = FineAnalysisRuns::only_analysis(r.root / "full", "native");
+  json["Z0"] = 11.6;
+  EXPECT_EQ(run(json, r.root / "mismatch", err), 4);
+  EXPECT_NE(err.find("Z0"), std::string::npos) << err;
+  // No BK file.
+  json = FineAnalysisRuns::only_analysis(r.root / "missing", "fortran");
+  EXPECT_EQ(run(json, r.root / "no_file", err), 4);
+}
 
 TEST(Restart, SplitRunIsBitwiseIdenticalToTheUnsplitRun) {
   const RestartRuns& r = runs();

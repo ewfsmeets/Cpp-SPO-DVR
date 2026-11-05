@@ -57,6 +57,10 @@ struct PropagationTables {
   double fft_scale_y = 0.0;
 };
 
+// Kinetic energy of the parallel motion ekinxy (hartree) at every ixy = iy + ny*ix.
+// Fortran: GridEnergies.f90 DifChanEnergies
+[[nodiscard]] std::vector<double> parallel_kinetic_energies(const Config& config);
+
 // asymptotic_potential: vasy(r) in hartree (PotentialGrid::asymptotic).
 [[nodiscard]] PropagationTables make_propagation_tables(const Config& config, const SpatialGrids& grids,
                                                         const RotationalBasis& basis,

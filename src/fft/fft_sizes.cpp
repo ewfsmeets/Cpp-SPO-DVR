@@ -1,4 +1,5 @@
-// Valid FFT sizes (2^h 3^i 5^j 7^k 11^m, i <= 2, j,k,m <= 1). Fortran: ffts.f90 GetNearestFFTSize
+// Valid FFT sizes (2^h 3^i 5^j 7^k 11^m, i <= 2, j,k,m <= 1).
+// Fortran: ffts.f90 GetNearestFFTSize, GetLowestFFTSize
 #include "fft/fft_sizes.hpp"
 
 #include <cstdint>
@@ -24,6 +25,30 @@ int nearest_fft_size(int n, int dividable) {
             if (m == 1) size *= 11;
             if (size <= 0 || size >= limit) continue;
             if (size >= n && size <= best) best = size;
+          }
+        }
+      }
+    }
+  }
+  return static_cast<int>(best);
+}
+
+// Fortran: ffts.f90 GetLowestFFTSize (same loops; 1 if no allowed size is <= n)
+int lowest_fft_size(int n) {
+  constexpr std::int64_t limit = std::int64_t{1} << 30;
+  std::int64_t best = 1;
+  for (int h = 1; h <= 25; ++h) {
+    for (int i = 0; i <= 2; ++i) {
+      for (int j = 0; j <= 1; ++j) {
+        for (int k = 0; k <= 1; ++k) {
+          for (int m = 0; m <= 1; ++m) {
+            std::int64_t size = std::int64_t{1} << h;
+            for (int c = 0; c < i; ++c) size *= 3;
+            if (j == 1) size *= 5;
+            if (k == 1) size *= 7;
+            if (m == 1) size *= 11;
+            if (size <= 0 || size >= limit) continue;
+            if (size <= n && size >= best) best = size;
           }
         }
       }

@@ -35,7 +35,7 @@ Fortran default.
 | `ROptStart` `ROptEnd` | real | rsplmi, rsplma | CAP in r |
 | `ZSpOptStart` `ZSpOptEnd` | real | ssplmi, ssplma | CAP in Z, specular grid |
 | `EParallel` `PhiParallel` | real | epar, phipar | parallel energy (eV), azimuth (deg) |
-| `writeSMatrix` `writeProbs` `writeRDProbs` | bool | lwrit3, lwri25, lwdiro | output switches: `writeProbs` writes probabilities_rovib.tsv, `writeRDProbs` probabilities_diffraction.tsv; `writeSMatrix` has no effect yet (s_matrix.tsv is always written; in Fortran it controls the unit 3 output of the fine analysis) |
+| `writeSMatrix` `writeProbs` `writeRDProbs` | bool | lwrit3, lwri25, lwdiro | output switches: `writeProbs` writes probabilities_rovib.tsv, `writeRDProbs` probabilities_diffraction.tsv; `writeSMatrix` writes fine_analysis/spectrum/s_matrix.tsv, the S-matrix of every state on the fine-analysis grid (Fortran: unit 3). The on-the-fly s_matrix.tsv is always written |
 | `TolSp` | real | tolsp | specular-grid tolerance; also the maximum initial norm outside [ZAna, start of the specular absorber] (hard error) |
 
 For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROpt…`, `ZSpOpt…`) is required.
@@ -47,7 +47,8 @@ The energy is in eV, and the factor is the strength in hartree.
 |---|---|---|---|
 | `MJMax` | int | JMax | mjmaxw. A negative value means JMax. **0 also gives JMax** for the basis (Fortran quirk) |
 | `VIn` `JIn` `MJIn` | int | 0 | initial state |
-| `onlyAnalysis` `alsoAnalysis` | bool | false | run mode flags |
+| `onlyAnalysis` | bool | false | analysis-only run (nread = 2): the fine analysis of the BK file in `RestartDir` (format `RestartFormat`); no propagation and no 6D potential. `tEnd` sets the number of BK records used (tEnd / dtAna) |
+| `alsoAnalysis` | bool | false | the fine analysis after the propagation, of the BK file the run has written (Fortran replaces the on-the-fly results by the fine ones; here both are written) |
 | `Potential` | bool | false | potential-only run (nread = 6) |
 | `JAna` `VAna` `DifOrdAna` | int | determined by the program | analysis limits |
 | `ZAnaSp` | real | none | fixed analysis line on the specular grid |
@@ -61,9 +62,12 @@ The energy is in eV, and the factor is the strength in hartree.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `RestartDir` | string | — | output directory of the run to continue; required if `NewCalc` is false. It must differ from `--output-dir` |
-| `RestartFormat` | string | `"native"` | `"native"`: checkpoint.bin + bk_coefficients.bin; `"fortran"`: fort.8 (or fort.9) + fort.22 (or fort.21) written by the Fortran code or by this program |
+| `RestartDir` | string | — | output directory of the run to continue; required if `NewCalc` is false. It must differ from `--output-dir`. For `onlyAnalysis`: the directory with the BK file to analyse (required; it may equal `--output-dir`) |
+| `RestartFormat` | string | `"native"` | `"native"`: checkpoint.bin + bk_coefficients.bin; `"fortran"`: fort.8 (or fort.9) + fort.22 (or fort.21) written by the Fortran code or by this program. `onlyAnalysis` reads only the BK file |
 | `CheckpointFormat` | string | `"native"` | files written for a later restart: `"native"`, `"fortran"` (fort.9, fort.21) or `"both"`. bk_coefficients.bin is always written |
+
+The fine analysis checks the BK file in the same way (the Fortran code ignores the header of
+fort.22). Its records must lie every dtAna from t = 0.
 
 A restart must use the same input as the earlier run except `NewCalc`, `tStart`, `tEnd`, `nStep`
 (and output switches); the program checks the grids, masses, time steps, wave packet and

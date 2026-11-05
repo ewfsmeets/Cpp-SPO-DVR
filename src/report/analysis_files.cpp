@@ -151,11 +151,14 @@ void write_metadata(const std::filesystem::path& path, const Config& config, con
 }  // namespace
 
 std::vector<std::filesystem::path> write_scattering_files(const std::filesystem::path& dir, const Config& config,
-                                                          const AnalysisBasis& basis,
-                                                          const ScatteringResults& results) {
-  std::vector<std::filesystem::path> files = {dir / "scattering_summary.tsv", dir / "s_matrix.tsv"};
+                                                          const AnalysisBasis& basis, const ScatteringResults& results,
+                                                          bool with_s_matrix) {
+  std::vector<std::filesystem::path> files = {dir / "scattering_summary.tsv"};
   write_summary(files[0], basis, results);
-  write_s_matrix(files[1], basis, results);
+  if (with_s_matrix) {
+    files.push_back(dir / "s_matrix.tsv");
+    write_s_matrix(files.back(), basis, results);
+  }
   if (config.input.write_probabilities) {
     files.push_back(dir / "probabilities_rovib.tsv");
     write_rovib(files.back(), basis, results);

@@ -46,28 +46,6 @@ std::vector<double> parallel_momenta(int n, double k0, double dk) {
   return k;
 }
 
-// Kinetic energy of the parallel motion on the skewed lattice for every (kx, ky) pair,
-// ekinxy = (kx^2 + ky^2 - 2 cos(skew) kx ky) / 2M. Fortran: DifChanEnergies (nmoder = 3, 4)
-std::vector<double> parallel_kinetic_energies(const Config& config) {
-  const InputParameters& p = config.input;
-  const DerivedParameters& d = config.derived;
-  const std::vector<double> kx = parallel_momenta(p.nx, d.kx, d.delta_kx);
-  const std::vector<double> ky = parallel_momenta(p.ny, d.ky, d.delta_ky);
-  const double ecnvrt = 0.5 / d.total_mass;
-  const double prefac = -2.0 * std::cos(d.system.skewing_angle);
-
-  std::vector<double> energies;
-  for (int ix = 0; ix < p.nx; ++ix) {
-    for (int iy = 0; iy < p.ny; ++iy) {
-      const double ekinx = ecnvrt * (kx[ix] * kx[ix]);
-      const double ekiny = ecnvrt * (ky[iy] * ky[iy]);
-      const double ekxky = ecnvrt * prefac * kx[ix] * ky[iy];
-      energies.push_back(ekinx + ekxky + ekiny);
-    }
-  }
-  return energies;
-}
-
 // exp(-V_opt dt) for the quadratic (power nabpow) absorbing potential
 // V_opt = vabs (n+1)/2 ((q - start) / (end - start))^n on [start, end], 0 elsewhere.
 // Fortran: Absorption.f90 SetupAbsorpPot (vimag, vimar, vimas and EXPOpt*)
@@ -100,6 +78,28 @@ std::vector<double> parallel_phases(const Config& config) {
 }
 
 }  // namespace
+
+// Kinetic energy of the parallel motion on the skewed lattice for every (kx, ky) pair,
+// ekinxy = (kx^2 + ky^2 - 2 cos(skew) kx ky) / 2M. Fortran: DifChanEnergies (nmoder = 3, 4)
+std::vector<double> parallel_kinetic_energies(const Config& config) {
+  const InputParameters& p = config.input;
+  const DerivedParameters& d = config.derived;
+  const std::vector<double> kx = parallel_momenta(p.nx, d.kx, d.delta_kx);
+  const std::vector<double> ky = parallel_momenta(p.ny, d.ky, d.delta_ky);
+  const double ecnvrt = 0.5 / d.total_mass;
+  const double prefac = -2.0 * std::cos(d.system.skewing_angle);
+
+  std::vector<double> energies;
+  for (int ix = 0; ix < p.nx; ++ix) {
+    for (int iy = 0; iy < p.ny; ++iy) {
+      const double ekinx = ecnvrt * (kx[ix] * kx[ix]);
+      const double ekiny = ecnvrt * (ky[iy] * ky[iy]);
+      const double ekxky = ecnvrt * prefac * kx[ix] * ky[iy];
+      energies.push_back(ekinx + ekxky + ekiny);
+    }
+  }
+  return energies;
+}
 
 PropagationTables make_propagation_tables(const Config& config, const SpatialGrids& grids, const RotationalBasis& basis,
                                           std::span<const double> asymptotic_potential) {

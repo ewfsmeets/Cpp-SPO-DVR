@@ -109,8 +109,8 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
 }
 
 void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
-                           std::optional<std::size_t> physical_bytes) {
-  print_section(out, style, "MEMORY ESTIMATE");
+                           std::optional<std::size_t> physical_bytes, std::string_view title) {
+  print_section(out, style, title);
   Table table({"array", "values", "size", "note"});
   for (const MemoryItem& item : estimate.items)
     table.add_row({item.name, std::to_string(item.values), format_bytes(item.bytes), item.note});
@@ -132,14 +132,14 @@ void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEs
 }
 
 void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
-                                const PotentialGrid& potential) {
+                                std::span<const double> asymptotic) {
   const auto& units = units::legacy;
   print_section(out, style, "GAS-PHASE POTENTIAL");
   out << "  V(r) at Z = " << fixed(config.derived.z_asymptotic, 6) << " bohr, theta = pi/2\n\n";
   Table table({"ir", "r (bohr)", "V (eV)"});
   for (int ir = 0; ir < grids.r.size(); ++ir)
-    table.add_row({std::to_string(ir), full_precision(grids.r[ir]),
-                   full_precision(units.hartree_to_ev(potential.asymptotic[ir]))});
+    table.add_row(
+        {std::to_string(ir), full_precision(grids.r[ir]), full_precision(units.hartree_to_ev(asymptotic[ir]))});
   table.print(out, style);
 }
 
@@ -171,13 +171,13 @@ void print_gas_phase(std::ostream& out, const Style& style, const Config& config
 }
 
 void write_asymptotic_potential_file(const std::filesystem::path& path, const SpatialGrids& grids,
-                                     const PotentialGrid& potential) {
+                                     std::span<const double> asymptotic) {
   const auto& units = units::legacy;
   auto file = open_output(path);
   file << "# Gas-phase potential V(r) (Z = zasymp, theta = pi/2)\n# ir  r(bohr)  V(hartree)  V(eV) = "
           "V(hartree)*27.2114\n";
   for (int ir = 0; ir < grids.r.size(); ++ir) {
-    const double v = potential.asymptotic[ir];
+    const double v = asymptotic[ir];
     file << ir << ' ' << full_precision(grids.r[ir]) << ' ' << full_precision(v) << ' '
          << full_precision(units.hartree_to_ev(v)) << '\n';
   }

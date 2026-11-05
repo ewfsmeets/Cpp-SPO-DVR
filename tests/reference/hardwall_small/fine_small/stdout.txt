@@ -1,0 +1,9946 @@
+
+*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261105 at 103421.557 ***
+
+* Using the new style input format...
+* OpenMP enabled ...
+* MPI disabled ...
+* NAG calls disabled ...
+* FFTW library will be used for FFTs ...
+* Estimate FFTW plans will be used for FFTs ...
+* Generic code will be used for diagonalizations ...
+* Extra check calls enabled ...
+* The internal timers of module Timers are not used ...
+* The FFT over R is performed using a single call ...
+* Full potential energy operation optimization has been enabled...
+* Potential energy multiplication optimization has been disabled...
+* Kinetic energy multiplication optimization has been disabled ...
+* Optimization of the kinetic energy operator routine in Z on the scattering grid has been disabled ...
+
+
+* Setting up global data...
+* Calculated machines precision: 0.55511151E-16
+* Using a maximum number of 4 threads in this run.
+* Setting up global data...
+* Preparing module inputfields for reading the input file ...
+* Trying to read input file "DVR.inp" ...
+* Input file read OK ...
+
+*** THE INPUT PARAMETERS SETUP INTERNALLY BY THE PROGRAM ***
+
+* The surface lattice constant in X (bohr):                 0.62396600E+01
+* The surface lattice constant in Y (bohr):                 0.52396600E+01
+* The asymptotic value in Z (bohr):                         0.70000000E+01
+* The cutoff value in r (bohr):                             0.10000000E+04
+* The unit cell skewing angle (degrees):                    0.90000000E+02
+* The unit cell point group:                               C2v
+
+NOTE: If the potential switching option is used to switch the potential
+faster to the gas phase, the Z-value at which the potential first
+reaches the gas phase, is the new asymptotic Z-value.
+
+
+*** THE INPUT READ ***
+
+* Title:                                                   Hard wall small test (Cu211 table, v0 0.2-0.6 eV)
+
+* SystemID:                                                HardWallPES
+* NewCalc:                                                 T
+* Z degree of freedom:                                     T
+* R degree of freedom:                                     T
+* X degree of freedom:                                     T
+* Y degree of freedom:                                     T
+* Theta degree of freedom:                                 T
+* Phi degree of freedom:                                   T
+
+* Mass of atom 1 (amu):                                     0.10078000E+01
+* Mass of atom 2 (amu):                                     0.10078000E+01
+* Homo-nuclear molecule:                                   T
+
+* Number of points on the scattering grid in Z:             176
+* Step size of the scattering Z (bohr):                     0.80000000E-01
+* Starting point of the scattering in Z (bohr):            -0.20000000E+01
+* Number of points on the specular grid in Z:               280
+
+* Number of points on the scattering grid in r:              56
+* Step size of the scattering r (bohr):                     0.15000000E+00
+* Starting point of the scattering in r (bohr):             0.80000000E+00
+* Specular grid in r is identical to the scattering grid in r.
+
+* Number of points on the scattering grid in X:               4
+* Number of points on the scattering grid in Y:               4
+
+* Maximum J value in grid representation.:                    4
+* Maximum Mj value in grid representation.:                   4
+
+* The projection operator scheme used:                     using two grids all the way
+
+* Propagation method used:                                 Split operator
+* Calculation starts at (aut):                              0.00000000E+00
+* Calculation ends at (aut):                                0.80000000E+03
+* Time step used in the propagation (aut):                  0.20000000E+01
+* Number of time steps taken:                                400
+
+* Only performing a fine analysis:                         T
+* Also performing a fine analysis:                         F
+* Wave function analysed every (aut):                       0.10000000E+02
+* Averages printed every (aut):                             0.10000000E+03
+* Initially using a dynamical specular analysis surface:   T
+* Wave function analysed at (bohr):                         0.80000000E+01
+* Maximum J analysed:                                      determined by the program (see info Analysis)
+* Maximum V analysed:                                      determined by the program (see info Analysis)
+* Maximum diffraction order analysed:                      determined by the program (see info Analysis)
+* Number of energies that are on-the-fly analysed:            41
+
+* Lowest energy of the initial wave packet:                 0.20000000E+00
+* Highest energy of the initial wave packet:                0.60000000E+00
+* Average position of the initial wave packet:              0.11440000E+02
+
+* Initial rotational quantum number J:                        0
+* Initial rotational quantum number Mj:                       0
+* Initial rotational quantum number V:                        0
+
+* Only computing the potential:                            F
+* Imposing a minimum value on the potential:               F
+* Imposing a maximum value on the potential:               F
+* Using symmetry in setting up the potential:              F
+* Potential mixing alfa value:                              0.00000000E+00
+
+* Using a quadratic optical potential on the scattering grid in Z:
+* Optical potential in Z start at (bohr):                   0.88800000E+01
+* Optical potential in Z ends at (bohr):                    0.12000000E+02
+* Optical potential in Z absorbs optimally for (eV):        0.30000000E+00
+
+* Using a quadratic optical potential on the scattering grid in r:
+* Optical potential in r start at (bohr):                   0.45500000E+01
+* Optical potential in r ends at (bohr):                    0.90500000E+01
+* Optical potential in r absorbs optimally for (eV):        0.30000000E+00
+
+* Using a quadratic optical potential on the specular grid in Z:
+* Optical potential in Z start at (bohr):                   0.16800000E+02
+* Optical potential in Z ends at (bohr):                    0.20320000E+02
+* Optical potential in Z specular absorbs optimally for (eV 0.30000000E+00
+
+* Initial energy parallel to the surface (eV):              0.00000000E+00
+* Azimuthal angle of the incident molecule (degrees):       0.00000000E+00
+
+* Using a switching function for the potential in Z:       F
+* Switching function starts at (bohr):                      0.60000000E+01
+* Switching function ends at (bohr):                        0.80000000E+01
+
+* S-matrix elements written to file 3:                     T
+* Rot-vib-diff resolved probs written to file 25:          T
+* Rot-diff resolved probs written to file 10:              T
+* Dumping debug information to file:                       F
+* Dumping full S-matrix to file fil10:                     F
+
+* Tolerance for transferring the wavefunction (nproj = 2):  0.10000000E-06
+
+* Validating the input...
+* Processing the input...
+
+ *** THE INPUT FOR ROTATIONAL DEGREES OF FREEDOM ***
+
+ * J in:            0
+ * Mj in:            0
+ * Maximum J value in grid rep.:            4
+ * HomeNuclear:  T
+
+ * A general MjIn independant grid will be used ...
+
+ *** CONTINUING SETUP I ***
+
+ * Setting up the FFT module ...
+ * Setting up legendre module with JMax + 1 =            5  ...
+ * Setting up the angular grid module with JMax =            4  ...
+ * The nearest size allowed by FFT routines (          10 ) for phi grid will be used ...
+ * Setting up the angular grid and basis functions...
+
+ *** THE GRID PARAMETERS ***
+
+ * Number of phi's :           10
+ * Delta value in phi coordinate :   0.62831853071795862     
+ * Number of theta's :            3
+ * JMax in basis set :            4
+ * JMin in basis set :            0
+ * Delta J in basis set :           2
+ * Grid has been set up for JIn =            0 ,  MjIn =            0  ...
+
+ *** CONTINUING SETUP II ***
+
+ * Setting up the angular DVR/FBR transform module and the transformation matrices ...
+
+ *** SETUP DONE ***
+
+
+
+
+********************************************************************************
+                     INFO FROM MISCELLANEOUS SETUP
+********************************************************************************
+
+     grid interval size in kz dir. (scat. grid) =      0.446249
+     grid interval size in kz dir. (spec. grid) =      0.280499
+     initial momentum in z direction =                10.039122
+
+     grid interval size in kr dir. =                   0.747998
+
+     grid interval size in kx dir. =                   1.006976
+     initial momentum in reciprocal x direction =      0.000000
+
+     grid interval size in ky dir. =                   1.199159
+     initial momentum in reciprocal y direction =      0.000000
+
+     For backward compatibility: nmoder =                  4
+
+     asymptotic analysis at z =                        8.000000
+
+ No flux analysis performed.
+
+     nzpot =                                       113
+
+     optical potential in z scat.grid:
+     nzchsp =                                         137
+     z(nzchsp)=                                        8.880000
+
+     optical potential in z scat.grid:
+     nzchmx =                                         176
+     z(nzchmx)=                                       12.000000
+
+     optical potential in z spec.grid:
+     nschsp =                                         236
+     z(nschsp)=                                       16.800000
+
+     optical potential in z spec.grid:
+     nschmx =                                         280
+     z(nschmx)=                                       20.320000
+
+     optical potential in r scat.grid:
+     nrchsp =                                          26
+     r(nrchsp)=                                        4.550000
+
+     optical potential in r scat.grid:
+     nrchmx =                                          56
+     r(nrchmx)=                                        9.050000
+
+     max kinetic energy in r (ev) =                    6.497306
+
+     with current time interval in the analysis
+     the max total energy for which results 
+     can be obtained (eV) =                            8.548713
+     zero of etot is energy lowest h2 state
+
+     the 95% confidence interval defined by 
+     alfwv and enrgy:
+     ectmin (ev) =                                     0.200000
+     ectmax (ev) =                                     0.600000
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE HARDWALL TEST PES MODULE
+********************************************************************************
+
+ * Initialising the HardwallPES module
+
+ Total time for potential initialisation =  0.75250000E-05 secs
+
+ * Grids are setup!
+ * 5-Mode arrays are allocated!
+ * 4-Mode arrays are allocated!
+
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ROVIBARIONAL ASYMPTOTIC POTENTIAL
+********************************************************************************
+
+      The gas phase vibrational potential for Z =    7.0000000000000000     
+
+        r(Bohr)                 V(eV)
+ ---------------------------------------------
+  0.80000000000000004        4.3153698537325589     
+  0.95000000000000007        1.9395198126435038     
+   1.1000000000000001       0.72783976439492193     
+   1.2500000000000000       0.17238365572483350     
+   1.3999999999999999        0.0000000000000000     
+   1.5500000000000000        6.0171516557396387E-002
+   1.7000000000000000       0.26562082587016000     
+   1.8500000000000001       0.56180679359344143     
+   2.0000000000000000       0.91177329427726583     
+   2.1499999999999999        1.2888551897562794     
+   2.2999999999999998        1.6732152061039103     
+   2.4500000000000002        2.0501324732816313     
+   2.6000000000000001        2.4090257280346625     
+   2.7500000000000000        2.7427523157789020     
+   2.8999999999999999        3.0470023721383779     
+   3.0499999999999998        3.3197355731000986     
+   3.2000000000000002        3.5606589037023708     
+   3.3500000000000001        3.7707582346264332     
+   3.5000000000000000        3.9518953252910509     
+   3.6499999999999999        4.1064757396603486     
+   3.7999999999999998        4.2371868336101697     
+   3.9499999999999997        4.3468002266070771     
+   4.0999999999999996        4.4380303442446420     
+   4.2500000000000000        4.5134394442837449     
+   4.4000000000000004        4.5753795646370596     
+   4.5499999999999998        4.6259626142912902     
+   4.7000000000000002        4.6670510093056166     
+   4.8499999999999996        4.7002625781659555     
+   5.0000000000000000        4.7269847564885001     
+   5.1499999999999995        4.7483942637316021     
+   5.2999999999999998        4.7654794583750322     
+   5.4500000000000002        4.7790633908212872     
+   5.5999999999999996        4.7898262233702624     
+   5.7500000000000000        4.7983261832644359     
+   5.8999999999999995        4.8050185817946902     
+   6.0499999999999998        4.8102726941353406     
+   6.2000000000000002        4.8143864735210515     
+   6.3499999999999996        4.8175991892793908     
+   6.5000000000000000        4.8201021475103412     
+   6.6499999999999995        4.8220476890723418     
+   6.7999999999999998        4.8235566723100094     
+   6.9500000000000002        4.8247246454758166     
+   7.0999999999999996        4.8256269018466513     
+   7.2500000000000000        4.8263225932755587     
+   7.3999999999999995        4.8268580582434764     
+   7.5499999999999998        4.8272695003225206     
+   7.7000000000000002        4.8275851335624589     
+   7.8499999999999996        4.8278268933885720     
+   8.0000000000000000        4.8280117955204025     
+   8.1500000000000004        4.8281530113157141     
+   8.2999999999999989        4.8282607157862447     
+   8.4499999999999993        4.8283427542019028     
+   8.5999999999999996        4.8284051645273429     
+   8.7500000000000000        4.8284525857270246     
+   8.9000000000000004        4.8284885760365395     
+   9.0499999999999989        4.8285158604429137     
+
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ASYMPTOTIC ROVIBRATIONAL STATES
+********************************************************************************
+
+
+WARNING: Rotational basis too small to describe all open channels!
+
+ asymptotic molecular vibrational wave functions
+
+   v   j       e(ev)    erel(ev)         psi(1)        psi(nr)       norm
+
+   0   0    0.258378    0.000000  0.1083095D-01  0.7246244D-03  1.0000000 1.4708348
+
+   0   1    0.272622    0.014244  0.1049408D-01  0.7001134D-03  1.0000000 1.4730259
+
+   0   2    0.300979    0.042601  0.9851076D-02  0.6535158D-03  1.0000000 1.4773939
+
+   0   3    0.343195    0.084817  0.8958862D-02  0.5892930D-03  1.0000000 1.4839102
+
+   0   4    0.398898    0.140520  0.7892380D-02  0.5132515D-03  1.0000000 1.4925338
+
+   1   0    0.762842    0.504464  0.2996689D-01  0.2337154D-02  1.0000000 1.5613692
+
+   1   1    0.776499    0.518121  0.2908723D-01  0.2262111D-02  1.0000000 1.5635871
+
+   1   2    0.803688    0.545310  0.2740249D-01  0.2118979D-02  1.0000000 1.5680097
+
+   1   3    0.844165    0.585787  0.2505182D-01  0.1920644D-02  1.0000000 1.5746116
+
+   1   4    0.897574    0.639195  0.2222069D-01  0.1684071D-02  1.0000000 1.5833558
+
+ energy initial v,j state =                            0.258378
+ potential energy =                                    0.128243
+ rotational energy =                                   0.000000
+ vibrational energy =                                  0.130135
+ rovibrational energy =                                0.130135
+ expectation value r =                                 1.470835
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE DIFFRACTION BASIS
+********************************************************************************
+
+
+WARNING: Diffractional basis too small to describe all open channels!
+
+    16 diffraction channels in basis (ndftow)
+
+ * Number of diffraction states analysed, ndifa =            16
+ * Highest diffraction order, maxord =                        4
+ * Largest number of diffraction states that belong
+   to the same diffraction order, maxnum =                    6
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ROTATION BASIS
+********************************************************************************
+
+    15 rotation channels in basis (nrotw)
+
+ * number of rotational states analysed, nana =              15
+ * initial rotational state in basis, ichn =                 7
+
+
+
+********************************************************************************
+    INFO FROM SETTING UP THE ROTATION-DIFFRACTION BASIS
+********************************************************************************
+
+   240 rotation-diffraction channels in basis (nstatw)
+
+ * Number of rotation-diffraction analysed, nstata =              240
+ * Index of initial rot-dif channel in basis, inchna =             97
+
+
+
+********************************************************************************
+              INFO FROM SETTING UP THE OPTICAL POTENTIALS
+********************************************************************************
+
+
+* Optical potential in Z absorbs with coefficient:          0.19938827E-01
+* Optical potential in r absorbs with coefficient:          0.23896325E-01
+* Optical potential in Z specular absorbs with coefficient: 0.18298964E-01
+
+
+
+
+********************************************************************************
+                  INFO FROM SETTING UP THE GRID ENERGIES
+********************************************************************************
+
+ * initial parallel energy (eV) =  0.00000000E+00
+
+
+
+********************************************************************************
+              INFO FROM SETTING UP THE KINETIC ENERGY OPERATORS
+********************************************************************************
+
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE WAVE FUNCTION
+********************************************************************************
+
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE ANALYSIS
+********************************************************************************
+
+ * Maximum j in analysis:                        jana =   4
+ * Maximum v in analysis:                        nviba =   2
+ * Maximum diffraction order in analysis:        mdifa =   4
+  only using data for # timesteps deltat=          80
+
+
+ ************************************************************************
+ info from reading or writing asymptotic info
+ ************************************************************************
+
+
+ # timesteps for which bk coefs available is:         80
+
+ # data used, ndused =         80
+
+ effective prop.time, spectral resolution (mev) =     800.0000  0.1068589E+03
+
+ meaningful results in kin energy range (ev)   0.106859   8.548713
+
+ results will be obtained for nen95 energies,nen95 =        4
+
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE SPLIT OPERATOR PROPAGATOR
+********************************************************************************
+
+ ----- Split operator propagator set up -----
+
+
+ ************************************************************************
+ info from gtaife
+ ************************************************************************
+
+
+
+
+ ************************************************************************
+ info from probaf
+ ************************************************************************
+
+
+ # of data skipped in between data in next printout =      0
+
+  idat    ekin(ev)    preact     phase
+
+      1   0.2137178   0.100000E+01  -0.386745E+00
+      2   0.3205768   0.100000E+01   0.981544E+00
+      3   0.4274357   0.100000E+01   0.127117E+01
+      4   0.5342946   0.100000E+01  -0.139990E+01
+
+
+
+
+
+********************************************************************************
+          PRINTING SCATTERING AND REACTION PROBABILITIES
+********************************************************************************
+
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.200000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.210000
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.47837825D+00
+ trans energy =  0.22000000D+00
+ trans energy in z =  0.22000000D+00
+ total momentum =  0.77078508D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1255812E-42  0.0000000E+00  0.5326564E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.2073836E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.8214290E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.2269993E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.2073836E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.8214290E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.2269993E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.053266
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.48837825D+00
+ trans energy =  0.23000000D+00
+ trans energy in z =  0.23000000D+00
+ total momentum =  0.78810826D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1181928E-42  0.0000000E+00  0.5340057E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1949062E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.7718689E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.2151525E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1949062E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.7718689E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.2151525E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.053401
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.49837825D+00
+ trans energy =  0.24000000D+00
+ trans energy in z =  0.24000000D+00
+ total momentum =  0.80505876D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1108043E-42  0.0000000E+00  0.5355349E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1824288E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.7223088E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.2033057E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1824288E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.7223088E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.2033057E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.053553
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.50837825D+00
+ trans energy =  0.25000000D+00
+ trans energy in z =  0.25000000D+00
+ total momentum =  0.82165966D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1034159E-42  0.0000000E+00  0.5372826E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1699515E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.6727487E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1914590E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1699515E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.6727487E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1914590E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.053728
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.51837825D+00
+ trans energy =  0.26000000D+00
+ trans energy in z =  0.26000000D+00
+ total momentum =  0.83793173D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.9602749E-43  0.0000000E+00  0.5392993E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1574741E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.6231886E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1796122E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1574741E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.6231886E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1796122E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.053930
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.52837825D+00
+ trans energy =  0.27000000D+00
+ trans energy in z =  0.27000000D+00
+ total momentum =  0.85389377D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.8863906E-43  0.0000000E+00  0.5416522E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1449967E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.5736285E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1677654E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1449967E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.5736285E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1677654E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.054165
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.53837825D+00
+ trans energy =  0.28000000D+00
+ trans energy in z =  0.28000000D+00
+ total momentum =  0.86956285D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.8125064E-43  0.0000000E+00  0.5444330E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1325193E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.5240684E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1559187E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1325193E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.5240684E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1559187E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.054443
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.54837825D+00
+ trans energy =  0.29000000D+00
+ trans energy in z =  0.29000000D+00
+ total momentum =  0.88495454D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.7386221E-43  0.0000000E+00  0.5477701E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1200419E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4745083E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1440719E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1200419E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4745083E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1440719E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.054777
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.55837825D+00
+ trans energy =  0.30000000D+00
+ trans energy in z =  0.30000000D+00
+ total momentum =  0.90008306D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6647378E-43  0.0000000E+00  0.5518490E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1075645E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4249482E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1322251E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1075645E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4249482E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1322251E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.055185
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.56837825D+00
+ trans energy =  0.31000000D+00
+ trans energy in z =  0.31000000D+00
+ total momentum =  0.91496147D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.5908536E-43  0.0000000E+00  0.5569480E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.9508711E-44
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3753881E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1203784E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.9508711E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3753881E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1203784E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.055695
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.57837825D+00
+ trans energy =  0.32000000D+00
+ trans energy in z =  0.32000000D+00
+ total momentum =  0.92960179D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.5169693E-43  0.0000000E+00  0.5635045E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.8260972E-44
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3258280E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1085316E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.8260972E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3258280E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1085316E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056350
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.58837825D+00
+ trans energy =  0.33000000D+00
+ trans energy in z =  0.33000000D+00
+ total momentum =  0.94401508D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.5342819E-43  0.0000000E+00  0.5646058E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.8559700E-44
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3358218E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1128631E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.8559700E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3358218E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1128631E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056461
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.59837825D+00
+ trans energy =  0.34000000D+00
+ trans energy in z =  0.34000000D+00
+ total momentum =  0.95821159D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.5571762E-43  0.0000000E+00  0.5652556E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.8953080E-44
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3494606E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1181848E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.8953080E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3494606E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1181848E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056526
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.60837825D+00
+ trans energy =  0.35000000D+00
+ trans energy in z =  0.35000000D+00
+ total momentum =  0.97220082D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.5800706E-43  0.0000000E+00  0.5658541E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.9346460E-44
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3630995E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1235065E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.9346460E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3630995E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1235065E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056585
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.61837825D+00
+ trans energy =  0.36000000D+00
+ trans energy in z =  0.36000000D+00
+ total momentum =  0.98599159D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6029649E-43  0.0000000E+00  0.5664072E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.9739840E-44
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3767383E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1288282E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.9739840E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3767383E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1288282E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056641
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.62837825D+00
+ trans energy =  0.37000000D+00
+ trans energy in z =  0.37000000D+00
+ total momentum =  0.99959212D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6258592E-43  0.0000000E+00  0.5669198E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1013322E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.3903771E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1341499E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1013322E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.3903771E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1341499E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056692
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.63837825D+00
+ trans energy =  0.38000000D+00
+ trans energy in z =  0.38000000D+00
+ total momentum =  0.10130101D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6487536E-43  0.0000000E+00  0.5673962E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1052660E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4040160E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1394716E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1052660E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4040160E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1394716E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056740
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.64837825D+00
+ trans energy =  0.39000000D+00
+ trans energy in z =  0.39000000D+00
+ total momentum =  0.10262526D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6716479E-43  0.0000000E+00  0.5678401E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1091998E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4176548E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1447933E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1091998E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4176548E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1447933E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056784
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.65837825D+00
+ trans energy =  0.40000000D+00
+ trans energy in z =  0.40000000D+00
+ total momentum =  0.10393264D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6945422E-43  0.0000000E+00  0.5682548E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1131336E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4312936E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1501150E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1131336E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4312936E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1501150E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056825
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.66837825D+00
+ trans energy =  0.41000000D+00
+ trans energy in z =  0.41000000D+00
+ total momentum =  0.10522378D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.7174366E-43  0.0000000E+00  0.5686430E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1170674E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4449325E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1554367E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1170674E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4449325E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1554367E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056864
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.67837825D+00
+ trans energy =  0.42000000D+00
+ trans energy in z =  0.42000000D+00
+ total momentum =  0.10649926D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.7403309E-43  0.0000000E+00  0.5690072E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1210012E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4585713E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1607584E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.0000000E+00
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1210012E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4585713E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1607584E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.056901
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.68837825D+00
+ trans energy =  0.43000000D+00
+ trans energy in z =  0.43000000D+00
+ total momentum =  0.10775965D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.8026209E-43  0.0000000E+00  0.5687952E-01
+
+   1  0.4430714E-46  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1319625E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.4962083E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.1744501E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.4430714E-46
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1319625E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.4962083E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.1744501E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.000278
+
+ average rotational  energy (ev) =     0.056848
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.69837825D+00
+ trans energy =  0.44000000D+00
+ trans energy in z =  0.44000000D+00
+ total momentum =  0.10900547D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.9791450E-43  0.0000000E+00  0.5673820E-01
+
+   1  0.2170898E-45  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1633010E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.6034321E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.2124119E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.2170898E-45
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1633010E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.6034321E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.2124119E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.001116
+
+ average rotational  energy (ev) =     0.056613
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.70837825D+00
+ trans energy =  0.45000000D+00
+ trans energy in z =  0.45000000D+00
+ total momentum =  0.11023721D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1155669E-42  0.0000000E+00  0.5664005E-01
+
+   1  0.3898724E-45  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.1946396E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.7106558E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.2503737E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.3898724E-45
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.1946396E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.7106558E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.2503737E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.001696
+
+ average rotational  energy (ev) =     0.056450
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.71837825D+00
+ trans energy =  0.46000000D+00
+ trans energy in z =  0.46000000D+00
+ total momentum =  0.11145534D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1332193E-42  0.0000000E+00  0.5656791E-01
+
+   1  0.5626550E-45  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.2259781E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.8178795E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.2883356E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.5626550E-45
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.2259781E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.8178795E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.2883356E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.002122
+
+ average rotational  energy (ev) =     0.056330
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.72837825D+00
+ trans energy =  0.47000000D+00
+ trans energy in z =  0.47000000D+00
+ total momentum =  0.11266030D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1508717E-42  0.0000000E+00  0.5651265E-01
+
+   1  0.7354377E-45  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.2573167E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.9251032E-43
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.3262974E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.7354377E-45
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.2573167E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.9251032E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.3262974E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.002447
+
+ average rotational  energy (ev) =     0.056239
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.73837825D+00
+ trans energy =  0.48000000D+00
+ trans energy in z =  0.48000000D+00
+ total momentum =  0.11385250D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1685241E-42  0.0000000E+00  0.5646897E-01
+
+   1  0.9082203E-45  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.2886552E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.1032327E-42
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.3642592E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.9082203E-45
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.2886552E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.1032327E-42
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.3642592E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.002704
+
+ average rotational  energy (ev) =     0.056166
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.74837825D+00
+ trans energy =  0.49000000D+00
+ trans energy in z =  0.49000000D+00
+ total momentum =  0.11503235D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1861765E-42  0.0000000E+00  0.5643357E-01
+
+   1  0.1081003E-44  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.3199938E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.1139551E-42
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.4022210E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.1081003E-44
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.3199938E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.1139551E-42
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.4022210E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.002912
+
+ average rotational  energy (ev) =     0.056108
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.75837825D+00
+ trans energy =  0.50000000D+00
+ trans energy in z =  0.50000000D+00
+ total momentum =  0.11620022D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2038289E-42  0.0000000E+00  0.5640431E-01
+
+   1  0.1253786E-44  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.3513323E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.1246774E-42
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.4401828E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.1253786E-44
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.3513323E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.1246774E-42
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.4401828E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.003084
+
+ average rotational  energy (ev) =     0.056059
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.76837825D+00
+ trans energy =  0.51000000D+00
+ trans energy in z =  0.51000000D+00
+ total momentum =  0.11735647D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2214813E-42  0.0000000E+00  0.5637971E-01
+
+   1  0.1426568E-44  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.3826709E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.1353998E-42
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.4781446E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.1426568E-44
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.3826709E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.1353998E-42
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.4781446E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   1   0   0
+
+   0  0.1426568E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.003228
+
+ average rotational  energy (ev) =     0.056019
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.77837825D+00
+ trans energy =  0.52000000D+00
+ trans energy in z =  0.52000000D+00
+ total momentum =  0.11850144D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2391338E-42  0.0000000E+00  0.5635874E-01
+
+   1  0.1599351E-44  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.4140094E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.1461222E-42
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.5161064E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.1599351E-44
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.4140094E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.1461222E-42
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.5161064E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   1   0   0
+
+   0  0.1599351E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.003351
+
+ average rotational  energy (ev) =     0.055984
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy =  0.78837825D+00
+ trans energy =  0.53000000D+00
+ trans energy in z =  0.53000000D+00
+ total momentum =  0.11963545D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2567862E-42  0.0000000E+00  0.5634065E-01
+
+   1  0.1772133E-44  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    7     0    0  0.4453480E-43
+
+  0    3     2   -2  0.0000000E+00
+
+  0    5     2   -1  0.0000000E+00
+
+  0    8     2    0  0.1568445E-42
+
+  0   10     2    1  0.0000000E+00
+
+  0   12     2    2  0.0000000E+00
+
+  0    1     4   -4  0.0000000E+00
+
+  0    2     4   -3  0.0000000E+00
+
+  0    4     4   -2  0.0000000E+00
+
+  0    6     4   -1  0.0000000E+00
+
+  0    9     4    0  0.5540683E-43
+
+  0   11     4    1  0.0000000E+00
+
+  0   13     4    2  0.0000000E+00
+
+  0   14     4    3  0.0000000E+00
+
+  0   15     4    4  0.0000000E+00
+
+  1    7     0    0  0.1772133E-44
+
+  1    3     2   -2  0.0000000E+00
+
+  1    5     2   -1  0.0000000E+00
+
+  1    8     2    0  0.0000000E+00
+
+  1   10     2    1  0.0000000E+00
+
+  1   12     2    2  0.0000000E+00
+
+  1    1     4   -4  0.0000000E+00
+
+  1    2     4   -3  0.0000000E+00
+
+  1    4     4   -2  0.0000000E+00
+
+  1    6     4   -1  0.0000000E+00
+
+  1    9     4    0  0.0000000E+00
+
+  1   11     4    1  0.0000000E+00
+
+  1   13     4    2  0.0000000E+00
+
+  1   14     4    3  0.0000000E+00
+
+  1   15     4    4  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   0   0
+
+   0  0.4453480E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   0
+
+   0  0.1568445E-42
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   2   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   0
+
+   0  0.5540683E-43
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   0   4   4
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ v, j, mj =   1   0   0
+
+   0  0.1772133E-44
+
+   1  0.0000000E+00
+
+   2  0.0000000E+00
+
+   3  0.0000000E+00
+
+   4  0.0000000E+00
+
+ sum of the probabilities =  0.0000000
+
+ average vibrational energy (ev) =     0.003458
+
+ average rotational  energy (ev) =     0.055954
+
+ average diffraction energy (ev) =     0.000000
+
+ the reaction probability =  0.1000000D+01
+
+
+
+
+
+
+
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.540000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.550000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.560000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.570000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.580000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.590000
+
+ etrans(icomin)=                                       0.213718
+ etrans(icomax)=                                       0.534295
+ etrans=                                               0.600000
+
+ CPU TIMES 
+
+ Total computation                           0.0877 (a)
+
+               ...
+
+ Propagating the wavefunction                0.0000 (b)
+
+ Setup time                                  0.0690
+
+ Saving the wave function for rerun          0.0000
+
+ Calculating averages                        0.0000
+
+ Calculating and saving BK-coeffs            0.0000
+
+ Asymptotic analysis                         0.0188
+
+ Saving the flux coefficients                0.0000
+
+ Flux analysis                               0.0000
+
+-----------------------------------------------------
+
+ Sum                                         0.0877 (a)
+
+               ...
+
+ FFTs along X and Y                          0.0000
+
+ Kinetic energy operation along Z            0.0000
+
+ Kinetic energy operation along r            0.0000
+
+ Potential energy multiplication             0.0000
+
+ Legengre transforms                         0.0000
+
+ Shifting the wavefunction                   0.0000
+
+ Kinetic energy multiplications (xy)         0.0000
+
+ Absorbing the wavefunction                  0.0000
+
+ Projection formalism                        0.0000
+
+ Operations on specular grid                 0.0000
+
+-----------------------------------------------------
+
+ Sum                                         0.0000 (b)
+
+               ...
+
+ Potential initialisation time               0.0000
+
+ Potential setup time                        0.0000
+
+ FFTs along X                                0.0000
+
+ FFTs along Y                                0.0000
+
+ Time spent on FGH for asympwf               0.0294
+

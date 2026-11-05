@@ -93,6 +93,8 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(!p.new_calculation && req(p.t_start, 0.0), "tStart", "This is a restart but tStart = 0.");
   check(!p.new_calculation && p.restart_dir.empty(), "RestartDir",
         "This is a restart (NewCalc = false) but RestartDir is not given.");
+  check(p.only_analysis && p.restart_dir.empty(), "RestartDir",
+        "An analysis-only run (onlyAnalysis) needs RestartDir: the directory with the BK coefficient file.");
   check(p.restart_format != "native" && p.restart_format != "fortran", "RestartFormat",
         "RestartFormat must be \"native\" or \"fortran\".");
   check(p.checkpoint_format != "native" && p.checkpoint_format != "fortran" && p.checkpoint_format != "both",

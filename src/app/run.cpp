@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "app/banner.hpp"
+#include "app/fine_analysis_run.hpp"
 #include "core/error.hpp"
 #include "core/numerical_libraries.hpp"
 #include "core/real_compare.hpp"
@@ -31,6 +32,7 @@
 #include "propagation/propagation.hpp"
 #include "report/analysis_files.hpp"
 #include "report/analysis_report.hpp"
+#include "report/fine_analysis_report.hpp"
 #include "report/propagation_report.hpp"
 #include "report/sections.hpp"
 
@@ -177,9 +179,41 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   out << '\n';
 }
 
+// The fine analysis of a BK file (run mode 2, or alsoAnalysis after the propagation): grid,
+// memory estimate, spectrum, interpolated results and the files in <output>/fine_analysis/.
+// Fortran: Main.f90 (nread = 2: gtaife, probaf, StateToStateProbs)
+void run_fine(std::ostream& out, const Style& style, const Config& config, const AngularGrid& angular,
+              const GasPhase& gas, const Fft& fft, const std::filesystem::path& output_dir, const BkInput& input) {
+  const AnalysisSetup setup(config, angular, gas);
+  if (config.derived.run_mode == 2)
+    print_analysis_setup(out, style, config, setup.basis, make_analysis_energies(config, gas));
+  out << "\n  Fine analysis of " << input.path.string() << (input.fortran_format ? " (Fortran file)" : "") << '\n';
+  const auto start = std::chrono::steady_clock::now();
+  const FineAnalysisResults results = run_fine_analysis(config, setup, gas, input, fft, [&](const FineAnalysisGrid& g) {
+    print_fine_analysis_grid(out, style, config, g);
+    print_memory_estimate(out, style, estimate_fine_analysis_memory(g, setup.basis), physical_memory_bytes(),
+                          "MEMORY ESTIMATE (FINE ANALYSIS)");
+  });
+  const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+  print_fine_analysis_results(out, style, config, setup.basis, results);
+  out << "\n  Fine analysis time: " << fixed(elapsed.count(), 1) << " s\n";
+
+  const auto files = write_fine_analysis_files(output_dir / "fine_analysis", config, setup.basis, results);
+  out << "\n  Fine-analysis files written to " << (output_dir / "fine_analysis").string() << ":";
+  for (const auto& f : files) out << ' ' << std::filesystem::relative(f, output_dir / "fine_analysis").string();
+  out << '\n';
+}
+
+// The BK file of the run to analyse (RestartDir, RestartFormat). Fortran: fort.22
+BkInput analysis_input(const Config& config) {
+  const std::filesystem::path dir = config.input.restart_dir;
+  if (config.input.restart_format == "native") return {dir / bk_file, false};
+  return {first_existing(dir, "fort.22", "fort.21"), true};
+}
+
 }  // namespace
 
-// Fortran: Main.f90 (new runs, restarts and potential-only runs).
+// Fortran: Main.f90 (new runs, restarts, analysis-only and potential-only runs).
 int run_program(const CommandLine& command_line, std::ostream& out, std::ostream& err, bool color) {
   const Style style{color};
   try {
@@ -199,21 +233,29 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     const SpatialGrids grids = make_spatial_grids(config);
     print_grids(out, style, config, grids, angular);
 
-    if (config.derived.run_mode == 2)
-      throw NotSupportedError("analysis-only runs (onlyAnalysis) are not implemented yet");
-    print_memory_estimate(out, style, estimate_memory(config, grids, angular, omp_get_max_threads()),
-                          physical_memory_bytes());
+    // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.
+    const bool analysis_only = config.derived.run_mode == 2;
+    if (!analysis_only)
+      print_memory_estimate(out, style, estimate_memory(config, grids, angular, omp_get_max_threads()),
+                            physical_memory_bytes());
 
-    PotentialGrid potential_grid = compute_potential_grid(*potential, config, grids, angular);
-    print_asymptotic_potential(out, style, config, grids, potential_grid);
+    std::optional<PotentialGrid> potential_grid;
+    std::vector<double> asymptotic;
+    if (analysis_only) {
+      asymptotic = compute_asymptotic_potential(*potential, config, grids);
+    } else {
+      potential_grid = compute_potential_grid(*potential, config, grids, angular);
+      asymptotic = potential_grid->asymptotic;
+    }
+    print_asymptotic_potential(out, style, config, grids, asymptotic);
 
     const FftwFft fft;
     const LapackEigensolver eigensolver;
-    const GasPhase gas = compute_gas_phase(config, grids, angular, potential_grid.asymptotic, fft, eigensolver);
+    const GasPhase gas = compute_gas_phase(config, grids, angular, asymptotic, fft, eigensolver);
     print_gas_phase(out, style, config, gas);
 
     std::filesystem::create_directories(command_line.output_dir);
-    write_asymptotic_potential_file(command_line.output_dir / "asymptotic_potential.dat", grids, potential_grid);
+    write_asymptotic_potential_file(command_line.output_dir / "asymptotic_potential.dat", grids, asymptotic);
     write_gas_phase_file(command_line.output_dir / "gas_phase_states.dat", grids, gas);
     out << "\n  Data files written to " << command_line.output_dir.string() << "\n";
 
@@ -221,8 +263,18 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       out << '\n' << style.emphasis("Potential-only run finished.") << '\n';
       return 0;
     }
+    if (analysis_only) {
+      run_fine(out, style, config, angular, gas, fft, command_line.output_dir, analysis_input(config));
+      out << '\n' << style.emphasis("Analysis-only run finished.") << '\n';
+      return 0;
+    }
 
-    run_propagation(out, style, config, grids, angular, std::move(potential_grid), gas, fft, command_line.output_dir);
+    run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir);
+    // alsoAnalysis: the fine analysis of the BK file this run has just written (the
+    // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
+    if (config.input.also_analysis)
+      run_fine(out, style, config, angular, gas, fft, command_line.output_dir,
+               BkInput{command_line.output_dir / bk_file, false});
     out << '\n' << style.emphasis("Run finished.") << '\n';
     return 0;
   } catch (const InputError& e) {
