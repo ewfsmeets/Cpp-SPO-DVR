@@ -76,6 +76,12 @@ header line.
 - **Rebuild every build directory you compare** (`cmake --build build-xxx`); a stale binary once led
   to a wrong conclusion here.
 - Repeat each timing at least twice: on WSL2 the same run varies by 20% and occasionally by 2x.
+- Fortran vs C++ (whole program): run them one after the other on an idle machine with the same
+  `OMP_NUM_THREADS`, under `/usr/bin/time -f "%e %U"`. CPU time / wall time = threads busy on
+  average: CPU time compares the work, the ratio shows idle threads (libgomp spin-waiting counts as
+  CPU time in both codes, so the ratio is approximate). On WSL2 the program's own "Propagation time"
+  (steady_clock) came out ~3.6% *larger* than `/usr/bin/time`'s wall time of the whole run
+  (792 s vs 764 s): different clocks; compare like with like only.
 - Compare the printed "Propagation time", not the wall time (which includes set-up and the
   potential grid).
 - `spodvr_operator_timing <input.json>` (built in `build/tools/`) shows where the time goes.
@@ -106,9 +112,14 @@ otherwise idle machine; whole program, `/usr/bin/time`.
 | C++, `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native`, PGO (trained on 200 steps of the same case) | 675 s | 4489 s | 6.7 |
 
 - The C++ needs less CPU time than the Fortran (−4% with the default flags), but keeps the 8 threads
-  less busy (6.6 of 8 against 7.7): it loses on wall time through serial or poorly parallelised parts
-  (to be profiled: on-the-fly analysis, specular grid, setup), not through slower kernels. At the
-  Fortran's parallel efficiency the default build would take about 650 s.
+  less busy (6.6 of 8 against 7.7): it loses on wall time through load imbalance, not through slower
+  kernels. At the Fortran's parallel efficiency the default build would take about 650 s.
+- Main cause (from the code, not yet measured per thread): the fused T_xy + V loop
+  (`apply_xy_and_potential`) runs over (Z, r) groups with `schedule(static)`. Here one group is a
+  whole Z row, and only rows iz < nzpot (125 of 176; medium grid 113 of 176) do the angular transform
+  and exp(−iV dt); the others are one scalar multiply. A static contiguous split gives threads 6–7
+  almost only cheap rows. The Fortran (`SplitOperator.f90` KineticAndPotentialOp) uses
+  `SCHEDULE(DYNAMIC, chunkSize)` for exactly this reason. Minor: the specular grid operator is serial.
 - fast-math + native + PGO: −12% wall, −11% CPU time against the default build. `-march=native` adds
   little on Zen 3 (no AVX-512: the same AVX2 as x86-64-v3); the gain is fast-math and PGO.
 - fast-math changes results by ~1e-12 (norm 2e-12 relative, probabilities 1.5e-12 absolute against the
