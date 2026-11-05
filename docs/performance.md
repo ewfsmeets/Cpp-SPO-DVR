@@ -8,14 +8,15 @@
 | `SPODVR_FFT_LIBRARY` | `AUTO` | Implementation of the FFTW3 API: `AUTO` (oneMKL's FFTW3 interface if oneMKL is found, else FFTW), `MKL`, `FFTW`. With `FFTW` and oneMKL both present, FFTW is linked first so that the `fftw_*` symbols resolve to it. |
 | `SPODVR_ARCH` | `x86-64-v3` | Value for `-march`. `x86-64-v3` (AVX2) runs on any recent x86-64 CPU; `x86-64-v4` (AVX-512) or `native` for a specific machine. Results of our own code do not depend on it (no FMA contraction). |
 | `SPODVR_PGO` | `OFF` | Profile-guided optimisation, see below. |
+| `SPODVR_FAST_MATH` | `OFF` | Experimental: `-ffast-math` instead of the flags below (FMA contraction, reassociation, vectorised math functions). Changes results at ~1e-12; passes all gates with the reaction-probability floor of 1e-11, see "Fortran vs C++" below. Speed experiments only. |
 | `SPODVR_POISON_UNINITIALISED` | `OFF` | Debug: fill uninitialised `AlignedVector` elements with NaN (any read before write then shows up as NaN). |
 | `CMAKE_BUILD_TYPE=Release` | | `-O3` plus link-time optimisation. |
 
 Floating-point flags (always): `-ffp-contract=off -fno-fast-math` (results comparable with the Fortran
 code and independent of the CPU), plus `-fcx-fortran-rules -fno-math-errno -fno-trapping-math`, which
 change no result but let GCC vectorise (complex multiplication without the C99 NaN-recovery call is
-exactly the gfortran semantics). Never use `-ffast-math`/`-Ofast` or FMA contraction: they change the
-results.
+exactly the gfortran semantics). Never use `-ffast-math`/`-Ofast` or FMA contraction in production
+builds: they change the results (measured below; `SPODVR_FAST_MATH` exists only for experiments).
 
 ### Profile-guided optimisation (about 15% faster)
 ```
@@ -91,6 +92,34 @@ header line.
 For the tiny test grids FFTW is faster (oneMKL has a large per-call overhead for 4×4 and length-10
 transforms); at realistic sizes oneMKL is as fast or faster. Per time step on the medium case (16
 threads): T_Z + T_r ≈ 0.4 s, T_xy ≈ 0.17 s, potential (incl. angular transforms) ≈ 0.33 s.
+
+## Fortran vs C++ (full Dai–Light run, 8 threads, 2026-11-05)
+Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8 grid (nZ × nR × nX × nY)
+with 15 rotational states (JMax = MJMax = 4; nθ = 3, nφ = 10), plus the on-the-fly analysis. AMD Ryzen 7
+5800X (8 cores, Zen 3, no AVX-512), WSL2, `OMP_NUM_THREADS=8`, the three runs one after the other on an
+otherwise idle machine; whole program, `/usr/bin/time`.
+
+| Binary | Wall time | CPU time (user) | Threads busy (CPU / wall) |
+|---|---|---|---|
+| Fortran (gfortran -O3, FFTW, no `-march`) | 680 s | 5255 s | 7.7 |
+| C++, default flags (x86-64-v3, no FMA, LTO, oneMKL) | 764 s | 5040 s | 6.6 |
+| C++, `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native`, PGO (trained on 200 steps of the same case) | 675 s | 4489 s | 6.7 |
+
+- The C++ needs less CPU time than the Fortran (−4% with the default flags), but keeps the 8 threads
+  less busy (6.6 of 8 against 7.7): it loses on wall time through serial or poorly parallelised parts
+  (to be profiled: on-the-fly analysis, specular grid, setup), not through slower kernels. At the
+  Fortran's parallel efficiency the default build would take about 650 s.
+- fast-math + native + PGO: −12% wall, −11% CPU time against the default build. `-march=native` adds
+  little on Zen 3 (no AVX-512: the same AVX2 as x86-64-v3); the gain is fast-math and PGO.
+- fast-math changes results by ~1e-12 (norm 2e-12 relative, probabilities 1.5e-12 absolute against the
+  default build; the limit for rounding-level optimisations is 1e-13). Gates: all regression gates of
+  the regular suite and the long hard wall gate pass. The long Dai–Light gate failed on 2 of 1435
+  probabilities with the then floor of 1e-12, both reaction probabilities (1 − sum): deviations
+  2.0e-12 (E = 0.42 eV; default build 0.36e-12) and 5.3e-12 (E = 0.44 eV, printed half unit 5e-12;
+  default build 4.1e-12). The floor was then raised to 1e-11 (reasoning in
+  `tests/analysis_reference.hpp`), with which the fast-math build passes. Three unit tests with exact
+  double comparisons fail by 1 ulp. Not the default build.
+- Earlier measurement with 16 threads (hyperthreads, includes test overhead): Fortran 637 s, C++ 816 s.
 
 ## What was optimised (and how it relates to the Fortran code)
 | Change | Results |

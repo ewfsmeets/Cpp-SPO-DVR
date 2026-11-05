@@ -77,9 +77,17 @@ endif()
 #                       gfortran semantics; lets GCC vectorise complex multiplication loops
 #   -fno-math-errno     math functions need not set errno (sqrt is inlined)
 #   -fno-trapping-math  no floating-point traps are assumed (more if-conversion/vectorisation)
+#
+# SPODVR_FAST_MATH (experimental, default OFF): -ffast-math instead (FMA contraction, reassociation,
+# vectorised math functions). Changes rounding; only for speed experiments, checked with the gates.
+option(SPODVR_FAST_MATH "Experimental: compile with -ffast-math (changes rounding)" OFF)
 add_library(spodvr_fp INTERFACE)
-target_compile_options(spodvr_fp INTERFACE -ffp-contract=off -fno-fast-math -fcx-fortran-rules
-                                           -fno-math-errno -fno-trapping-math)
+if(SPODVR_FAST_MATH)
+  target_compile_options(spodvr_fp INTERFACE -ffast-math -fcx-fortran-rules)
+else()
+  target_compile_options(spodvr_fp INTERFACE -ffp-contract=off -fno-fast-math -fcx-fortran-rules
+                                             -fno-math-errno -fno-trapping-math)
+endif()
 
 # Target instruction set. The default x86-64-v3 (AVX2) runs on any recent x86-64 CPU; "native"
 # uses everything the build machine has (e.g. AVX-512). With -ffp-contract=off the results of

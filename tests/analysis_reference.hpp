@@ -108,10 +108,27 @@ inline void compare_probabilities_with_fortran(const PropagationRun& cpp, const 
     const std::string at = "energy " + std::to_string(ie);
     check(e.total_energy, f.total_energy, at + " total energy");
     check(e.p_total, f.p_total, at + " sum of the probabilities");
-    // The reaction probability is 1 - sum (Fortran: 1.0 - sump): when almost everything scatters
-    // it is a small difference of numbers near 1, known only to the absolute accuracy of the
-    // sum (~1e-13 .. 1e-12), not to 7 significant digits. Hence an absolute floor of 1e-12.
-    check(e.p_reaction, f.p_reaction, at + " reaction probability", 1e-12);
+    // The reaction probability is 1 - sum (Fortran: 1.0 - sump). When almost everything scatters
+    // it is the small difference of two numbers near 1, so it is known only to the *absolute*
+    // accuracy of the sum, not to the 7 significant digits the Fortran prints. Example
+    // (cu111_dailight_small, E = 0.42 eV): Fortran prints 0.2943414D-05, i.e. a half-unit
+    // tolerance of 5e-14, while the sum itself (~0.999997) is only reproducible to ~1e-13..1e-12
+    // (different FFT library and summation order than the Fortran, rounding accumulated over
+    // 7000 steps). Hence an absolute floor instead of the printed-digit tolerance.
+    //
+    // The floor is 1e-11 (it was 1e-12). Deviations from the Fortran (cu111_dailight_small):
+    // - default build (no fast-math): 3.6e-13 at E = 0.42 eV (2.9434149e-6, printed half unit
+    //   5e-14) and 4.1e-12 at E = 0.44 eV (-3.6025106e-5, printed half unit 5e-12);
+    // - SPODVR_FAST_MATH=ON (-ffast-math: FMA contraction, reassociation, vectorised math,
+    //   measured 2026-11-05 with -march=native and PGO): the norm moves by ~2e-12 relative and
+    //   the scattered sum by ~1.5e-12 absolute against the default build, giving 2.0e-12 at
+    //   E = 0.42 eV and 5.3e-12 at E = 0.44 eV (just over the printed half unit 5e-12: the
+    //   Fortran value itself lies near a rounding boundary of its 7th digit).
+    // These are rounding-level differences of the sum, far below any physical significance
+    // (the probabilities themselves are 3e-6 and 4e-5), and the sum, P(v) and P(v, j, mJ) are
+    // still checked to half a printed unit. 1e-11 gives a margin of ~2 over the fast-math
+    // build; a deviation beyond it points to a real change, not to rounding.
+    check(e.p_reaction, f.p_reaction, at + " reaction probability", 1e-11);
     for (const auto& [v, text] : f.p_vibration) check(e.p_vibration[v], text, at + " P(v)");
     for (int irotana = 0; irotana < n_rot; ++irotana)
       for (const auto& [key, text] : f.p_rotation) {

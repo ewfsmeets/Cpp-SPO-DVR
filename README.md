@@ -23,8 +23,15 @@ Status:
   analysis (S-matrix and state-to-state probabilities) and the fine analysis of the BK time series
   (onlyAnalysis / alsoAnalysis; two Fortran interpolation bugs fixed, see
   docs/fortran_fine_analysis_bugs.md).
+- Potentials: the hard wall test potential and the two analytic H₂/Cu(111) LEPS potentials of the
+  Fortran code (Dai–Light and Persson), checked against the Fortran potential on the grid; the
+  Dai–Light propagation and analysis are checked against the Fortran code as well.
+- Surface symmetry (`UseSymmetry`): the potential is computed and stored only for symmetry-unique
+  (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
+  potential really has that symmetry.
 - Implemented: checkpoint/restart (native files and Fortran-compatible files).
-- Not yet implemented: the flux analysis and potentials other than the hard wall test potential.
+- Not yet implemented: the flux analysis and the Fortran potentials that need data files not
+  included in the Fortran code.
 
 ## Dependencies
 
@@ -80,6 +87,7 @@ Useful CMake options:
 | `-DSPODVR_FFT_LIBRARY=FFTW` | `AUTO` | use the real FFTW for the FFTs even when oneMKL is present (`AUTO` picks oneMKL when found) |
 | `-DSPODVR_ARCH=native` | `x86-64-v3` | `-march` value (`x86-64-v3` = AVX2; `x86-64-v4` = AVX-512) |
 | `-DSPODVR_PGO=GENERATE/USE` | `OFF` | profile-guided optimisation, about 15% faster (see docs/performance.md) |
+| `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math`; about 10% faster, changes results at the 1e-12 level (see Benchmark) |
 | `-DSPODVR_BUILD_TESTS=OFF` | `ON` | skip the tests |
 
 Performance notes, reproducibility across machines and the PGO workflow are in
@@ -98,19 +106,20 @@ pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build
 ## Running
 The program reads one JSON input file:
 ```bash
-./build/spodvr inputs/hardwall_small/input.json --threads 16 --output-dir runs/hardwall_small
+./build/spodvr inputs/hardwall_small/input.json --threads 8 --output-dir runs/hardwall_small
 ```
 
 Command-line options:
 ```
 spodvr <input.json> [--threads N] [--output-dir DIR] [--no-color] [--help] [--version]
 ```
-- `--threads N`: number of OpenMP threads (default: all). The results do not depend on it.
+- `--threads N`: number of OpenMP threads (default: all). The results do not depend on it. Use the
+  number of physical cores: hyperthreads do not speed up these memory- and FFT-bound loops.
 - `--output-dir DIR`: where the data files are written (default: the current directory).
 
 Output:
-- **Screen:** an input summary, the grids, the gas-phase states, the initial wave packet, the
-  analysis basis, a table of averages during the propagation, and compact probability tables
+- **Screen:** an input summary, the grids, a memory estimate, the surface symmetry (with
+  `UseSymmetry`), the gas-phase states, the initial wave packet, the analysis basis, a table of averages during the propagation, and compact probability tables
   (one row per energy) at the end.
 - **Data files** (in the output directory, full precision, tab-separated with a commented header
   that explains every column; they load with `pandas.read_csv(f, sep="\t", comment="#")`):
@@ -126,7 +135,9 @@ Output:
 | `checkpoint.bin`, `bk_coefficients.bin` | final wave packet and Balint-Kurti coefficients, for a restart |
 | `asymptotic_potential.dat`, `gas_phase_states.dat` | set-up data |
 
-The file formats are described in [docs/output_files.md](docs/output_files.md).
+With `alsoAnalysis` (or an analysis-only run, `onlyAnalysis`) the fine-analysis results are written
+to `fine_analysis/` in the output directory. The file formats are described in
+[docs/output_files.md](docs/output_files.md).
 
 ### Continuing a run (restart)
 Set `"NewCalc": false`, `"tStart"` to the end time of the earlier run, and `"RestartDir"` to its
@@ -137,7 +148,8 @@ Fortran code's files (`"RestartFormat": "fortran"`: fort.8/fort.9 and fort.22/fo
 written for it (`"CheckpointFormat": "fortran"` or `"both"`); see
 [docs/input_schema.md](docs/input_schema.md).
 
-A run of the provided example (7000 time steps) takes about 3 minutes with 16 threads on a desktop machine (AMD Ryzen 7 5800X).
+A run of the provided example (7000 time steps) takes about 3.5 minutes with 8 threads on a desktop
+machine (AMD Ryzen 7 5800X).
 
 ### Running a oneMKL build from another location
 Inside the build tree the oneMKL library path is built into the executable. If you copy or install
@@ -159,14 +171,31 @@ vector extensions (see docs/performance.md).
   are described in [docs/input_schema.md](docs/input_schema.md).
 - Unknown keys and inconsistent parameters are reported as errors.
 - The test copies of these inputs (with the Fortran reference output) live in
-  `tests/reference/`.
+  `tests/reference/`, together with the corrugated test cases (`cu111_dailight_*`,
+  `cu111_persson_small`), whose `input.json` files can be run in the same way.
 - The example grids are deliberately tiny so that they run quickly. Production calculations use
   much larger grids (more than 64 GB of memory).
+
+## Benchmark
+Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps on a 176 × 56 × 8 × 8
+(Z, r, x, y) grid with 15 rotational states, plus the on-the-fly analysis. AMD Ryzen 7 5800X
+(8 cores), 8 threads, the three runs one after another:
+
+| Binary | Wall time | CPU time | Threads busy on average |
+|---|---|---|---|
+| Fortran | 680 s | 5255 s | 7.7 |
+| C++, current flags | 764 s | 5040 s | 6.6 |
+| C++, fast-math + native + PGO | 675 s | 4489 s | 6.7 |
+
+The C++ code needs less CPU time than the Fortran code, but keeps the threads less busy, so it is
+slower in wall time; this is still being investigated. The fast-math build passes all regression
+gates, but its results differ from the default build at the 1e-12 level, so it is not the default.
+Details in [docs/performance.md](docs/performance.md).
 
 ## Repository layout
 | Path | Content |
 |---|---|
-| `src/` | the program: `input/`, `grids/`, `potential/`, `gasphase/`, `propagation/`, `analysis/`, `fft/`, `linalg/`, `report/`, `app/` |
+| `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/` |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
 | `docs/` | input schema, output files, performance notes |
