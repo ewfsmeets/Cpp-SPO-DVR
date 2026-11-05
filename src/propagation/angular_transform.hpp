@@ -40,13 +40,19 @@ class AngularTransform {
   // dvr is used as work space (overwritten); fbr: n_rot * n_columns values (overwritten).
   void dvr_to_fbr(std::span<std::complex<double>> dvr, std::span<std::complex<double>> fbr) const;
 
- private:
   // The FBR functions with one mJ value and the phi slot (FFT index) of that mJ.
   struct MjBlock {
     IndexRange fbr;
     int phi_slot;
   };
+  // The tables of the transform (for other implementations of it, e.g. on a GPU): the mJ blocks
+  // in the order mJ = -MjMax .. MjMax, and sqrt(w_t / nphi) P_J^m(theta_t) ordered (mJ block,
+  // theta, J).
+  [[nodiscard]] const std::vector<MjBlock>& mj_blocks() const { return blocks_; }
+  [[nodiscard]] const std::vector<double>& matrix() const { return matrix_; }
+  [[nodiscard]] int mj_max() const { return mj_max_; }
 
+ private:
   int n_theta_;
   int n_phi_;
   int n_rot_;

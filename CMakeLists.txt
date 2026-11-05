@@ -63,11 +63,12 @@ FetchContent_MakeAvailable(nlohmann_json)
 # ---------------------------------------------------------------------------------------------
 # Warnings
 # ---------------------------------------------------------------------------------------------
+# (C++ only: these options must not reach nvcc when the CUDA backend is built.)
 add_library(spodvr_warnings INTERFACE)
-target_compile_options(spodvr_warnings INTERFACE -Wall -Wextra -Wpedantic -Wshadow -Wconversion
-                                                 -Wno-sign-conversion)
+target_compile_options(spodvr_warnings INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wpedantic -Wshadow
+                                                 -Wconversion -Wno-sign-conversion>)
 if(SPODVR_WARNINGS_AS_ERRORS)
-  target_compile_options(spodvr_warnings INTERFACE -Werror)
+  target_compile_options(spodvr_warnings INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
 endif()
 
 # Floating-point semantics. No contraction (FMA) and no fast-math, so that results stay
@@ -81,12 +82,13 @@ endif()
 # SPODVR_FAST_MATH (experimental, default OFF): -ffast-math instead (FMA contraction, reassociation,
 # vectorised math functions). Changes rounding; only for speed experiments, checked with the gates.
 option(SPODVR_FAST_MATH "Experimental: compile with -ffast-math (changes rounding)" OFF)
+# (C++ only, like the warnings; the CUDA kernels get their own flags, see SPODVR_USE_CUDA.)
 add_library(spodvr_fp INTERFACE)
 if(SPODVR_FAST_MATH)
-  target_compile_options(spodvr_fp INTERFACE -ffast-math -fcx-fortran-rules)
+  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-ffast-math -fcx-fortran-rules>)
 else()
-  target_compile_options(spodvr_fp INTERFACE -ffp-contract=off -fno-fast-math -fcx-fortran-rules
-                                             -fno-math-errno -fno-trapping-math)
+  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-ffp-contract=off -fno-fast-math
+                                             -fcx-fortran-rules -fno-math-errno -fno-trapping-math>)
 endif()
 
 # Target instruction set. The default x86-64-v3 (AVX2) runs on any recent x86-64 CPU; "native"
@@ -94,7 +96,7 @@ endif()
 # our own code do not depend on this choice.
 set(SPODVR_ARCH "x86-64-v3" CACHE STRING "Value for -march (e.g. x86-64-v3, x86-64-v4, native; empty: compiler default)")
 if(SPODVR_ARCH)
-  target_compile_options(spodvr_fp INTERFACE -march=${SPODVR_ARCH})
+  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-march=${SPODVR_ARCH}>)
 endif()
 
 # Profile-guided optimisation (two builds, see docs/performance.md): GENERATE builds an
@@ -103,11 +105,12 @@ set(SPODVR_PGO "OFF" CACHE STRING "Profile-guided optimisation: OFF, GENERATE or
 set_property(CACHE SPODVR_PGO PROPERTY STRINGS OFF GENERATE USE)
 set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of the PGO profile data")
 if(SPODVR_PGO STREQUAL "GENERATE")
-  target_compile_options(spodvr_fp INTERFACE -fprofile-generate=${SPODVR_PGO_DIR} -fprofile-update=atomic)
+  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-fprofile-generate=${SPODVR_PGO_DIR}
+                                             -fprofile-update=atomic>)
   target_link_options(spodvr_fp INTERFACE -fprofile-generate=${SPODVR_PGO_DIR})
 elseif(SPODVR_PGO STREQUAL "USE")
-  target_compile_options(spodvr_fp INTERFACE -fprofile-use=${SPODVR_PGO_DIR} -fprofile-correction
-                                             -Wno-missing-profile)
+  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-fprofile-use=${SPODVR_PGO_DIR}
+                                             -fprofile-correction -Wno-missing-profile>)
 endif()
 
 # Link-time optimisation for optimised builds.
@@ -206,6 +209,50 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------------------------
+# Optional GPU backend (CUDA): the wave packet lives in GPU memory (src/cuda/, docs/cuda.md).
+# Kernels (.cu) are compiled by nvcc; the host code of the backend (.cpp) by the C++ compiler.
+# ---------------------------------------------------------------------------------------------
+option(SPODVR_USE_CUDA "Build the CUDA propagation backend (--device cuda)" OFF)
+option(SPODVR_CUDA_SYNC_DEBUG "Debug: wait for and check every CUDA kernel right after its launch" OFF)
+if(SPODVR_USE_CUDA)
+  # nvcc compiles the host side of the .cu files with a host compiler it supports: CUDA 12.0
+  # rejects GCC > 12 (crt/host_config.h), so use g++-12 when it is installed.
+  if(NOT CMAKE_CUDA_HOST_COMPILER AND EXISTS /usr/bin/g++-12)
+    set(CMAKE_CUDA_HOST_COMPILER /usr/bin/g++-12)
+  endif()
+  if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 89-real)  # RTX 40xx; e.g. "80-real;90-real" for A100/H100
+  endif()
+  enable_language(CUDA)
+  find_package(CUDAToolkit REQUIRED)
+
+  add_library(spodvr_cuda
+    src/cuda/cuda_backend.cpp
+    src/cuda/cuda_error.cpp
+    src/cuda/cuda_fft.cpp
+    src/cuda/device_buffer.cpp
+    src/cuda/device_kinetic_operator.cpp
+    src/cuda/device_potential_operator.cpp
+    src/cuda/kinetic_kernels.cu
+    src/cuda/potential_kernels.cu
+    src/cuda/specular_kernels.cu
+    src/cuda/wave_function_kernels.cu
+  )
+  # The kernels only need C++17 (nvcc 12.0 does not handle every C++20 construct of the host code,
+  # which is why the backend's host code is in .cpp files). No FMA contraction, as on the CPU.
+  set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON
+                                               INTERPROCEDURAL_OPTIMIZATION OFF)
+  target_compile_options(spodvr_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-fmad=false
+                                             -Xcompiler=-ffp-contract=off,-fno-fast-math>)
+  if(SPODVR_CUDA_SYNC_DEBUG)
+    target_compile_definitions(spodvr_cuda PRIVATE SPODVR_CUDA_SYNC_DEBUG)
+  endif()
+  target_link_libraries(spodvr_cuda PUBLIC spodvr_core CUDA::cudart CUDA::cufft PRIVATE spodvr_warnings spodvr_fp)
+  message(STATUS "SPO-DVR: CUDA backend ON (nvcc ${CMAKE_CUDA_COMPILER_VERSION}, host compiler "
+                 "${CMAKE_CUDA_HOST_COMPILER}, architectures ${CMAKE_CUDA_ARCHITECTURES})")
+endif()
+
+# ---------------------------------------------------------------------------------------------
 # Program driver (command line, run modes, choice of the propagation backend). A separate library
 # so that an optional GPU backend can sit between it and spodvr_core.
 # ---------------------------------------------------------------------------------------------
@@ -216,6 +263,10 @@ add_library(spodvr_app
   src/app/run.cpp
 )
 target_link_libraries(spodvr_app PUBLIC spodvr_core PRIVATE spodvr_warnings spodvr_fp)
+if(SPODVR_USE_CUDA)
+  target_link_libraries(spodvr_app PUBLIC spodvr_cuda)
+  target_compile_definitions(spodvr_app PUBLIC SPODVR_HAVE_CUDA)
+endif()
 
 add_executable(spodvr src/app/main.cpp)
 target_link_libraries(spodvr PRIVATE spodvr_app spodvr_warnings spodvr_fp)

@@ -132,7 +132,9 @@ struct PropagationRun {
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
 };
 
-inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_json) {
+// backend: the propagation backend (CPU by default; the GPU tests pass the CUDA backend).
+inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_json,
+                                          const BackendFactory& backend = make_cpu_backend) {
   std::ifstream file(input_json);
   const Config config = build_config(parse_input(nlohmann::json::parse(file)));
   const SpatialGrids grids = make_spatial_grids(config);
@@ -140,7 +142,7 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   PotentialGrid potential = compute_potential_grid(*make_potential(config.input.system_id), config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
-  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft);
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend);
   PropagationRun run;
   run.initial = propagation.initial_wave_packet();
   PropagationObserver observer;

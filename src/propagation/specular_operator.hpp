@@ -11,6 +11,12 @@
 
 namespace spodvr {
 
+// rot(dt/2) exp(-i vasy(r) dt) rot(dt/2) of the initial rotational state, per ir: the free
+// molecule beyond the interaction region on the specular grid. Fortran: GasPhase.f90
+// PerformEXPGasPhaseOnSpecGrid
+[[nodiscard]] std::vector<std::complex<double>> specular_gas_phase_factors(int nr, int initial_channel,
+                                                                           const PropagationTables& tables);
+
 // Operations on the specular (incoming channel) grid in one time step: exp(-i T dt) by a 2D FFT
 // in (r, Z) (T includes the parallel energy; Fortran: 1D FFTs in Z, then r), then, except on the last half step, the
 // gas-phase propagator rot(dt/2) . exp(-i vasy dt) . rot(dt/2) beyond the interaction region and the absorbing

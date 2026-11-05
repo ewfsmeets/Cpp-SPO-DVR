@@ -10,10 +10,20 @@ namespace spodvr {
 
 namespace {
 using cplx = std::complex<double>;
-
-// exp(i A) as the Fortran code forms it: B = COS(A) + ima*SIN(A).
-cplx exp_i(double a) { return cplx(std::cos(a), std::sin(a)); }
 }  // namespace
+
+PotentialStepFactors potential_step_factors(const ScatteringShape& shape, const PropagationTables& tables) {
+  PotentialStepFactors f;
+  const int n_rot = shape.n_rot;
+  for (int ir = 0; ir < shape.nr; ++ir)
+    for (int irot = 0; irot < n_rot; ++irot) {
+      const cplx rot = tables.rotation.half[irot + n_rot * ir];
+      const double optical_r = shape.nr != 1 ? tables.r_optical[ir] : 1.0;
+      f.before_interaction.push_back(optical_r * rot);
+      f.gas_phase_step.push_back(optical_r * rot * tables.gas_phase[ir] * rot);
+    }
+  return f;
+}
 
 PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
                                      const PropagationTables& tables, const AngularTransform& transform,
@@ -30,6 +40,7 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
       initial_channel_(initial_channel),
       tables_(tables),
       transform_(transform),
+      factors_(potential_step_factors(shape, tables)),
       potential_(premultiplied_potential),
       symmetry_(std::move(symmetry)) {
   if (symmetry_.nx() != shape.nx || symmetry_.ny() != shape.ny || symmetry_.nphi() != transform.n_phi())
@@ -40,18 +51,6 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
 
   if ((shape.nx * shape.ny) % transform.n_columns() != 0)
     throw std::invalid_argument("PotentialOperator: nx*ny must be a multiple of the transform's columns");
-
-  // Merged per-(irot, ir) factors (one multiplication instead of several):
-  //   interaction region: exp(-V_opt,r dt) rot(dt/2)  (before the DVR step)
-  //   beyond it:          exp(-V_opt,r dt) rot(dt/2) exp(-i vasy dt) rot(dt/2)
-  const int n_rot = shape.n_rot;
-  for (int ir = 0; ir < shape.nr; ++ir)
-    for (int irot = 0; irot < n_rot; ++irot) {
-      const cplx rot = tables.rotation.half[irot + n_rot * ir];
-      const double optical_r = shape.nr != 1 ? tables.r_optical[ir] : 1.0;
-      before_interaction_.push_back(optical_r * rot);
-      gas_phase_step_.push_back(optical_r * rot * tables.gas_phase[ir] * rot);
-    }
 
   if (expected * sizeof(cplx) <= table_limit) {
     exp_potential_.resize(expected);
@@ -105,7 +104,7 @@ void PotentialOperator::apply_block(int izr, std::span<cplx> block, SpecularWave
   if (iz >= nz_potential_) {
     // Beyond the interaction region: absorption and the free molecule.
     // Fortran: PerformEXPOpticalZ/R, PerformEXPGasPhaseOnScatGrid between rot(dt/2)
-    const auto factor = std::span(gas_phase_step_).subspan(std::size_t(n_rot) * ir, n_rot);
+    const auto factor = std::span(factors_.gas_phase_step).subspan(std::size_t(n_rot) * ir, n_rot);
     for (int ixy = 0; ixy < n_xy; ++ixy)
       for (int irot = 0; irot < n_rot; ++irot)
         block[irot + n_rot * ixy] = optical_z * (factor[irot] * block[irot + n_rot * ixy]);
@@ -114,7 +113,7 @@ void PotentialOperator::apply_block(int izr, std::span<cplx> block, SpecularWave
 
   // Absorption, rot(dt/2), and the specular wave added to the initial channel (it enters after
   // the absorption, before rot(dt/2)). Fortran: PerformEXPOpticalZ/R, AddSpecToScat
-  const auto factor = std::span(before_interaction_).subspan(std::size_t(n_rot) * ir, n_rot);
+  const auto factor = std::span(factors_.before_interaction).subspan(std::size_t(n_rot) * ir, n_rot);
   const cplx incoming = spec(ir, iz);
   for (int ixy = 0; ixy < n_xy; ++ixy) {
     for (int irot = 0; irot < n_rot; ++irot)

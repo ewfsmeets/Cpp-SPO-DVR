@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "propagation/propagation_backend.hpp"
 
 namespace spodvr {
@@ -10,5 +12,13 @@ namespace spodvr {
 
 // Whether this build contains the CUDA backend.
 [[nodiscard]] bool cuda_backend_available();
+
+// Prepares the device (GPU: selects it) and returns a line describing it (empty for the CPU).
+[[nodiscard]] std::string prepare_device(Device device);
+
+// Stops with a clear error if the GPU memory is too small for this run (no-op for the CPU).
+// Called before the potential is computed, so that a run does not fail after a long set-up.
+void check_device_memory(Device device, const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
+                         int n_representatives);
 
 }  // namespace spodvr

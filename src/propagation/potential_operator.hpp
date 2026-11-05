@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <complex>
 #include <cstddef>
 #include <span>
@@ -13,6 +14,21 @@
 #include "symmetry/grid_symmetry.hpp"
 
 namespace spodvr {
+
+// The per-(irot, ir) factors of the potential step, each merged into one multiplication:
+//   before_interaction: exp(-V_opt,r dt) rot(dt/2)                          (Z < zasymp)
+//   gas_phase_step:     exp(-V_opt,r dt) rot(dt/2) exp(-i vasy dt) rot(dt/2)  (Z >= zasymp)
+// Layout irot + n_rot * ir. Fortran: Absorption.f90 PerformEXPOpticalR, GasPhase.f90
+// PerformEXPGasPhaseOnScatGrid, EXPKinEn%halfStep%RotChan
+struct PotentialStepFactors {
+  std::vector<std::complex<double>> before_interaction;
+  std::vector<std::complex<double>> gas_phase_step;
+};
+[[nodiscard]] PotentialStepFactors potential_step_factors(const ScatteringShape& shape,
+                                                          const PropagationTables& tables);
+
+// exp(i A) as the Fortran code forms it: B = COS(A) + ima*SIN(A).
+[[nodiscard]] inline std::complex<double> exp_i(double a) { return {std::cos(a), std::sin(a)}; }
 
 // exp(-i V dt) on the scattering grid, per (Z, r) point:
 //   optical potentials in Z and r;
@@ -68,8 +84,7 @@ class PotentialOperator {
   int initial_channel_;  // Fortran: ichn - 1
   const PropagationTables& tables_;
   const AngularTransform& transform_;
-  std::vector<std::complex<double>> before_interaction_;  // (irot, ir): exp(-V_opt,r dt) rot(dt/2)
-  std::vector<std::complex<double>> gas_phase_step_;      // (irot, ir): ... rot exp(-i vasy dt) rot
+  PotentialStepFactors factors_;  // (irot, ir), see potential_step_factors
   std::span<const double> potential_;              // A = -V dt (when not precomputed)
   ComplexVector exp_potential_;                    // exp(i A) (when precomputed)
   GridSymmetry symmetry_;                          // (x, y) representatives and phi maps

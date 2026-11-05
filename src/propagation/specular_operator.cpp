@@ -8,6 +8,16 @@ namespace {
 using cplx = std::complex<double>;
 }  // namespace
 
+std::vector<cplx> specular_gas_phase_factors(int nr, int initial_channel, const PropagationTables& tables) {
+  std::vector<cplx> factors;
+  const int n_rot = static_cast<int>(tables.rotation.half.size()) / nr;
+  for (int ir = 0; ir < nr; ++ir) {
+    const cplx rot = tables.rotation.half[initial_channel + n_rot * ir];
+    factors.push_back(rot * tables.gas_phase[ir] * rot);
+  }
+  return factors;
+}
+
 // Fortran: KineticOp.f90 SetupFFTs (nproj > 0)
 SpecularOperator::SpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel,
                                    const IndexRange& z_absorber, const IndexRange& r_absorber,
@@ -18,19 +28,14 @@ SpecularOperator::SpecularOperator(int nr, int nz_specular, int nz_potential, in
       initial_channel_(initial_channel),
       z_absorber_(z_absorber),
       r_absorber_(r_absorber),
-      tables_(tables) {
+      tables_(tables),
+      gas_phase_step_(specular_gas_phase_factors(nr, initial_channel, tables)) {
   // The wave function (ir, iz) as one 2D transform: Z outer (stride nr), r inner (stride 1).
   const FftLayout2D layout{nz_, nr_, nr_, 1, 1, 1};
   const double scale_z = tables.fft_scale_z;
   const double scale_r = tables.fft_scale_r;
   to_momentum_ = fft.plan_complex_2d(layout, FftSign::Minus, scale_z * scale_r);
   to_coordinate_ = fft.plan_complex_2d(layout, FftSign::Plus, (1.0 / (nz_ * scale_z)) * (1.0 / (nr_ * scale_r)));
-
-  const int n_rot = static_cast<int>(tables.rotation.half.size()) / nr_;
-  for (int ir = 0; ir < nr_; ++ir) {
-    const cplx rot = tables.rotation.half[initial_channel_ + n_rot * ir];
-    gas_phase_step_.push_back(rot * tables.gas_phase[ir] * rot);
-  }
 }
 
 // Fortran: SplitOperator.f90 SpecularChannelOps (kinetic_only on the last half step)

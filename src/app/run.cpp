@@ -240,11 +240,12 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     out << "  " << numerical_libraries_summary() << '\n';
 
     const Config config = build_config(read_input_file(command_line.input_file));
-    // Checked before the (possibly long) set-up: a GPU device must be available in this build.
+    // Checked before the (possibly long) set-up: the GPU must be available in this build.
     const Device device = parse_device(command_line.device);
-    if (device == Device::Cuda) (void)backend_factory(device);
-    if (device == Device::Cuda && (config.derived.run_mode == 2 || config.derived.run_mode == 6))
+    const bool propagates = config.derived.run_mode != 2 && config.derived.run_mode != 6;
+    if (device == Device::Cuda && !propagates)
       out << "  Note: --device cuda has no effect in this run mode (no propagation).\n";
+    if (device == Device::Cuda && propagates) out << "  " << prepare_device(device) << '\n';
     print_input_summary(out, style, config);
 
     const auto potential = make_potential(config.input.system_id);
@@ -268,6 +269,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       }
       print_memory_estimate(out, style, estimate_memory(config, grids, angular, symmetry, omp_get_max_threads()),
                             physical_memory_bytes());
+      check_device_memory(propagates ? device : Device::Cpu, config, grids, angular, symmetry.n_representatives());
       // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
       const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
       const ScatteringShape shape{basis.size(), config.input.nx, config.input.ny, config.input.nr, config.input.nz};
