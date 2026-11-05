@@ -125,23 +125,55 @@ times each stage and each kernel of the potential stage. ncu needs access to the
 counters (not granted on this WSL2 machine), and the nsys of the Ubuntu packages cannot import its
 own traces.
 
-DZ benchmark (`inputs/thesis_fig5_3_dz`: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB),
-RTX 4070 Ti, per full time step:
+DZ benchmark (`inputs/thesis_fig5_3_dz`: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
+19 C6v representatives), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step
+(10 repetitions; single runs on this WSL2 GPU vary by up to ~30%, it also drives the desktop):
 
-| Stage | Time |
+| Stage | GPU | CPU (`spodvr_operator_timing`) |
+|---|---|---|
+| T_Z + T_r (GPU: 2 cuFFTs 126 ms + 1 multiply pass) | 150 ms | 1044 ms |
+| T_xy (GPU: 2 cuFFTs 132 ms + 1 multiply pass) | 158 ms | 549 ms |
+| Potential | 301 ms | 1952 ms |
+| One time step | **609 ms** | 3567 ms (fused T_xy + V) |
+
+GPU potential stage by kernel, summed over the 8 slabs:
+
+| Kernel | Time |
 |---|---|
-| T_Z + T_r (of which cuFFT 196 ms) | 245 ms |
-| T_xy (of which cuFFT 137 ms) | 161 ms |
-| Potential: Legendre FBR → DVR 75 ms, φ FFTs 2 × 48 ms, exp(iA) 60 ms, DVR → FBR 70 ms, rest 7 ms | 309 ms |
-| **Total** | **716 ms** |
+| Legendre sums FBR → DVR | 77 ms |
+| φ FFTs | 2 × 48 ms |
+| exp(iA) | 59 ms |
+| Legendre sums DVR → FBR | 68 ms |
+| gas phase + projection | 6 ms |
 
-The whole program ran 80 steps in 54 s of propagation time, against ≈ 4.4 s per step on 8 CPU
-threads: **≈ 6.5×**.
+Whole program, 80 steps: 52.1 s of propagation time (CPU: 305.0 s; the averages of the two runs
+agree to 1.0e-14 relative, the BK coefficients to 1.8e-15 absolute) (0.65 s per step) against ≈ 3.6 s per step on
+the CPU: **5.5×**. The 10 000 steps of the benchmark would take ≈ 1.8 h instead of ≈ 10 h.
 
-This GeForce card computes FP64 at 1/64 of its FP32 rate (≈ 0.63 TFLOP/s), and the FFTs and
-Legendre sums of one step need ≈ 130 GFLOP. A step is therefore mostly FP64-bound here: a pure
-memory pass over ψ takes 25.5 ms (400 GB/s). A data-centre GPU (A100/H100: full FP64 rate,
-2–3 TB/s) changes the balance completely. Optimisations should be judged on such a GPU.
+What limits the speed on this card:
+- **Memory passes:** one pass over ψ (read + write) takes 25.5 ms (400 GB/s). A 2D (Z, r) cuFFT
+  takes 2 passes, a strided 2D (x, y) cuFFT 2.7 (a contiguous one would take 2), and the
+  multiplication kernels run at full bandwidth.
+- **FP64 instructions:** the angular transform needs ≈ 17 G FP64 operations per direction per step.
+  GeForce cards execute FP64 at 1/64 of the FP32 rate, and without FMA (`-fmad=false`, required for
+  CPU-comparable results) every multiply and add is a separate instruction: ≈ 0.3 T per second here.
+  So the two Legendre kernels are compute-bound at 65–77 ms.
+- **Tried without gain:** keeping the per-thread coefficient arrays in registers (templated sizes,
+  unrolled loops). It changed nothing because the limit is FP64 throughput, not local memory, so it
+  was reverted.
+
+Next steps, to be judged on the production GPU (on an A100/H100 the kernels become memory-bound,
+and fewer passes pay off directly):
+- **cuFFT callbacks** (static cuFFT, relocatable device code): fold the multiplications into the
+  FFT loads/stores, i.e. the T_Z + T_r and T_xy multiplies and exp(iA) into the inverse φ FFT. That
+  saves ≈ 3.5 passes per step.
+- **Even/odd split of the θ sums:** the θ grid is symmetric about π/2 and P_J^m(−x) = ±P_J^m(x),
+  so the split halves the FP64 work of the Legendre sums. It changes the summation order, so the
+  result is no longer bitwise equal to the CPU.
+- **A fused angular kernel** with an in-kernel φ transform: removes the DVR scratch and its four
+  passes, but needs more FP64 work for the DFT.
+- **An optional FMA build** (like `SPODVR_FAST_MATH` on the CPU): doubles the FP64 rate, but
+  changes rounding (not the default).
 
 ## Files
 | File | Content |
