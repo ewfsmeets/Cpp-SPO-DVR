@@ -2,7 +2,8 @@
 // tests/reference/hardwall_short (1000 steps) against the Fortran output of the same case
 // (fortran_stdout.txt, fortran_averages.out and, if present, fortran_fort21.bin, written by
 // tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
-// The full 7000-step case (hardwall_small) runs only with SPODVR_LONG_TESTS=1.
+// The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
+// SPODVR_LONG_TESTS=1. The Dai-Light cases skip until their Fortran references exist.
 #include <cstdlib>
 
 #include "analysis_reference.hpp"
@@ -44,6 +45,15 @@ TEST(RegressionPropagation, Gate3ShortRun) { run_gate("hardwall_short"); }
 TEST(RegressionPropagation, Gate3FullRunLong) {
   if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";
   run_gate("hardwall_small");
+}
+
+// The corrugated Dai-Light H2/Cu(111) cases (60 deg cell, C6v): the first gates with theta/phi/x/y
+// coupling. _sym: C6v surface symmetry in the potential (UseSymmetry, nPhisOptimal) in both codes.
+TEST(RegressionPropagation, Gate3DaiLightShort) { run_gate("cu111_dailight_short"); }
+TEST(RegressionPropagation, Gate3DaiLightShortSymmetric) { run_gate("cu111_dailight_short_sym"); }
+TEST(RegressionPropagation, Gate3DaiLightFullRunLong) {
+  if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";
+  run_gate("cu111_dailight_small");
 }
 
 TEST(RegressionPropagation, ParsesTheFortranOutputFormats) {

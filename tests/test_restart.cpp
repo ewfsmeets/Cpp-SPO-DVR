@@ -234,6 +234,29 @@ TEST(Restart, MismatchingInputIsAnError) {
   EXPECT_NE(err.find("tStart"), std::string::npos) << err;
 }
 
+// UseSymmetry with nPhisOptimal may change the number of phi points (the propagation's
+// quadrature): a restart must use the same number. It is checked itself, so a choice that keeps
+// nphi is allowed (the hard wall's C2v needs an even nphi, which 10 already is), while the
+// Dai-Light C6v case goes from 10 to 12 phi points.
+TEST(Restart, NumberOfPhiPointsIsChecked) {
+  const FirstRun& r = first_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  nlohmann::json json = restart_from(with_times(short_json(), 60.0, 120.0, 30), r.root / "first");
+  json["UseSymmetry"] = true;
+  json["nPhisOptimal"] = true;
+  std::string err;
+  EXPECT_EQ(run(json, r.root / "symmetric_restart", err), 0) << err;
+
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/cu111_dailight_short/input.json");
+  const nlohmann::json dai = with_times(nlohmann::json::parse(file), 0.0, 20.0, 10);
+  ASSERT_EQ(run(dai, r.root / "dailight_first", err), 0) << err;
+  nlohmann::json restart = restart_from(with_times(dai, 20.0, 40.0, 10), r.root / "dailight_first");
+  restart["UseSymmetry"] = true;
+  restart["nPhisOptimal"] = true;
+  EXPECT_EQ(run(restart, r.root / "dailight_restart", err), 4);
+  EXPECT_NE(err.find("number of phi points"), std::string::npos) << err;
+}
+
 TEST(Restart, TruncatedCheckpointIsAnError) {
   const FirstRun& r = first_run();
   ASSERT_EQ(r.code, 0) << r.err;

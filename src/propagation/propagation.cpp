@@ -12,9 +12,9 @@ ScatteringShape scattering_shape(const Config& config, const RotationalBasis& ba
   return {basis.size(), p.nx, p.ny, p.nr, p.nz};
 }
 
-AlignedVector<double> premultiplied(PotentialGrid potential, double time_step) {
-  premultiply_with_time_step(potential.values, time_step);
-  return std::move(potential.values);
+AlignedVector<double> premultiplied(AlignedVector<double>&& values, double time_step) {
+  premultiply_with_time_step(values, time_step);
+  return std::move(values);
 }
 
 }  // namespace
@@ -27,10 +27,10 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
       basis_(angular, config.input.j_in, config.input.mj_in),
       transform_(angular, basis_, fft, config.input.nx * config.input.ny),
       tables_(make_propagation_tables(config, grids, basis_, potential.asymptotic)),
-      premultiplied_potential_(premultiplied(std::move(potential), config.input.time_step)),
+      premultiplied_potential_(premultiplied(std::move(potential.values), config.input.time_step)),
       kinetic_(scattering_shape(config, basis_), tables_, fft),
       potential_(scattering_shape(config, basis_), grids.nz_potential, basis_.initial_index(), tables_, transform_,
-                 premultiplied_potential_),
+                 premultiplied_potential_, potential.symmetry),
       specular_(config.input.nr, grids.z_specular.size(), grids.nz_potential, basis_.initial_index(),
                 *grids.z_specular_optical, grids.r_optical, tables_, fft),
       propagator_(config.derived.steps_per_analysis, kinetic_, potential_, specular_),

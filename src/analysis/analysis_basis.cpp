@@ -6,23 +6,10 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "core/error.hpp"
-#include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
+#include "symmetry/surface_lattice.hpp"
 
 namespace spodvr {
-
-int diffraction_order(const std::string& point_group, int n, int m) {
-  const int abs_n = std::abs(n);
-  const int abs_m = std::abs(m);
-  if (fortran_compare::seq(point_group, "C2v") || fortran_compare::seq(point_group, "C4v")) return abs_n + abs_m;
-  if (fortran_compare::seq(point_group, "C3") || fortran_compare::seq(point_group, "C3v") ||
-      fortran_compare::seq(point_group, "C6v")) {
-    if (n * m > 0) return std::max(abs_n, abs_m);
-    return abs_n + abs_m;
-  }
-  throw NotSupportedError("diffraction order: point group " + point_group + " not implemented");
-}
 
 namespace {
 
@@ -65,11 +52,11 @@ int max_open_diffraction_order(const Config& config, const GasPhase& gas, int mx
   const double e_initial = gas.states.energy(p.v_in, p.j_in);
   const double e_total = units::legacy.ev_to_hartree(p.e_max_wave_packet) + (e_initial - e00) + parallel_energy(0, 0);
 
+  const SurfaceLattice lattice(d.system);
   int max_order = 0;
   for (int j = qy.min; j <= qy.max; ++j)
     for (int i = qx.min; i <= qx.max; ++i)
-      if (parallel_energy(i, j) <= e_total)
-        max_order = std::max(max_order, diffraction_order(d.system.point_group, i, j));
+      if (parallel_energy(i, j) <= e_total) max_order = std::max(max_order, lattice.diffraction_order(i, j));
   return max_order;
 }
 
@@ -77,14 +64,14 @@ AnalysisBasis::AnalysisBasis(const Config& config, const AngularGrid& angular, c
                              const GasPhase& gas, const std::vector<double>& xy_kinetic_energies)
     : basis_(basis), j_max_(gas.j_max_analysis), n_v_(gas.n_v_analysis) {
   const InputParameters& p = config.input;
-  const std::string& point_group = config.derived.system.point_group;
+  const SurfaceLattice lattice(config.derived.system);
 
   // Diffraction channels n outer, m inner, then sorted by order (stable). Fortran: DiffractionBasis
   const QuantumRange qx = quantum_range(p.x_dof, p.nx);
   const QuantumRange qy = quantum_range(p.y_dof, p.ny);
   for (int n = qx.min; n <= qx.max; ++n)
     for (int m = qy.min; m <= qy.max; ++m)
-      channels_.push_back({n, m, diffraction_order(point_group, n, m), fft_slot(n, p.nx), fft_slot(m, p.ny)});
+      channels_.push_back({n, m, lattice.diffraction_order(n, m), fft_slot(n, p.nx), fft_slot(m, p.ny)});
   std::stable_sort(channels_.begin(), channels_.end(),
                    [](const DiffractionChannel& a, const DiffractionChannel& b) { return a.order < b.order; });
 

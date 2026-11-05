@@ -46,8 +46,7 @@ struct OperatorSetup {
   explicit OperatorSetup(const nlohmann::json& json)
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
-        angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                config.input.mj_in),
+        angular(make_angular_grid(config)),
         potential(compute_potential_grid(*make_potential(config.input.system_id), config, grids, angular)),
         gas(compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver())),
         basis(angular, config.input.j_in, config.input.mj_in),

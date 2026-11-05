@@ -84,7 +84,7 @@ TEST(Input, IntegerAcceptedForRealKey) {
 }
 
 TEST(Input, UnsupportedFeatures) {
-  for (const char* key : {"SystemMix", "UseSymmetry", "nPhisOptimal", "UseRCutOff", "write2DPES"}) {
+  for (const char* key : {"SystemMix", "UseRCutOff", "write2DPES"}) {
     Json json = reference_json();
     json[key] = false;
     EXPECT_NO_THROW((void)build(json)) << key;
@@ -94,6 +94,40 @@ TEST(Input, UnsupportedFeatures) {
   Json json = reference_json();
   json["RCutOff"] = 3.0;
   EXPECT_THROW((void)build(json), NotSupportedError);
+}
+
+// UseSymmetry, nPhisOptimal and SymmetryTolerance (eV, default 1e-5, must be > 0). With both
+// UseSymmetry and nPhisOptimal nphi becomes a multiple of the point group's multiple.
+TEST(Input, SurfaceSymmetryKeys) {
+  Json json = reference_json();  // hard wall: C2v
+  Config c = build(json);
+  EXPECT_FALSE(c.input.use_symmetry);
+  EXPECT_FALSE(c.input.phis_optimal);
+  EXPECT_EQ(c.input.symmetry_tolerance, 1e-5);
+  EXPECT_EQ(c.derived.phi_points_multiple, 1);
+
+  json["UseSymmetry"] = true;
+  EXPECT_EQ(build(json).derived.phi_points_multiple, 1);  // only with nPhisOptimal
+  json["nPhisOptimal"] = true;
+  c = build(json);
+  EXPECT_TRUE(c.input.use_symmetry);
+  EXPECT_TRUE(c.input.phis_optimal);
+  EXPECT_EQ(c.derived.phi_points_multiple, 2);
+  json["UseSymmetry"] = false;
+  EXPECT_EQ(build(json).derived.phi_points_multiple, 1);  // nPhisOptimal alone has no effect
+
+  json["SymmetryTolerance"] = 1e-3;
+  EXPECT_EQ(build(json).input.symmetry_tolerance, 1e-3);
+  json["SymmetryTolerance"] = 0.0;
+  expect_input_error(json, "SymmetryTolerance");
+  json["SymmetryTolerance"] = -1e-5;
+  expect_input_error(json, "SymmetryTolerance");
+}
+
+TEST(Input, PhiMultipleOfTheHexagonalCase) {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/cu111_dailight_short_sym/input.json");
+  const Config c = build(Json::parse(file));
+  EXPECT_EQ(c.derived.phi_points_multiple, 6);  // C6v
 }
 
 // Run mode precedence as in Fortran: Potential (6) > onlyAnalysis (2) > NewCalc (0 / 1).

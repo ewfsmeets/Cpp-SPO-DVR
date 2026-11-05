@@ -9,6 +9,7 @@
 #include "input/validate.hpp"
 #include "input/wave_packet_params.hpp"
 #include "potential/potential_factory.hpp"
+#include "symmetry/point_group.hpp"
 
 namespace spodvr {
 
@@ -25,6 +26,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
 
   d.v_in_index = p.v_in + 1;
   d.mj_max_basis = p.mj_max < 1 ? p.j_max : p.mj_max;
+  d.phi_points_multiple =
+      p.use_symmetry && p.phis_optimal ? phi_points_multiple(PointGroup(d.system.point_group).operations()) : 1;
 
   const double total_mass = units.amu_to_me(p.mass1 + p.mass2);
   const double reduced_mass = units.amu_to_me((p.mass1 * p.mass2) / (p.mass1 + p.mass2));

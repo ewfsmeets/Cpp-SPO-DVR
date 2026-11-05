@@ -3,6 +3,8 @@
 #include <span>
 #include <vector>
 
+#include "input/config.hpp"
+
 namespace spodvr {
 
 // The (theta, phi) DVR grid: Gauss-Legendre points in theta (half a grid, 0 < theta <= pi/2,
@@ -38,5 +40,9 @@ class AngularGrid {
   std::vector<double> weights_;
   std::vector<double> phis_;
 };
+
+// The angular grid of a run (JMax, MJMax, homonuclear, JIn, MJIn and the phi multiple of the
+// surface symmetry with nPhisOptimal). Fortran: setupdvr.f90 SetupDVRProj
+[[nodiscard]] AngularGrid make_angular_grid(const Config& config);
 
 }  // namespace spodvr

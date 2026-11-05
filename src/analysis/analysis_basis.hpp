@@ -10,13 +10,9 @@
 
 namespace spodvr {
 
-// Diffraction order of the channel (n, m) for the surface point group: |n| + |m| for C2v and
-// C4v; for C3, C3v and C6v max(|n|, |m|) if n m > 0, else |n| + |m|.
-// Fortran: RotDifBasis.f90 getDiffractionOrder
-[[nodiscard]] int diffraction_order(const std::string& point_group, int n, int m);
-
 // One diffraction channel (n, m): the reciprocal lattice vector n b1 + m b2 of the parallel
-// momentum, its order and its slot (ix, iy) in the (x, y) FFT output. 0-based slots.
+// momentum, its order (SurfaceLattice::diffraction_order) and its slot (ix, iy) in the (x, y) FFT output. 0-based
+// slots.
 struct DiffractionChannel {
   int n;
   int m;

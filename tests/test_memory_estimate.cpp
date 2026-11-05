@@ -40,8 +40,7 @@ struct RunGrids {
   explicit RunGrids(const nlohmann::json& json)
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
-        angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                config.input.mj_in) {}
+        angular(make_angular_grid(config)) {}
 
   [[nodiscard]] MemoryEstimate estimate(int n_threads) const {
     return estimate_memory(config, grids, angular, n_threads);

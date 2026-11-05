@@ -68,4 +68,10 @@ AngularGrid::AngularGrid(int j_max, int mj_max_basis, bool homonuclear, int j_in
   }
 }
 
+AngularGrid make_angular_grid(const Config& config) {
+  const InputParameters& p = config.input;
+  return AngularGrid(p.j_max, config.derived.mj_max_basis, p.homonuclear, p.j_in, p.mj_in,
+                     config.derived.phi_points_multiple);
+}
+
 }  // namespace spodvr

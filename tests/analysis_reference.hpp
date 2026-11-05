@@ -93,8 +93,9 @@ inline void compare_probabilities_with_fortran(const PropagationRun& cpp, const 
   ASSERT_EQ(cpp.scattering.energies.size(), ref.size());
   double worst = 0.0;
   int n_compared = 0;
-  auto check = [&](double value, const std::string& text, const std::string& what) {
-    const double tolerance = printed_text_tolerance(text);
+  // absolute_floor: the smallest tolerance, for values obtained by cancellation.
+  auto check = [&](double value, const std::string& text, const std::string& what, double absolute_floor = 0.0) {
+    const double tolerance = std::max(printed_text_tolerance(text), absolute_floor);
     const double deviation = std::abs(value - parse_fortran_real(text)) / tolerance;
     EXPECT_LE(deviation, 1.0) << what << ": C++ " << value << ", Fortran " << text;
     worst = std::max(worst, deviation);
@@ -107,7 +108,10 @@ inline void compare_probabilities_with_fortran(const PropagationRun& cpp, const 
     const std::string at = "energy " + std::to_string(ie);
     check(e.total_energy, f.total_energy, at + " total energy");
     check(e.p_total, f.p_total, at + " sum of the probabilities");
-    check(e.p_reaction, f.p_reaction, at + " reaction probability");
+    // The reaction probability is 1 - sum (Fortran: 1.0 - sump): when almost everything scatters
+    // it is a small difference of numbers near 1, known only to the absolute accuracy of the
+    // sum (~1e-13 .. 1e-12), not to 7 significant digits. Hence an absolute floor of 1e-12.
+    check(e.p_reaction, f.p_reaction, at + " reaction probability", 1e-12);
     for (const auto& [v, text] : f.p_vibration) check(e.p_vibration[v], text, at + " P(v)");
     for (int irotana = 0; irotana < n_rot; ++irotana)
       for (const auto& [key, text] : f.p_rotation) {

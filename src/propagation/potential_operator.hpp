@@ -10,6 +10,7 @@
 #include "propagation/kinetic_operators.hpp"
 #include "propagation/propagation_tables.hpp"
 #include "propagation/wave_function.hpp"
+#include "symmetry/grid_symmetry.hpp"
 
 namespace spodvr {
 
@@ -27,12 +28,19 @@ class PotentialOperator {
   // Default limit for the precomputed exp(i A) table (see below).
   static constexpr std::size_t default_table_limit = std::size_t(4) << 30;  // 4 GiB
 
-  // premultiplied_potential: A = -V dt on (itp, ixy, izr) for the nzpot*nr points of the
-  // interaction region (PotentialGrid after premultiply_with_time_step).
-  // exp(i A) = (cos A, sin A) is precomputed once if that table needs at most table_limit
-  // bytes; otherwise it is evaluated in every step (as the Fortran code does). Both give
-  // bitwise identical results. Only in the second case is premultiplied_potential used
+  // premultiplied_potential: A = -V dt on (itp, irep, izr) for the nzpot*nr points of the
+  // interaction region (PotentialGrid after premultiply_with_time_step); irep runs over the
+  // (x, y) representatives of symmetry, whose maps give A at every (x, y, phi) point.
+  // exp(i A) = (cos A, sin A) is precomputed once (for the representatives) if that table needs
+  // at most table_limit bytes; otherwise it is evaluated in every step (as the Fortran code does).
+  // Both give bitwise identical results. Only in the second case is premultiplied_potential used
   // after construction (it must then stay alive).
+  PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
+                    const PropagationTables& tables, const AngularTransform& transform,
+                    std::span<const double> premultiplied_potential, GridSymmetry symmetry,
+                    std::size_t table_limit = default_table_limit);
+
+  // Without surface symmetry (A on the full (itp, ixy, izr) grid).
   PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
                     const PropagationTables& tables, const AngularTransform& transform,
                     std::span<const double> premultiplied_potential, std::size_t table_limit = default_table_limit);
@@ -48,7 +56,11 @@ class PotentialOperator {
                    std::span<std::complex<double>> work) const;
 
  private:
-  void apply_interaction(std::span<std::complex<double>> block, int izr, std::span<std::complex<double>> dvr) const;
+  void apply_interaction(std::span<std::complex<double>> block, int izr, std::span<std::complex<double>> work) const;
+  // exp(i A) of the representatives of izr into scratch (on-the-fly path with symmetry).
+  void exponentials_of_block(int izr, std::span<std::complex<double>> scratch) const;
+  [[nodiscard]] std::size_t dvr_work_size() const;
+  [[nodiscard]] bool reduces() const { return symmetry_.n_representatives() < symmetry_.n_xy(); }
   void apply_rotation_half_step(std::span<std::complex<double>> block, int ir) const;
 
   ScatteringShape shape_;
@@ -60,6 +72,7 @@ class PotentialOperator {
   std::vector<std::complex<double>> gas_phase_step_;      // (irot, ir): ... rot exp(-i vasy dt) rot
   std::span<const double> potential_;              // A = -V dt (when not precomputed)
   ComplexVector exp_potential_;                    // exp(i A) (when precomputed)
+  GridSymmetry symmetry_;                          // (x, y) representatives and phi maps
 };
 
 }  // namespace spodvr

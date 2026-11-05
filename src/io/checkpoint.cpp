@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "fft/fft_sizes.hpp"
 #include "report/format.hpp"
 
 namespace spodvr {
@@ -19,47 +20,49 @@ using Magic = std::array<char, 16>;
 
 constexpr Magic checkpoint_magic = {'S', 'P', 'O', 'D', 'V', 'R', '-', 'C', 'H', 'E', 'C', 'K', 'P', 'N', 'T', '\0'};
 constexpr Magic bk_magic = {'S', 'P', 'O', 'D', 'V', 'R', '-', 'B', 'K', 'C', 'O', 'E', 'F', 'F', 'S', '\0'};
-constexpr std::uint32_t format_version = 1;
+constexpr std::uint32_t format_version = 2;  // 2: number of phi points in the parameter list
 constexpr std::uint64_t end_marker = 0x454e44'4f46'4350ULL;  // marks a completely written checkpoint
 
 // Input parameters that a restart must not change, with their JSON key names.
 std::vector<std::pair<std::string, double>> restart_parameters(const Config& config) {
   const InputParameters& p = config.input;
   const DerivedParameters& d = config.derived;
-  return {{"ZStart", p.z_start},
-          {"dZ", p.dz},
-          {"nZ", p.nz},
-          {"nZSpecular", p.nz_specular},
-          {"RStart", p.r_start},
-          {"dR", p.dr},
-          {"nR", p.nr},
-          {"nX", p.nx},
-          {"nY", p.ny},
-          {"JMax", p.j_max},
-          {"MJMax", d.mj_max_basis},
-          {"Mass1", p.mass1},
-          {"Mass2", p.mass2},
-          {"HomoNuc", p.homonuclear ? 1.0 : 0.0},
-          {"dtStep", p.time_step},
-          {"dtAna", p.dt_analysis},
-          {"Zana", p.z_analysis},
-          {"Z0", p.z0},
-          {"EMinWP", p.e_min_wave_packet},
-          {"EMaxWP", p.e_max_wave_packet},
-          {"EParallel", p.e_parallel},
-          {"PhiParallel", p.phi_parallel},
-          {"VIn", p.v_in},
-          {"JIn", p.j_in},
-          {"MJIn", p.mj_in},
-          {"ZOptStart", p.z_opt_start},
-          {"ZOptEnd", p.z_opt_end},
-          {"ROptStart", p.r_opt_start},
-          {"ROptEnd", p.r_opt_end},
-          {"ZSpOptStart", p.zsp_opt_start},
-          {"ZSpOptEnd", p.zsp_opt_end},
-          {"ZOptFactor (effective)", d.z_opt_factor},
-          {"ROptFactor (effective)", d.r_opt_factor},
-          {"ZSpOptFactor (effective)", d.zsp_opt_factor}};
+  return {
+      {"ZStart", p.z_start},
+      {"dZ", p.dz},
+      {"nZ", p.nz},
+      {"nZSpecular", p.nz_specular},
+      {"RStart", p.r_start},
+      {"dR", p.dr},
+      {"nR", p.nr},
+      {"nX", p.nx},
+      {"nY", p.ny},
+      {"JMax", p.j_max},
+      {"MJMax", d.mj_max_basis},
+      {"number of phi points (MJMax, nPhisOptimal)", nearest_fft_size(2 * d.mj_max_basis + 1, d.phi_points_multiple)},
+      {"Mass1", p.mass1},
+      {"Mass2", p.mass2},
+      {"HomoNuc", p.homonuclear ? 1.0 : 0.0},
+      {"dtStep", p.time_step},
+      {"dtAna", p.dt_analysis},
+      {"Zana", p.z_analysis},
+      {"Z0", p.z0},
+      {"EMinWP", p.e_min_wave_packet},
+      {"EMaxWP", p.e_max_wave_packet},
+      {"EParallel", p.e_parallel},
+      {"PhiParallel", p.phi_parallel},
+      {"VIn", p.v_in},
+      {"JIn", p.j_in},
+      {"MJIn", p.mj_in},
+      {"ZOptStart", p.z_opt_start},
+      {"ZOptEnd", p.z_opt_end},
+      {"ROptStart", p.r_opt_start},
+      {"ROptEnd", p.r_opt_end},
+      {"ZSpOptStart", p.zsp_opt_start},
+      {"ZSpOptEnd", p.zsp_opt_end},
+      {"ZOptFactor (effective)", d.z_opt_factor},
+      {"ROptFactor (effective)", d.r_opt_factor},
+      {"ZSpOptFactor (effective)", d.zsp_opt_factor}};
 }
 
 void write_header(BinaryWriter& file, const Magic& magic, const Config& config) {

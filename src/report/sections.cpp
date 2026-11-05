@@ -108,6 +108,41 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
   table.print(out, style);
 }
 
+void print_surface_symmetry(std::ostream& out, const Style& style, const GridSymmetry& symmetry,
+                            const SymmetryCheck& check) {
+  print_section(out, style, "SURFACE SYMMETRY OF THE POTENTIAL");
+  KeyValueList list;
+  list.add("Point group (order)", symmetry.point_group() + " (" + std::to_string(symmetry.group_order()) + ")");
+  std::string used;
+  for (const SurfaceOperation& g : symmetry.operations()) used += (used.empty() ? "" : ", ") + describe(g);
+  list.add("Operations used", used);
+  list.add("Phi points (multiple for the whole group)",
+           std::to_string(symmetry.nphi()) + " (" + std::to_string(symmetry.phi_points_multiple()) + ")");
+  list.add("(x, y) points computed / total",
+           std::to_string(symmetry.n_representatives()) + " / " + std::to_string(symmetry.n_xy()));
+  list.add("Reduction of the potential",
+           fixed(static_cast<double>(symmetry.n_xy()) / symmetry.n_representatives(), 2) + "x");
+  list.add("Self-check: samples (comparisons)",
+           std::to_string(check.n_samples) + " (" + std::to_string(check.n_comparisons) + ")");
+  list.add("Self-check: max |V(q) - V(g q)|", scientific(check.max_deviation, 3), "eV");
+  list.add("Self-check: tolerance (SymmetryTolerance)", scientific(check.tolerance, 3), "eV");
+  if (check.n_comparisons > 0)
+    list.add("Self-check: worst case", describe(check.operation) + " at x = " + fixed(check.x, 4) +
+                                           ", y = " + fixed(check.y, 4) + ", Z = " + fixed(check.z, 4) + ", r = " +
+                                           fixed(check.r, 4) + " bohr, theta = " + fixed(rad_to_deg(check.theta), 2) +
+                                           ", phi = " + fixed(rad_to_deg(check.phi), 2) + " deg");
+  list.print(out, style);
+  if (!symmetry.dropped_operations().empty()) {
+    out << '\n';
+    for (const GridSymmetry::DroppedOperation& d : symmetry.dropped_operations())
+      out << "  " << style.warning("Warning") << ": " << describe(d.operation) << " not used: " << d.reason << '\n';
+  }
+  out << "\n  "
+      << (check.passed() ? "The potential passes the symmetry check."
+                         : style.warning("The potential FAILS the symmetry check."))
+      << '\n';
+}
+
 void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
                            std::optional<std::size_t> physical_bytes, std::string_view title) {
   print_section(out, style, title);

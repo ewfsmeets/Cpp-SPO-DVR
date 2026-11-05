@@ -6,6 +6,7 @@
 #include <complex>
 
 #include "grids/rotational_basis.hpp"
+#include "potential/potential_symmetry.hpp"
 #include "propagation/angular_transform.hpp"
 #include "propagation/kinetic_operators.hpp"
 #include "propagation/potential_operator.hpp"
@@ -21,19 +22,33 @@ constexpr std::size_t complex_bytes = sizeof(std::complex<double>);
 
 MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
                                int n_threads) {
+  return estimate_memory(config, grids, angular, make_grid_symmetry(config, angular), n_threads);
+}
+
+MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
+                               const GridSymmetry& symmetry, int n_threads) {
   const InputParameters& p = config.input;
   const std::size_t n_xy = std::size_t(p.nx) * p.ny;
+  const std::size_t n_tp = std::size_t(angular.n_theta()) * angular.n_phi();
+  const bool reduced = symmetry.n_representatives() < symmetry.n_xy();
   MemoryEstimate estimate;
 
-  // Potential on the interaction region (Z < zasymp). Fortran: vdvr
-  const std::size_t potential_values =
-      std::size_t(angular.n_theta()) * angular.n_phi() * n_xy * grids.nz_potential * p.nr;
+  // Potential on the interaction region (Z < zasymp), at the (x, y) representatives. Fortran: vdvr
+  const std::size_t potential_values = n_tp * symmetry.n_representatives() * grids.nz_potential * p.nr;
   const bool precomputed = potential_values * complex_bytes <= PotentialOperator::default_table_limit;
   const bool propagation = config.derived.run_mode != 6;
   std::string potential_note;
   if (propagation) potential_note = precomputed ? "freed after setup" : "kept";
   estimate.items.push_back({"Potential V", potential_values, potential_values * real_bytes, potential_note, true,
                             propagation && !precomputed});
+  if (reduced) {
+    // GridSymmetry: representative and operation per (x, y) point, a phi map per operation.
+    const std::size_t map_values = 2 * n_xy + symmetry.operations().size() * std::size_t(angular.n_phi());
+    estimate.items.push_back(
+        {"Surface symmetry maps", map_values, map_values * sizeof(int),
+         std::to_string(symmetry.n_representatives()) + " of " + std::to_string(n_xy) + " (x, y) points", true,
+         propagation});
+  }
 
   if (propagation) {
     if (precomputed)
@@ -58,7 +73,9 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
     const std::size_t xy_group = std::size_t(shape.n_rot) * n_xy * xy_group_points(shape);
     const std::size_t dvr_blocks =
         std::size_t(AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi())) * n_xy;
-    const std::size_t work_values = std::max(zr_unit, xy_group + dvr_blocks);
+    // On the fly with symmetry: exp(i A) of the representatives of one (Z, r) point.
+    const std::size_t exp_scratch = !precomputed && reduced ? n_tp * symmetry.n_representatives() : 0;
+    const std::size_t work_values = std::max(zr_unit, xy_group + dvr_blocks + exp_scratch);
     estimate.items.push_back({"Work arrays", work_values, work_values * complex_bytes * n_threads,
                               "per thread, x " + std::to_string(n_threads) + " threads", false, true});
   }

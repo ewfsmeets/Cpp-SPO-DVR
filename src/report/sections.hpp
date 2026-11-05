@@ -12,6 +12,7 @@
 #include "grids/spatial_grids.hpp"
 #include "input/config.hpp"
 #include "potential/potential_grid.hpp"
+#include "potential/potential_symmetry.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "report/format.hpp"
 
@@ -21,6 +22,10 @@ namespace spodvr {
 void print_input_summary(std::ostream& out, const Style& style, const Config& config);
 void print_grids(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                  const AngularGrid& angular);
+// The surface symmetry used for the potential (UseSymmetry): point group, usable and dropped
+// operations, reduction, and the result of the PES self-check.
+void print_surface_symmetry(std::ostream& out, const Style& style, const GridSymmetry& symmetry,
+                            const SymmetryCheck& check);
 // The expected memory, with a warning if the peak exceeds the physical memory (if known).
 void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
                            std::optional<std::size_t> physical_bytes, std::string_view title = "MEMORY ESTIMATE");

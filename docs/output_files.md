@@ -58,7 +58,8 @@ bugs are fixed; the probabilities are the same. See `docs/fortran_fine_analysis_
 
 ## Checkpoint files (binary)
 Native files are in host byte order (little-endian on x86-64). Both start with a header: a
-16-byte magic string (`SPODVR-CHECKPNT` / `SPODVR-BKCOEFFS`), a `uint32` format version (1), the
+16-byte magic string (`SPODVR-CHECKPNT` / `SPODVR-BKCOEFFS`), a `uint32` format version (2; version 1
+lacked the number of phi points), the
 SystemID (`uint64` length + characters) and the list of restart parameters (`uint64` count, then
 name and `double` value per entry). A restart compares this list with its own input.
 

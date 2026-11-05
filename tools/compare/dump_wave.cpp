@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   const Config config = build_config(parse_input(nlohmann::json::parse(file)));
   const InputParameters& p = config.input;
   const SpatialGrids grids = make_spatial_grids(config);
-  const AngularGrid angular(p.j_max, config.derived.mj_max_basis, p.homonuclear, p.j_in, p.mj_in);
+  const AngularGrid angular = make_angular_grid(config);
   PotentialGrid potential = compute_potential_grid(*make_potential(p.system_id), config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());

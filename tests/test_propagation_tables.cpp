@@ -31,8 +31,7 @@ struct TablesSetup {
   explicit TablesSetup(const nlohmann::json& json)
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
-        angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                config.input.mj_in),
+        angular(make_angular_grid(config)),
         basis(angular, config.input.j_in, config.input.mj_in),
         vasy(config.input.nr, 0.01),
         tables(make_propagation_tables(config, grids, basis, vasy)) {}

@@ -28,6 +28,7 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "symmetry/surface_lattice.hpp"
 
 namespace fs = std::filesystem;
 using namespace spodvr;
@@ -36,15 +37,15 @@ using cplx = std::complex<double>;
 
 namespace {
 
-const fs::path case_dir = fs::path(SPODVR_REFERENCE_DIR) / "hardwall_small";
+fs::path case_dir(const std::string& case_name) { return fs::path(SPODVR_REFERENCE_DIR) / case_name; }
 
-// The input of a Fortran reference variant (run_fine_analysis_reference.sh).
-nlohmann::json variant_input(const std::string& variant) {
-  std::ifstream file(case_dir / "input.json");
+// The input of a Fortran reference variant (run_fine_analysis_reference.sh) of a case.
+nlohmann::json variant_input(const std::string& case_name, const std::string& variant) {
+  std::ifstream file(case_dir(case_name) / "input.json");
   nlohmann::json json = nlohmann::json::parse(file);
   json["onlyAnalysis"] = true;
   json["writeSMatrix"] = true;
-  json["RestartDir"] = case_dir.string();
+  json["RestartDir"] = case_dir(case_name).string();
   json["RestartFormat"] = "fortran";
   if (variant == "truncated" || variant == "nen95") {
     json["tEnd"] = 13860.0;
@@ -67,15 +68,15 @@ struct FineRun {
   explicit FineRun(const nlohmann::json& json)
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
-        angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                config.input.mj_in),
+        angular(make_angular_grid(config)),
         gas(compute_gas_phase(config, grids, angular,
                               compute_asymptotic_potential(*make_potential(config.input.system_id), config, grids), fft,
                               LapackEigensolver())),
         setup(config, angular, gas) {}
 
   [[nodiscard]] FineAnalysisResults run() const {
-    return run_fine_analysis(config, setup, gas, BkInput{case_dir / "fortran_fort21.bin", true}, fft);
+    const fs::path bk_file = fs::path(config.input.restart_dir) / "fortran_fort21.bin";
+    return run_fine_analysis(config, setup, gas, BkInput{bk_file, true}, fft);
   }
   // State index is of the labels (order, n, m, j, mJ); -1 if not in the basis.
   [[nodiscard]] int state(int order, int n, int m, int j, int mj) const {
@@ -149,13 +150,15 @@ cplx fortran_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   return {sign(sreal, sreal_interpolated), sign(simag, simag_interpolated)};
 }
 
-bool have_reference(const std::string& variant) { return fs::exists(case_dir / ("fine_" + variant) / "stdout.txt"); }
+bool have_reference(const std::string& case_name, const std::string& variant) {
+  return fs::exists(case_dir(case_name) / ("fine_" + variant) / "stdout.txt");
+}
 
-void run_gate(const std::string& variant) {
-  if (!have_reference(variant))
-    GTEST_SKIP() << "no Fortran reference; run tools/fortran_reference/run_fine_analysis_reference.sh";
-  const fs::path dir = case_dir / ("fine_" + variant);
-  const FineRun run(variant_input(variant));
+void run_gate(const std::string& case_name, const std::string& variant) {
+  if (!have_reference(case_name, variant))
+    GTEST_SKIP() << "no Fortran reference; run tools/fortran_reference/run_fine_analysis_reference.sh " << case_name;
+  const fs::path dir = case_dir(case_name) / ("fine_" + variant);
+  const FineRun run(variant_input(case_name, variant));
   const FineAnalysisResults r = run.run();
   const FineAnalysisGrid& g = r.grid;
   const AnalysisBasis& basis = run.setup.basis;
@@ -253,7 +256,7 @@ void run_gate(const std::string& variant) {
     const auto [upper, f] = locate_on_grid(g, e.z_energy);
     for (const auto& [key, entry] : fort25[ie].states) {
       const auto& [v, j, mj, n, m] = key;
-      const int order = diffraction_order(run.config.derived.system.point_group, n, m);
+      const int order = SurfaceLattice(run.config.derived.system).diffraction_order(n, m);
       const int k = run.state(order, n, m, j, mj) + n_states * v;
       p25.check(e.probability[k], entry.p, "fort.25 P");
 
@@ -296,8 +299,10 @@ void run_gate(const std::string& variant) {
 
 }  // namespace
 
-TEST(RegressionFineAnalysis, Gate5Full) { run_gate("full"); }
-TEST(RegressionFineAnalysis, Gate5Truncated) { run_gate("truncated"); }
-TEST(RegressionFineAnalysis, Gate5Nen95) { run_gate("nen95"); }
-TEST(RegressionFineAnalysis, Gate5Small) { run_gate("small"); }
-TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("empty"); }
+TEST(RegressionFineAnalysis, Gate5Full) { run_gate("hardwall_small", "full"); }
+TEST(RegressionFineAnalysis, Gate5Truncated) { run_gate("hardwall_small", "truncated"); }
+TEST(RegressionFineAnalysis, Gate5Nen95) { run_gate("hardwall_small", "nen95"); }
+TEST(RegressionFineAnalysis, Gate5Small) { run_gate("hardwall_small", "small"); }
+TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("hardwall_small", "empty"); }
+// The corrugated C6v case (60 deg cell): on the BK file of the full Dai-Light Fortran run.
+TEST(RegressionFineAnalysis, Gate5DaiLight) { run_gate("cu111_dailight_small", "full"); }

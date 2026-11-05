@@ -188,6 +188,9 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("UseSwitching", p.use_switching, optional);
   in.read("ZminSwitch", p.z_min_switch, optional);
   in.read("ZmaxSwitch", p.z_max_switch, optional);
+  in.read("UseSymmetry", p.use_symmetry, optional);
+  in.read("nPhisOptimal", p.phis_optimal, optional);
+  in.read("SymmetryTolerance", p.symmetry_tolerance, optional);
 
   in.read("ZOptEnergy", p.z_opt_energy);
   in.read("ZOptFactor", p.z_opt_factor);
@@ -206,8 +209,7 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
 
 // Fortran input fields of features that are not available in this program.
 void reject_unsupported_keys(JsonReader& in) {
-  for (const char* key : {"SystemMix", "UseSymmetry", "nPhisOptimal", "UseRCutOff", "write2DPES"})
-    in.reject_logical_if_true(key);
+  for (const char* key : {"SystemMix", "UseRCutOff", "write2DPES"}) in.reject_logical_if_true(key);
   for (const char* key : {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES",
                           "PESMixingAlfa", "CRPlibDataSet"})
     in.reject_if_present(key);

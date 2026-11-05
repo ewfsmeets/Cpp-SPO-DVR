@@ -19,7 +19,6 @@
 #include "analysis/balint_kurti.hpp"
 #include "analysis/s_matrix.hpp"
 #include "core/constants.hpp"
-#include "core/error.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -59,8 +58,7 @@ struct AnalysisSetup {
   explicit AnalysisSetup(const nlohmann::json& json)
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
-        angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                config.input.mj_in),
+        angular(make_angular_grid(config)),
         potential(compute_potential_grid(*make_potential(config.input.system_id), config, grids, angular)),
         gas(compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver())),
         basis(angular, config.input.j_in, config.input.mj_in),
@@ -74,17 +72,6 @@ const AnalysisSetup& reference_setup() {
 }
 
 }  // namespace
-
-TEST(DiffractionOrder, PointGroups) {
-  EXPECT_EQ(diffraction_order("C2v", 2, -1), 3);
-  EXPECT_EQ(diffraction_order(" c4v ", -2, -2), 4);
-  // Hexagonal lattices: n m > 0 counts max(|n|, |m|), otherwise |n| + |m|.
-  EXPECT_EQ(diffraction_order("C6v", 2, 1), 2);
-  EXPECT_EQ(diffraction_order("C3v", -1, -3), 3);
-  EXPECT_EQ(diffraction_order("C3", 2, -1), 3);
-  EXPECT_EQ(diffraction_order("C6v", 0, -2), 2);
-  EXPECT_THROW((void)diffraction_order("D4h", 0, 0), NotSupportedError);
-}
 
 // Fortran stdout of the reference case: "INFO FROM SETTING UP THE DIFFRACTION / ROTATION /
 // ROTATION-DIFFRACTION BASIS" and "INFO FROM SETTING UP THE ANALYSIS".

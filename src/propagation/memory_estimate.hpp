@@ -7,6 +7,7 @@
 #include "grids/angular_grid.hpp"
 #include "grids/spatial_grids.hpp"
 #include "input/config.hpp"
+#include "symmetry/grid_symmetry.hpp"
 
 namespace spodvr {
 
@@ -32,7 +33,13 @@ struct MemoryEstimate {
 
 // The arrays of the run mode in config: the potential grid only for a potential-only run (6),
 // otherwise also the exp(-i V dt) table, the wave functions and the per-thread work arrays of
-// the propagation operators (n_threads OpenMP threads).
+// the propagation operators (n_threads OpenMP threads). The potential and the exp table hold the
+// (x, y) representatives of the surface symmetry only; the symmetry maps are listed when they
+// reduce anything.
+[[nodiscard]] MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids,
+                                             const AngularGrid& angular, const GridSymmetry& symmetry, int n_threads);
+
+// The same with the symmetry of the run (make_grid_symmetry).
 [[nodiscard]] MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids,
                                              const AngularGrid& angular, int n_threads);
 

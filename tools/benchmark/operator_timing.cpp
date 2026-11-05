@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
   const InputParameters& p = config.input;
 
   const SpatialGrids grids = make_spatial_grids(config);
-  const AngularGrid angular(p.j_max, config.derived.mj_max_basis, p.homonuclear, p.j_in, p.mj_in);
+  const AngularGrid angular = make_angular_grid(config);
   PotentialGrid potential = compute_potential_grid(*make_potential(p.system_id), config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
   const ScatteringShape shape{basis.size(), p.nx, p.ny, p.nr, p.nz};
   const ScatteringKineticOperator kinetic(shape, tables, fft);
   const PotentialOperator potential_op(shape, grids.nz_potential, basis.initial_index(), tables, transform,
-                                       potential.values);
+                                       potential.values, potential.symmetry);
   const SpecularOperator specular(p.nr, grids.z_specular.size(), grids.nz_potential, basis.initial_index(),
                                   *grids.z_specular_optical, grids.r_optical, tables, fft);
   const SplitOperatorPropagator propagator(config.derived.steps_per_analysis, kinetic, potential_op, specular);

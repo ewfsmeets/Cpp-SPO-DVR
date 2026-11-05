@@ -173,6 +173,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   // --- potential --------------------------------------------------------------------------
   if (p.impose_v_min && p.impose_v_max) check(rgt(p.v_min, p.v_max), "VMin", "VMin > VMax.");
+  check(p.symmetry_tolerance <= 0.0, "SymmetryTolerance", "SymmetryTolerance <= 0.");
 
   // --- optical potential in Z, scattering grid --------------------------------------------
   const double z_end = p.z_start + (p.nz - 1) * p.dz;

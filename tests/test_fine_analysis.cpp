@@ -53,8 +53,7 @@ struct RunSetup {
   explicit RunSetup(const nlohmann::json& json)
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
-        angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                config.input.mj_in),
+        angular(make_angular_grid(config)),
         gas(compute_gas_phase(config, grids, angular,
                               compute_asymptotic_potential(*make_potential(config.input.system_id), config, grids), fft,
                               LapackEigensolver())),

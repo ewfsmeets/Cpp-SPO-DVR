@@ -88,6 +88,9 @@ struct InputParameters {
   bool use_switching = false;           // UseSwitching / lswitch
   double z_min_switch = 6.0;            // ZminSwitch / zmin_switch
   double z_max_switch = 8.0;            // ZmaxSwitch / zmax_switch
+  bool use_symmetry = false;            // UseSymmetry / usePotSymmetry: V on the symmetry-reduced (x, y) grid
+  bool phis_optimal = false;            // nPhisOptimal: nphi a multiple of the point group's multiple
+  double symmetry_tolerance = 1e-5;     // SymmetryTolerance (eV): allowed asymmetry of the PES (C++ only)
 
   // --- complex absorbing potentials (exactly one of energy / factor per CAP) --------------
   double z_opt_start = 7.0;             // ZOptStart / zsplmi
@@ -130,6 +133,9 @@ struct DerivedParameters {
   // MJMax used for the angular grid and rotational basis: MJMax < 1 means JMax (so MJMax = 0
   // also means JMax; a Fortran quirk that is kept). Fortran: setupdvr.f90 / transform.f90
   int mj_max_basis;
+  // nphi must be a multiple of this: the point group's multiple with UseSymmetry and nPhisOptimal,
+  // else 1. Fortran: getCxvNumPhisSmallestMultiple (SetupDVRProj argument)
+  int phi_points_multiple;
   int v_in_index;                   // vin + 1. Fortran: nvin
 
   double total_mass;                // Fortran: rmass / totmass (m_e)

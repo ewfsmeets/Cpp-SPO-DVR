@@ -26,8 +26,11 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/hard_wall_potential.hpp"
 #include "potential/potential_grid.hpp"
+#include "setup_reference.hpp"
 
 using namespace spodvr;
+using spodvr::test::parse_fortran_real;
+using spodvr::test::relative_difference;
 namespace fs = std::filesystem;
 
 namespace {
@@ -39,18 +42,6 @@ constexpr double grid_tolerance = 4e-16;       // relative, ~2 ulp
 constexpr double potential_tolerance = 1e-13;  // relative, full 6D potential
 
 const fs::path reference_dir = fs::path(SPODVR_REFERENCE_DIR) / "hardwall_small";
-
-double relative_difference(double a, double b) {
-  if (a == b) return 0.0;
-  return std::abs(a - b) / std::max(std::abs(a), std::abs(b));
-}
-
-// Fortran list-directed output may use 'D' exponents.
-double parse_fortran_real(std::string token) {
-  for (char& c : token)
-    if (c == 'D' || c == 'd') c = 'E';
-  return std::stod(token);
-}
 
 struct Calculation {
   Config config;
@@ -65,8 +56,7 @@ const Calculation& calculation() {
     std::ifstream file(reference_dir / "input.json");
     Config config = build_config(parse_input(nlohmann::json::parse(file)));
     SpatialGrids grids = make_spatial_grids(config);
-    AngularGrid angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear, config.input.j_in,
-                        config.input.mj_in);
+    AngularGrid angular = make_angular_grid(config);
     PotentialGrid potential = compute_potential_grid(HardWallPotential(), config, grids, angular);
     GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, FftwFft(), LapackEigensolver());
     return Calculation{std::move(config), std::move(grids), std::move(angular), std::move(potential), std::move(gas)};
@@ -84,22 +74,8 @@ const Calculation& calculation() {
 // which prints r and vasy*chaev.
 TEST(RegressionHardWall, Gate1AsymptoticPotentialTable) {
   REQUIRE_REFERENCE("fortran_setup_stdout.txt");
-  std::ifstream file(reference_dir / "fortran_setup_stdout.txt");
-  std::string line;
-  while (std::getline(file, line) && line.find("The gas phase vibrational potential") == std::string::npos) {
-  }
-  ASSERT_TRUE(file) << "vasy table not found";
-  std::vector<std::pair<double, double>> table;
-  while (std::getline(file, line)) {
-    std::istringstream in(line);
-    std::string a, b;
-    if (!(in >> a >> b)) {
-      if (!table.empty()) break;
-      continue;
-    }
-    if (a.find_first_of("0123456789") == std::string::npos) continue;  // header / rule
-    table.emplace_back(parse_fortran_real(a), parse_fortran_real(b));
-  }
+  const auto table = test::read_vasy_table(reference_dir / "fortran_setup_stdout.txt");
+  ASSERT_FALSE(table.empty()) << "vasy table not found";
   const Calculation& c = calculation();
   ASSERT_EQ(table.size(), (c.grids.r.size()));
   const auto& u = units::legacy;
@@ -161,37 +137,7 @@ TEST(RegressionHardWall, Gate1FullPotentialAndAngularGrid) {
 // Gate 2: rovibrational energies and eigenvectors vs debug_asyp.dat (DoDump).
 TEST(RegressionHardWall, Gate2RovibrationalStates) {
   REQUIRE_REFERENCE("debug_asyp.dat");
-  std::ifstream file(reference_dir / "debug_asyp.dat");
-  std::stringstream contents;
-  contents << file.rdbuf();
-
-  // Records: "v : iv j: j E: energy" followed by "Eigenstate: psi(1) ... psi(nr)".
-  struct State {
-    double energy;
-    std::vector<double> psi;
-  };
-  std::map<std::pair<int, int>, State> reference;
-  std::string token;
-  std::istringstream in(contents.str());
-  std::pair<int, int> current{-1, -1};
-  bool reading_psi = false;
-  while (in >> token) {
-    if (token == "v") {
-      reading_psi = false;
-      std::string colon, j_label, e_label, e_text;
-      int v = 0, j = 0;
-      in >> colon >> v >> j_label >> j >> e_label >> e_text;
-      current = {v, j};
-      reference[current].energy = parse_fortran_real(e_text);
-    } else if (token == "Eigenstate:") {
-      reading_psi = true;
-    } else if (token.rfind("===", 0) == 0) {
-      reading_psi = false;
-    } else if (reading_psi && current.first >= 0) {
-      reference[current].psi.push_back(parse_fortran_real(token));
-    }
-  }
-
+  const auto reference = test::read_rovibrational_states(reference_dir / "debug_asyp.dat");
   const Calculation& c = calculation();
   const auto& states = c.gas.states;
   ASSERT_EQ(reference.size(), (states.n_v() * (states.j_max() + 1)));

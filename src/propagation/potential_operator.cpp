@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace spodvr {
 
@@ -17,14 +18,24 @@ cplx exp_i(double a) { return cplx(std::cos(a), std::sin(a)); }
 PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
                                      const PropagationTables& tables, const AngularTransform& transform,
                                      std::span<const double> premultiplied_potential, std::size_t table_limit)
+    : PotentialOperator(shape, nz_potential, initial_channel, tables, transform, premultiplied_potential,
+                        GridSymmetry(shape.nx, shape.ny, transform.n_phi()), table_limit) {}
+
+PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
+                                     const PropagationTables& tables, const AngularTransform& transform,
+                                     std::span<const double> premultiplied_potential, GridSymmetry symmetry,
+                                     std::size_t table_limit)
     : shape_(shape),
       nz_potential_(nz_potential),
       initial_channel_(initial_channel),
       tables_(tables),
       transform_(transform),
-      potential_(premultiplied_potential) {
-  const std::size_t expected =
-      std::size_t(transform.n_theta()) * transform.n_phi() * shape.nx * shape.ny * std::size_t(nz_potential) * shape.nr;
+      potential_(premultiplied_potential),
+      symmetry_(std::move(symmetry)) {
+  if (symmetry_.nx() != shape.nx || symmetry_.ny() != shape.ny || symmetry_.nphi() != transform.n_phi())
+    throw std::invalid_argument("PotentialOperator: the symmetry does not match the grid");
+  const std::size_t expected = std::size_t(transform.n_theta()) * transform.n_phi() * symmetry_.n_representatives() *
+                               std::size_t(nz_potential) * shape.nr;
   if (potential_.size() != expected) throw std::invalid_argument("PotentialOperator: potential has the wrong size");
 
   if ((shape.nx * shape.ny) % transform.n_columns() != 0)
@@ -50,8 +61,16 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
   }
 }
 
-std::size_t PotentialOperator::work_size() const {
+std::size_t PotentialOperator::dvr_work_size() const {
   return std::size_t(transform_.dvr_block_size()) * shape_.nx * shape_.ny;
+}
+
+// The DVR blocks of all (x, y) points, plus (on-the-fly path with symmetry) exp(i A) of the
+// representatives of one (Z, r) point.
+std::size_t PotentialOperator::work_size() const {
+  const bool scratch = !uses_precomputed_exponentials() && reduces();
+  const std::size_t n_tp = std::size_t(transform_.n_theta()) * transform_.n_phi();
+  return dvr_work_size() + (scratch ? n_tp * symmetry_.n_representatives() : 0);
 }
 
 void PotentialOperator::apply(WavePacket& psi) const {
@@ -118,9 +137,18 @@ void PotentialOperator::apply_rotation_half_step(std::span<cplx> block, int ir) 
       block[irot + n_rot * ixy] = tables_.rotation.half[irot + n_rot * ir] * block[irot + n_rot * ixy];
 }
 
-// FBR -> DVR, multiply by exp(i A) with A = -V dt, DVR -> FBR, for every (x, y) point.
-// Fortran: PerformEXPInteractionOp (B = COS(A) + ima*SIN(A))
-void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::span<cplx> dvr) const {
+// exp(i A) for every (theta, phi) point of every representative of izr (layout (itp, irep)).
+void PotentialOperator::exponentials_of_block(int izr, std::span<cplx> scratch) const {
+  const std::size_t block_size = scratch.size();
+  const std::size_t first = block_size * izr;
+  for (std::size_t i = 0; i < block_size; ++i) scratch[i] = exp_i(potential_[first + i]);
+}
+
+// FBR -> DVR, multiply by exp(i A) with A = -V dt, DVR -> FBR, for every (x, y) point. A of
+// point (ixy, theta, phi) is that of its representative at the mapped phi (surface symmetry;
+// without symmetry the map is the identity). Fortran: PerformEXPInteractionOp
+// (B = COS(A) + ima*SIN(A); with symmetry A = pV(symmetryIndex(index1)))
+void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::span<cplx> work) const {
   const int n_rot = shape_.n_rot;
   const int n_xy = shape_.nx * shape_.ny;
   const int n_theta = transform_.n_theta();
@@ -128,18 +156,35 @@ void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::s
   const int ld = transform_.leading_dimension();
   const int dvr_size = transform_.dvr_block_size();
   const std::size_t n_tp = std::size_t(n_theta) * n_phi;
+  const std::size_t n_rep = symmetry_.n_representatives();
+  const std::span<cplx> dvr = work.first(dvr_work_size());
 
   const int n_col = transform_.n_columns();
   for (int c0 = 0; c0 < n_xy; c0 += n_col)
     transform_.fbr_to_dvr(block.subspan(n_rot * c0, n_rot * n_col), dvr.subspan(dvr_size * c0, dvr_size * n_col));
 
+  // Where exp(i A) of this (Z, r) point comes from: the precomputed table, the scratch array
+  // (on the fly, with symmetry: each representative's value is used by several (x, y) points),
+  // or (on the fly, without symmetry) evaluated at the point itself.
   const bool precomputed = uses_precomputed_exponentials();
+  const bool scratch = !precomputed && reduces();
+  std::span<const cplx> exponentials;
+  if (precomputed) exponentials = std::span<const cplx>(exp_potential_).subspan(n_tp * n_rep * izr, n_tp * n_rep);
+  if (scratch) {
+    const std::span<cplx> s = work.subspan(dvr_work_size(), n_tp * n_rep);
+    exponentials_of_block(izr, s);
+    exponentials = s;
+  }
+  const std::span<const double> potential =
+      precomputed ? std::span<const double>() : potential_.subspan(n_tp * n_rep * izr, n_tp * n_rep);
+
   for (int ixy = 0; ixy < n_xy; ++ixy) {
-    const std::size_t v0 = n_tp * (ixy + std::size_t(n_xy) * izr);
+    const std::size_t v0 = n_tp * symmetry_.representative_of(ixy);
+    const std::vector<int>& phi_index = symmetry_.phi_index(symmetry_.operation_of(ixy));
     for (int itheta = 0; itheta < n_theta; ++itheta)
       for (int iphi = 0; iphi < n_phi; ++iphi) {
-        const std::size_t i = v0 + iphi + n_phi * itheta;
-        const cplx b = precomputed ? exp_potential_[i] : exp_i(potential_[i]);
+        const std::size_t i = v0 + phi_index[iphi] + n_phi * itheta;
+        const cplx b = (precomputed || scratch) ? exponentials[i] : exp_i(potential[i]);
         cplx& v = dvr[dvr_size * ixy + iphi + ld * itheta];
         v = b * v;
       }

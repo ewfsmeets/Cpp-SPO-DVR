@@ -148,8 +148,15 @@ add_library(spodvr_core
   src/io/fortran_unformatted.cpp
   src/io/fortran_files.cpp
   src/potential/hard_wall_potential.cpp
+  src/potential/dai_light_cu111_potential.cpp
+  src/potential/persson_cu111_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp
+  src/potential/potential_symmetry.cpp
+  src/symmetry/surface_lattice.cpp
+  src/symmetry/surface_operation.cpp
+  src/symmetry/point_group.cpp
+  src/symmetry/grid_symmetry.cpp
   src/gasphase/fourier_grid_hamiltonian.cpp
   src/gasphase/gas_phase.cpp
   src/report/format.cpp

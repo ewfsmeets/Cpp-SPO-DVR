@@ -1,0 +1,619 @@
+
+*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261105 at 111729.532 ***
+
+* Using the new style input format...
+* OpenMP enabled ...
+* MPI disabled ...
+* NAG calls disabled ...
+* FFTW library will be used for FFTs ...
+* Estimate FFTW plans will be used for FFTs ...
+* Generic code will be used for diagonalizations ...
+* Extra check calls enabled ...
+* The internal timers of module Timers are not used ...
+* The FFT over R is performed using a single call ...
+* Full potential energy operation optimization has been enabled...
+* Potential energy multiplication optimization has been disabled...
+* Kinetic energy multiplication optimization has been disabled ...
+* Optimization of the kinetic energy operator routine in Z on the scattering grid has been disabled ...
+
+
+* Setting up global data...
+* Calculated machines precision: 0.55511151E-16
+* Using a maximum number of 4 threads in this run.
+* Setting up global data...
+* Preparing module inputfields for reading the input file ...
+* Trying to read input file "DVR.inp" ...
+* Input file read OK ...
+
+*** THE INPUT PARAMETERS SETUP INTERNALLY BY THE PROGRAM ***
+
+* The surface lattice constant in X (bohr):                 0.47570095E+01
+* The surface lattice constant in Y (bohr):                 0.47570095E+01
+* The asymptotic value in Z (bohr):                         0.80000000E+01
+* The cutoff value in r (bohr):                             0.10000000E+04
+* The unit cell skewing angle (degrees):                    0.60000000E+02
+* The unit cell point group:                               C6v
+
+NOTE: If the potential switching option is used to switch the potential
+faster to the gas phase, the Z-value at which the potential first
+reaches the gas phase, is the new asymptotic Z-value.
+
+
+*** THE INPUT READ ***
+
+* Title:                                                   Persson H2/Cu(111) small test
+
+* SystemID:                                                H2Cu111Persson
+* NewCalc:                                                 T
+* Z degree of freedom:                                     T
+* R degree of freedom:                                     T
+* X degree of freedom:                                     T
+* Y degree of freedom:                                     T
+* Theta degree of freedom:                                 T
+* Phi degree of freedom:                                   T
+
+* Mass of atom 1 (amu):                                     0.10078000E+01
+* Mass of atom 2 (amu):                                     0.10078000E+01
+* Homo-nuclear molecule:                                   T
+
+* Number of points on the scattering grid in Z:             176
+* Step size of the scattering Z (bohr):                     0.80000000E-01
+* Starting point of the scattering in Z (bohr):            -0.20000000E+01
+* Number of points on the specular grid in Z:               280
+
+* Number of points on the scattering grid in r:              56
+* Step size of the scattering r (bohr):                     0.15000000E+00
+* Starting point of the scattering in r (bohr):             0.80000000E+00
+* Specular grid in r is identical to the scattering grid in r.
+
+* Number of points on the scattering grid in X:               8
+* Number of points on the scattering grid in Y:               8
+
+* Maximum J value in grid representation.:                    4
+* Maximum Mj value in grid representation.:                   4
+
+* The projection operator scheme used:                     using two grids all the way
+
+* Propagation method used:                                 Split operator
+* Calculation starts at (aut):                              0.00000000E+00
+* Calculation ends at (aut):                                0.14000000E+05
+* Time step used in the propagation (aut):                  0.20000000E+01
+* Number of time steps taken:                               7000
+
+* Only performing a fine analysis:                         F
+* Also performing a fine analysis:                         F
+* Wave function analysed every (aut):                       0.10000000E+02
+* Averages printed every (aut):                             0.10000000E+03
+* Initially using a dynamical specular analysis surface:   T
+* Wave function analysed at (bohr):                         0.80000000E+01
+* Maximum J analysed:                                      determined by the program (see info Analysis)
+* Maximum V analysed:                                      determined by the program (see info Analysis)
+* Maximum diffraction order analysed:                      determined by the program (see info Analysis)
+* Number of energies that are on-the-fly analysed:            41
+
+* Lowest energy of the initial wave packet:                 0.20000000E+00
+* Highest energy of the initial wave packet:                0.60000000E+00
+* Average position of the initial wave packet:              0.11440000E+02
+
+* Initial rotational quantum number J:                        0
+* Initial rotational quantum number Mj:                       0
+* Initial rotational quantum number V:                        0
+
+* Only computing the potential:                            T
+* Imposing a minimum value on the potential:               F
+* Imposing a maximum value on the potential:               F
+* Using symmetry in setting up the potential:              F
+* Potential mixing alfa value:                              0.00000000E+00
+
+* Using a quadratic optical potential on the scattering grid in Z:
+* Optical potential in Z start at (bohr):                   0.88800000E+01
+* Optical potential in Z ends at (bohr):                    0.12000000E+02
+* Optical potential in Z absorbs optimally for (eV):        0.30000000E+00
+
+* Using a quadratic optical potential on the scattering grid in r:
+* Optical potential in r start at (bohr):                   0.45500000E+01
+* Optical potential in r ends at (bohr):                    0.90500000E+01
+* Optical potential in r absorbs optimally for (eV):        0.30000000E+00
+
+* Using a quadratic optical potential on the specular grid in Z:
+* Optical potential in Z start at (bohr):                   0.16800000E+02
+* Optical potential in Z ends at (bohr):                    0.20320000E+02
+* Optical potential in Z specular absorbs optimally for (eV 0.30000000E+00
+
+* Initial energy parallel to the surface (eV):              0.00000000E+00
+* Azimuthal angle of the incident molecule (degrees):       0.00000000E+00
+
+* Using a switching function for the potential in Z:       F
+* Switching function starts at (bohr):                      0.60000000E+01
+* Switching function ends at (bohr):                        0.80000000E+01
+
+* S-matrix elements written to file 3:                     F
+* Rot-vib-diff resolved probs written to file 25:          T
+* Rot-diff resolved probs written to file 10:              T
+* Dumping debug information to file:                       T
+* Dumping full S-matrix to file fil10:                     F
+
+* Tolerance for transferring the wavefunction (nproj = 2):  0.10000000E-06
+
+* Validating the input...
+* Processing the input...
+
+ *** THE INPUT FOR ROTATIONAL DEGREES OF FREEDOM ***
+
+ * J in:            0
+ * Mj in:            0
+ * Maximum J value in grid rep.:            4
+ * HomeNuclear:  T
+
+ * A general MjIn independant grid will be used ...
+
+ *** CONTINUING SETUP I ***
+
+ * Setting up the FFT module ...
+ * Setting up legendre module with JMax + 1 =            5  ...
+ * Setting up the angular grid module with JMax =            4  ...
+ * The nearest size allowed by FFT routines (          10 ) for phi grid will be used ...
+ * Setting up the angular grid and basis functions...
+
+ *** THE GRID PARAMETERS ***
+
+ * Number of phi's :           10
+ * Delta value in phi coordinate :   0.62831853071795862     
+ * Number of theta's :            3
+ * JMax in basis set :            4
+ * JMin in basis set :            0
+ * Delta J in basis set :           2
+ * Grid has been set up for JIn =            0 ,  MjIn =            0  ...
+
+ *** CONTINUING SETUP II ***
+
+ * Setting up the angular DVR/FBR transform module and the transformation matrices ...
+
+ *** SETUP DONE ***
+
+
+
+
+********************************************************************************
+                     INFO FROM MISCELLANEOUS SETUP
+********************************************************************************
+
+     grid interval size in kz dir. (scat. grid) =      0.446249
+     grid interval size in kz dir. (spec. grid) =      0.280499
+     initial momentum in z direction =                10.039122
+
+     grid interval size in kr dir. =                   0.747998
+
+     grid interval size in kx dir. =                   1.525159
+     initial momentum in reciprocal x direction =      0.000000
+
+     grid interval size in ky dir. =                   1.525159
+     initial momentum in reciprocal y direction =      0.000000
+
+     For backward compatibility: nmoder =                  4
+
+     asymptotic analysis at z =                        8.000000
+
+ No flux analysis performed.
+
+     nzpot =                                       125
+
+     optical potential in z scat.grid:
+     nzchsp =                                         137
+     z(nzchsp)=                                        8.880000
+
+     optical potential in z scat.grid:
+     nzchmx =                                         176
+     z(nzchmx)=                                       12.000000
+
+     optical potential in z spec.grid:
+     nschsp =                                         236
+     z(nschsp)=                                       16.800000
+
+     optical potential in z spec.grid:
+     nschmx =                                         280
+     z(nschmx)=                                       20.320000
+
+     optical potential in r scat.grid:
+     nrchsp =                                          26
+     r(nrchsp)=                                        4.550000
+
+     optical potential in r scat.grid:
+     nrchmx =                                          56
+     r(nrchmx)=                                        9.050000
+
+     max kinetic energy in r (ev) =                    6.497306
+
+     with current time interval in the analysis
+     the max total energy for which results 
+     can be obtained (eV) =                            8.548713
+     zero of etot is energy lowest h2 state
+
+     the 95% confidence interval defined by 
+     alfwv and enrgy:
+     ectmin (ev) =                                     0.200000
+     ectmax (ev) =                                     0.600000
+
+ Total time for potential initialisation =  0.21121999E-04 secs
+
+ * Grids are setup!
+ * 5-Mode arrays are allocated!
+ * 4-Mode arrays are allocated!
+
+
+
+
+********************************************************************************
+              INFO FROM SETTING UP THE INTERACTION POTENTIAL
+********************************************************************************
+
+ * Setting up the H2Cu111Persson PES...
+ Number of points in Z for which the potential is calculated     = 125
+ Number of points in r for which the potential is calculated     =  56
+ Number of points in x for which the potential is calculated     =   8
+ Number of points in y for which the potential is calculated     =   8
+ Number of points in theta for which the potential is calculated =   3
+ Number of points in phi for which the potential is calculated   =  10
+
+ iz =   1
+ iz =   2
+ iz =   3
+ iz =   4
+ iz =   5
+ iz =   6
+ iz =   7
+ iz =   8
+ iz =   9
+ iz =  10
+ iz =  11
+ iz =  12
+ iz =  13
+ iz =  14
+ iz =  15
+ iz =  16
+ iz =  17
+ iz =  18
+ iz =  19
+ iz =  20
+ iz =  21
+ iz =  22
+ iz =  23
+ iz =  24
+ iz =  25
+ iz =  26
+ iz =  27
+ iz =  28
+ iz =  29
+ iz =  30
+ iz =  31
+ iz =  32
+ iz =  33
+ iz =  34
+ iz =  35
+ iz =  36
+ iz =  37
+ iz =  38
+ iz =  39
+ iz =  40
+ iz =  41
+ iz =  42
+ iz =  43
+ iz =  44
+ iz =  45
+ iz =  46
+ iz =  47
+ iz =  48
+ iz =  49
+ iz =  50
+ iz =  51
+ iz =  52
+ iz =  53
+ iz =  54
+ iz =  55
+ iz =  56
+ iz =  57
+ iz =  58
+ iz =  59
+ iz =  60
+ iz =  61
+ iz =  62
+ iz =  63
+ iz =  64
+ iz =  65
+ iz =  66
+ iz =  67
+ iz =  68
+ iz =  69
+ iz =  70
+ iz =  71
+ iz =  72
+ iz =  73
+ iz =  74
+ iz =  75
+ iz =  76
+ iz =  77
+ iz =  78
+ iz =  79
+ iz =  80
+ iz =  81
+ iz =  82
+ iz =  83
+ iz =  84
+ iz =  85
+ iz =  86
+ iz =  87
+ iz =  88
+ iz =  89
+ iz =  90
+ iz =  91
+ iz =  92
+ iz =  93
+ iz =  94
+ iz =  95
+ iz =  96
+ iz =  97
+ iz =  98
+ iz =  99
+ iz = 100
+ iz = 101
+ iz = 102
+ iz = 103
+ iz = 104
+ iz = 105
+ iz = 106
+ iz = 107
+ iz = 108
+ iz = 109
+ iz = 110
+ iz = 111
+ iz = 112
+ iz = 113
+ iz = 114
+ iz = 115
+ iz = 116
+ iz = 117
+ iz = 118
+ iz = 119
+ iz = 120
+ iz = 121
+ iz = 122
+ iz = 123
+ iz = 124
+ iz = 125
+ Saving H2Cu111Persson PES into file : ./H2Cu111Persson_125_-2.000_0.080_56_0.800_0.150_8_8_4.757_4_4.pes
+
+ Total time setting up the potential =  0.64232364E+00 secs
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ROVIBARIONAL ASYMPTOTIC POTENTIAL
+********************************************************************************
+
+      The gas phase vibrational potential for Z =    8.0000000000000000     
+
+        r(Bohr)                 V(eV)
+ ---------------------------------------------
+  0.80000000000000004        8.1068077783230663E-002
+  0.95000000000000007       -2.3048365925803882     
+   1.1000000000000001       -3.6485842660444954     
+   1.2500000000000000       -4.3034558864868266     
+   1.3999999999999999       -4.5137201028219822     
+   1.5500000000000000       -4.4470441932529150     
+   1.7000000000000000       -4.2174442928600957     
+   1.8500000000000001       -3.9014336011512207     
+   2.0000000000000000       -3.5491861067234991     
+   2.1499999999999999       -3.1918716027807390     
+   2.2999999999999998       -2.8458369679716995     
+   2.4500000000000002       -2.5143768121743126     
+   2.6000000000000001       -2.1895757968898870     
+   2.7500000000000000       -1.8601627055256909     
+   2.8999999999999999       -1.5276748926784238     
+   3.0499999999999998       -1.2138274982973134     
+   3.2000000000000002      -0.94352132272208400     
+   3.3500000000000001      -0.72654032422526649     
+   3.5000000000000000      -0.55849662545575107     
+   3.6499999999999999      -0.42982342431349985     
+   3.7999999999999998      -0.33129723152123602     
+   3.9499999999999997      -0.25560305612854201     
+   4.0999999999999996      -0.19725911335144325     
+   4.2500000000000000      -0.15218801701806534     
+   4.4000000000000004      -0.11733160036244986     
+   4.5499999999999998       -9.0371322924350558E-002
+   4.7000000000000002       -6.9534051201706498E-002
+   4.8499999999999996       -5.3455924667309355E-002
+   5.0000000000000000       -4.1084647729034314E-002
+   5.1499999999999995       -3.1607765443078431E-002
+   5.2999999999999998       -2.4399069549670173E-002
+   5.4500000000000002       -1.8977705691622111E-002
+   5.5999999999999996       -1.4975375286987565E-002
+   5.7500000000000000       -1.2106825004401599E-002
+   5.8999999999999995       -1.0139728644312031E-002
+   6.0499999999999998       -8.8668088915534460E-003
+   6.2000000000000002       -8.0934915666480874E-003
+   6.3499999999999996       -7.6482829762977668E-003
+   6.5000000000000000       -7.3992991931997277E-003
+   6.6499999999999995       -7.2578072522390480E-003
+   6.7999999999999998       -7.1693726298158829E-003
+   6.9500000000000002       -7.1021727400378360E-003
+   7.0999999999999996       -7.0379276991497158E-003
+   7.2500000000000000       -6.9662344276498946E-003
+   7.3999999999999995       -6.8814092279257310E-003
+   7.5499999999999998       -6.7808446257373823E-003
+   7.7000000000000002       -6.6641748981999234E-003
+   7.8499999999999996       -6.5328168106016053E-003
+   8.0000000000000000       -6.3896417835309170E-003
+   8.1500000000000004       -6.2386595840358819E-003
+   8.2999999999999989       -6.0846729212870095E-003
+   8.4499999999999993       -5.9329098377963376E-003
+   8.5999999999999996       -5.7886637101994360E-003
+   8.7500000000000000       -5.6569746838272365E-003
+   8.9000000000000004       -5.5423776458790675E-003
+   9.0499999999999989       -5.4487270194802113E-003
+
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ASYMPTOTIC ROVIBRATIONAL STATES
+********************************************************************************
+
+
+WARNING: Rotational basis too small to describe all open channels!
+
+ DUMPING ASYMPTOTIC DATA FOR DEBUG PURPOSES INTO debug_asyp.dat ...
+ asymptotic molecular vibrational wave functions
+
+   v   j       e(ev)    erel(ev)         psi(1)        psi(nr)       norm
+
+   0   0   -4.237609    0.000000  0.8199979D-02  0.5642202D-03  1.0000000 1.4735953
+
+   0   1   -4.223451    0.014157  0.7957317D-02  0.5459964D-03  1.0000000 1.4755351
+
+   0   2   -4.195250    0.042359  0.7493156D-02  0.5112758D-03  1.0000000 1.4794065
+
+   0   3   -4.153228    0.084381  0.6846791D-02  0.4632463D-03  1.0000000 1.4851935
+
+   0   4   -4.097715    0.139894  0.6070206D-02  0.4060812D-03  1.0000000 1.4928739
+
+   1   0   -3.705530    0.532079  0.2310150D-01  0.1881119D-02  1.0000000 1.5701619
+
+   1   1   -3.692101    0.545508  0.2243605D-01  0.1821688D-02  1.0000000 1.5723117
+
+   1   2   -3.665359    0.572249  0.2116099D-01  0.1708261D-02  1.0000000 1.5766028
+
+   1   3   -3.625534    0.612075  0.1938045D-01  0.1550909D-02  1.0000000 1.5830190
+
+   1   4   -3.572959    0.664649  0.1723312D-01  0.1362906D-02  1.0000000 1.5915375
+
+ energy initial v,j state =                           -4.237609
+ potential energy =                                   -4.375441
+ rotational energy =                                   0.000000
+ vibrational energy =                                  0.137832
+ rovibrational energy =                                0.137832
+ expectation value r =                                 1.473595
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE DIFFRACTION BASIS
+********************************************************************************
+
+
+WARNING: Diffractional basis too small to describe all open channels!
+
+    64 diffraction channels in basis (ndftow)
+
+ * Number of diffraction states analysed, ndifa =            64
+ * Highest diffraction order, maxord =                        7
+ * Largest number of diffraction states that belong
+   to the same diffraction order, maxnum =                   18
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ROTATION BASIS
+********************************************************************************
+
+    15 rotation channels in basis (nrotw)
+
+ * number of rotational states analysed, nana =              15
+ * initial rotational state in basis, ichn =                 7
+
+
+
+********************************************************************************
+    INFO FROM SETTING UP THE ROTATION-DIFFRACTION BASIS
+********************************************************************************
+
+   960 rotation-diffraction channels in basis (nstatw)
+
+ * Number of rotation-diffraction analysed, nstata =              960
+ * Index of initial rot-dif channel in basis, inchna =            385
+
+
+
+********************************************************************************
+              INFO FROM SETTING UP THE OPTICAL POTENTIALS
+********************************************************************************
+
+
+* Optical potential in Z absorbs with coefficient:          0.19938827E-01
+* Optical potential in r absorbs with coefficient:          0.23896325E-01
+* Optical potential in Z specular absorbs with coefficient: 0.18298964E-01
+
+ CPU TIMES 
+
+ Total computation                           0.0000 (a)
+
+               ...
+
+ Propagating the wavefunction                0.0000 (b)
+
+ Setup time                                  0.0000
+
+ Saving the wave function for rerun          0.0000
+
+ Calculating averages                        0.0000
+
+ Calculating and saving BK-coeffs            0.0000
+
+ Asymptotic analysis                         0.0000
+
+ Saving the flux coefficients                0.0000
+
+ Flux analysis                               0.0000
+
+-----------------------------------------------------
+
+ Sum                                         0.0000 (a)
+
+               ...
+
+ FFTs along X and Y                          0.0000
+
+ Kinetic energy operation along Z            0.0000
+
+ Kinetic energy operation along r            0.0000
+
+ Potential energy multiplication             0.0000
+
+ Legengre transforms                         0.0000
+
+ Shifting the wavefunction                   0.0000
+
+ Kinetic energy multiplications (xy)         0.0000
+
+ Absorbing the wavefunction                  0.0000
+
+ Projection formalism                        0.0000
+
+ Operations on specular grid                 0.0000
+
+-----------------------------------------------------
+
+ Sum                                         0.0000 (b)
+
+               ...
+
+ Potential initialisation time               0.0000
+
+ Potential setup time                        0.6423
+
+ FFTs along X                                0.0000
+
+ FFTs along Y                                0.0000
+
+ Time spent on FGH for asympwf               0.0301
+
+ *** DISPOSURE OF DVR ***
+
+ * Disposure of transform data ...
+ * Disposure of the angular grid data ...
+ * Disposure of angular DVR/FBR transformation module ...
+ * Disposure of angular grid module ...
+ * Disposure of legendre module ...
+ * Disposure of FFT module ...
+
+ *** END OF DISPOSURE ***
+ * Nmode Arrays disposed!

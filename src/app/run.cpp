@@ -28,6 +28,7 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "potential/potential_symmetry.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 #include "report/analysis_files.hpp"
@@ -228,23 +229,27 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     print_input_summary(out, style, config);
 
     const auto potential = make_potential(config.input.system_id);
-    const AngularGrid angular(config.input.j_max, config.derived.mj_max_basis, config.input.homonuclear,
-                              config.input.j_in, config.input.mj_in);
+    const AngularGrid angular = make_angular_grid(config);
     const SpatialGrids grids = make_spatial_grids(config);
     print_grids(out, style, config, grids, angular);
 
     // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.
     const bool analysis_only = config.derived.run_mode == 2;
-    if (!analysis_only)
-      print_memory_estimate(out, style, estimate_memory(config, grids, angular, omp_get_max_threads()),
-                            physical_memory_bytes());
-
     std::optional<PotentialGrid> potential_grid;
     std::vector<double> asymptotic;
     if (analysis_only) {
       asymptotic = compute_asymptotic_potential(*potential, config, grids);
     } else {
-      potential_grid = compute_potential_grid(*potential, config, grids, angular);
+      // Surface symmetry (UseSymmetry): check the PES before the reduced potential is computed.
+      GridSymmetry symmetry = make_grid_symmetry(config, angular);
+      if (config.input.use_symmetry) {
+        const SymmetryCheck check = check_potential_symmetry(*potential, symmetry, config, grids);
+        print_surface_symmetry(out, style, symmetry, check);
+        require_symmetric_potential(check, config, symmetry);
+      }
+      print_memory_estimate(out, style, estimate_memory(config, grids, angular, symmetry, omp_get_max_threads()),
+                            physical_memory_bytes());
+      potential_grid = compute_potential_grid(*potential, config, grids, angular, std::move(symmetry));
       asymptotic = potential_grid->asymptotic;
     }
     print_asymptotic_potential(out, style, config, grids, asymptotic);
