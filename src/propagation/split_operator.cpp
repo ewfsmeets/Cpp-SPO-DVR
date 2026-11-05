@@ -29,6 +29,10 @@ void SplitOperatorPropagator::propagate_analysis_step(WavePacket& psi) const {
 
 // Fortran: SplitOperator.f90 KineticAndPotentialOp. Processed in groups of consecutive (Z, r)
 // points: T_xy for the group at once, then V point by point, while the data are in cache.
+// Groups with Z < zasymp (angular transform + exp(-iV dt)) cost far more than gas-phase groups
+// (one scalar factor); the schedule (dynamic,1 or static,1, core/loop_schedule.hpp) balances
+// them (the Fortran uses SCHEDULE(DYNAMIC) here). Results do not depend on the schedule: every
+// point is independent and each thread has its own work arrays.
 void SplitOperatorPropagator::apply_xy_and_potential(WavePacket& psi, TimeStep step, bool kinetic_only) const {
   const int group_points = kinetic_.group_points();
   const std::size_t block_size = psi.scattering.block_size();
@@ -36,7 +40,7 @@ void SplitOperatorPropagator::apply_xy_and_potential(WavePacket& psi, TimeStep s
   {
     ComplexVector xy_work(kinetic_.group_work_size());
     ComplexVector potential_work(potential_.work_size());
-#pragma omp for schedule(static)
+#pragma omp for schedule(runtime)
     for (int g = 0; g < psi.scattering.n_blocks() / group_points; ++g) {
       const int first = g * group_points;
       kinetic_.apply_xy_group(std::span(psi.scattering.values).subspan(block_size * first, block_size * group_points),

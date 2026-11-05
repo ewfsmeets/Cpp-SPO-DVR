@@ -111,10 +111,14 @@ The program reads one JSON input file:
 
 Command-line options:
 ```
-spodvr <input.json> [--threads N] [--output-dir DIR] [--no-color] [--help] [--version]
+spodvr <input.json> [--threads N] [--schedule dynamic|static] [--output-dir DIR] [--no-color] [--help] [--version]
 ```
 - `--threads N`: number of OpenMP threads (default: all). The results do not depend on it. Use the
   number of physical cores: hyperthreads do not speed up these memory- and FFT-bound loops.
+- `--schedule dynamic|static`: how the (Z, r) points are shared out over the threads. `dynamic`
+  balances the uneven work best (one NUMA node, i.e. one CPU socket); `static` keeps every thread on
+  the memory it first wrote (several NUMA nodes). Default: chosen from the number of NUMA nodes. The
+  results do not depend on it.
 - `--output-dir DIR`: where the data files are written (default: the current directory).
 
 Output:

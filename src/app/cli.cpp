@@ -3,12 +3,19 @@
 
 #include <stdexcept>
 
+#include "core/loop_schedule.hpp"
+
 namespace spodvr {
 
 std::string usage() {
-  return "Usage: spodvr <input.json> [--threads N] [--output-dir DIR] [--no-color] [--help] [--version]\n"
+  return "Usage: spodvr <input.json> [--threads N] [--schedule dynamic|static] [--output-dir DIR] [--no-color]\n"
+         "              [--help] [--version]\n"
          "\n"
          "  --threads N       number of OpenMP threads (default: OpenMP default)\n"
+         "  --schedule S      OpenMP schedule of the (Z, r) loops: dynamic (dynamic,1; best on one NUMA\n"
+         "                    node) or static (static,1; keeps memory local on several NUMA nodes).\n"
+         "                    Default: static with several NUMA nodes, else dynamic. Results do not\n"
+         "                    depend on it\n"
          "  --output-dir DIR  directory for the output data files (default: current directory)\n"
          "  --no-color        disable ANSI colours (also disabled when stdout is not a terminal)\n"
          "  --help            show this help\n"
@@ -41,6 +48,9 @@ CommandLine parse_command_line(const std::vector<std::string>& args) {
       }
       if (used != v.size() || n < 1) throw std::invalid_argument("--threads requires a positive integer");
       cl.threads = n;
+    } else if (a == "--schedule") {
+      cl.schedule = value(a);
+      (void)parse_loop_schedule(*cl.schedule);  // reject unknown values here, with the other options
     } else if (a == "--output-dir") {
       cl.output_dir = value(a);
     } else if (!a.empty() && a[0] == '-') {

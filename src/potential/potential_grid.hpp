@@ -38,14 +38,16 @@ struct PotentialGrid {
 
 // Evaluates the PES on the grid (at the (x, y) representatives of the symmetry), applies the
 // optional switching to the gas phase and the optional minimum/maximum. Parallelised with OpenMP
-// over (Z, r); every value is computed independently, so the result does not depend on the
+// over groups of `group_points` consecutive (Z, r) points, with the schedule of the propagation
+// loops over the same groups (first touch, core/loop_schedule.hpp; the propagator's groups:
+// xy_group_points). Every value is computed independently, so the result does not depend on the
 // number of threads.
 // Fortran: Potential.f90 setupThePES/computeThePES (up to, not including, the -dt
 // premultiplication), switchPotentialToGasPhase, ImposeLimitOnPotential(Asy),
 // setupTheAsymptoticPotential
 [[nodiscard]] PotentialGrid compute_potential_grid(const Potential& potential, const Config& config,
                                                    const SpatialGrids& grids, const AngularGrid& angular,
-                                                   GridSymmetry symmetry);
+                                                   GridSymmetry symmetry, int group_points = 1);
 
 // The same with the symmetry of the run (make_grid_symmetry); with UseSymmetry the PES is first
 // checked (check_potential_symmetry, require_symmetric_potential: throws InputError).

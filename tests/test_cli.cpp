@@ -8,9 +8,11 @@
 using namespace spodvr;
 
 TEST(Cli, ParsesAllOptions) {
-  const auto cl = parse_command_line({"in.json", "--threads", "4", "--output-dir", "out", "--no-color"});
+  const auto cl =
+      parse_command_line({"in.json", "--threads", "4", "--schedule", "static", "--output-dir", "out", "--no-color"});
   EXPECT_EQ(cl.input_file, "in.json");
   EXPECT_EQ(cl.threads, 4);
+  EXPECT_EQ(cl.schedule, "static");
   EXPECT_EQ(cl.output_dir, "out");
   EXPECT_TRUE(cl.no_color);
 }
@@ -27,4 +29,6 @@ TEST(Cli, Errors) {
   EXPECT_THROW((void)parse_command_line({"a.json", "--threads", "0"}), std::invalid_argument);
   EXPECT_THROW((void)parse_command_line({"a.json", "--threads", "4x"}), std::invalid_argument);
   EXPECT_THROW((void)parse_command_line({"a.json", "--bogus"}), std::invalid_argument);
+  EXPECT_THROW((void)parse_command_line({"a.json", "--schedule"}), std::invalid_argument);
+  EXPECT_THROW((void)parse_command_line({"a.json", "--schedule", "guided"}), std::invalid_argument);
 }

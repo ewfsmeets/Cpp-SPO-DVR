@@ -18,13 +18,14 @@ struct ScatteringWave {
   Index3D index;
   ComplexVector values;  // 64-byte aligned (fast SIMD FFTs)
 
-  // Zero wave function. Initialised in parallel, block by block (first touch, see
-  // AlignedAllocator).
-  ScatteringWave(int n_rot, int n_xy, int n_zr) : index(n_rot, n_xy, n_zr), values(index.size()) {
-    const std::size_t block = index.n0 * index.n1;
-#pragma omp parallel for schedule(static)
-    for (int izr = 0; izr < n_zr; ++izr)
-      std::fill_n(values.begin() + static_cast<std::ptrdiff_t>(block * izr), block, std::complex<double>(0.0, 0.0));
+  // Zero wave function. Initialised in parallel per group of `group_points` consecutive (Z, r)
+  // points, with the schedule of the propagation loops over those groups (first touch, see
+  // AlignedAllocator and core/loop_schedule.hpp; the propagator's groups: xy_group_points).
+  ScatteringWave(int n_rot, int n_xy, int n_zr, int group_points = 1) : index(n_rot, n_xy, n_zr), values(index.size()) {
+    const std::size_t group = index.n0 * index.n1 * group_points;
+#pragma omp parallel for schedule(runtime)
+    for (int g = 0; g < n_zr / group_points; ++g)
+      std::fill_n(values.begin() + static_cast<std::ptrdiff_t>(group * g), group, std::complex<double>(0.0, 0.0));
   }
 
   [[nodiscard]] int block_size() const { return static_cast<int>(index.n0 * index.n1); }

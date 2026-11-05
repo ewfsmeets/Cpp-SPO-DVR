@@ -1,0 +1,31 @@
+{
+  "Title": "H2(v=0,j=0)/Cu(111), ER (Persson) PES: Somers PhD thesis ch. 5, Table 5.1 column 2 (Figure 5.3, solid)",
+  "SystemID": "H2Cu111Persson",
+  "NewCalc": true,
+
+  "ZDoF": true, "RDoF": true, "XDoF": true, "YDoF": true, "ThetaDoF": true, "PhiDoF": true,
+
+  "Mass1": 1.0078, "Mass2": 1.0078, "HomoNuc": true,
+
+  "ZStart": 0.0, "dZ": 0.15, "nZ": 90, "nZSpecular": 160,
+  "RStart": 0.5, "dR": 0.25, "nR": 32,
+  "nX": 16, "nY": 16,
+  "JMax": 28, "MJMax": 28,
+  "ProjOp": 2,
+
+  "tStart": 0.0, "tEnd": 15000.0, "dtStep": 2.5, "nStep": 6000,
+
+  "dtAna": 20.0, "dtAve": 500.0, "DynamZSpAna": true, "Zana": 8.1, "NrOfEs": 141,
+
+  "EMinWP": 0.35, "EMaxWP": 1.05, "Z0": 10.0,
+  "VIn": 0, "JIn": 0, "MJIn": 0,
+  "EParallel": 0.0, "PhiParallel": 0.0,
+
+  "ZOptStart": 8.1, "ZOptEnd": 13.35, "ZOptEnergy": 0.2,
+  "ZSpOptStart": 12.0, "ZSpOptEnd": 23.85, "ZSpOptEnergy": 0.2,
+  "ROptStart": 4.0, "ROptEnd": 8.25, "ROptEnergy": 0.3,
+
+  "TolSp": 1.0e-7,
+
+  "writeSMatrix": false, "writeProbs": true, "writeRDProbs": true
+}

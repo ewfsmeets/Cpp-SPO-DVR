@@ -14,12 +14,14 @@
 #include "app/banner.hpp"
 #include "app/fine_analysis_run.hpp"
 #include "core/error.hpp"
+#include "core/loop_schedule.hpp"
 #include "core/numerical_libraries.hpp"
 #include "core/real_compare.hpp"
 #include "core/system_memory.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
+#include "grids/rotational_basis.hpp"
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
@@ -29,6 +31,7 @@
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
+#include "propagation/kinetic_operators.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 #include "report/analysis_files.hpp"
@@ -219,10 +222,16 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
   const Style style{color};
   try {
     if (command_line.threads) omp_set_num_threads(*command_line.threads);
+    // The schedule of the (Z, r) group loops, set before any large array is first written.
+    const int numa_nodes = numa_node_count();
+    const LoopSchedule schedule =
+        command_line.schedule ? parse_loop_schedule(*command_line.schedule) : default_loop_schedule(numa_nodes);
+    apply_loop_schedule(schedule);
 
     out << banner << '\n';
     out << style.emphasis("SPO-DVR (C++) version " SPODVR_VERSION) << "  -  " << omp_get_max_threads()
-        << " OpenMP thread(s)\n";
+        << " OpenMP thread(s), loop schedule " << to_string(schedule) << " (" << numa_nodes << " NUMA node"
+        << (numa_nodes > 1 ? "s" : "") << ")\n";
     out << "  " << numerical_libraries_summary() << '\n';
 
     const Config config = build_config(read_input_file(command_line.input_file));
@@ -249,7 +258,11 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       }
       print_memory_estimate(out, style, estimate_memory(config, grids, angular, symmetry, omp_get_max_threads()),
                             physical_memory_bytes());
-      potential_grid = compute_potential_grid(*potential, config, grids, angular, std::move(symmetry));
+      // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
+      const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+      const ScatteringShape shape{basis.size(), config.input.nx, config.input.ny, config.input.nr, config.input.nz};
+      potential_grid =
+          compute_potential_grid(*potential, config, grids, angular, std::move(symmetry), xy_group_points(shape));
       asymptotic = potential_grid->asymptotic;
     }
     print_asymptotic_potential(out, style, config, grids, asymptotic);

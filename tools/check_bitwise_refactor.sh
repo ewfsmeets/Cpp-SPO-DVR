@@ -46,7 +46,7 @@ json.dump(config, open(sys.argv[2], "w"), indent=2)
 
 run() {  # <build dir> <output name> <threads>
   "$1/spodvr" "$scratch/input.json" --no-color --threads "$3" --output-dir "$scratch/$2" \
-    | grep -v "Data files written to" | sed 's/[0-9]* OpenMP thread(s)//' > "$scratch/$2.txt"
+    | grep -v "Data files written to" | sed -E 's/[0-9]* OpenMP thread\(s\)(, loop schedule [^ ]+ \([^)]*\))?//' > "$scratch/$2.txt"
 }
 run "$scratch/base-build" base 1
 run "$scratch/new-build" new 1

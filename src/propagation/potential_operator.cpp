@@ -55,8 +55,13 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
 
   if (expected * sizeof(cplx) <= table_limit) {
     exp_potential_.resize(expected);
-#pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < expected; ++i) exp_potential_[i] = exp_i(potential_[i]);
+    // First touch per (Z, r) group, with the threads that use the group in the propagation.
+    const std::size_t point_values = expected / (std::size_t(nz_potential) * shape.nr);
+    const int group_points = xy_group_points(shape);
+#pragma omp parallel for schedule(runtime)  // core/loop_schedule.hpp
+    for (int g = 0; g < nz_potential * shape.nr / group_points; ++g)
+      for (std::size_t i = point_values * g * group_points; i < point_values * (g + 1) * group_points; ++i)
+        exp_potential_[i] = exp_i(potential_[i]);
     potential_ = {};
   }
 }
@@ -77,9 +82,12 @@ void PotentialOperator::apply(WavePacket& psi) const {
 #pragma omp parallel
   {
     ComplexVector work(work_size());
-#pragma omp for schedule(static)
-    for (int izr = 0; izr < psi.scattering.n_blocks(); ++izr)
-      apply_block(izr, psi.scattering.block(izr), psi.specular, work);
+    // The (Z, r) groups of the fused loop (SplitOperatorPropagator::apply_xy_and_potential).
+    const int group_points = xy_group_points(shape_);
+#pragma omp for schedule(runtime)  // core/loop_schedule.hpp
+    for (int g = 0; g < psi.scattering.n_blocks() / group_points; ++g)
+      for (int izr = g * group_points; izr < (g + 1) * group_points; ++izr)
+        apply_block(izr, psi.scattering.block(izr), psi.specular, work);
   }
 }
 

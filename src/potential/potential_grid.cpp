@@ -62,7 +62,7 @@ void impose_limits(std::span<double> v, const Config& config) {
 }  // namespace
 
 PotentialGrid compute_potential_grid(const Potential& potential, const Config& config, const SpatialGrids& grids,
-                                     const AngularGrid& angular, GridSymmetry symmetry) {
+                                     const AngularGrid& angular, GridSymmetry symmetry, int group_points) {
   const double ev2au = units::legacy.ev_to_hartree(1.0);  // Fortran multiplies by 1/chaev here
 
   const int n_theta = angular.n_theta();
@@ -77,23 +77,26 @@ PotentialGrid compute_potential_grid(const Potential& potential, const Config& c
 
   // Every (Z, r) block is filled independently, so the result does not depend on the threads.
   // The (x, y) points are the representatives in memory order (all points without symmetry).
-#pragma omp parallel for schedule(static)
-  for (int izr = 0; izr < n_zr; ++izr) {
-    const int iz = izr / nr;
-    const int ir = izr % nr;
-    for (int irep = 0; irep < n_rep; ++irep) {
-      const int ixy = grid.symmetry.representative_xy(irep);
-      const int ix = ixy / ny;
-      const int iy = ixy % ny;
-      for (int itheta = 0; itheta < n_theta; ++itheta) {
-        for (int iphi = 0; iphi < n_phi; ++iphi) {
-          const double v = potential.value(grids.x[ix], grids.y[iy], grids.z_scattering[iz], grids.r[ir],
-                                           angular.thetas()[itheta], angular.phis()[iphi], iz, ir);
-          grid.values[grid.index(iphi + n_phi * itheta, irep, izr)] = v * ev2au;
+  // Written per (Z, r) group: first touch with the threads that use the group in the
+  // propagation (schedule(runtime), core/loop_schedule.hpp).
+#pragma omp parallel for schedule(runtime)
+  for (int g = 0; g < n_zr / group_points; ++g)
+    for (int izr = g * group_points; izr < (g + 1) * group_points; ++izr) {
+      const int iz = izr / nr;
+      const int ir = izr % nr;
+      for (int irep = 0; irep < n_rep; ++irep) {
+        const int ixy = grid.symmetry.representative_xy(irep);
+        const int ix = ixy / ny;
+        const int iy = ixy % ny;
+        for (int itheta = 0; itheta < n_theta; ++itheta) {
+          for (int iphi = 0; iphi < n_phi; ++iphi) {
+            const double v = potential.value(grids.x[ix], grids.y[iy], grids.z_scattering[iz], grids.r[ir],
+                                             angular.thetas()[itheta], angular.phis()[iphi], iz, ir);
+            grid.values[grid.index(iphi + n_phi * itheta, irep, izr)] = v * ev2au;
+          }
         }
       }
     }
-  }
 
   if (config.input.use_switching) switch_to_gas_phase(grid, potential, config, grids);
   impose_limits(grid.values, config);

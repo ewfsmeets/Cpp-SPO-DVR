@@ -48,9 +48,10 @@ header line.
 
 ## Memory and NUMA
 - Large arrays (`AlignedVector`: wave function, potential grid, exp(−iV dt) table) are 64-byte aligned
-  and are *not* zeroed on allocation; they are first written in parallel with the static OpenMP
+  and are *not* zeroed on allocation; they are first written in parallel, per (Z, r) group, with the
   schedule of the loops that use them. On multi-socket (NUMA) machines this places every memory page
-  on the socket of the thread that works on it ("first touch").
+  on the socket of the thread that works on it ("first touch"). The first writes and the compute
+  loops use the same (Z, r) groups and schedule (see "Threads and loop scheduling").
 - exp(−iV dt) = (cos A, sin A) with A = −V dt is precomputed once if that complex table needs at most
   4 GiB (`PotentialOperator::default_table_limit`); otherwise cos/sin are evaluated in every step, as in
   the Fortran code (production grids: the potential alone is tens of GB, so the on-the-fly path is
@@ -63,11 +64,31 @@ header line.
   physical memory, with a warning if the run does not fit. Small tables and FFT plans are not
   counted; the medium grid estimate (5.0 GiB) matches the measured peak resident size (4.99 GiB).
 
-## Threads
-- Use all hardware threads: on the 8-core/16-thread Ryzen 5800X, 16 threads are ~20% faster than 8.
-- On multi-socket machines bind threads to cores, e.g. `OMP_PROC_BIND=close OMP_PLACES=cores` (or
-  `spread` to use all sockets' memory bandwidth); with first touch this keeps data local. On a single
-  socket pinning made no difference.
+## Threads and loop scheduling
+- **Single NUMA node** (one socket, e.g. the Ryzen 5800X): dynamic schedule, and only as many threads
+  as physical cores (`--threads 8` on the 8-core/16-thread 5800X). Work per (Z, r) point is not
+  uniform (see "Fortran vs C++" below), and dynamic scheduling evens it out; hyperthreads add
+  contention rather than speed. (An earlier measurement with the static schedule found 16 threads
+  ~20% faster than 8, probably because the extra threads filled the idle time of the static split.)
+- **Multiple NUMA nodes** (multi-socket): static schedule, and all available threads, bound to cores
+  (`OMP_PROC_BIND=close OMP_PLACES=cores`, or `spread` to use all sockets' memory bandwidth). Static
+  keeps every thread on the data it first touched (see "Memory and NUMA"); with a dynamic schedule a
+  thread works on pages of the other socket.
+- Implementation: `--schedule dynamic|static` (`src/core/loop_schedule.*`), set once at start-up
+  with `omp_set_schedule` (`OMP_SCHEDULE` is ignored); the default is `static` with several NUMA
+  nodes (`/sys/devices/system/node`), else `dynamic`; the header line prints the choice. Every loop
+  that computes on, or first writes, the per-(Z, r) arrays runs over the same groups of
+  `xy_group_points` consecutive r points with `schedule(runtime)`. These are the fused T_xy + V loop,
+  `apply_xy` and `PotentialOperator::apply`, and the first writes of the wave function, the potential
+  grid and the exp(−iV dt) table. So with `static,1` thread t owns groups t, t+T, ... in every one of
+  them (first touch matches). Only chunk 1 is offered: `dynamic,1` (one NUMA node) and `static,1`
+  (round robin, balanced to within one group; several NUMA nodes). The results are bitwise identical
+  with either.
+- Not covered: `apply_zr` (T_Z + T_r) works on units that span all (Z, r) points, so on a NUMA machine
+  it reads memory of every socket whatever the schedule.
+- To be investigated: the group size, larger chunks (the Fortran uses (nZ − nzpot)·nR/threads
+  points), `static,1` vs `dynamic,1` on one node, and a default thread count of the physical cores.
+  Plan: `~/work/loop_scheduling_optimization.md`.
 
 ## Benchmarking checklist
 - Use a realistic grid: `tools/benchmark/run_benchmark.sh [build-dir] [threads] [steps]` (the
@@ -120,6 +141,10 @@ otherwise idle machine; whole program, `/usr/bin/time`.
   and exp(−iV dt); the others are one scalar multiply. A static contiguous split gives threads 6–7
   almost only cheap rows. The Fortran (`SplitOperator.f90` KineticAndPotentialOp) uses
   `SCHEDULE(DYNAMIC, chunkSize)` for exactly this reason. Minor: the specular grid operator is serial.
+- Since then this loop uses `schedule(dynamic, 1)` (bitwise identical results). On the grids of
+  `inputs/thesis_fig5_3_*` (JMax 28, 435 rotational functions, 8 threads, 40 steps of 5 a.u.) the
+  propagation time went from 176.9 to 154.5 s (DZ, −13%) and from 230.3 to 208.6 s (ER, −9%). The full
+  Dai–Light benchmark above has not been re-run yet.
 - fast-math + native + PGO: −12% wall, −11% CPU time against the default build. `-march=native` adds
   little on Zen 3 (no AVX-512: the same AVX2 as x86-64-v3); the gain is fast-math and PGO.
 - fast-math changes results by ~1e-12 (norm 2e-12 relative, probabilities 1.5e-12 absolute against the

@@ -107,7 +107,7 @@ void ScatteringKineticOperator::apply_xy(ScatteringWave& psi, TimeStep step) con
 #pragma omp parallel
   {
     ComplexVector work(group_work_size());
-#pragma omp for schedule(static)
+#pragma omp for schedule(runtime)  // same groups, same threads as the first touch (core/loop_schedule.hpp)
     for (int g = 0; g < n_groups; ++g)
       apply_xy_group(std::span(psi.values).subspan(group_size * g, group_size), step, work);
   }

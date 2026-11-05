@@ -36,7 +36,8 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
       propagator_(config.derived.steps_per_analysis, kinetic_, potential_, specular_),
       initial_(make_initial_wave_packet(config, grids, gas, fft)),
       // The initial wave packet lives on the specular grid; the scattering grid starts empty.
-      psi_{ScatteringWave(basis_.size(), config.input.nx * config.input.ny, config.input.nr * config.input.nz),
+      psi_{ScatteringWave(basis_.size(), config.input.nx * config.input.ny, config.input.nr * config.input.nz,
+                          xy_group_points(scattering_shape(config, basis_))),
            initial_.specular},
       surface_(config, grids, psi_.specular),
       analysis_basis_(config, angular, basis_, gas, tables_.xy_kinetic_energies),

@@ -121,6 +121,7 @@ endif()
 # Core library
 # ---------------------------------------------------------------------------------------------
 add_library(spodvr_core
+  src/core/loop_schedule.cpp
   src/core/machine_epsilon.cpp
   src/core/numerical_libraries.cpp
   src/core/system_memory.cpp
