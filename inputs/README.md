@@ -96,7 +96,7 @@ Worked example in brackets: H₂, 0.40–0.95 eV, Z_asymp = 15.0 (`thesis_fig5_3
    points. [15.0–19.08, 22.08–30.60]
 10. **Targets** `ZOptEnergy` ~0.2 eV, `ZSpOptEnergy` ≈ `EMinWP`, `ROptEnergy` ~0.3 eV; check R and
     T with `tools/wave_packet_check.py` and adjust.
-11. **`tEnd`** from section 8. [25 000]
+11. **`tEnd`** from section 8. [25 000; the DZ input uses 17 500]
 12. **Memory** (section 9), then a **test run** to t ≈ 500 (section 10).
 
 ## 3. The wave packet is set by its energy range

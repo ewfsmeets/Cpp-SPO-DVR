@@ -42,9 +42,9 @@ ProjOp      : INTEGER : 2;
 
 # Propagation
 tStart      : REAL    : 0.0;
-tEnd        : REAL    : 25000.0;
+tEnd        : REAL    : 17500.0;
 dtStep      : REAL    : 2.5;
-nStep       : INTEGER : 10000;
+nStep       : INTEGER : 7000;
 
 # Analysis
 dtAna       : REAL    : 20.0;

@@ -13,7 +13,7 @@
   "JMax": 28, "MJMax": 28,
   "ProjOp": 2,
 
-  "tStart": 0.0, "tEnd": 25000.0, "dtStep": 2.5, "nStep": 10000,
+  "tStart": 0.0, "tEnd": 17500.0, "dtStep": 2.5, "nStep": 7000,
 
   "dtAna": 20.0, "dtAve": 500.0, "DynamZSpAna": true, "Zana": 15.0, "NrOfEs": 111,
 

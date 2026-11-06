@@ -15,7 +15,7 @@ module's header comment attributes it to "Dai and Light", but the reference is D
 | N_x (N_y) | 12 | `nX`, `nY` |
 | a | 4.84 a₀ | fixed by the PES |
 | j_max | 28 | `JMax`, `MJMax` |
-| T | 25 000 a.u. | `tEnd` |
+| T | 25 000 a.u. | **not used**: `tEnd` = 17 500 a.u. (below) |
 | Z₀, ΔZ, N_Z | 0.0, 0.15, 128 | **not used**: ΔZ = 0.12, N_Z = 160 (below) |
 
 Table 5.1 gives N_tot = 321 million = 435 rotational functions (even j ≤ 28, all m_j) × 128·40·12·12,
@@ -40,8 +40,11 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
 500 a.u. is 4.7e-8 and the line keeps moving.
 
 ## Deduced or chosen (not in the thesis)
-- **Time step** 2.5 a.u. (10 000 steps), as in chapter 6 (Table 6.1). Chapter 4 (Table 4.5) used
+- **Time step** 2.5 a.u. (7 000 steps), as in chapter 6 (Table 6.1). Chapter 4 (Table 4.5) used
   5.0 a.u. with the same SPO code; the smaller step is the safer choice. `dtAna` 20 a.u. (chapter 4).
+- **Total time** 17 500 a.u. instead of the thesis's 25 000, to shorten the CPU and Fortran runs.
+  A 25 000 a.u. run left 1.2e-4 of the norm on the grid at 17 500 (1.6e-7 at 21 500). By
+  `../README.md` section 8 this converges outgoing normal energies E_n ≳ 0.06 eV (25 000: 0.03 eV).
 - **Wave packet** 0.40–0.95 eV (the thesis figure starts at 0.4 eV), 111 analysis energies
   (0.005 eV apart). The packet's momentum density at `EMinWP`/`EMaxWP` is e⁻² ≈ 14% of its peak.
 - **Grids in Z** (ΔZ 0.12, Z from 0.0): scattering grid 160 points (to 19.08 a₀), specular grid
@@ -73,7 +76,7 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
 ## Cost (this machine)
 6.0 GiB wave function, 1.3 GiB exp(−iV dt) table (`UseSymmetry`, C6v: 19 of 144 (x, y) points).
 CPU (8 threads): 7.3 GiB during the propagation, about 1.25× the time of the 128-point grid
-(~5.5 s per step, ~15 h). GPU (`--device cuda`): 8.8 GiB estimated plus the CUDA context; fits
+(~5.5 s per step, ~11 h). GPU (`--device cuda`): 8.8 GiB estimated plus the CUDA context; fits
 the 12 GB RTX 4070 Ti.
 
 ## Fortran reference run
