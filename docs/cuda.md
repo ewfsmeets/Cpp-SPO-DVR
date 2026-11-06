@@ -216,7 +216,7 @@ Profiling:
   holds up the GPU.
 - **ncu** needs access to the GPU performance counters, which this WSL2 machine does not grant.
 
-DZ benchmark (`inputs/thesis_fig5_3_dz`: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
+DZ benchmark (`inputs/thesis_fig5_3_dz` as of 3c1d91b; the input now has a 160-point Z grid: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
 19 C6v representatives), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step
 (10 repetitions; single runs on this WSL2 GPU vary by up to ~30%, it also drives the desktop;
 measured before the kinetic stages were merged, see "Measured optimisations" below):

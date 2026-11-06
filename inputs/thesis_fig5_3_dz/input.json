@@ -1,5 +1,5 @@
 {
-  "Title": "H2(v=0,j=0)/Cu(111), DZ PES: Somers PhD thesis ch. 5, Table 5.1 column 1 (Figure 5.3, dotted)",
+  "Title": "H2(v=0,j=0)/Cu(111), DZ PES: Somers PhD thesis ch. 5, Table 5.1 column 1 (Figure 5.3, dotted), dZ 0.12",
   "SystemID": "H2Cu111DaiLight",
   "NewCalc": true,
 
@@ -7,7 +7,7 @@
 
   "Mass1": 1.0078, "Mass2": 1.0078, "HomoNuc": true,
 
-  "ZStart": 0.0, "dZ": 0.15, "nZ": 128, "nZSpecular": 192,
+  "ZStart": 0.0, "dZ": 0.12, "nZ": 160, "nZSpecular": 256,
   "RStart": 0.5, "dR": 0.20, "nR": 40,
   "nX": 12, "nY": 12,
   "JMax": 28, "MJMax": 28,
@@ -15,14 +15,14 @@
 
   "tStart": 0.0, "tEnd": 25000.0, "dtStep": 2.5, "nStep": 10000,
 
-  "dtAna": 20.0, "dtAve": 500.0, "DynamZSpAna": true, "Zana": 15.0, "NrOfEs": 141,
+  "dtAna": 20.0, "dtAve": 500.0, "DynamZSpAna": true, "Zana": 15.0, "NrOfEs": 111,
 
-  "EMinWP": 0.35, "EMaxWP": 1.05, "Z0": 17.0,
+  "EMinWP": 0.40, "EMaxWP": 0.95, "Z0": 18.0,
   "VIn": 0, "JIn": 0, "MJIn": 0,
   "EParallel": 0.0, "PhiParallel": 0.0,
 
-  "ZOptStart": 15.0, "ZOptEnd": 19.05, "ZOptEnergy": 0.2,
-  "ZSpOptStart": 19.05, "ZSpOptEnd": 28.65, "ZSpOptEnergy": 0.2,
+  "ZOptStart": 15.0, "ZOptEnd": 19.08, "ZOptEnergy": 0.2,
+  "ZSpOptStart": 22.08, "ZSpOptEnd": 30.60, "ZSpOptEnergy": 0.4,
   "ROptStart": 4.1, "ROptEnd": 8.3, "ROptEnergy": 0.3,
 
   "TolSp": 1.0e-7,

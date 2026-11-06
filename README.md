@@ -269,10 +269,12 @@ vector extensions (see docs/performance.md).
 | Directory | Content |
 |---|---|
 | `inputs/hardwall_small/` | The hard wall reference case (H₂ on a hard wall, Cu(211)-like grid, 0.2–0.6 eV). `input.json` is the C++ input. `DVR.inp` is the same calculation for the Fortran reference code. |
-| `inputs/thesis_fig5_3_dz/`, `inputs/thesis_fig5_3_er/` | H₂ + Cu(111) on the Dai–Zhang and Persson (ER) PES, the two curves of Fig. 5.3 of M. F. Somers' PhD thesis, at the grid sizes of the thesis (JMax 28, ψ ≈ 5 GB; hours per run). Each directory has a README with the parameter choices. The DZ case is the GPU benchmark. |
+| `inputs/thesis_fig5_3_dz/`, `inputs/thesis_fig5_3_er/` | H₂ + Cu(111) on the Dai–Zhang and Persson (ER) PES, the two curves of Fig. 5.3 of M. F. Somers' PhD thesis, at the grid sizes of the thesis (except a finer Z grid, see their READMEs; JMax 28, ψ ≈ 6 GB; hours per run). Each directory has a README with the parameter choices. The DZ case is the GPU benchmark. |
 
 - The JSON keys mirror the Fortran `DVR.inp` field names. All keys, defaults, units and checks
   are described in [docs/input_schema.md](docs/input_schema.md).
+- How to choose the Z grids, the wave packet, the analysis lines and the absorbers for a new
+  input: [inputs/README.md](inputs/README.md).
 - Unknown keys and inconsistent parameters are reported as errors.
 - The test copies of these inputs (with the Fortran reference output) live in
   `tests/reference/`, together with the corrugated test cases (`cu111_dailight_*`,
@@ -296,7 +298,7 @@ slower in wall time; this is still being investigated. The fast-math build passe
 gates, but its results differ from the default build at the 1e-12 level, so it is not the default.
 Details in [docs/performance.md](docs/performance.md).
 
-GPU (`--device cuda`), DZ case of `inputs/thesis_fig5_3_dz` (128 × 40 × 12 × 12 grid, 435 rotational
+GPU (`--device cuda`), DZ case of `inputs/thesis_fig5_3_dz` as of 3c1d91b (128 × 40 × 12 × 12 grid, 435 rotational
 states, 4.8 GiB wave function), NVIDIA RTX 4070 Ti (a GeForce card: FP64 at 1/64 rate) against
 8 threads of the Ryzen 7 5800X, per time step:
 
