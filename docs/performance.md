@@ -124,7 +124,8 @@ threads): T_Z + T_r ≈ 0.4 s, T_xy ≈ 0.17 s, potential (incl. angular transfo
 Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8 grid (nZ × nR × nX × nY)
 with 15 rotational states (JMax = MJMax = 4; nθ = 3, nφ = 10), plus the on-the-fly analysis. AMD Ryzen 7
 5800X (8 cores, Zen 3, no AVX-512), WSL2, `OMP_NUM_THREADS=8`, the three runs one after the other on an
-otherwise idle machine; whole program, `/usr/bin/time`.
+otherwise idle machine; whole program, `/usr/bin/time`. Measured with GCC 13 / gfortran 13, before the
+switch to GCC 15 (2026-11-06); not re-measured since.
 
 | Binary | Wall time | CPU time (user) | Threads busy (CPU / wall) |
 |---|---|---|---|

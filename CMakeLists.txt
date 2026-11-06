@@ -29,7 +29,6 @@ option(SPODVR_BUILD_TOOLS "Build the developer tools (operator timing, wave func
 # Libraries
 # =============================================================================================
 find_package(OpenMP REQUIRED COMPONENTS CXX)
-find_package(PkgConfig REQUIRED)
 
 # Intel oneMKL, sequential (it is called from inside our own OpenMP threads) and LP64 (32-bit
 # integers). When found it provides BLAS/LAPACK and, by default, the FFTs through its FFTW3
@@ -56,6 +55,7 @@ if(SPODVR_FFT_LIBRARY_USED STREQUAL "MKL" AND NOT MKL_FOUND)
   message(FATAL_ERROR "SPODVR_FFT_LIBRARY=MKL but oneMKL was not found")
 endif()
 if(SPODVR_FFT_LIBRARY_USED STREQUAL "FFTW")
+  find_package(PkgConfig REQUIRED)
   pkg_check_modules(FFTW3 REQUIRED IMPORTED_TARGET fftw3)
 endif()
 
@@ -217,10 +217,13 @@ if(SPODVR_USE_CUDA)
   if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES native)
   endif()
-  # nvcc compiles the host side of the .cu files with the system g++ (CUDA 13 accepts GCC up to
-  # 16; Ubuntu's own CUDA packages bring a matching g++). An older CUDA from NVIDIA stops with
-  # "unsupported GNU version" if the system GCC is too new for it; then name an older GCC, e.g.
-  # -DCMAKE_CUDA_HOST_COMPILER=g++-12.
+  # nvcc compiles the host side of the .cu files with the same compiler as the C++ code (one
+  # toolchain; mixed GCC versions break e.g. PGO). -DCMAKE_CUDA_HOST_COMPILER or the environment
+  # variable CUDAHOSTCXX override this, e.g. when the CUDA release is too old for that GCC
+  # ("unsupported GNU version").
+  if(NOT CMAKE_CUDA_HOST_COMPILER AND NOT DEFINED ENV{CUDAHOSTCXX})
+    set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+  endif()
   enable_language(CUDA)
   find_package(CUDAToolkit REQUIRED)
 
@@ -236,10 +239,9 @@ if(SPODVR_USE_CUDA)
     src/cuda/specular_kernels.cu
     src/cuda/wave_function_kernels.cu
   )
-  # The kernels are C++17: nvcc 12.0 cannot compile every C++20 construct of the project headers,
-  # which is why all host code of the backend is in .cpp files. No link-time optimisation (nvcc
-  # objects cannot take part in GCC's LTO).
-  set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON
+  # Only kernels and their launchers are .cu files; all host code of the backend is .cpp. No
+  # link-time optimisation (nvcc objects cannot take part in GCC's LTO).
+  set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON
                                                INTERPROCEDURAL_OPTIMIZATION OFF)
   if(SPODVR_FAST_MATH)
     # The most aggressive device code (build-cuda-fast). Of --use_fast_math only the FMA
@@ -257,12 +259,8 @@ if(SPODVR_USE_CUDA)
   target_link_libraries(spodvr_cuda
     PUBLIC spodvr_core CUDA::cudart CUDA::cufft
     PRIVATE spodvr_warnings spodvr_fp)
-  set(host_compiler "${CMAKE_CUDA_HOST_COMPILER}")
-  if(NOT host_compiler)
-    set(host_compiler "the system g++")
-  endif()
   message(STATUS "SPO-DVR: CUDA backend ON (nvcc ${CMAKE_CUDA_COMPILER_VERSION}, host compiler "
-                 "${host_compiler}, architectures ${CMAKE_CUDA_ARCHITECTURES})")
+                 "${CMAKE_CUDA_HOST_COMPILER}, architectures ${CMAKE_CUDA_ARCHITECTURES})")
 endif()
 
 # =============================================================================================

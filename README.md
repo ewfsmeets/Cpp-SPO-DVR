@@ -36,7 +36,7 @@ Status:
 
 ## Dependencies
 
-- **Build tools**: a C++20 compiler with OpenMP (developed and tested with GCC 13), CMake ≥ 3.24,
+- **Build tools**: a C++20 compiler with OpenMP (tested with GCC 15, the Ubuntu 26.04 default), CMake ≥ 3.24,
   Ninja, pkg-config (CMake looks up FFTW3 through it).
 - **Math libraries**, one of:
   - **Intel oneMKL** (recommended; tested with 2026.2, found through its `MKLConfig.cmake`):
@@ -45,8 +45,8 @@ Status:
 - nlohmann/json and GoogleTest are downloaded by CMake (internet access needed on the first
   configure).
 - **Optional, for the GPU backend**: an NVIDIA GPU with its driver, and the CUDA toolkit (nvcc,
-  cudart, cuFFT). Recommended: the newest CUDA 13 (13.5 accepts GCC 6–16, so nvcc uses the same
-  GCC as the rest of the build). Developed with CUDA 12.0 (Ubuntu 24.04 packages). FP64 speed
+  cudart, cuFFT). Recommended: the newest CUDA 13 the GPU driver supports (tested with 13.3,
+  the first release that accepts GCC 15; nvcc uses the same compiler as the rest of the build). FP64 speed
   matters: data-centre GPUs (A100, H100) run FP64 at 1/2 of the FP32 rate, GeForce cards at 1/64.
 
 On Debian/Ubuntu (also under WSL2):
@@ -55,6 +55,8 @@ On Debian/Ubuntu (also under WSL2):
 ```bash
 sudo apt install build-essential cmake ninja-build pkg-config
 ```
+Any C++20 GCC works; the project is tested with GCC 15 (Ubuntu 26.04's default). For another
+compiler, configure a new build directory with e.g. `CXX=g++-14 cmake ...`; nvcc then uses it too.
 
 **2a. Intel oneMKL** (recommended), from Intel's apt repository:
 ```bash
@@ -74,25 +76,27 @@ building). The program always uses the sequential, LP64 oneMKL.
 sudo apt install libfftw3-dev liblapack-dev
 ```
 
-**3. CUDA** (optional, for `--device cuda`), the newest CUDA 13 from NVIDIA's apt repository
-(replace `ubuntu2604` by `ubuntu2404` on Ubuntu 24.04):
+**3. CUDA** (optional, for `--device cuda`), CUDA 13 from NVIDIA's apt repository (repository
+`wsl-ubuntu` under WSL2, `ubuntu2604` / `ubuntu2404` on a native Ubuntu 26.04 / 24.04):
 ```bash
-nvidia-smi                                  # first: the GPU and its driver must be visible
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/x86_64/cuda-keyring_1.1-1_all.deb
+nvidia-smi                                  # the GPU must be visible; note "CUDA Version" (newest CUDA the driver runs)
+wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb
 sudo dpkg -i cuda-keyring_1.1-1_all.deb
 sudo apt update
-sudo apt install cuda-toolkit-13            # newest 13.x; installs into /usr/local/cuda
+sudo apt install cuda-toolkit-13-3          # newest 13.x not above the driver's CUDA version; installs into /usr/local/cuda
 ```
-- **WSL2:** the GPU driver is the Windows NVIDIA driver (recent enough for the toolkit: CUDA 13
-  needs driver ≥ 580). Never install a Linux driver inside WSL; from CUDA 13.4 on, the toolkit
-  packages above install no driver.
+- Do not install a toolkit newer than the driver supports: it compiles, but the kernels then fail
+  at run time.
+- **WSL2:** the GPU driver is the Windows NVIDIA driver (update it in Windows). Never install a
+  Linux driver inside WSL; the `wsl-ubuntu` repository contains none.
 - `/usr/local/cuda/bin` need not be on `PATH`: CMake finds nvcc there. It also sets the GPU
   architecture from `nvidia-smi` (override with `-DCMAKE_CUDA_ARCHITECTURES`, e.g.
   `"80-real;90-real"` for A100 and H100).
 - Ubuntu's own packages (`sudo apt install nvidia-cuda-toolkit`) work as well, but are older
-  (Ubuntu 24.04: CUDA 12.0). They bring the GCC version their nvcc needs.
-- An older CUDA from NVIDIA's repository may reject a newer system GCC ("unsupported GNU
-  version"); then install a GCC it accepts and add e.g. `-DCMAKE_CUDA_HOST_COMPILER=g++-12`.
+  (Ubuntu 24.04: CUDA 12.0 with g++-12 as nvcc's host compiler; untested since the kernels became C++20).
+- nvcc compiles with the C++ compiler of the build. If the CUDA release rejects that GCC
+  ("unsupported GNU version"; GCC 15 needs CUDA ≥ 13.3), set `CUDAHOSTCXX` or
+  `-DCMAKE_CUDA_HOST_COMPILER` to a GCC it accepts.
 
 ## Building
 ```bash
@@ -100,22 +104,18 @@ git clone https://github.com/ewfsmeets/Cpp-SPO-DVR.git
 cd Cpp-SPO-DVR
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure   # unit and regression tests (a few minutes)
 ```
 The configure step reports which libraries it uses, e.g.
 `SPO-DVR: BLAS/LAPACK from oneMKL 2026.2 (sequential), FFT library MKL`.
-Run ctest serially (no `-j`): many tests use all OpenMP threads themselves. Set `OMP_NUM_THREADS` to
-the number of physical cores. `SPODVR_LONG_TESTS=1 ctest --test-dir build -R Long` adds the
-full-length regression runs.
+How to run the tests: see [Testing](#testing).
 
-With the GPU backend (the GPU tests are in `tests/cuda/` and skip on a machine without a GPU):
+With the GPU backend:
 ```bash
 cmake -S . -B build-cuda -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON
 cmake --build build-cuda
-OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 ```
-Set `-DCMAKE_CUDA_ARCHITECTURES` for the GPU you run on (default `89-real`, RTX 40xx; `80-real`
-A100, `90-real` H100); the configure step prints the nvcc version, host compiler and architectures.
+The kernels are compiled for the GPU of the build machine (`native`); for another GPU set
+`-DCMAKE_CUDA_ARCHITECTURES` (`89-real` RTX 40xx, `80-real` A100, `90-real` H100). The configure step prints the nvcc version, host compiler and architectures.
 
 Useful CMake options:
 
@@ -156,6 +156,44 @@ pre-commit install                                           # once per clone
 pre-commit run --all-files                                   # format everything
 pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build/compile_commands.json)
 ```
+
+## Testing
+```bash
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1 min)
+```
+- **Run ctest serially** (no `-j`): many tests already use all OpenMP threads. Set
+  `OMP_NUM_THREADS` to the number of physical cores (not hyperthreads).
+- **What is tested:**
+  - unit tests, one program per module (`tests/test_<module>.cpp`);
+  - regression tests against the original Fortran code (`tests/test_regression_*.cpp`, test names
+    `Regression…`/`Gate…`): potential, gas-phase states, propagation (norms and averages),
+    on-the-fly analysis (probabilities, BK coefficients) and fine analysis. The Fortran reference
+    output is stored in `tests/reference/`;
+  - GPU tests (`tests/cuda/`, names `Cuda…`): only in builds with `-DSPODVR_USE_CUDA=ON`. They skip on
+    a machine without a GPU.
+- **Selecting tests** (ctest `-R`/`-E` take a regular expression on the test name;
+  `ctest --test-dir build -N` lists them all):
+  ```bash
+  ctest --test-dir build -E Regression           # unit tests only (~1.5 min)
+  ctest --test-dir build -R Gate3                # one acceptance gate
+  ./build/tests/test_input --gtest_filter='Input.*'   # one test program directly (GoogleTest)
+  ```
+- **Long tests:** the full 7000-step regression runs (hard wall and Dai–Light; the latter alone takes
+  about 13 minutes on 8 cores) are skipped unless `SPODVR_LONG_TESTS` is set:
+  ```bash
+  SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build -R Long --output-on-failure
+  SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R 'Cuda.*Long' --output-on-failure
+  ```
+- **Skipped regression tests:** a regression test skips (it does not fail) when its Fortran
+  reference file is missing. The scripts in `tools/fortran_reference/` regenerate the files; they
+  need the Fortran program (`SPODVR_FORTRAN_EXE`).
+- **Other build variants** ([Build variants](#build-variants-and-toolsbuild_allsh)): run the same
+  ctest command in their build directory. Use `build-poison` after touching the uninitialised-memory
+  code. `build-fast` (fast-math) is expected to fail a few unit tests by one ulp; its gates pass.
+- **Numerically neutral changes** (refactors) must leave the results bitwise unchanged:
+  `tools/check_bitwise_refactor.sh [base-ref]`. For changes that may alter rounding:
+  `tools/compare_propagation.sh [base-ref] [tolerance]`.
 
 ## Running
 The program reads one JSON input file:

@@ -21,18 +21,17 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 | `SPODVR_USE_CUDA` | `OFF` | build the backend. Without it nothing CUDA-related is compiled, and `--device cuda` stops with a clear error |
 | `CMAKE_CUDA_COMPILER` | nvcc from `PATH`, else `/usr/local/cuda/bin/nvcc` | the CUDA compiler |
 | `CMAKE_CUDA_ARCHITECTURES` | `native` (the GPU of the build machine) | set e.g. `89-real` (RTX 40xx), `80-real` (A100), `90-real` (H100), or a list, for a build that runs elsewhere |
-| `CMAKE_CUDA_HOST_COMPILER` | the system `g++` | host compiler of nvcc. Each CUDA release accepts GCC only up to a limit (`crt/host_config.h`): 12.0–12.3 GCC ≤ 12, 13.5 GCC ≤ 16. Ubuntu's CUDA packages bring a matching g++ |
+| `CMAKE_CUDA_HOST_COMPILER` | `$CUDAHOSTCXX`, else the C++ compiler of the build | host compiler of nvcc. Each CUDA release accepts GCC only up to a limit (`crt/host_config.h`) |
 | `SPODVR_CUDA_SYNC_DEBUG` | `OFF` | wait for and check every kernel right after its launch (errors are reported where they happen) |
 
-- **Toolchain:** recommended is the newest CUDA 13 (NVIDIA's apt repository, see the README),
-  whose nvcc accepts the GCC of current distributions (Ubuntu 26.04: GCC 15), so host code and
-  kernels use the same compiler. Developed and tested with CUDA 12.0 (Ubuntu 24.04 packages,
-  cuFFT 11.0; nvcc uses the packaged g++-12).
+- **Toolchain:** one compiler for host code and kernels. Tested with CUDA 13.3 (NVIDIA's apt
+  repository, see the README) and GCC 15 (needs CUDA ≥ 13.3). Developed with CUDA 12.0 (Ubuntu 24.04 packages, g++-12
+  as nvcc's host compiler, C++17 kernels); untested with 12.0 since the kernels are C++20.
 - **Tests:** the GPU tests in `tests/cuda/` are only built with the option, and they skip on a
   machine without a GPU.
-- **Host code:** only kernels and their launch functions are in `.cu` files (C++17, nvcc). All host
-  code of the backend is in `.cpp` files compiled by the normal C++ compiler. nvcc 12.0 cannot
-  compile some C++20 constructs of the project headers (parenthesised aggregate initialisation).
+- **Host code:** only kernels and their launch functions are in `.cu` files (C++20, nvcc). All host
+  code of the backend is in `.cpp` files compiled by the normal C++ compiler: they keep nvcc away
+  from the project headers and the host code inside LTO.
 - **Compile flags:** `spodvr_warnings` and `spodvr_fp` apply to C++ only. The kernels get
   `-fmad=false` (no FMA contraction, as on the CPU). With `SPODVR_FAST_MATH=ON` they get
   `--use_fast_math --extra-device-vectorization` instead (see "Fast build" under Performance).
@@ -98,7 +97,7 @@ The tables are the CPU's. `potential_step_factors`, `specular_gas_phase_factors`
 - **What remains is the FFT library:** cuFFT rounds differently from oneMKL/FFTW. After 1000 steps
   of hardwall_short, the CPU and GPU averages differ by ≤ 1.0e-13 relative (norm), against
   1.2e-13 between the CPU with oneMKL and the CPU with FFTW. This is the same level the CPU build
-  already accepts between FFT libraries (CLAUDE.md: within ~1e-13, all gates pass).
+  already accepts between FFT libraries (docs/validation.md: within ~1e-13, all gates pass).
 - **Densities** use CUDA's `hypot`, which can differ from glibc's by an ulp.
 - **Determinism:** no atomics, fixed launch shapes, everything on the default stream, so two GPU
   runs are bitwise identical. That holds for the same GPU model and library versions only, so no
@@ -127,8 +126,8 @@ The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is s
 ## Performance
 Measure with `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [repetitions]`, which
 times each stage and each kernel of the potential stage. ncu needs access to the GPU performance
-counters (not granted on this WSL2 machine), and the nsys of the Ubuntu packages cannot import its
-own traces.
+counters (not granted on this WSL2 machine). The nsys of Ubuntu's CUDA 12.0 packages could not
+import its own traces; NVIDIA's Nsight Systems (installed with CUDA 13) has not been tried yet.
 
 DZ benchmark (`inputs/thesis_fig5_3_dz`: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
 19 C6v representatives), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step
@@ -187,8 +186,8 @@ cmake -S . -B build-cuda-fast -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_C
 For our FP64 kernels only the FMA contraction (`-fmad=true`) matters; the rest of
 `--use_fast_math` (flush-to-zero, approximate division, square root and intrinsics) acts on FP32
 only. The host code gets `-ffast-math -march=native`. No PGO: in a GPU run the host code is a small
-part of the time, and the PGO training of a build that mixes g++-13 objects with nvcc's g++-12
-host objects failed (libgcov "version mismatch", no profile written); not investigated further.
+part of the time. (With CUDA 12.0 the PGO training failed because GCC 13 objects were mixed with
+nvcc's g++-12 host objects; with one compiler for both this cause is gone, but it was not retried.)
 
 Measured on the RTX 4070 Ti (2026-11-06):
 
