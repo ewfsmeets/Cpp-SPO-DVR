@@ -1,9 +1,9 @@
-// Regression gates 3 and 4 (CLAUDE.md): the propagation and the on-the-fly analysis of
+// Regression gates 3 and 4 (docs/validation.md): the propagation and the on-the-fly analysis of
 // tests/reference/hardwall_short (1000 steps) against the Fortran output of the same case
 // (fortran_stdout.txt, fortran_averages.out and, if present, fortran_fort21.bin, written by
 // tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
-// SPODVR_LONG_TESTS=1. The Dai-Light cases skip until their Fortran references exist.
+// SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing.
 #include <cstdlib>
 
 #include "regression_gate.hpp"

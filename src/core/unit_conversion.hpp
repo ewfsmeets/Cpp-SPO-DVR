@@ -6,7 +6,7 @@ namespace spodvr {
 
 // Unit conversion factors plus named conversion procedures.
 //
-// The Fortran code mixes two sets of factors (see CLAUDE.md): `legacy` (chaev, camau, cboan,
+// The Fortran code mixes two sets of factors: `legacy` (chaev, camau, cboan,
 // chacm in constants.f90, used almost everywhere) and `precise` (Constants_eV2Ha, u2aum,
 // Bohr2Ang, Ha2cmInv, used in FluxAnalyzor.f90). Each factor is stored in the direction in
 // which the Fortran code defines it, and every conversion multiplies or divides by it exactly

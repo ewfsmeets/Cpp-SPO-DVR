@@ -30,7 +30,7 @@ AnalysisEnergies make_analysis_energies(const Config& config, const GasPhase& ga
   }
 
   // Fortran: ensctr = enrgi + dfloat(ien-1) * denrgy is evaluated in quad precision; plain
-  // double here (see CLAUDE.md, quad-precision sites).
+  // double here (see docs/fortran_deviations.md, quad-precision sites).
   AnalysisEnergies e;
   for (int ien = 0; ien < count; ++ien) {
     const double collision = start + ien * step;

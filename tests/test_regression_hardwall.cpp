@@ -1,4 +1,4 @@
-// Regression gates 1 and 2 (CLAUDE.md) for tests/reference/hardwall_small against the Fortran
+// Regression gates 1 and 2 (docs/validation.md) for tests/reference/hardwall_small against the Fortran
 // reference files produced by tools/fortran_reference/run_setup_reference.sh:
 //   fortran_setup_stdout.txt  vasy table (gate 1), list-directed full precision
 //   pes_reference.txt         the full potential V(iz, ir) and the angular grid (gate 1)

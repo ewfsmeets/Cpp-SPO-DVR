@@ -87,4 +87,4 @@ is: `SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`,
 All checks of `InputNew.f90` ReadInput/ValidateInput are reproduced, with the same tolerant real
 comparisons (absolute tolerance 1e-12). So are the grid checks of `Setup.f90` and `setupdvr.f90`
 and the nφ checks of `transform.f90` (which are hard errors here). Every check has a unit test in
-`tests/test_input.cpp`. Deviations are listed in CLAUDE.md.
+`tests/test_input.cpp`. Deviations are listed in [fortran_deviations.md](fortran_deviations.md).

@@ -1,4 +1,4 @@
-// Regression gates 3 and 4 (CLAUDE.md) with the GPU backend: the same Fortran references and
+// Regression gates 3 and 4 (docs/validation.md) with the GPU backend: the same Fortran references and
 // tolerances as test_regression_propagation.cpp. Skipped without a GPU or without the references.
 #include <cstdlib>
 

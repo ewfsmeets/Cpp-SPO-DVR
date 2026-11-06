@@ -20,7 +20,7 @@ namespace spodvr {
 //     multi-socket (NUMA) machines a memory page is placed on the socket of the thread that
 //     first writes it ("first touch"), so each thread then works on local memory.
 // The pointers exist only inside the standard allocator interface used by std::vector (the one
-// place besides the C-API boundaries where they appear; see CLAUDE.md Pointers).
+// place besides the C-API boundaries where the project allows raw pointers).
 template <class T>
 struct AlignedAllocator {
   using value_type = T;

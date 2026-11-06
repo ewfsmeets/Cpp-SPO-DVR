@@ -1,6 +1,6 @@
 #pragma once
 
-// Gates 3 and 4 (CLAUDE.md) for one reference case, with a given propagation backend: the C++ run
+// Gates 3 and 4 (docs/validation.md) for one reference case, with a given propagation backend: the C++ run
 // of <case>/input.json against the Fortran output of the same case (skipped when missing).
 // Used by test_regression_propagation.cpp (CPU) and cuda/test_cuda_regression.cpp (GPU).
 

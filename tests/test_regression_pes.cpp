@@ -1,4 +1,4 @@
-// Regression gates 1 and 2 (CLAUDE.md) for the corrugated PES cases against the Fortran reference
+// Regression gates 1 and 2 (docs/validation.md) for the corrugated PES cases against the Fortran reference
 // files produced by tools/fortran_reference/run_setup_reference.sh <case>:
 //   fortran_setup_stdout.txt  vasy table (gate 1)
 //   pes_reference.txt         6D subsample of the potential and the angular grid (gate 1)
@@ -35,7 +35,7 @@ namespace fs = std::filesystem;
 namespace {
 
 // The Fortran grids are evaluated in quad precision and differ from the C++ grids by up to 1 ulp
-// (accepted, see CLAUDE.md). The potential is compared with an absolute floor of 1 eV: near
+// (accepted, see docs/fortran_deviations.md). The potential is compared with an absolute floor of 1 eV: near
 // V = 0 the LEPS cancellation makes a pure relative test meaningless.
 constexpr double grid_tolerance = 4e-16;        // relative, ~2 ulp
 constexpr double vasy_tolerance = 1e-14;        // relative to max(|V|, 1 eV)

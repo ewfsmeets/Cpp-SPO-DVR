@@ -26,7 +26,7 @@ double nint(double x) { return static_cast<double>(std::lround(x)); }
 }  // namespace
 
 // Fortran: InputNew.f90 ValidateInput. The checks appear in the same order and with the same
-// messages (a few message typos are corrected, see CLAUDE.md).
+// messages (a few message typos are corrected, see docs/fortran_deviations.md).
 void validate_input(const InputParameters& p, const SystemParameters& system, double zasymp) {
   using namespace fortran_compare;
   const auto& units = units::legacy;

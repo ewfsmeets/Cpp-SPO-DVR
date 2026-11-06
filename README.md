@@ -312,7 +312,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
-| `docs/` | input schema, output files, performance notes, GPU backend |
+| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 
 ## License
