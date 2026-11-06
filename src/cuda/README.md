@@ -1,375 +1,291 @@
-# `src/cuda/`: the GPU propagation backend
+# `src/cuda/`: the GPU kernels
 
-This directory holds the CUDA implementation of the split-operator propagation (`--device cuda`).
-The wave packet lives in GPU memory for the whole run. Per analysis step the host receives only
-three small pieces:
-- the specular wave;
-- one Z plane, the input of the Balint-Kurti (BK) analysis;
-- now and then, the densities per (Z, r) point.
+This directory propagates the wave packet on an NVIDIA GPU (`spodvr --device cuda`). ψ stays in
+GPU memory for the whole run. The host gets back only small pieces: the specular wave, one Z
+plane for the BK analysis, and now and then a density per (Z, r) point.
 
-This file explains which kernels exist, why each exists, and how they fit together. Building,
-running, memory, benchmarks and the measured optimisations are in
+> **Ground rule.** Every kernel computes exactly what its *CPU twin* in `src/propagation/`
+> computes, with the same tables and in the same order. Only the memory layout and the parallel
+> execution differ. If you change a kernel, change its twin too. There is one documented
+> exception: the merged kinetic stage (§4.1).
+
+Building, running, benchmarks and the measured optimisations are in
 [`docs/cuda.md`](../../docs/cuda.md).
 
-**The ground rule** (docs/cuda.md, "One method, two executions"): the GPU computes *the same
-method* as the CPU backend (`src/propagation/`), with the same tables and the same operation
-order per element. Only the execution differs. Every kernel therefore has a **CPU twin**, named
-below.
-- The one deliberate exception is the merged kinetic stage, described in the docs with its test.
-- Whenever you change a kernel, also check its twin.
+**Start here.**
+1. Read §1 (vocabulary) and §2 (memory layout).
+2. Read §3, the list of everything that runs in one time step.
+3. In the code, follow `CudaBackend::propagate_analysis_step` (`cuda_backend.cpp`) into
+   `DevicePotentialOperator::apply` (`device_potential_operator.cpp`). Read the kernels it
+   launches in `potential_kernels.cu`, with §4.3 at hand.
 
 ---
 
-## 1. Files
+## 1. Vocabulary
+
+| Term | Meaning |
+|---|---|
+| `izr` | (Z, r) grid point, `izr = ir + nr·iz` |
+| `ixy` | (x, y) grid point, `ixy = iy + ny·ix` |
+| `irot` | rotational basis state \|J mJ⟩. Ordered by mJ = −MJMax … MJMax, and within one mJ by J |
+| FBR / DVR | the two angular representations of ψ: coefficients of \|J mJ⟩ (FBR), or values on the (θ, φ) grid (DVR) |
+| mJ block | the consecutive irot with one value of mJ (J = \|mJ\| … JMax); the kernels support at most 64 per block |
+| φ slot | position of an mJ in the φ transform: slot mJ for mJ ≥ 0, slot nφ + mJ for mJ < 0 |
+| specular wave | the incoming channel (the initial rovibrational state) on its own, longer (Z, r) grid. In the interaction region it is added to ψ for the potential step and projected back afterwards |
+| initial channel | the irot of the initial state |
+| zasymp | the Z beyond which V depends on r only (free molecule). `n_zr_potential` = the (Z, r) points with Z < zasymp, the *interaction region* |
+| A | −V·dt, premultiplied on the host; the potential step multiplies by exp(iA) |
+| rot(dt/2) | exp(−i E_rot dt/2) with E_rot = J(J+1)/(2μr²) (μ: reduced mass of the molecule), so one value per (irot, ir) |
+| slab | a block of consecutive (Z, r) points of the interaction region, processed together (the DVR scratch is sized for one slab) |
+| DVR column | one (Z, r, x, y) point of a slab: one GPU thread in the angular-transform kernels |
+| BK plane | ψ at one Z (`iz_analysis`), the input of the Balint-Kurti (BK) analysis on the host, which projects it onto the asymptotic channels |
+| dtAve | the interval of the averages output; `block_densities` runs at this interval |
+| load callback | a device function that cuFFT calls for every value it reads (used to multiply by exp(iA) inside an FFT) |
+
+---
+
+## 2. Memory layout
+
+ψ on the GPU, with the (Z, r) index innermost:
+
+```
+psi[izr + n_zr * (irot + n_rot * ixy)]        (DeviceLayout, device_complex.hpp)
+```
+
+The host and the files keep the Fortran order `psi[irot + n_rot * (ixy + n_xy * izr)]`. The
+kernels `host_chunk_to_device` and `device_to_host_chunk` convert between the two (restart and
+checkpoint only).
+
+```
+address →
+| izr = 0 1 2 … n_zr-1 | izr = 0 1 2 … n_zr-1 | … | izr = 0 1 2 … n_zr-1 | …
+|   irot 0, ixy 0      |   irot 1, ixy 0      | … |   irot 0, ixy 1      | …
+  ▲▲▲▲ warp: threads 0…31 read izr 0…31 of one (irot, ixy), one coalesced load
+```
+
+Why izr innermost:
+- Every (irot, ixy) is one contiguous (Z, r) image, so T_Z + T_r is a single batched 2D cuFFT.
+  (cuFFT allows only one batch dimension, so the batched images must be evenly spaced.)
+- Thread i usually handles izr = i, so neighbouring threads touch neighbouring addresses.
+
+**Example** (nr = 2, nz = 3, n_rot = 4, nx = ny = 2): take the element iz = 1, ir = 0, irot = 2,
+ix = 1, iy = 0.
+- Its indices are izr = 0 + 2·1 = 2 and ixy = 0 + 2·1 = 2.
+- GPU index: 2 + 6·(2 + 4·2) = **62**.
+- Host index: 2 + 4·(2 + 4·2) = **42**.
+
+The specular wave is a plain (Z, r) array, `spec[izr]`, the same on host and GPU.
+
+---
+
+## 3. One time step: everything that runs, in order
+
+The host calls `propagate_analysis_step()` once per analysis step: n time steps as
+`T(dt/2) V (T V)^(n−1) T(dt/2)`.
+
+```mermaid
+flowchart LR
+  A["T dt/2 → V"] --> L{"n−1 times"}
+  L --> B["T dt → V"] --> L
+  L --> C["T dt/2, kinetic only"] --> D["download the specular wave"]
+```
+
+Each box is one call of `kinetic_and_potential_step`: a T → V pair. The final T(dt/2) is called
+with `kinetic_only` and skips steps 4 and 10–16. On the default stream, one after the other, a
+call launches:
+
+| # | Stage | Launch | What it does |
+|---|---|---|---|
+| 1 | specular grid | cuFFT 2D (Z, r) | to momentum space |
+| 2 | | `multiply_by_periodic_factors` | × exp(−iT dt) |
+| 3 | | cuFFT 2D (Z, r) | back to coordinates |
+| 4 | | `apply_specular_gas_phase_and_absorbers` | gas phase and absorbers (*not on the final half step*) |
+| 5 | kinetic T | `multiply_by_blocked_factors` | momentum shift (only with parallel momentum) |
+| 6 | | cuFFT 2D (Z, r), then cuFFT 2D (x, y) | to momentum space |
+| 7 | | `multiply_by_kinetic_factors` | × exp(−iT_Zr dt) × exp(−iT_xy dt) |
+| 8 | | cuFFT (x, y), then cuFFT (Z, r) | back to coordinates |
+| 9 | | `multiply_by_blocked_factors` | undo the shift |
+| 10 | potential V (*not on the final half step*) | `apply_gas_phase_step` | Z ≥ zasymp: elementwise step |
+| 11 | per slab | `absorb_and_transform_to_dvr` | absorption, rot(dt/2), add the specular wave; FBR → DVR in θ |
+| 12 | | cuFFT over φ | mJ → φ |
+| 13 | | copy `izr_first` into the callback's arguments | |
+| 14 | | cuFFT over φ, **with load callback** | × exp(iA) while reading; φ → mJ |
+| 15 | | `transform_to_fbr_and_rotate` | DVR → FBR in θ, rot(dt/2) |
+| 16 | | `project_onto_specular` | initial channel back to the specular grid |
+
+The analysis loop asks for the rest when it needs it: `z_plane(iz)` (`pack_z_plane` and a copy),
+and `block_densities()` every dtAve.
+
+One stream, no atomics, fixed launch shapes: two runs on the same GPU give bitwise identical
+results, also across a restart.
+
+---
+
+## 4. The stages
+
+### 4.1 Kinetic stage T
+
+T_Z + T_r and T_xy commute, so the GPU transforms all four dimensions and multiplies **once**
+(steps 6–8). That saves one pass over ψ.
+
+The CPU keeps two stages, T_Z + T_r and then T_xy fused with V, so this is the documented
+methodology exception (docs/cuda.md). Per element the order of the factors is kept: first
+(Z, r), then (x, y). cuFFT does not scale, so each factor comes with its two FFT scale factors,
+applied as two separate multiplications as on the CPU.
+
+### 4.2 Specular grid
+
+A 2D FFT, a multiplication and the inverse FFT (steps 1–4), then the gas phase and the absorbers.
+The specular wave meets the scattering grid only in the potential stage (steps 11 and 16).
+
+### 4.3 Potential stage V
+
+- **Z ≥ zasymp:** V depends on r only, so the step is diagonal in irot: one elementwise kernel
+  (`gas_phase_step`).
+- **Z < zasymp:** V couples the rotational states. ψ goes FBR → DVR, is multiplied by exp(iA),
+  and goes back DVR → FBR. This is done slab by slab, so that the DVR scratch has a fixed size
+  (at most 1 GiB).
+
+```mermaid
+flowchart TB
+  G["gas_phase_step<br/>Z ≥ zasymp"] --> S{"next slab"}
+  S --> A["absorb_and_transform_to_dvr<br/>FBR → DVR in θ"]
+  A --> F1["cuFFT φ<br/>mJ → φ"]
+  F1 --> F2["cuFFT φ + callback<br/>× exp(iA), φ → mJ"]
+  F2 --> B["transform_to_fbr_and_rotate<br/>DVR → FBR in θ"]
+  B --> P["project_onto_specular"]
+  P --> S
+```
+
+**The DVR scratch** of a slab is laid out `(col, θ, φ)` with the column fastest:
+`dvr[col + n_col·(itheta + n_theta·iphi)]`. Along φ (here MJMax = 2, nφ = 6):
+
+```
+φ slot:   0      1      2      3      4       5
+holds:   mJ=0   mJ=1   mJ=2   zero   mJ=−2   mJ=−1
+```
+
+`absorb_and_transform_to_dvr` fills the slots of the mJ blocks and zeroes the rest. The first φ
+FFT then turns slots into φ grid points.
+
+**One thread of `absorb_and_transform_to_dvr`**, worked through for a slab of 3 points starting
+at izr_first = 9 (the fourth slab), with n_xy = 4 (12 columns), thread col = 7:
+1. **Its point:** izr = izr_first + col % 3 = 10 and ixy = col / 3 = 2.
+2. **Load:** for every mJ block, it loads ψ(izr = 10, irot, ixy = 2) for each irot of the block
+   and multiplies it by the Z absorber and by `before_interaction` (r absorber × rot(dt/2)). In
+   the initial channel it adds the specular wave `spec[10]`, which also goes through rot(dt/2).
+   The results go into a per-thread array `fbr[j]` (in local memory, cached).
+3. **Sum:** for every θ it forms `Σ_j legendre(θ, j)·fbr[j]` and writes it to
+   `dvr[7 + 12·(itheta + n_theta·slot)]`. Note: the DVR index uses the column (7), the ψ index
+   uses izr (10).
+4. **Coalescing:** threads 6, 7 and 8 have the same ixy and izr 9, 10, 11. Their ψ reads and
+   their DVR writes are neighbouring addresses.
+5. **The Legendre matrix** is the same for all threads, so a warp reads it with one broadcast
+   load.
+
+`transform_to_fbr_and_rotate` is the same thread layout in reverse.
+
+**Why exp(iA) is a cuFFT callback:** exp(iA) must multiply the values on the φ grid, i.e. after
+the first φ FFT and before the second. The second FFT reads exactly those values, so its load
+callback multiplies each one as it is read. As a separate kernel it would read and write the
+whole DVR scratch once more per slab. The kernel version, `multiply_by_exp_potential`, still exists. It is
+used when nφ = 1 (no φ FFT to attach to), and it is the reference in the callback's test.
+
+**Surface symmetry:** exp(iA) is stored only at the (x, y) representatives. `ExpPotentialTable::at`
+(`kernels.hpp`) maps a point to its representative and the rotated or mirrored φ. It is the only
+code that knows this layout, and both the kernel and the callback use it.
+
+---
+
+## 5. Before you change a kernel
+
+**Rules.**
+- **Same order as the CPU twin.** Complex products as in `device_complex.hpp`. No FMA: the
+  kernels are built with `-fmad=false`, and the callback uses `__dmul_rn`/`__dadd_rn`.
+- **No atomics, and no reductions whose order depends on scheduling.** A reduction runs in one
+  thread in a fixed order (`project_onto_specular`, `block_densities`). Atomics would make two
+  runs differ in the last bits. `CudaBackend.TwoRunsAreBitwiseIdentical` and
+  `CudaRestart.SplitGpuRunIsBitwiseIdenticalToTheUnsplitGpuRun` would catch that.
+- **Limits:** at most 64 values of J per mJ block. The DVR scratch of one slab must stay below
+  2³¹ values (the kernels and the callback use 32-bit indices within a slab). Both are checked
+  in the `DevicePotentialOperator` constructor.
+- **Launch shapes:** `grid_2d(n_inner, n_outer)` puts the inner index on the grid's x dimension
+  (coalesced) and runs the outer index in a loop over the grid's y dimension. Integer division by a non-constant is
+  slow on the GPU, so this avoids one per element.
+
+**Recipes.**
+
+| I want to … | Do this |
+|---|---|
+| change V (a new PES or term) | Implement it in `src/potential/` (a `Potential` subclass; `potential_factory.cpp` maps `SystemID` to it). No kernel changes: the program evaluates V on the grid (`compute_potential_grid`), and `DevicePotentialOperator`'s constructor turns it into the exp(iA) table |
+| change a kinetic or rotational table | change it where `PropagationTables` is built (`src/propagation/propagation_tables.cpp`). The GPU uploads the same table; check that the device layout still matches |
+| add a kernel | add the kernel and its launcher to a `.cu` file, declare the launcher in `kernels.hpp`, and call it from the operator's `.cpp`. Name its CPU twin and Fortran origin in a comment |
+| change what a stage computes | change both backends in one commit, or document a methodology exception with a test (docs/cuda.md) |
+| test | `ctest --test-dir build-cuda -R Cuda`; long gates with `SPODVR_LONG_TESTS=1` |
+| time | `build-cuda/tools/spodvr_cuda_operator_timing <input.json>`, compared in interleaved A/B runs (docs/cuda.md) |
+
+---
+
+## 6. Kernel reference
+
+In "Thread → data", `.x` and `.y` are the dimensions of the CUDA grid (thread index in x, block
+index in y), not the coordinates x, y.
+
+| Kernel | Thread → data | Computes |
+|---|---|---|
+| `multiply_by_kinetic_factors` | `.x`: izr, `.y`: ixy, loop over irot | × exp(−iT_Zr dt) × exp(−iT_xy dt), each with its FFT scales |
+| `multiply_by_blocked_factors` | `.x`: (izr, irot), `.y`: ixy | momentum shift, one factor per ixy |
+| `multiply_by_periodic_factors` | `.x`: position in the period, `.y`: period index | specular kinetic step |
+| `apply_specular_gas_phase_and_absorbers` | one thread per specular point | gas phase, Z absorber, r absorber |
+| `apply_gas_phase_step` | `.x`: izr ≥ n_zr_potential, `.y`: (irot, ixy) | absorption × rot · exp(−i V_asy(r) dt) · rot |
+| `absorb_and_transform_to_dvr` | one thread per DVR column | §4.3 worked example |
+| `multiply_by_exp_potential` | `.x`: DVR column, `.y`: (θ, φ) | × exp(iA) (nφ = 1; test reference) |
+| `transform_to_fbr_and_rotate` | one thread per DVR column | DVR → FBR in θ, rot(dt/2), writes ψ |
+| `project_onto_specular` | one thread per (Z, r) point of the slab | sums the initial channel over (x, y) into the specular wave, then subtracts that part from ψ |
+| `spodvr_exp_potential_load` (callback) | one call per value the φ FFT reads | × exp(iA) |
+| `block_densities` | one thread per izr | Σ \|ψ\|² over (irot, ixy), in host order |
+| `pack_z_plane` | one thread per value of the plane | BK plane in host layout |
+| `host_chunk_to_device`, `device_to_host_chunk` | one thread per value | layout conversion via a staging buffer |
+
+(Every kernel above is launched through the function of that name in `kernels.hpp`; the
+`__global__` functions carry a `_kernel` suffix.)
+
+---
+
+## Appendix A: files and who owns what
+
+```
+CudaBackend                      cuda_backend.{hpp,cpp}
+├── DeviceWavePacket             device_wave_packet.hpp      (scattering + specular ψ)
+├── DeviceSpecularOperator       device_kinetic_operator.*   (2D FFT pair)
+├── DeviceKineticOperator        device_kinetic_operator.*   ((Z, r) and (x, y) FFT pairs)
+└── DevicePotentialOperator      device_potential_operator.* (φ FFT pair, DVR scratch, exp(iA) table)
+    (all FFT plans: DeviceFftPlan, cuda_fft.*; one shared cuFFT work area)
+```
 
 | File | Content |
 |---|---|
-| `cuda_backend.{hpp,cpp}` | `CudaBackend` (the `PropagationBackend` of the GPU): owns the wave packet and the three operators, runs an analysis step, copies data to and from the host. Also the device summary and the GPU memory estimate. |
-| `device_kinetic_operator.{hpp,cpp}` | `DeviceKineticOperator` (kinetic stage T on the scattering grid) and `DeviceSpecularOperator` (the specular grid). Host code: tables, cuFFT plans, launch order. |
-| `device_potential_operator.{hpp,cpp}` | `DevicePotentialOperator`: the potential stage V (absorption, specular coupling, angular transform, exp(−iV dt)), slab by slab. Host code. |
-| `kernels.hpp` | Declarations of all kernel **launchers**, plus the argument structs the kernels read (`FftScales`, `SpecularStepArgs`, `PotentialArgs`, `ExpPotentialTable`). |
-| `kinetic_kernels.cu` | Multiplications in momentum space: the kinetic factors and the momentum shift. |
-| `potential_kernels.cu` | The potential-stage kernels. |
-| `specular_kernels.cu` | Gas-phase step and absorbers on the specular grid. |
-| `wave_function_kernels.cu` | Kernels on the whole ψ: densities, the BK plane, host ⇄ device layout conversion. |
-| `fft_callbacks.{hpp,cu,cpp}` | The cuFFT **load callback** that applies exp(iA) inside the φ FFT. It is compiled separately to LTO-IR and embedded (section 6). |
-| `cuda_fft.{hpp,cpp}` | `DeviceFftPlan`: a cuFFT plan (64-bit sizes, optionally split into slabs of batches, shared work area, optional load callback). |
-| `device_buffer.{hpp,cpp}` | `DeviceBuffer<T>`: owning device memory (a `unique_ptr` with a `cudaFree` deleter), upload and download. |
-| `device_complex.hpp` | `Complex` (two doubles, the layout of `std::complex<double>`), its operators, and `DeviceLayout` (the index of ψ on the GPU). |
-| `device_wave_packet.hpp` | `DeviceWavePacket`: the scattering and the specular wave in GPU memory. |
-| `launch.cuh` | Launch helpers: `threads_per_block` (256), `blocks_for`, `grid_2d`, `thread_index`. |
-| `cuda_error.{hpp,cpp}` | `CudaError`, status checks, `check_kernel_launch`. |
+| `kernels.hpp` | launcher declarations and kernel argument structs (`PotentialArgs`, `ExpPotentialTable`, …) |
+| `kinetic_kernels.cu`, `specular_kernels.cu`, `potential_kernels.cu`, `wave_function_kernels.cu` | the kernels |
+| `fft_callbacks.{hpp,cu,cpp}` | the exp(iA) load callback (built separately: docs/cuda.md, Building → "cuFFT callback") |
+| `device_complex.hpp` | `Complex`, `DeviceLayout` |
+| `device_buffer.*`, `launch.cuh`, `cuda_error.*` | device memory, launch helpers, error checks |
 
-Division of labour (a project rule):
-- **`.cu` files:** kernels and their launchers only (`kernels.hpp` declares the launchers);
-- **`.cpp` files:** all host logic (tables, plans, loops), compiled by the normal C++ compiler.
+Kernels and launchers are in `.cu` files; all host logic (tables, plans, loops) is in `.cpp`
+files, compiled by the normal C++ compiler. The tables are computed on the host by the CPU
+code and uploaded once, so the GPU multiplies by bitwise the same numbers.
 
-This keeps nvcc away from the project headers, and the host code inside the C++ build (warnings,
-LTO).
+## Appendix B: traceability
 
----
-
-## 2. Data layout: why izr is the fastest index
-
-The host and the files keep the Fortran layout of the scattering wave, `(irot, ixy, izr)`, with
-irot fastest. On the GPU, ψ is stored as **`(izr, irot, ixy)` with izr = ir + nr·iz fastest**
-(`DeviceLayout`):
-
-```mermaid
-flowchart LR
-  subgraph host["Host / files: (irot, ixy, izr)"]
-    direction TB
-    h1["izr = 0: all (irot, ixy)"] --> h2["izr = 1: all (irot, ixy)"] --> h3["..."]
-  end
-  subgraph device["GPU: (izr, irot, ixy)"]
-    direction TB
-    d1["(irot, ixy) = (0, 0): all izr = one contiguous (Z, r) block"] --> d2["(1, 0): all izr"] --> d3["..."]
-  end
-  host -- "host_chunk_to_device (restart, upload)" --> device
-  device -- "device_to_host_chunk (checkpoint, download)" --> host
-```
-
-With izr fastest, every stage becomes one of two simple shapes:
-- **one batched cuFFT with a single batch dimension.**
-  - Every (irot, ixy) is a contiguous (Z, r) block, so T_Z + T_r is a single 2D cuFFT over all
-    blocks.
-  - The (x, y) transform of all (izr, irot) is one strided plan with batches at distance 1.
-  - cuFFT, like oneMKL's FFTW interface, supports only one batch dimension.
-- **a kernel whose neighbouring threads read neighbouring memory** (coalesced). Almost every
-  kernel maps `threadIdx.x` to izr.
-
-The CPU needs gather/scatter code to get the same effect. The GPU does without it.
-
-The specular wave keeps its host layout `(ir, iz)`, which is already contiguous.
-
----
-
-## 3. How the stages go together
-
-### 3.1 One analysis step
-
-The time loop (`WavePacketPropagation::run`, CPU code) calls `propagate_analysis_step()` once per
-analysis step. That is n = `steps_per_analysis` time steps, with adjacent half steps of T merged:
-
-```mermaid
-flowchart LR
-  A["T(dt/2)"] --> B["V(dt)"] --> C{"n-1 times"}
-  C --> D["T(dt)"] --> E["V(dt)"] --> C
-  C -- done --> F["T(dt/2), kinetic only"]
-  F --> G["copy to host: specular wave, BK plane z_plane(iz_ana), densities every dtAve"]
-```
-
-Each box "T" is `kinetic_and_potential_step` without its V part. Inside it the stages run in a
-fixed order on the default stream:
-
-```mermaid
-flowchart TB
-  S["DeviceSpecularOperator::apply<br/>specular grid: kinetic step, gas phase + absorbers"]
-  K["DeviceKineticOperator::apply<br/>scattering grid: T_Z + T_r + T_xy, one stage"]
-  P["DevicePotentialOperator::apply<br/>scattering grid: absorption, specular coupling, exp(-iV dt)"]
-  S --> K --> P
-  N["final half step of an analysis step: specular kinetic part and K only, no gas phase/absorbers, no P"]
-```
-
-All work goes to **one stream** (the legacy default stream), so the kernels and FFTs run one
-after the other in launch order, like the CPU code. No atomics, fixed launch shapes: two runs on
-the same GPU and library versions are bitwise identical, also across a restart.
-
-### 3.2 Kinetic stage T (scattering grid)
-
-```mermaid
-flowchart TB
-  A["ψ(Z, r, x, y)"] --> S1["multiply_by_blocked_factors<br/>momentum shift (only if parallel momentum ≠ 0)"]
-  S1 --> F1["cuFFT 2D (Z, r) → (k_Z, k_r)<br/>batch: all (irot, ixy) blocks"]
-  F1 --> F2["cuFFT 2D (x, y) → (k_x, k_y)<br/>strided, batch: all (izr, irot)"]
-  F2 --> M["multiply_by_kinetic_factors<br/>× exp(-i T_Zr dt), then × exp(-i T_xy dt), each with its two FFT scales"]
-  M --> I2["inverse cuFFT (x, y)"]
-  I2 --> I1["inverse cuFFT (Z, r)"]
-  I1 --> S2["multiply_by_blocked_factors<br/>undo the shift"]
-```
-
-- **Why one stage:** T_Z + T_r and T_xy commute, and so do the shift (a factor per ixy) and the
-  (Z, r) transform. One multiplication pass therefore replaces two. Each pass over ψ costs about
-  25 ms on the DZ benchmark grid, and the merge saved 29 ms per time step.
-- **Why it is a methodology exception:** the CPU applies T_Z + T_r and T_xy as two stages. Its
-  T_xy is fused with V per group of (Z, r) points for cache reasons, so the merge would not help
-  there.
-- **What is kept the same per element:** the order of the factors. First the (Z, r) factor with
-  its scales, then the (x, y) factor with its scales.
-- **Test:** `CudaBackend.MergedKineticStageMatchesTheCpuStages`.
-- **Why the FFT scales are separate multiplications:** cuFFT does not scale, so the kernel
-  applies `backward * (forward * v)`, two multiplications as on the CPU. Folding the two scales
-  into the factor table rounds once more per step, and that bias accumulated: 2.6e-13 drift in
-  the norm after 1000 steps.
-
-### 3.3 Specular grid
-
-The incoming channel is propagated on its own, longer (Z, r) grid:
-
-```mermaid
-flowchart LR
-  A["specular ψ(Z, r)"] --> F["cuFFT 2D"] --> M["multiply_by_periodic_factors<br/>× exp(-i T dt) with scales"] --> I["inverse cuFFT 2D"]
-  I --> G["specular_gas_phase_and_absorbers_kernel<br/>gas phase (Z ≥ zasymp), Z absorber, r absorber"]
-```
-
-The last kernel is skipped on the final half step (kinetic only). The specular wave couples to
-the scattering grid inside the potential stage (3.4).
-
-### 3.4 Potential stage V (scattering grid)
-
-V splits the Z range in two:
-- **Z ≥ zasymp:** V depends on r only (the free molecule). The step is diagonal in the
-  rotational basis, so one elementwise kernel does it, `gas_phase_step_kernel`.
-- **Z < zasymp, the interaction region:** V(x, y, Z, r, θ, φ) couples the rotational states. ψ
-  goes from the rotational basis (FBR, |J mJ⟩) to the angular grid (DVR, θ × φ). There it is
-  multiplied by exp(iA), with A = −V dt, and transformed back.
-
-The interaction region is processed in **slabs** of consecutive (Z, r) points. The slab is the
-largest divisor of the number of points whose DVR scratch fits in 1 GiB, so the scratch array has
-a fixed size and all slabs have the same shape (one set of cuFFT plans). Within a slab every
-(Z, r, x, y) point is one **DVR column**:
-
-```mermaid
-flowchart TB
-  G["gas_phase_step_kernel<br/>all points Z ≥ zasymp: × absorption × rot(dt/2) exp(-i vasy dt) rot(dt/2)"]
-  G --> L{"next slab of (Z, r) points"}
-  L --> A["absorb_and_transform_to_dvr_kernel<br/>one thread per DVR column:<br/>absorption, rot(dt/2), + specular wave into the initial channel,<br/>Legendre sums FBR → DVR(θ, mJ slot)"]
-  A --> F1["cuFFT over φ: mJ → φ<br/>(scratch layout (col, θ, φ))"]
-  F1 --> F2["cuFFT over φ: φ → mJ<br/>with load callback spodvr_exp_potential_load:<br/>value × exp(iA) while it is read"]
-  F2 --> B["transform_to_fbr_and_rotate_kernel<br/>one thread per DVR column:<br/>Legendre sums DVR → FBR, rot(dt/2), write ψ"]
-  B --> R["project_onto_specular_kernel<br/>one thread per (Z, r) point:<br/>initial channel → specular grid, subtracted from ψ"]
-  R --> L
-```
-
-Why these kernels are cut this way:
-- **The Legendre sums are per column and per mJ block.** A thread first loads its column's FBR
-  coefficients of one mJ block (at most `max_j_per_mj_block` = 64 values of J). It then forms
-  `dvr(θ) = Σ_J P(θ, J) fbr[J]` for every θ.
-  - The matrix P is read at the same address by all threads of a warp: one cached load,
-    broadcast to the warp.
-  - The θ-sums keep the CPU order (`AngularTransform`), so with the same input they are bitwise
-    equal to the CPU.
-  - Absorption, rot(dt/2) and the specular coupling are folded into the same kernel, because they
-    act on the same coefficients just before the sums. That saves passes over ψ.
-- **The φ transform is a cuFFT,** not a hand-written DFT: length nφ, batch columns·nθ at
-  distance 1.
-- **exp(iA) is a cuFFT load callback** of the second φ FFT (section 6). Without it, a separate
-  kernel would read and write the whole DVR scratch once more per slab. The callback saves about
-  45 ms per DZ time step. The kernel version, `multiply_by_exp_potential_kernel`, is kept: it
-  serves nφ = 1 (no φ FFT to attach a callback to) and is the test reference of the callback.
-- **Surface symmetry:** exp(iA) is stored only at the (x, y) representatives. A point ixy reads
-  the values of its representative at the rotated or mirrored φ. `ExpPotentialTable::at()` is the
-  one place that encodes this layout; both the kernel and the callback use it.
-- **The projection onto the specular grid** sums over (x, y) in the CPU order. One thread per
-  (Z, r) point makes that order fixed: no atomics, no tree reduction. It launches few threads,
-  but takes only about 1 ms per step.
-
-### 3.5 What the analysis reads (once per analysis step)
-
-| Launcher | Purpose |
-|---|---|
-| `pack_z_plane` | The nr (Z, r) blocks of Z index iz, gathered into host layout `(irot, ixy, ir)`. This is the BK input. Copied to the host. |
-| `block_densities` | Σ\|ψ\|² per (Z, r) point, summed in host memory order. Used for the averages (every dtAve). |
-| the specular wave | Downloaded as it is (analysis surface, BK coefficient of the initial channel). |
-
----
-
-## 4. Host objects
-
-```mermaid
-classDiagram
-  class CudaBackend {
-    propagate_analysis_step()
-    z_plane(iz)
-    block_densities()
-    read_wave_packet()
-    wave_packet_on_host()
-  }
-  class DeviceWavePacket {
-    DeviceLayout layout
-    DeviceBuffer scattering
-    DeviceBuffer specular
-  }
-  class DeviceKineticOperator {
-    apply(psi, step)
-    factor_and_shift_tables
-  }
-  class DeviceSpecularOperator {
-    apply(psi, step, kinetic_only)
-  }
-  class DevicePotentialOperator {
-    apply(psi)
-    PotentialArgs args_
-    dvr_scratch_of_one_slab
-    exp_iA_table_and_symmetry_maps
-  }
-  class DeviceFftPlan {
-    execute(data)
-    optional_load_callback
-  }
-  CudaBackend *-- DeviceWavePacket
-  CudaBackend *-- DeviceKineticOperator
-  CudaBackend *-- DeviceSpecularOperator
-  CudaBackend *-- DevicePotentialOperator
-  DeviceKineticOperator *-- DeviceFftPlan : Z-r pair and x-y pair
-  DeviceSpecularOperator *-- DeviceFftPlan : 2D pair
-  DevicePotentialOperator *-- DeviceFftPlan : phi pair, the second with callback
-```
-
-- **cuFFT work area:** `CudaBackend::share_fft_work_area` gives all plans one shared work area.
-  That is safe because everything runs on one stream.
-- **Tables:** every table is computed on the host by the CPU code (`PropagationTables`,
-  `potential_step_factors`, `specular_gas_phase_factors`, `AngularTransform::matrix()`, exp(iA)
-  with the CPU's `exp_i`) and uploaded once. Only the layout changes (izr fastest). So the GPU
-  multiplies by bitwise the same numbers as the CPU.
-- **Kernel arguments:** the operators fill plain argument structs (`PotentialArgs`,
-  `SpecularStepArgs`) with device pointers, and the launchers pass them by value.
-  `PotentialArgs::izr_first` changes per slab.
-
----
-
-## 5. Kernel reference
-
-"x" and "y" are the CUDA grid dimensions. `grid_2d(n_inner, n_outer)` launches x over the inner
-index and y over the outer one, as a grid-stride loop in y. This avoids a 64-bit division per
-element: integer division is emulated in software on the GPU.
-
-### Kinetic stages (`kinetic_kernels.cu`)
-
-| Kernel | Thread mapping | Computes | CPU twin | Fortran |
-|---|---|---|---|---|
-| `multiply_by_kinetic_factors_kernel` | x: izr; y: ixy; loop over irot | `v = zr[izr]·(sb_zr·(sf_zr·v))`, then `v = xy[ixy]·(sb_xy·(sf_xy·v))` | `ScatteringKineticOperator::apply_zr` + `apply_xy` (two stages) | KineticOp.f90 MultByEXPKinEnergy |
-| `multiply_by_blocked_factors_kernel` | x: position in block (izr, irot); y: block (ixy) | momentum shift: `v = f[ixy]·v` (scales 1) | `apply_xy_group` (shift) | MomentumShifting.f90 |
-| `multiply_by_periodic_factors_kernel` | x: position in period; y: period | specular kinetic step: `v = f[i]·(sb·(sf·v))` | `SpecularOperator` | KineticOp.f90 MultByEXPKinEnergy |
-
-### Specular grid (`specular_kernels.cu`)
-
-| Kernel | Thread mapping | Computes | CPU twin | Fortran |
-|---|---|---|---|---|
-| `specular_gas_phase_and_absorbers_kernel` | one thread per specular point ir + nr·iz | gas phase (iz ≥ nz_potential), Z absorber, r absorber, in the CPU's pass order | `SpecularOperator` | GasPhase.f90 PerformEXPGasPhaseOnSpecGrid, Absorption.f90 PerformEXPOpticalOpSpec |
-
-### Potential stage (`potential_kernels.cu`)
-
-| Kernel | Thread mapping | Computes | CPU twin | Fortran |
-|---|---|---|---|---|
-| `gas_phase_step_kernel` | x: izr ≥ n_zr_potential; y: irot + n_rot·ixy | `v = optical_z·(gas_phase_step[irot, ir]·v)` | `PotentialOperator::apply_block` (Z ≥ zasymp) | Absorption.f90, GasPhase.f90 PerformEXPGasPhaseOnScatGrid |
-| `absorb_and_transform_to_dvr_kernel` | one thread per DVR column (izr, ixy) of the slab | absorption, rot(dt/2), + specular wave in the initial channel; FBR → DVR Legendre sums per mJ block; zeroes the unused φ slots | `apply_block` (up to `apply_interaction`), `AngularTransform::fbr_to_dvr` | Absorption.f90, TwoGrids.f90 AddSpecToScat, transform.f90 FBRToDVRGenComplexTransform |
-| `multiply_by_exp_potential_kernel` | x: DVR column; y: (θ, φ) point | `v = exp(iA)·v` (only for nφ = 1, and as the callback's test reference) | `PotentialOperator::apply_interaction` | Potential.f90 PerformEXPInteractionOp |
-| `transform_to_fbr_and_rotate_kernel` | one thread per DVR column | DVR → FBR Legendre sums per mJ block (θ in the CPU order), rot(dt/2), writes ψ | `AngularTransform::dvr_to_fbr`, `apply_rotation_half_step` | transform.f90 DVRToFBRGenComplexTransform |
-| `project_onto_specular_kernel` | one thread per (Z, r) point of the slab | `spec = Σ_xy scattering_to_specular[ixy]·ψ(initial channel, ixy)`, then `ψ −= specular_to_scattering[ixy]·spec` | `apply_block` (projection) | TwoGrids.f90 SubSpecFromScat |
-
-### cuFFT callback (`fft_callbacks.cu`)
-
-| Function | Called | Computes | Notes |
-|---|---|---|---|
-| `spodvr_exp_potential_load` | by cuFFT, once per value the second φ FFT reads | `exp(iA)·v`, through `ExpPotentialTable::at` | Explicitly rounded (`__dmul_rn`, `__dadd_rn`, `__dsub_rn`). Reads `ExpPotentialCallbackInfo` (device memory); its `izr_first` is updated before every slab by an in-stream device-to-device copy. |
-
-### Whole wave function (`wave_function_kernels.cu`)
-
-| Kernel | Thread mapping | Computes | Used by |
-|---|---|---|---|
-| `block_densities_kernel` | one thread per izr | Σ over (irot, ixy) of \|ψ\|² (as `hypot²`, like the CPU's `std::abs²`), in host memory order | averages (Averages.f90 complexInnerProd) |
-| `pack_z_plane_kernel` | one thread per output value (irot, ixy, ir) | the plane of Z index iz in host layout | BK analysis (Analyzor.f90) |
-| `host_chunk_to_device_kernel` | one thread per value, izr fastest | host layout → device layout for a chunk of (Z, r) points (through a staging buffer) | restart, upload |
-| `device_to_host_chunk_kernel` | as above | device layout → host layout | checkpoint, `wave_packet_on_host()` |
-
----
-
-## 6. The cuFFT load callback: from source to kernel
-
-```mermaid
-flowchart LR
-  A["fft_callbacks.cu"] -- "nvcc -gencode arch=compute_75,code=lto_75 -dc -fatbin" --> B["fft_callbacks.fatbin (LTO-IR)"]
-  B -- "cmake/embed_binary.cmake" --> C["generated/fft_callbacks_fatbin.h (byte array)"]
-  C --> D["fft_callbacks.cpp: exp_potential_callback_fatbin()"]
-  D --> E["DevicePotentialOperator → DeviceFftPlan(load callback)"]
-  E -- "cufftXtSetJITCallback, then cufftMakePlanMany64" --> F["cuFFT links the callback into its FFT kernel (nvJitLink, at plan creation)"]
-```
-
-Requirements, all verified on CUDA 13.3:
-- **Name and scope:** the callback is a `__device__` function at global scope, **not
-  `extern "C"`** and not in a namespace. cuFFT looks it up by name; with `extern "C"` the plan
-  fails with `CUFFT_NVJITLINK_FAILURE`.
-- **Rounding:** cuFFT chooses the link options, and nvJitLink contracts multiply-add to FMA by
-  default. The product is therefore written with `__dmul_rn`/`__dadd_rn`/`__dsub_rn`, which are
-  never contracted. That gives the same product as `Complex operator*` compiled with
-  `-fmad=false`.
-- **Offsets:** the callback receives offsets relative to the start of one `execute()` call.
-  `DeviceFftPlan` therefore refuses to split the batch of a callback plan into slabs.
-- **Run time:** cuFFT needs `libnvJitLink` and `libnvrtc` of its own CUDA release. Without them
-  the run stops with an error naming them.
-- **Numerics:** the multiplication is identical to the kernel's, but cuFFT may use a differently
-  rounding FFT kernel for a plan with a callback. Measured: ≤ 4e-16 relative per stage for
-  nφ = 12; bitwise equal for the DZ layout, nφ = 60. Test:
-  `CudaBackend.ExpPotentialCallbackMatchesTheKernel`.
-
----
-
-## 7. Numerical rules the kernels follow
-
-- **No FMA:** the strict build compiles the kernels with `-fmad=false`, like the CPU's
-  `-ffp-contract=off`. The opt-in `SPODVR_FAST_MATH` build allows FMA; its results are not
-  bit-comparable with the CPU.
-- **Complex arithmetic as on the CPU:** `Complex` operators (`device_complex.hpp`) compute the
-  products the way GCC does with `-fcx-fortran-rules`. Real × complex is `(r·re, r·im)`.
-- **Same order of operations as the CPU** in every kernel. For the same input, the elementwise
-  kernels, the Legendre sums and the projection are bitwise equal to their CPU twins. The FFTs
-  are cuFFT's, which round differently from oneMKL/FFTW. After 1000 steps CPU and GPU agree to
-  about 1e-13, the level the CPU build also shows between FFT libraries.
-- **Determinism:**
-  - one stream;
-  - no atomics;
-  - fixed launch shapes;
-  - every reduction (projection, densities) runs sequentially in a fixed order in one thread.
-- **Limits:**
-  - at most 64 values of J per mJ block (`max_j_per_mj_block`; the constructor checks it);
-  - the DVR scratch of one slab must stay below 2³¹ values (32-bit offsets in the callback).
-
-## 8. Where to look when …
-
-| Task | Where |
-|---|---|
-| changing a kinetic or potential table | the CPU code that builds it (`src/propagation/`). The GPU uploads the same table; check that its layout on the device still matches. |
-| changing the method of a stage | both backends in the same commit, or add a methodology exception in docs/cuda.md with a test |
-| measuring a change | `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [reps]`, and use **interleaved A/B runs** (docs/cuda.md, Performance) |
-| testing | `ctest --test-dir build-cuda -R Cuda` (`tests/cuda/`); the long GPU gates with `SPODVR_LONG_TESTS=1` |
+| Kernel | CPU twin | Fortran |
+|---|---|---|
+| `multiply_by_kinetic_factors` | `ScatteringKineticOperator::apply_zr` + `apply_xy` | KineticOp.f90 MultByEXPKinEnergy |
+| `multiply_by_blocked_factors` | `apply_xy_group` (shift) | MomentumShifting.f90 |
+| `multiply_by_periodic_factors`, `apply_specular_gas_phase_and_absorbers` | `SpecularOperator` | KineticOp.f90, GasPhase.f90 PerformEXPGasPhaseOnSpecGrid, Absorption.f90 PerformEXPOpticalOpSpec |
+| `apply_gas_phase_step` | `PotentialOperator::apply_block` (Z ≥ zasymp) | Absorption.f90, GasPhase.f90 PerformEXPGasPhaseOnScatGrid |
+| `absorb_and_transform_to_dvr` | `apply_block`, `AngularTransform::fbr_to_dvr` | Absorption.f90, TwoGrids.f90 AddSpecToScat, transform.f90 FBRToDVRGenComplexTransform |
+| `multiply_by_exp_potential`, callback | `PotentialOperator::apply_interaction` | Potential.f90 PerformEXPInteractionOp |
+| `transform_to_fbr_and_rotate` | `AngularTransform::dvr_to_fbr`, `apply_rotation_half_step` | transform.f90 DVRToFBRGenComplexTransform |
+| `project_onto_specular` | `apply_block` (projection) | TwoGrids.f90 SubSpecFromScat |
+| `block_densities` | `CpuBackend::block_densities` | Averages.f90 complexInnerProd |
+| `pack_z_plane` | `CpuBackend::z_plane` | Analyzor.f90 (BK input) |

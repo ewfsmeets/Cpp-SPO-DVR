@@ -118,7 +118,7 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
   const std::int64_t n_slab = slab_size(s, nz_potential, n_theta, n_phi, scratch_limit);
   const std::int64_t n_columns = n_slab * s.nx * s.ny;
   if (n_columns * n_tp >= (std::int64_t(1) << 31))  // the kernels index within a slab with int
-    throw std::invalid_argument("GPU backend: the DVR scratch of one (Z, r) point exceeds 2^31 values");
+    throw std::invalid_argument("GPU backend: the DVR scratch of one slab exceeds 2^31 values");
   dvr_ = DeviceBuffer<Complex>(std::size_t(n_columns * n_tp));
   if (n_phi > 1) {
     const DeviceFftShape phi{{n_phi}, n_columns * n_theta, 1, n_columns * n_theta};

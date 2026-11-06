@@ -54,6 +54,19 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
   - multiply with `__dmul_rn`/`__dadd_rn`, because cuFFT sets the link options and nvJitLink
     contracts to FMA by default.
 
+  More about the callback:
+  - **Offsets:** cuFFT passes the callback offsets that count from the start of one `execute()`
+    call. `DeviceFftPlan` therefore refuses to split the batch of a plan with a callback.
+  - **Updating the arguments:** the callback's arguments (`ExpPotentialCallbackInfo`) live in
+    device memory. Their `izr_first` is set before every slab by an in-stream device-to-device
+    copy.
+  - **Rounding:** cuFFT may round the FFT of a plan with a callback differently from the plain
+    plan. Measured: ≤ 4e-16 relative per stage for nφ = 12; bitwise equal for the DZ layout
+    (nφ = 60). Test: `CudaBackend.ExpPotentialCallbackMatchesTheKernel`.
+  - The build pipeline, in short: `fft_callbacks.cu` → nvcc (LTO-IR fatbin) →
+    `cmake/embed_binary.cmake` (byte array) → `fft_callbacks.cpp` → `cufftXtSetJITCallback` →
+    cuFFT links it at plan creation.
+
 ## Running
 ```bash
 ./build-cuda/spodvr input.json --device cuda --threads 8 --output-dir run
@@ -326,7 +339,7 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 ## Files
 | File | Content |
 |---|---|
-| `src/cuda/README.md` | in-depth guide to the kernels: what each one does and why, how the stages fit together (diagrams) |
+| `src/cuda/README.md` | guide to the kernels: vocabulary, memory layout, everything one time step launches, the stages with diagrams, rules and recipes for changing a kernel |
 | `src/cuda/cuda_backend.{hpp,cpp}` | `CudaBackend`, the factory, device info, GPU memory estimate |
 | `src/cuda/device_kinetic_operator.{hpp,cpp}` | the kinetic stage T (merged) and the specular grid (plans, tables, launch order) |
 | `src/cuda/device_potential_operator.{hpp,cpp}` | the potential stage (tables, exp(iA), slab loop) |
