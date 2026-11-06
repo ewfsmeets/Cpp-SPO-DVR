@@ -13,20 +13,21 @@
 
 namespace spodvr::cuda {
 
-// exp(-i T dt) on the scattering grid in GPU memory: T_Z + T_r by one batched 2D (Z, r) cuFFT
-// over all (irot, ixy) blocks (contiguous in the device layout, so no gather as on the CPU),
-// and T_xy (with the momentum shift) by one strided 2D (x, y) cuFFT over all (izr, irot).
-// The FFT scale factors of both directions are applied in the multiplication kernel between the
-// transforms (no extra pass over psi; see FftScales).
-// CPU twin: ScatteringKineticOperator. Fortran: KineticOp.f90, SplitOperator.f90 PerformEXPKineticOp
+// exp(-i T dt) on the scattering grid in GPU memory, T = T_Z + T_r + T_xy, as ONE stage: one
+// batched 2D (Z, r) cuFFT over all (irot, ixy) blocks (contiguous in the device layout, so no
+// gather as on the CPU), one strided 2D (x, y) cuFFT over all (izr, irot), a single multiplication
+// pass with both factor sets (and both FFT scale pairs, see FftScales), and the two inverse
+// transforms; the momentum shift around it. The CPU applies T_Z + T_r and T_xy as two stages:
+// this is the methodology exception "merged kinetic stages" (docs/cuda.md), one pass over psi less.
+// CPU twin: ScatteringKineticOperator::apply_zr followed by apply_xy.
+// Fortran: KineticOp.f90, SplitOperator.f90 PerformEXPKineticOp
 class DeviceKineticOperator {
  public:
   DeviceKineticOperator(const ScatteringShape& shape, const PropagationTables& tables, std::size_t max_fft_work);
 
-  // exp(-i (T_Z + T_r) dt). Fortran: KineticOpAlongZrOnScatGrid
-  void apply_zr(DeviceWavePacket& psi, TimeStep step) const;
-  // exp(-i T_xy dt) at every (Z, r) point. Fortran: PerformEXPKineticOp
-  void apply_xy(DeviceWavePacket& psi, TimeStep step) const;
+  // exp(-i (T_Z + T_r + T_xy) dt), with the momentum shift.
+  // Fortran: KineticOpAlongZrOnScatGrid, PerformEXPKineticOp
+  void apply(DeviceWavePacket& psi, TimeStep step) const;
 
   // The cuFFT plans (to share one work area).
   [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();

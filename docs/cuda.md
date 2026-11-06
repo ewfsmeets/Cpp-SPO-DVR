@@ -65,8 +65,7 @@ none of the CPU's gather/scatter code is needed:
 
 | Stage | GPU | CPU twin |
 |---|---|---|
-| T_Z + T_r | one 2D (Z, r) cuFFT over all n_rot·nxy contiguous blocks, `multiply_by_periodic_factors`, inverse | `ScatteringKineticOperator::apply_zr` (gathers ≤ 4 values per unit) |
-| T_xy | one strided 2D (x, y) cuFFT, batches at distance 1; `multiply_by_blocked_factors` (also the momentum shift) | `apply_xy_group` (gathers 1 MiB groups) |
+| T = T_Z + T_r + T_xy, one stage (methodology exception, below) | momentum shift (`multiply_by_blocked_factors`); one 2D (Z, r) cuFFT over all n_rot·nxy contiguous blocks; one strided 2D (x, y) cuFFT, batches at distance 1; `multiply_by_kinetic_factors` (both factor sets in one pass); both inverses; unshift | two stages: `ScatteringKineticOperator::apply_zr` (gathers ≤ 4 values per unit), then `apply_xy_group` (gathers 1 MiB groups, fused with V) |
 | V, Z ≥ zasymp | `apply_gas_phase_step` (elementwise) | `PotentialOperator::apply_block` |
 | V, Z < zasymp | per slab of (Z, r) points, see below | `apply_block`, `apply_interaction`, `AngularTransform` |
 | specular grid | 2D cuFFT, multiply, inverse, `apply_specular_gas_phase_and_absorbers` | `SpecularOperator` |
@@ -107,7 +106,27 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
 - A deliberate exception is listed below, with its reason and the test that compares it with
   the CPU.
 
-**Methodology exceptions:** none so far.
+**Methodology exceptions:**
+1. **Merged kinetic stages** (`DeviceKineticOperator::apply`). The GPU applies T_Z + T_r and T_xy
+   as one stage:
+   - shift → (Z, r) and (x, y) cuFFTs → one multiplication with both factors → inverses → unshift;
+   - the CPU applies two stages, T_Z + T_r, then T_xy (with V).
+
+   Why it is equivalent: T_Z + T_r and T_xy commute, and so do the momentum shift (a factor per
+   ixy) and the (Z, r) transform. Per element the multiplication keeps the CPU's order: the
+   (Z, r) factor with its scales first, then the (x, y) factor with its scales. Only the FFT
+   order differs.
+
+   Why the GPU does it: one pass over ψ less, −29 ms per DZ time step (−4.4%). The CPU keeps
+   two stages, because its cache-blocked T_Z + T_r and its T_xy fused with V per group would be
+   lost by the merge.
+
+   Test: `CudaBackend.MergedKineticStageMatchesTheCpuStages` (≤ 1e-13, full and half step, with
+   and without the momentum shift, hard wall and Dai-Light grids). Against the GPU before the
+   merge:
+   - averages ≤ 1e-14 relative;
+   - BK coefficients ≤ 6e-13 of max |c|;
+   - all GPU gates pass, the long ones included.
 
 ## Numerics
 - **No FMA:** `-fmad=false` everywhere. Complex products are formed as GCC does with
@@ -167,7 +186,8 @@ Profiling:
 
 DZ benchmark (`inputs/thesis_fig5_3_dz`: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
 19 C6v representatives), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step
-(10 repetitions; single runs on this WSL2 GPU vary by up to ~30%, it also drives the desktop):
+(10 repetitions; single runs on this WSL2 GPU vary by up to ~30%, it also drives the desktop;
+measured before the kinetic stages were merged, see "Measured optimisations" below):
 
 | Stage | GPU | CPU (`spodvr_operator_timing`) |
 |---|---|---|
@@ -198,18 +218,43 @@ What limits the speed on this card:
   GeForce cards execute FP64 at 1/64 of the FP32 rate, and without FMA (`-fmad=false`, required for
   CPU-comparable results) every multiply and add is a separate instruction: ≈ 0.3 T per second here.
   So the two Legendre kernels are compute-bound at 65–77 ms.
-- **Tried without gain:** keeping the per-thread coefficient arrays in registers (templated sizes,
-  unrolled loops). It changed nothing because the limit is FP64 throughput, not local memory, so it
-  was reverted.
+- **Tried without gain:**
+  - Keeping the per-thread coefficient arrays in registers (templated sizes, unrolled loops). It
+    changed nothing and was reverted.
+  - Starting the Legendre sums from their first term instead of 0 + … (2026-11-06; CPU and GPU,
+    byte-identical results). It removes ≈ 6% of the FP64 additions of FBR → DVR, yet the kernel
+    times did not change (70.6 → 70.7 ms and 66.3 → 67.7 ms), so it was reverted. The count of
+    FP64 additions is evidently not what limits these kernels, although FMA (fast build) does
+    speed them up.
+
+Measuring a change: compare with **interleaved A/B runs** (base and new build alternately,
+`spodvr_cuda_operator_timing`, "one analysis step … per time step"). Runs hours apart differ by
+≈ 5% on this machine: the GPU also drives the desktop, and clocks vary. Interleaved runs repeat
+within 0.5 ms. The isolated stage lines of the timing tool depend on what ran before them in
+the same process; use them as a breakdown, not for comparisons between builds.
+
+Measured optimisations (DZ, strict build, interleaved A/B, per time step):
+
+| Change | Before | After |
+|---|---|---|
+| Merged kinetic stages (2026-11-06; one multiplication pass instead of two: 26.4 ms instead of 2 × 24.8 ms) | 656.6 ms | 627.5 ms (−4.4%) |
 
 Next steps, to be judged on the production GPU (on an A100/H100 the kernels become memory-bound,
 and fewer passes pay off directly):
-- **cuFFT callbacks** (static cuFFT, relocatable device code): fold the multiplications into the
-  FFT loads/stores, i.e. the T_Z + T_r and T_xy multiplies and exp(iA) into the inverse φ FFT. That
-  saves ≈ 3.5 passes per step.
-- **Even/odd split of the θ sums:** the θ grid is symmetric about π/2 and P_J^m(−x) = ±P_J^m(x),
-  so the split halves the FP64 work of the Legendre sums. It changes the summation order, so the
-  result is no longer bitwise equal to the CPU.
+- **cuFFT LTO callbacks** (`cufftXtSetJITCallback`, no static cuFFT needed): fold the exp(iA)
+  multiplication into the load of the inverse φ FFT.
+  - What a smoke test on the DZ φ layout showed (2026-11-06):
+    - the callback must not be `extern "C"` (cuFFT then fails with `CUFFT_NVJITLINK_FAILURE`);
+    - compile with `nvcc -gencode arch=compute_89,code=lto_89 -dc -fatbin`;
+    - creating the plan takes 0.14 s;
+    - the result was bitwise equal to the multiply kernel plus the plain FFT;
+    - 7.1 ms instead of 12.7 ms per slab, i.e. ≈ 45 ms per DZ time step.
+  - The callback must use `__dmul_rn`/`__dadd_rn`: the LTO-IR is built with `-fmad=1`, and cuFFT
+    sets the nvJitLink options.
+- **Even/odd split of the θ sums** (heteronuclear molecules only): the θ grid is symmetric about
+  π/2 and P_J^m(−x) = ±P_J^m(x), so the split halves the FP64 work of the Legendre sums. For
+  homonuclear molecules the grid already covers only [0, π/2] and every mJ block has a single
+  parity, so there is nothing to gain there. It changes the summation order: CPU and GPU together.
 - **A fused angular kernel** with an in-kernel φ transform: removes the DVR scratch and its four
   passes, but needs more FP64 work for the DFT.
 
@@ -252,7 +297,7 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 | File | Content |
 |---|---|
 | `src/cuda/cuda_backend.{hpp,cpp}` | `CudaBackend`, the factory, device info, GPU memory estimate |
-| `src/cuda/device_kinetic_operator.{hpp,cpp}` | T_Z + T_r, T_xy and the specular grid (plans, tables, launch order) |
+| `src/cuda/device_kinetic_operator.{hpp,cpp}` | the kinetic stage T (merged) and the specular grid (plans, tables, launch order) |
 | `src/cuda/device_potential_operator.{hpp,cpp}` | the potential stage (tables, exp(iA), slab loop) |
 | `src/cuda/*_kernels.cu`, `kernels.hpp` | the kernels and their launch functions |
 | `src/cuda/cuda_fft.{hpp,cpp}` | cuFFT plans (64-bit, slabbed batches, shared work area) |

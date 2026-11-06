@@ -60,26 +60,24 @@ std::vector<DeviceFftPlan*> DeviceKineticOperator::fft_plans() {
   return plans;
 }
 
-// Fortran: KineticOp.f90 PerformEXPKinOpZScat, PerformEXPKinOpRScat
-void DeviceKineticOperator::apply_zr(DeviceWavePacket& psi, TimeStep step) const {
-  const DeviceBuffer<Complex>& factors = step == TimeStep::Full ? zr_full_ : zr_half_;
-  Complex* data = psi.scattering.data();
-  zr_to_momentum_->execute(data);
-  multiply_by_periodic_factors(data, factors.data(), zr_scales_, psi.layout.n_zr, psi.layout.size());
-  zr_to_coordinate_->execute(data);
-}
-
-// Fortran: SplitOperator.f90 PerformEXPKineticOp (MomentumShiftWF, TransToMomenta,
-// MultByEXPKinEnergy, TransToCoords)
-void DeviceKineticOperator::apply_xy(DeviceWavePacket& psi, TimeStep step) const {
-  const DeviceBuffer<Complex>& factors = step == TimeStep::Full ? xy_full_ : xy_half_;
+// exp(-i (T_Z + T_r) dt) and exp(-i T_xy dt) with one multiplication pass instead of two: both
+// forward transforms, both factors, both inverse transforms. T_Z + T_r and T_xy commute, and so
+// do the momentum shift (a factor per ixy) and the (Z, r) transform, so this equals the CPU's
+// T_zr stage followed by its T_xy stage up to rounding (a methodology exception, docs/cuda.md).
+// Fortran: KineticOp.f90 PerformEXPKinOpZScat/RScat, SplitOperator.f90 PerformEXPKineticOp
+void DeviceKineticOperator::apply(DeviceWavePacket& psi, TimeStep step) const {
+  const bool full = step == TimeStep::Full;
+  const DeviceBuffer<Complex>& zr_factors = full ? zr_full_ : zr_half_;
+  const DeviceBuffer<Complex>& xy_factors = full ? xy_full_ : xy_half_;
   Complex* data = psi.scattering.data();
   const std::int64_t per_xy = psi.layout.n_zr * psi.layout.n_rot;  // values of one ixy
   const std::int64_t n = psi.layout.size();
   if (shift_) multiply_by_blocked_factors(data, shift_forward_.data(), FftScales{}, per_xy, n);
+  zr_to_momentum_->execute(data);
   if (xy_to_momentum_) xy_to_momentum_->execute(data);
-  multiply_by_blocked_factors(data, factors.data(), xy_scales_, per_xy, n);
+  multiply_by_kinetic_factors(data, psi.layout, zr_factors.data(), zr_scales_, xy_factors.data(), xy_scales_);
   if (xy_to_coordinate_) xy_to_coordinate_->execute(data);
+  zr_to_coordinate_->execute(data);
   if (shift_) multiply_by_blocked_factors(data, shift_backward_.data(), FftScales{}, per_xy, n);
 }
 

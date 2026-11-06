@@ -10,6 +10,8 @@
 #include <nlohmann/json.hpp>
 
 #include "cuda/cuda_backend.hpp"
+#include "cuda/device_kinetic_operator.hpp"
+#include "cuda/kernels.hpp"
 #include "cuda_test_setup.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -92,7 +94,50 @@ void expect_same_step(const BackendSetup& s, double tolerance) {
   EXPECT_LT(relative_difference(cpu->specular().values, gpu->specular().values), tolerance);
 }
 
+// The GPU kinetic stage (T_Z + T_r and T_xy merged into one stage: methodology exception in
+// docs/cuda.md) against the CPU's two stages, apply_zr then apply_xy, on a random scattering wave.
+void expect_same_kinetic_stage(const BackendSetup& s, double tolerance) {
+  const InputParameters& p = s.config.input;
+  const ScatteringShape shape{s.basis.size(), p.nx, p.ny, p.nr, p.nz};
+  const int n_xy = p.nx * p.ny;
+  const int n_zr = p.nr * p.nz;
+  const ScatteringKineticOperator cpu(shape, s.tables, s.fft);
+  cuda::DeviceKineticOperator gpu(shape, s.tables, std::size_t(512) << 20);
+  std::size_t work_bytes = 1;
+  for (const cuda::DeviceFftPlan* plan : gpu.fft_plans()) work_bytes = std::max(work_bytes, plan->work_size());
+  cuda::DeviceBuffer<std::byte> work(work_bytes);
+  for (cuda::DeviceFftPlan* plan : gpu.fft_plans()) plan->set_work_area(work.data());
+  const cuda::DeviceLayout layout{n_zr, shape.n_rot, n_xy};
+  cuda::DeviceWavePacket device(layout, p.nr, static_cast<int>(s.grids.z_specular.size()));
+
+  for (const TimeStep step : {TimeStep::Full, TimeStep::Half}) {
+    ScatteringWave psi(shape.n_rot, n_xy, n_zr);
+    fill_pseudo_random(psi.values, 7);
+    // Host layout -> device layout through a staging copy on the GPU.
+    cuda::DeviceBuffer<cuda::Complex> staging(cuda::as_device_complex(std::span<const cplx>(psi.values)));
+    cuda::host_chunk_to_device(staging.data(), layout, 0, n_zr, device.scattering.data());
+
+    cpu.apply_zr(psi, step);
+    cpu.apply_xy(psi, step);
+    gpu.apply(device, step);
+
+    cuda::device_to_host_chunk(device.scattering.data(), layout, 0, n_zr, staging.data());
+    std::vector<cplx> result(psi.values.size());
+    staging.download(cuda::as_device_complex(std::span<cplx>(result)));
+    EXPECT_LT(relative_difference(psi.values, result), tolerance) << (step == TimeStep::Full ? "full" : "half");
+  }
+}
+
 }  // namespace
+
+// The merged GPU kinetic stage equals the CPU's T_Z + T_r stage followed by its T_xy stage, also
+// with the momentum shift (parallel momentum) and on a corrugated case's grid.
+TEST(CudaBackend, MergedKineticStageMatchesTheCpuStages) {
+  SPODVR_REQUIRE_GPU();
+  expect_same_kinetic_stage(BackendSetup("hardwall_short"), 1e-13);
+  expect_same_kinetic_stage(BackendSetup("hardwall_short", {{"EParallel", 0.05}, {"PhiParallel", 30.0}}), 1e-13);
+  expect_same_kinetic_stage(BackendSetup("cu111_dailight_short"), 1e-13);
+}
 
 // Upload, download and the BK plane are exact copies; the densities equal the CPU's up to an ulp.
 TEST(CudaBackend, CopiesAreExactAndDensitiesMatchTheCpu) {

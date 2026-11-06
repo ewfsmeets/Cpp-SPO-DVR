@@ -22,14 +22,21 @@ struct FftScales {
   double forward = 1.0;
   double backward = 1.0;
 };
-// data[i] = factors[i % period] * (backward * (forward * data[i])): exp(-i (T_Z + T_r) dt) on
-// the (Z, r) blocks (period n_zr), the specular kinetic step (period = n).
+// data[i] = factors[i % period] * (backward * (forward * data[i])): the specular kinetic step
+// (period = n).
 void multiply_by_periodic_factors(Complex* data, const Complex* factors, FftScales scales, std::int64_t period,
                                   std::int64_t n);
-// data[i] = factors[i / block] * (backward * (forward * data[i])): exp(-i T_xy dt) and the
-// momentum shift on (x, y) (block = n_zr * n_rot, the values of one ixy; scales 1 for the shift).
+// data[i] = factors[i / block] * (backward * (forward * data[i])): the momentum shift on (x, y)
+// (block = n_zr * n_rot, the values of one ixy; scales 1 for the shift).
 void multiply_by_blocked_factors(Complex* data, const Complex* factors, FftScales scales, std::int64_t block,
                                  std::int64_t n);
+// The merged kinetic step on psi in (k_Z, k_r, k_x, k_y) space (layout (izr, irot, ixy)): first the
+// (Z, r) factor, then the (x, y) factor, each with its own scales, in the CPU's stage order:
+//   v = zr[izr] * (zr_scales.backward * (zr_scales.forward * v))
+//   v = xy[ixy] * (xy_scales.backward * (xy_scales.forward * v))
+// (docs/cuda.md, methodology exception "merged kinetic stages").
+void multiply_by_kinetic_factors(Complex* psi, const DeviceLayout& layout, const Complex* zr_factors,
+                                 FftScales zr_scales, const Complex* xy_factors, FftScales xy_scales);
 
 // --- specular grid (specular_kernels.cu) ---------------------------------------------------
 struct SpecularStepArgs {

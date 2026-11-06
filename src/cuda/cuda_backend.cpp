@@ -163,8 +163,7 @@ const WavePacket& CudaBackend::wave_packet_on_host() {
 // Fortran: SplitOperator.f90 KineticAndPotentialOp (lastStep: kinetic only)
 void CudaBackend::kinetic_and_potential_step(TimeStep step, bool kinetic_only) {
   specular_.apply(psi_, step, kinetic_only);
-  kinetic_.apply_zr(psi_, step);
-  kinetic_.apply_xy(psi_, step);
+  kinetic_.apply(psi_, step);
   if (!kinetic_only) potential_.apply(psi_);
 }
 

@@ -1,5 +1,5 @@
 // Per-operator and per-kernel timing of the GPU backend for an input file: the specular grid,
-// T_Z + T_r, T_xy, a whole analysis step (as the program runs it), the potential stage kernel
+// the kinetic stage T, a whole analysis step (as the program runs it), the potential stage kernel
 // by kernel, and the per-step copies to the host.
 // Every call is followed by cudaDeviceSynchronize, so the times are those of the GPU work.
 // Usage: spodvr_cuda_operator_timing <input.json> [repetitions]
@@ -101,12 +101,11 @@ int main(int argc, char** argv) {
   std::printf("Stages (one full time step):\n");
   double step_ms = 0.0;
   step_ms += time_call("specular grid", repetitions, [&] { specular.apply(psi, TimeStep::Full, false); });
-  step_ms += time_call("T_Z + T_r", repetitions, [&] { kinetic.apply_zr(psi, TimeStep::Full); });
+  step_ms += time_call("T (Z, r, x, y; one stage)", repetitions, [&] { kinetic.apply(psi, TimeStep::Full); });
   time_call("  of which the two (Z, r) cuFFTs", repetitions, [&] {
     kinetic_plans[0]->execute(psi.scattering.data());
     kinetic_plans[1]->execute(psi.scattering.data());
   });
-  step_ms += time_call("T_xy", repetitions, [&] { kinetic.apply_xy(psi, TimeStep::Full); });
   if (kinetic_plans.size() == 4)
     time_call("  of which the two (x, y) cuFFTs", repetitions, [&] {
       kinetic_plans[2]->execute(psi.scattering.data());
@@ -120,8 +119,7 @@ int main(int argc, char** argv) {
   const int n_per_analysis = config.derived.steps_per_analysis;
   auto kinetic_and_potential = [&](TimeStep step, bool kinetic_only) {
     specular.apply(psi, step, kinetic_only);
-    kinetic.apply_zr(psi, step);
-    kinetic.apply_xy(psi, step);
+    kinetic.apply(psi, step);
     if (!kinetic_only) potential_op.apply(psi);
   };
   const double analysis_ms =
