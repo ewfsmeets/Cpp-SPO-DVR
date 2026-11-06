@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     return 2;
   }
   if (command_line.help) {
-    std::cout << spodvr::banner << '\n' << spodvr::usage();
+    std::cout << spodvr::banner() << '\n' << spodvr::usage();
     return 0;
   }
   if (command_line.version) {

@@ -1,11 +1,27 @@
-// Program banner, printed at the start of a run and above the --help text.
+// Program banner, printed at the start of a run and above the --help text. A build with the GPU
+// backend (SPODVR_USE_CUDA) says so in its banner.
 #pragma once
 
 #include <string_view>
 
+#include "app/backend_factory.hpp"
+
 namespace spodvr {
 
-inline constexpr std::string_view banner = R"banner(
+inline constexpr std::string_view cpu_banner = R"banner(
+>>=======================================================================================<<
+||                                                                                       ||
+||   _____                          _____ ______  _____           ______  _   _ ______   ||
+||  /  __ \   _      _             /  ___|| ___ \|  _  |          |  _  \| | | || ___ \  ||
+||  | /  \/ _| |_  _| |_   ______  \ `--. | |_/ /| | | |  ______  | | | || | | || |_/ /  ||
+||  | |    |_   _||_   _| |______|  `--. \|  __/ | | | | |______| | | | || | | ||    /   ||
+||  | \__/\  |_|    |_|            /\__/ /| |    \ \_/ /          | |/ / \ \_/ /| |\ \   ||
+||   \____/                        \____/ \_|     \___/           |___/   \___/ \_| \_|  ||
+||                                                                                       ||
+>>=======================================================================================<<
+)banner";
+
+inline constexpr std::string_view cuda_banner = R"banner(
 >>===============================================================================================================================<<
 ||                                                                                                                               ||
 ||   _____                          _____  _   _ ______   ___               _____ ______  _____           ______  _   _ ______   ||
@@ -17,5 +33,8 @@ inline constexpr std::string_view banner = R"banner(
 ||                                                                                                                               ||
 >>===============================================================================================================================<<
 )banner";
+
+// The banner of this build.
+[[nodiscard]] inline std::string_view banner() { return cuda_backend_available() ? cuda_banner : cpu_banner; }
 
 }  // namespace spodvr

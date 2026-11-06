@@ -233,7 +233,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
         command_line.schedule ? parse_loop_schedule(*command_line.schedule) : default_loop_schedule(numa_nodes);
     apply_loop_schedule(schedule);
 
-    out << banner << '\n';
+    out << banner() << '\n';
     out << style.emphasis("SPO-DVR (C++) version " SPODVR_VERSION) << "  -  " << omp_get_max_threads()
         << " OpenMP thread(s), loop schedule " << to_string(schedule) << " (" << numa_nodes << " NUMA node"
         << (numa_nodes > 1 ? "s" : "") << ")\n";
