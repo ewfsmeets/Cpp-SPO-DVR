@@ -1,0 +1,85 @@
+# Fortran equivalent of input.json in this directory (keep both in sync): H2(v=0,j=0)/Cu(111),
+# DZ PES, Somers PhD thesis ch. 5 Figure 5.3 (dotted), dZ 0.12. See README.md for the choices.
+# Every field carries an explicit type ("Name : TYPE : value;").
+
+# Shorter than the Title in input.json: Fortran strings hold 80 characters (inputfields.f90).
+Title       : STRING  : "H2(v=0,j=0)/Cu(111), DZ PES, Somers thesis Fig. 5.3 (dotted), dZ 0.12";
+SystemID    : STRING  : "H2Cu111DaiLight";
+NewCalc     : LOGICAL : TRUE;
+
+ZDoF        : LOGICAL : TRUE;
+RDoF        : LOGICAL : TRUE;
+XDoF        : LOGICAL : TRUE;
+YDoF        : LOGICAL : TRUE;
+ThetaDoF    : LOGICAL : TRUE;
+PhiDoF      : LOGICAL : TRUE;
+
+# H2
+Mass1       : REAL    : 1.0078;
+Mass2       : REAL    : 1.0078;
+HomoNuc     : LOGICAL : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : REAL    : 0.0;
+dZ          : REAL    : 0.12;
+nZ          : INTEGER : 160;
+nZSpecular  : INTEGER : 256;
+
+# Grid in r
+RStart      : REAL    : 0.5;
+dR          : REAL    : 0.20;
+nR          : INTEGER : 40;
+
+# Grid in x, y
+nX          : INTEGER : 12;
+nY          : INTEGER : 12;
+
+# Rotational basis
+JMax        : INTEGER : 28;
+MJMax       : INTEGER : 28;
+
+ProjOp      : INTEGER : 2;
+
+# Propagation
+tStart      : REAL    : 0.0;
+tEnd        : REAL    : 25000.0;
+dtStep      : REAL    : 2.5;
+nStep       : INTEGER : 10000;
+
+# Analysis
+dtAna       : REAL    : 20.0;
+dtAve       : REAL    : 500.0;
+DynamZSpAna : LOGICAL : TRUE;
+Zana        : REAL    : 15.0;
+NrOfEs      : INTEGER : 111;
+
+# Initial wave packet and state
+EMinWP      : REAL    : 0.40;
+EMaxWP      : REAL    : 0.95;
+Z0          : REAL    : 18.0;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : REAL    : 0.0;
+PhiParallel : REAL    : 0.0;
+
+# Complex absorbing potentials
+ZOptStart   : REAL    : 15.0;
+ZOptEnd     : REAL    : 19.08;
+ZOptEnergy  : REAL    : 0.2;
+ZSpOptStart : REAL    : 22.08;
+ZSpOptEnd   : REAL    : 30.60;
+ZSpOptEnergy: REAL    : 0.4;
+ROptStart   : REAL    : 4.1;
+ROptEnd     : REAL    : 8.3;
+ROptEnergy  : REAL    : 0.3;
+
+TolSp       : REAL    : 1.0E-07;
+
+writeSMatrix: LOGICAL : FALSE;
+writeProbs  : LOGICAL : TRUE;
+writeRDProbs: LOGICAL : TRUE;
+
+# C6v symmetry of the PES (V at one (x, y) point per orbit); nφ a multiple of 6
+UseSymmetry : LOGICAL : TRUE;
+nPhisOptimal: LOGICAL : TRUE;

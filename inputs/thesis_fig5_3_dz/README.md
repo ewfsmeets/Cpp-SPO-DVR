@@ -75,3 +75,9 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
 CPU (8 threads): 7.3 GiB during the propagation, about 1.25× the time of the 128-point grid
 (~5.5 s per step, ~15 h). GPU (`--device cuda`): 8.8 GiB estimated plus the CUDA context; fits
 the 12 GB RTX 4070 Ti.
+
+## Fortran reference run
+`DVR.inp` is the same input for the Fortran executable (keep it in sync with `input.json`; the
+title is shorter because Fortran strings hold 80 characters). The executable reads `DVR.inp`
+from the current directory and writes there: copy it into an empty run directory and start the
+executable from that directory.
