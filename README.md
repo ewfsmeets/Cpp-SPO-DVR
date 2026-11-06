@@ -45,7 +45,8 @@ Status:
 - nlohmann/json and GoogleTest are downloaded by CMake (internet access needed on the first
   configure).
 - **Optional, for the GPU backend**: an NVIDIA GPU with its driver, and the CUDA toolkit (nvcc,
-  cudart, cuFFT). Recommended: the newest CUDA 13 the GPU driver supports (tested with 13.3,
+  cudart, cuFFT, and at run time nvJitLink and NVRTC for the cuFFT callback). Recommended: the newest
+  CUDA 13 the GPU driver supports (tested with 13.3,
   the first release that accepts GCC 15; nvcc uses the same compiler as the rest of the build). FP64 speed
   matters: data-centre GPUs (A100, H100) run FP64 at 1/2 of the FP32 rate, GeForce cards at 1/64.
 

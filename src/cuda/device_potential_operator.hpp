@@ -7,6 +7,7 @@
 #include "cuda/cuda_fft.hpp"
 #include "cuda/device_buffer.hpp"
 #include "cuda/device_wave_packet.hpp"
+#include "cuda/fft_callbacks.hpp"
 #include "cuda/kernels.hpp"
 #include "propagation/angular_transform.hpp"
 #include "propagation/kinetic_operators.hpp"
@@ -19,12 +20,20 @@ namespace spodvr::cuda {
 // specular grid (the same steps as the CPU PotentialOperator::apply_block):
 //   beyond the interaction region: one elementwise kernel;
 //   in the interaction region, slab by slab of (Z, r) points:
-//     absorb_and_transform_to_dvr -> phi FFT -> multiply_by_exp_potential -> inverse phi FFT
+//     absorb_and_transform_to_dvr -> phi FFT -> exp(i A) -> inverse phi FFT
 //     -> transform_to_fbr_and_rotate -> project_onto_specular.
+// exp(i A) is applied by a cuFFT load callback of the inverse phi FFT (fft_callbacks.cu; saves a
+// read and a write of the DVR scratch per slab), or by the kernel multiply_by_exp_potential
+// (ExpPotentialMode::Kernel, and always when there is no phi FFT, nphi = 1). The multiplication is
+// the same; cuFFT may round the FFT of a plan with a callback differently (<= 4e-16 relative per
+// stage measured; bitwise equal for the DZ layout). Test: ExpPotentialCallbackMatchesTheKernel.
 // The slabs keep the DVR scratch array (n_theta * n_phi values per (Z, r, x, y) point, about
 // twice psi) to a fixed size. exp(i A) is computed on the host with the same cos/sin as the CPU
 // code (bitwise the same table) and kept on the GPU, re-laid out with izr fastest.
 // CPU twin: PotentialOperator. Fortran: Potential.f90 PerformEXPPotentialOp
+// How exp(i A) is applied between the phi transforms (see DevicePotentialOperator).
+enum class ExpPotentialMode { FftCallback, Kernel };
+
 class DevicePotentialOperator {
  public:
   // Default size limit of the DVR scratch array of one slab.
@@ -35,7 +44,8 @@ class DevicePotentialOperator {
   DevicePotentialOperator(const ScatteringShape& shape, int nz_potential, int initial_channel,
                           const PropagationTables& tables, const AngularTransform& transform,
                           std::span<const double> premultiplied_potential, const GridSymmetry& symmetry,
-                          std::size_t max_fft_work, std::size_t scratch_limit = default_scratch_limit);
+                          std::size_t max_fft_work, std::size_t scratch_limit = default_scratch_limit,
+                          ExpPotentialMode mode = ExpPotentialMode::FftCallback);
 
   void apply(DeviceWavePacket& psi) const;
   [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();
@@ -45,6 +55,8 @@ class DevicePotentialOperator {
   // apply() one by one).
   [[nodiscard]] const PotentialArgs& kernel_args() const { return args_; }
   [[nodiscard]] Complex* scratch() const { return dvr_.data(); }
+  // True if exp(i A) is applied in the load callback of the inverse phi FFT (else by the kernel).
+  [[nodiscard]] bool exp_potential_in_fft_callback() const { return exp_in_callback_; }
 
   // GPU memory of the tables and the scratch array (bytes).
   [[nodiscard]] static std::size_t memory_bytes(const ScatteringShape& shape, int nz_potential, int n_theta, int n_phi,
@@ -66,6 +78,14 @@ class DevicePotentialOperator {
   DeviceBuffer<int> representative_of_, operation_of_, phi_index_;
   mutable DeviceBuffer<Complex> dvr_;  // scratch of one slab, (col, theta, phi); not part of the state
   std::unique_ptr<DeviceFftPlan> to_dvr_fft_, to_fbr_fft_;  // phi transforms (none if nphi = 1)
+  // The load callback of to_fbr_fft_: its arguments, and izr_first of every slab (copied into the
+  // arguments before each slab, in stream order).
+  bool exp_in_callback_ = false;
+  mutable DeviceBuffer<ExpPotentialCallbackInfo> callback_info_;  // izr_first changes per slab
+  DeviceBuffer<std::int64_t> slab_starts_;
+
+  // Points the callback at slab number `slab` (asynchronous, on the default stream).
+  void select_callback_slab(int slab) const;
 };
 
 }  // namespace spodvr::cuda

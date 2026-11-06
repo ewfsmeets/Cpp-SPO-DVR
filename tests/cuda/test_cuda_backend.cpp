@@ -3,6 +3,7 @@
 // CPU FFT library differ in the last bits). Also: copies between host and GPU are exact, the BK
 // plane and the densities equal the CPU's, and two GPU runs are bitwise identical.
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <memory>
 #include <vector>
@@ -11,6 +12,7 @@
 
 #include "cuda/cuda_backend.hpp"
 #include "cuda/device_kinetic_operator.hpp"
+#include "cuda/device_potential_operator.hpp"
 #include "cuda/kernels.hpp"
 #include "cuda_test_setup.hpp"
 #include "fft/fftw_fft.hpp"
@@ -19,7 +21,9 @@
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
+#include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
+#include "propagation/angular_transform.hpp"
 #include "propagation/averages.hpp"
 #include "propagation/cpu_backend.hpp"
 #include "propagation/initial_wave_packet.hpp"
@@ -129,6 +133,66 @@ void expect_same_kinetic_stage(const BackendSetup& s, double tolerance) {
 }
 
 }  // namespace
+
+// exp(i A) applied by the load callback of the inverse phi FFT gives the result of the kernel
+// multiply_by_exp_potential: one potential stage on a random wave packet, with surface symmetry
+// (representatives, phi maps) and several slabs (the callback's izr_first changes per slab). The
+// multiplication is the same (explicitly rounded), but for a plan with a callback cuFFT may use a
+// differently rounding FFT kernel: here (nphi = 12) 62% of the values differ by <= 4e-16 relative;
+// for the DZ phi layout (nphi = 60) the results were bitwise equal.
+TEST(CudaBackend, ExpPotentialCallbackMatchesTheKernel) {
+  SPODVR_REQUIRE_GPU();
+  const BackendSetup s("cu111_dailight_short_sym");
+  const InputParameters& p = s.config.input;
+  const ScatteringShape shape{s.basis.size(), p.nx, p.ny, p.nr, p.nz};
+  const int n_xy = p.nx * p.ny;
+  const int n_zr = p.nr * p.nz;
+  auto potential = s.potential.values;  // copy, premultiplied below
+  premultiply_with_time_step(potential, p.time_step);
+  const AngularTransform transform(s.angular, s.basis, s.fft);
+  const std::size_t scratch_limit = std::size_t(64) << 20;  // several slabs
+  const std::size_t fft_limit = std::size_t(512) << 20;
+  auto make = [&](cuda::ExpPotentialMode mode) {
+    return cuda::DevicePotentialOperator(shape, s.grids.nz_potential, s.basis.initial_index(), s.tables, transform,
+                                         potential, s.potential.symmetry, fft_limit, scratch_limit, mode);
+  };
+  cuda::DevicePotentialOperator with_callback = make(cuda::ExpPotentialMode::FftCallback);
+  cuda::DevicePotentialOperator with_kernel = make(cuda::ExpPotentialMode::Kernel);
+  ASSERT_TRUE(with_callback.exp_potential_in_fft_callback());
+  ASSERT_FALSE(with_kernel.exp_potential_in_fft_callback());
+  ASSERT_LT(with_callback.slab_points(), std::int64_t(s.grids.nz_potential) * p.nr);  // more than one slab
+
+  std::vector<cuda::DeviceFftPlan*> plans = with_callback.fft_plans();
+  for (cuda::DeviceFftPlan* plan : with_kernel.fft_plans()) plans.push_back(plan);
+  std::size_t work_bytes = 1;
+  for (const cuda::DeviceFftPlan* plan : plans) work_bytes = std::max(work_bytes, plan->work_size());
+  cuda::DeviceBuffer<std::byte> work(work_bytes);
+  for (cuda::DeviceFftPlan* plan : plans) plan->set_work_area(work.data());
+
+  const cuda::DeviceLayout layout{n_zr, shape.n_rot, n_xy};
+  const int nz_specular = static_cast<int>(s.grids.z_specular.size());
+  std::vector<cplx> scattering(layout.size());
+  std::vector<cplx> specular(std::size_t(p.nr) * nz_specular);
+  fill_pseudo_random(scattering, 3);
+  fill_pseudo_random(specular, 4);
+  auto run = [&](const cuda::DevicePotentialOperator& op) {
+    cuda::DeviceWavePacket psi(layout, p.nr, nz_specular);
+    psi.scattering.upload(cuda::as_device_complex(std::span<const cplx>(scattering)));
+    psi.specular.upload(cuda::as_device_complex(std::span<const cplx>(specular)));
+    op.apply(psi);
+    std::vector<cplx> out(scattering.size() + specular.size());
+    psi.scattering.download(cuda::as_device_complex(std::span<cplx>(out).first(scattering.size())));
+    psi.specular.download(cuda::as_device_complex(std::span<cplx>(out).subspan(scattering.size())));
+    return out;
+  };
+  const std::vector<cplx> a = run(with_callback);
+  const std::vector<cplx> b = run(with_kernel);
+  std::size_t differing = 0;
+  for (std::size_t i = 0; i < a.size(); ++i)
+    if (std::memcmp(&a[i], &b[i], sizeof(cplx)) != 0) ++differing;
+  EXPECT_LT(relative_difference(a, b), 1e-15) << differing << " of " << a.size() << " values differ";
+  EXPECT_GT(relative_difference(scattering, a), 1e-3);  // the stage did change the wave function
+}
 
 // The merged GPU kinetic stage equals the CPU's T_Z + T_r stage followed by its T_xy stage, also
 // with the momentum shift (parallel momentum) and on a corrugated case's grid.

@@ -227,6 +227,27 @@ if(SPODVR_USE_CUDA)
   enable_language(CUDA)
   find_package(CUDAToolkit REQUIRED)
 
+  # The cuFFT load callback (src/cuda/fft_callbacks.cu) is not compiled into the library: nvcc
+  # turns it into LTO-IR (a fatbin), which is embedded as a byte array and handed to cuFFT at
+  # run time (cufftXtSetJITCallback; cuFFT links it with nvJitLink). compute_75 IR runs on every
+  # GPU from sm_75 on (cuFFT finalises it for the GPU in use).
+  set(callback_dir ${CMAKE_CURRENT_BINARY_DIR}/generated)
+  add_custom_command(
+    OUTPUT ${callback_dir}/fft_callbacks.fatbin
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${callback_dir}
+    COMMAND ${CMAKE_CUDA_COMPILER} -ccbin ${CMAKE_CUDA_HOST_COMPILER} -std=c++20 -fmad=false
+            -I${CMAKE_CURRENT_SOURCE_DIR}/src -gencode arch=compute_75,code=lto_75 -dc -fatbin
+            -o ${callback_dir}/fft_callbacks.fatbin ${CMAKE_CURRENT_SOURCE_DIR}/src/cuda/fft_callbacks.cu
+    DEPENDS src/cuda/fft_callbacks.cu src/cuda/fft_callbacks.hpp src/cuda/device_complex.hpp
+    COMMENT "LTO-IR of the cuFFT callback")
+  add_custom_command(
+    OUTPUT ${callback_dir}/fft_callbacks_fatbin.h
+    COMMAND ${CMAKE_COMMAND} -DINPUT=${callback_dir}/fft_callbacks.fatbin
+            -DOUTPUT=${callback_dir}/fft_callbacks_fatbin.h -DNAME=spodvr_fft_callbacks_fatbin
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_binary.cmake
+    DEPENDS ${callback_dir}/fft_callbacks.fatbin cmake/embed_binary.cmake
+    COMMENT "Embedding the cuFFT callback")
+
   add_library(spodvr_cuda
     src/cuda/cuda_backend.cpp
     src/cuda/cuda_error.cpp
@@ -234,6 +255,8 @@ if(SPODVR_USE_CUDA)
     src/cuda/device_buffer.cpp
     src/cuda/device_kinetic_operator.cpp
     src/cuda/device_potential_operator.cpp
+    src/cuda/fft_callbacks.cpp
+    ${callback_dir}/fft_callbacks_fatbin.h
     src/cuda/kinetic_kernels.cu
     src/cuda/potential_kernels.cu
     src/cuda/specular_kernels.cu
@@ -258,6 +281,7 @@ if(SPODVR_USE_CUDA)
   if(SPODVR_CUDA_SYNC_DEBUG)
     target_compile_definitions(spodvr_cuda PRIVATE SPODVR_CUDA_SYNC_DEBUG)
   endif()
+  target_include_directories(spodvr_cuda PRIVATE ${callback_dir})
   target_link_libraries(spodvr_cuda
     PUBLIC spodvr_core CUDA::cudart CUDA::cufft
     PRIVATE spodvr_warnings spodvr_fp)

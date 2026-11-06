@@ -147,10 +147,14 @@ int main(int argc, char** argv) {
             }));
   if (!phi.empty())
     time_call("phi cuFFT (to DVR)", repetitions, over_slabs([&](const PotentialArgs&) { phi[0]->execute(dvr); }));
-  time_call("multiply_by_exp_potential", repetitions,
+  // With the FFT callback, exp(i A) is applied inside the inverse phi FFT; the kernel is timed for
+  // comparison only (the callback reads the last slab's izr_first here: the timing is the same).
+  const bool in_callback = potential_op.exp_potential_in_fft_callback();
+  time_call(in_callback ? "multiply_by_exp_potential (not used)" : "multiply_by_exp_potential", repetitions,
             over_slabs([&](const PotentialArgs& a) { multiply_by_exp_potential(a, dvr); }));
   if (!phi.empty())
-    time_call("phi cuFFT (to FBR)", repetitions, over_slabs([&](const PotentialArgs&) { phi[1]->execute(dvr); }));
+    time_call(in_callback ? "phi cuFFT (to FBR) with exp(iA) callback" : "phi cuFFT (to FBR)", repetitions,
+              over_slabs([&](const PotentialArgs&) { phi[1]->execute(dvr); }));
   time_call("transform_to_fbr_and_rotate", repetitions,
             over_slabs([&](const PotentialArgs& a) { transform_to_fbr_and_rotate(a, dvr, psi.scattering.data()); }));
   time_call("project_onto_specular", repetitions, over_slabs([&](const PotentialArgs& a) {

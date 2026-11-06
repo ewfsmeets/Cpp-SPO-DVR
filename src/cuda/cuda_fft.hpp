@@ -3,6 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <span>
+#include <string>
 #include <vector>
 
 #include "cuda/device_complex.hpp"
@@ -20,6 +23,16 @@ struct DeviceFftShape {
   std::int64_t batch = 1;
 };
 
+// A cuFFT load callback in LTO-IR (cufftXtSetJITCallback): cuFFT calls the function `name` of
+// `lto_fatbin` for every value it reads, with `caller_info` (device memory). The offsets it passes
+// count from the start of the data of one execute() call, so a plan with a load callback must run
+// its whole batch in one call (no slabs).
+struct DeviceFftLoadCallback {
+  std::span<const unsigned char> lto_fatbin;
+  std::string name;
+  void* caller_info = nullptr;  // device pointer
+};
+
 // One cuFFT plan (cufftMakePlanMany64). cuFFT does not scale: the scale factors of the CPU plans
 // are applied by the kernels around the transforms (folded into their factor tables).
 // Large batches are executed in slabs of consecutive transforms, so that cuFFT's work area
@@ -28,7 +41,8 @@ struct DeviceFftShape {
 // The sign follows FftSign: Minus = exp(-2 pi i k n / N) = CUFFT_FORWARD.
 class DeviceFftPlan {
  public:
-  DeviceFftPlan(const DeviceFftShape& shape, FftSign sign, std::size_t max_work_bytes);
+  DeviceFftPlan(const DeviceFftShape& shape, FftSign sign, std::size_t max_work_bytes,
+                std::optional<DeviceFftLoadCallback> load_callback = std::nullopt);
   ~DeviceFftPlan();
   DeviceFftPlan(const DeviceFftPlan&) = delete;
   DeviceFftPlan& operator=(const DeviceFftPlan&) = delete;
@@ -46,6 +60,7 @@ class DeviceFftPlan {
 
   DeviceFftShape shape_;
   int direction_;
+  std::optional<DeviceFftLoadCallback> load_callback_;
   std::int64_t slab_;              // transforms per call
   std::unique_ptr<Plan> full_;     // slab_ transforms
   std::unique_ptr<Plan> rest_;     // the last batch % slab_ transforms (if any)

@@ -2,9 +2,16 @@
 // CPU twin: propagation/potential_operator.cpp
 #include "cuda/device_potential_operator.hpp"
 
+#include <cuda_runtime_api.h>
+
+#include <array>
 #include <complex>
+#include <cstddef>
+#include <optional>
 #include <stdexcept>
 #include <string>
+
+#include "cuda/cuda_error.hpp"
 
 #include "propagation/potential_operator.hpp"
 
@@ -49,7 +56,7 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
                                                  const PropagationTables& tables, const AngularTransform& transform,
                                                  std::span<const double> premultiplied_potential,
                                                  const GridSymmetry& symmetry, std::size_t max_fft_work,
-                                                 std::size_t scratch_limit) {
+                                                 std::size_t scratch_limit, ExpPotentialMode mode) {
   const int n_theta = transform.n_theta();
   const int n_phi = transform.n_phi();
   const std::int64_t n_tp = std::int64_t(n_theta) * n_phi;
@@ -109,7 +116,21 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
   if (n_phi > 1) {
     const DeviceFftShape phi{{n_phi}, n_columns * n_theta, 1, n_columns * n_theta};
     to_dvr_fft_ = std::make_unique<DeviceFftPlan>(phi, FftSign::Plus, max_fft_work);  // Fortran: FFTForFBRToDVRInPhi
-    to_fbr_fft_ = std::make_unique<DeviceFftPlan>(phi, FftSign::Minus, max_fft_work);  // Fortran: FFTForDVRToFBRInPhi
+    std::optional<DeviceFftLoadCallback> exp_potential_callback;
+    if (mode == ExpPotentialMode::FftCallback) {
+      const std::array<ExpPotentialCallbackInfo, 1> info{
+          {{exp_potential_.data(), representative_of_.data(), operation_of_.data(), phi_index_.data(), n_zr_potential,
+            0, static_cast<int>(n_slab), static_cast<int>(n_columns), n_theta, n_phi}}};
+      callback_info_ = DeviceBuffer<ExpPotentialCallbackInfo>(std::span<const ExpPotentialCallbackInfo>(info));
+      std::vector<std::int64_t> starts;
+      for (std::int64_t izr_first = 0; izr_first < n_zr_potential; izr_first += n_slab) starts.push_back(izr_first);
+      slab_starts_ = DeviceBuffer<std::int64_t>(std::span<const std::int64_t>(starts));
+      exp_potential_callback =
+          DeviceFftLoadCallback{exp_potential_callback_fatbin(), exp_potential_callback_name, callback_info_.data()};
+      exp_in_callback_ = true;
+    }
+    // Fortran: FFTForDVRToFBRInPhi
+    to_fbr_fft_ = std::make_unique<DeviceFftPlan>(phi, FftSign::Minus, max_fft_work, std::move(exp_potential_callback));
   }
 
   args_.psi = DeviceLayout{std::int64_t(s.nr) * s.nz, s.n_rot, std::int64_t(s.nx) * s.ny};
@@ -152,14 +173,29 @@ void DevicePotentialOperator::apply(DeviceWavePacket& psi) const {
 
   PotentialArgs slab = args_;
   Complex* dvr = dvr_.data();
-  for (slab.izr_first = 0; slab.izr_first < args_.n_zr_potential; slab.izr_first += args_.n_slab) {
+  int slab_number = 0;
+  for (slab.izr_first = 0; slab.izr_first < args_.n_zr_potential; slab.izr_first += args_.n_slab, ++slab_number) {
     absorb_and_transform_to_dvr(slab, scattering, specular, dvr);
     if (to_dvr_fft_) to_dvr_fft_->execute(dvr);
-    multiply_by_exp_potential(slab, dvr);
-    if (to_fbr_fft_) to_fbr_fft_->execute(dvr);
+    if (exp_in_callback_) {
+      select_callback_slab(slab_number);
+      to_fbr_fft_->execute(dvr);  // exp(i A) applied by the load callback
+    } else {
+      multiply_by_exp_potential(slab, dvr);
+      if (to_fbr_fft_) to_fbr_fft_->execute(dvr);
+    }
     transform_to_fbr_and_rotate(slab, dvr, scattering);
     project_onto_specular(slab, scattering, specular);
   }
+}
+
+// Copies izr_first of the slab into the callback's arguments, device to device on the default
+// stream, so that it takes effect between the previous and the next FFT of the stream.
+void DevicePotentialOperator::select_callback_slab(int slab) const {
+  std::byte* info = reinterpret_cast<std::byte*>(callback_info_.data());
+  check_cuda_status(cudaMemcpyAsync(info + offsetof(ExpPotentialCallbackInfo, izr_first), slab_starts_.data() + slab,
+                                    sizeof(std::int64_t), cudaMemcpyDeviceToDevice, nullptr),
+                    "cudaMemcpyAsync (callback slab)");
 }
 
 }  // namespace spodvr::cuda

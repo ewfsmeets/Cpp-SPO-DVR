@@ -36,6 +36,23 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
   `-fmad=false` (no FMA contraction, as on the CPU). With `SPODVR_FAST_MATH=ON` they get
   `--use_fast_math --extra-device-vectorization` instead (see "Fast build" under Performance).
   Both builds add `-lineinfo` (source lines for Nsight; the generated SASS is identical).
+- **cuFFT callback:** `src/cuda/fft_callbacks.cu` is not part of the library. CMake builds it in
+  three steps:
+  - nvcc compiles it to LTO-IR (`-gencode arch=compute_75,code=lto_75 -dc -fatbin`; compute_75 IR
+    runs on every GPU from sm_75 on);
+  - `cmake/embed_binary.cmake` turns that into a byte array (`build-*/generated/`);
+  - `src/cuda/fft_callbacks.cpp` hands the array to cuFFT, which links it into its FFT kernel when
+    the plan is made (`cufftXtSetJITCallback`).
+
+  At run time cuFFT needs `libnvJitLink` and `libnvrtc` of its own CUDA release on the library
+  path; both are part of the toolkit. Without them the GPU run stops with an error that names
+  them.
+
+  The callback must:
+  - be at global scope and not `extern "C"`; otherwise cuFFT fails with
+    `CUFFT_NVJITLINK_FAILURE`;
+  - multiply with `__dmul_rn`/`__dadd_rn`, because cuFFT sets the link options and nvJitLink
+    contracts to FMA by default.
 
 ## Running
 ```bash
@@ -76,8 +93,10 @@ number of (Z, r) points whose DVR scratch fits in 1 GiB:
    specular wave added to the initial channel, then the Legendre sums FBR → DVR.
 2. cuFFT over φ: length nφ, batch columns·nθ at distance 1. The scratch layout is (col, θ, φ),
    without the CPU's nφ+1 padding.
-3. `multiply_by_exp_potential`: exp(iA) of the column's (x, y) representative at the mapped φ
-   (surface symmetry).
+3. exp(iA) of the column's (x, y) representative at the mapped φ (surface symmetry). It is applied
+   by a cuFFT load callback of the inverse φ FFT (`src/cuda/fft_callbacks.cu`), so the DVR scratch
+   is not read and written once more. The kernel `multiply_by_exp_potential` does the same when
+   there is no φ FFT (nφ = 1), and serves as the reference in the tests.
 4. Inverse φ cuFFT, then `transform_to_fbr_and_rotate`: Legendre sums DVR → FBR, then rot(dt/2).
 5. `project_onto_specular`: one thread per (Z, r) point; the sum over (x, y) runs in the CPU order.
 
@@ -238,19 +257,13 @@ Measured optimisations (DZ, strict build, interleaved A/B, per time step):
 | Change | Before | After |
 |---|---|---|
 | Merged kinetic stages (2026-11-06; one multiplication pass instead of two: 26.4 ms instead of 2 × 24.8 ms) | 656.6 ms | 627.5 ms (−4.4%) |
+| exp(iA) as cuFFT load callback of the inverse φ FFT (2026-11-06; kernel 58.5 ms gone, φ FFT 48 → 57 ms; this A/B drifted, so pairs with the base run after the new one: −45 and −44 ms) | 616.9 / 598.7 ms | 571.6 / 554.9 ms (≈ −7%) |
 
 Next steps, to be judged on the production GPU (on an A100/H100 the kernels become memory-bound,
 and fewer passes pay off directly):
-- **cuFFT LTO callbacks** (`cufftXtSetJITCallback`, no static cuFFT needed): fold the exp(iA)
-  multiplication into the load of the inverse φ FFT.
-  - What a smoke test on the DZ φ layout showed (2026-11-06):
-    - the callback must not be `extern "C"` (cuFFT then fails with `CUFFT_NVJITLINK_FAILURE`);
-    - compile with `nvcc -gencode arch=compute_89,code=lto_89 -dc -fatbin`;
-    - creating the plan takes 0.14 s;
-    - the result was bitwise equal to the multiply kernel plus the plain FFT;
-    - 7.1 ms instead of 12.7 ms per slab, i.e. ≈ 45 ms per DZ time step.
-  - The callback must use `__dmul_rn`/`__dadd_rn`: the LTO-IR is built with `-fmad=1`, and cuFFT
-    sets the nvJitLink options.
+- **More cuFFT callbacks:** the kinetic multiplication (`multiply_by_kinetic_factors`) as the
+  store callback of the forward (x, y) FFT, or as the load callback of the inverse one. That saves
+  one more pass over ψ.
 - **Even/odd split of the θ sums** (heteronuclear molecules only): the θ grid is symmetric about
   π/2 and P_J^m(−x) = ±P_J^m(x), so the split halves the FP64 work of the Legendre sums. For
   homonuclear molecules the grid already covers only [0, π/2] and every mJ block has a single
@@ -300,7 +313,8 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 | `src/cuda/device_kinetic_operator.{hpp,cpp}` | the kinetic stage T (merged) and the specular grid (plans, tables, launch order) |
 | `src/cuda/device_potential_operator.{hpp,cpp}` | the potential stage (tables, exp(iA), slab loop) |
 | `src/cuda/*_kernels.cu`, `kernels.hpp` | the kernels and their launch functions |
-| `src/cuda/cuda_fft.{hpp,cpp}` | cuFFT plans (64-bit, slabbed batches, shared work area) |
+| `src/cuda/cuda_fft.{hpp,cpp}` | cuFFT plans (64-bit, slabbed batches, shared work area, optional LTO load callback) |
+| `src/cuda/fft_callbacks.{hpp,cu,cpp}`, `cmake/embed_binary.cmake` | the exp(iA) load callback (LTO-IR, embedded at build time) |
 | `src/cuda/device_buffer.{hpp,cpp}`, `device_complex.hpp`, `cuda_error.{hpp,cpp}`, `launch.cuh` | device memory, complex arithmetic, layout, errors, launch helpers |
 | `tests/cuda/` | cuFFT vs FFTW, CPU vs GPU per analysis step, determinism, memory estimate, restart, gates 3/4 |
 | `tools/benchmark/cuda_operator_timing.cpp` | per-stage and per-kernel timing |
