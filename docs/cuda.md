@@ -326,6 +326,7 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 ## Files
 | File | Content |
 |---|---|
+| `src/cuda/README.md` | in-depth guide to the kernels: what each one does and why, how the stages fit together (diagrams) |
 | `src/cuda/cuda_backend.{hpp,cpp}` | `CudaBackend`, the factory, device info, GPU memory estimate |
 | `src/cuda/device_kinetic_operator.{hpp,cpp}` | the kinetic stage T (merged) and the specular grid (plans, tables, launch order) |
 | `src/cuda/device_potential_operator.{hpp,cpp}` | the potential stage (tables, exp(iA), slab loop) |
