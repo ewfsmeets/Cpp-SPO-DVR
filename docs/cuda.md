@@ -35,6 +35,7 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 - **Compile flags:** `spodvr_warnings` and `spodvr_fp` apply to C++ only. The kernels get
   `-fmad=false` (no FMA contraction, as on the CPU). With `SPODVR_FAST_MATH=ON` they get
   `--use_fast_math --extra-device-vectorization` instead (see "Fast build" under Performance).
+  Both builds add `-lineinfo` (source lines for Nsight; the generated SASS is identical).
 
 ## Running
 ```bash
@@ -85,6 +86,29 @@ The tables are the CPU's. `potential_step_factors`, `specular_gas_phase_factors`
 `AngularTransform` matrices are shared, and exp(iA) is computed on the host with the CPU's
 `exp_i`, then re-laid out with izr fastest.
 
+### One method, two executions
+The CPU and the GPU backend implement the same method:
+- the same operator sequence `T/2 V (T V)^(n-1) T/2`;
+- the same stages within T and V (table above);
+- the same tables;
+- the same order of operations per element.
+
+They differ only in how the stages are executed: memory layout, gather/scatter, the CPU's
+fusion of T_xy and V per group, and the GPU's slabs. This keeps every GPU stage traceable to its
+CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on.
+
+**Rule for changes to the GPU backend:**
+- **Allowed in the GPU backend alone:** a change to *how* a stage runs. Examples: layout, fusing
+  adjacent elementwise work into a kernel or a cuFFT callback, streams and overlap, launch shapes.
+- **Never in the GPU backend alone:** a change to *what* is computed: the operator
+  decomposition, the order of the factors per element, the tables, or the order of a reduction
+  (the inside of an FFT excepted). Such a change goes into both backends in the same commit, or
+  into neither.
+- A deliberate exception is listed below, with its reason and the test that compares it with
+  the CPU.
+
+**Methodology exceptions:** none so far.
+
 ## Numerics
 - **No FMA:** `-fmad=false` everywhere. Complex products are formed as GCC does with
   `-fcx-fortran-rules` (`Complex` in `src/cuda/device_complex.hpp`), and every kernel keeps the CPU
@@ -113,7 +137,7 @@ GPU memory estimate for the DZ benchmark (below):
 | ψ | 4.8 GiB |
 | exp(−iV dt) table (19 symmetry representatives of 144 (x, y) points) | 1.0 GiB |
 | DVR scratch (slab of 500 points) | 1.0 GiB |
-| cuFFT work area (limit; the DZ grid needs 34 MiB) | ≤ 0.5 GiB |
+| cuFFT work area (limit; the DZ grid needs < 1 MiB with cuFFT 12.3 / CUDA 13.3) | ≤ 0.5 GiB |
 | BK plane, copy buffer | small |
 
 The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is set at start-up).
@@ -124,10 +148,22 @@ The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is s
   (not implemented).
 
 ## Performance
-Measure with `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [repetitions]`, which
-times each stage and each kernel of the potential stage. ncu needs access to the GPU performance
-counters (not granted on this WSL2 machine). The nsys of Ubuntu's CUDA 12.0 packages could not
-import its own traces; NVIDIA's Nsight Systems (installed with CUDA 13) has not been tried yet.
+Measure with `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [repetitions]`. It times:
+- each stage and each kernel of the potential stage;
+- a whole analysis step as the program runs it. That step has one kinetic stage more than n
+  time steps (`T/2 V (T V)^(n-1) T/2`), so its time per step is what the full program reaches
+  (DZ: 625 ms against 588 ms for the sum of the stages).
+
+Profiling:
+- **Nsight Systems 2026.1** (`/usr/local/cuda/bin/nsys`) works on this WSL2 machine, for CUDA
+  API and kernel traces:
+  ```bash
+  nsys profile --trace=cuda --sample=none --cpuctxsw=none -o trace ./build-cuda/spodvr in.json --device cuda
+  nsys stats --report cuda_gpu_kern_sum trace.nsys-rep
+  ```
+  A DZ trace showed the GPU idle for less than 1 ms per time step, so the host analysis never
+  holds up the GPU.
+- **ncu** needs access to the GPU performance counters, which this WSL2 machine does not grant.
 
 DZ benchmark (`inputs/thesis_fig5_3_dz`: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
 19 C6v representatives), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step

@@ -1,5 +1,6 @@
 // Per-operator and per-kernel timing of the GPU backend for an input file: the specular grid,
-// T_Z + T_r, T_xy, the potential stage kernel by kernel, and the per-step copies to the host.
+// T_Z + T_r, T_xy, a whole analysis step (as the program runs it), the potential stage kernel
+// by kernel, and the per-step copies to the host.
 // Every call is followed by cudaDeviceSynchronize, so the times are those of the GPU work.
 // Usage: spodvr_cuda_operator_timing <input.json> [repetitions]
 #include <cuda_runtime_api.h>
@@ -82,7 +83,8 @@ int main(int argc, char** argv) {
   const AngularTransform transform(angular, basis, fft);
   DevicePotentialOperator potential_op(shape, grids.nz_potential, basis.initial_index(), tables, transform,
                                        potential.values, potential.symmetry, fft_work_limit);
-  std::vector<DeviceFftPlan*> plans = kinetic.fft_plans();
+  const std::vector<DeviceFftPlan*> kinetic_plans = kinetic.fft_plans();  // (Z, r) pair, then (x, y) pair if any
+  std::vector<DeviceFftPlan*> plans = kinetic_plans;
   for (DeviceFftPlan* q : specular.fft_plans()) plans.push_back(q);
   for (DeviceFftPlan* q : potential_op.fft_plans()) plans.push_back(q);
   std::size_t work_bytes = 1;
@@ -101,17 +103,34 @@ int main(int argc, char** argv) {
   step_ms += time_call("specular grid", repetitions, [&] { specular.apply(psi, TimeStep::Full, false); });
   step_ms += time_call("T_Z + T_r", repetitions, [&] { kinetic.apply_zr(psi, TimeStep::Full); });
   time_call("  of which the two (Z, r) cuFFTs", repetitions, [&] {
-    plans[0]->execute(psi.scattering.data());
-    plans[1]->execute(psi.scattering.data());
+    kinetic_plans[0]->execute(psi.scattering.data());
+    kinetic_plans[1]->execute(psi.scattering.data());
   });
   step_ms += time_call("T_xy", repetitions, [&] { kinetic.apply_xy(psi, TimeStep::Full); });
-  if (plans.size() > 6)
+  if (kinetic_plans.size() == 4)
     time_call("  of which the two (x, y) cuFFTs", repetitions, [&] {
-      plans[2]->execute(psi.scattering.data());
-      plans[3]->execute(psi.scattering.data());
+      kinetic_plans[2]->execute(psi.scattering.data());
+      kinetic_plans[3]->execute(psi.scattering.data());
     });
   step_ms += time_call("potential (all kernels)", repetitions, [&] { potential_op.apply(psi); });
   std::printf("  %-44s %10.2f ms\n", "sum = one time step", step_ms);
+
+  // One analysis step as the program runs it: T/2 V (T V)^(n-1) T/2, i.e. one kinetic stage more
+  // than n time steps. Same order as CudaBackend::propagate_analysis_step (cuda_backend.cpp).
+  const int n_per_analysis = config.derived.steps_per_analysis;
+  auto kinetic_and_potential = [&](TimeStep step, bool kinetic_only) {
+    specular.apply(psi, step, kinetic_only);
+    kinetic.apply_zr(psi, step);
+    kinetic.apply_xy(psi, step);
+    if (!kinetic_only) potential_op.apply(psi);
+  };
+  const double analysis_ms =
+      time_call("one analysis step (" + std::to_string(n_per_analysis) + " time steps)", repetitions, [&] {
+        kinetic_and_potential(TimeStep::Half, false);
+        for (int s = 1; s < n_per_analysis; ++s) kinetic_and_potential(TimeStep::Full, false);
+        kinetic_and_potential(TimeStep::Half, true);
+      });
+  std::printf("  %-44s %10.2f ms\n", "  per time step", analysis_ms / n_per_analysis);
 
   // The potential stage kernel by kernel, summed over the slabs.
   std::printf("Potential stage, kernel by kernel (summed over the slabs):\n");

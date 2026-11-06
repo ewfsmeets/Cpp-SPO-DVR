@@ -252,6 +252,8 @@ if(SPODVR_USE_CUDA)
     # No FMA contraction, as on the CPU.
     set(cuda_flags -fmad=false -Xcompiler=-ffp-contract=off,-fno-fast-math)
   endif()
+  # Source-line information for Nsight Systems/Compute (no effect on the generated code).
+  list(APPEND cuda_flags -lineinfo)
   target_compile_options(spodvr_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:${cuda_flags}>")
   if(SPODVR_CUDA_SYNC_DEBUG)
     target_compile_definitions(spodvr_cuda PRIVATE SPODVR_CUDA_SYNC_DEBUG)
