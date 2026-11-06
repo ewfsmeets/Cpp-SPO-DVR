@@ -25,11 +25,11 @@
 namespace spodvr {
 
 // Callbacks of the time loop (unset ones are skipped): the averages at tStart and every nave
-// analysis steps; the Z of the dynamic specular analysis surface when it becomes fixed; the BK
+// analysis steps; the time and Z at which the dynamic specular analysis surface becomes fixed; the BK
 // coefficients of every analysis step with the time at its end.
 struct PropagationObserver {
   std::function<void(const Averages&)> on_averages;
-  std::function<void(double z)> on_surface_fixed;
+  std::function<void(double time, double z)> on_surface_fixed;
   std::function<void(double time, const BkCoefficients&)> on_analysis_step;
 };
 

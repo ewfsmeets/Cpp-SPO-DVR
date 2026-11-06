@@ -43,7 +43,7 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
     // Analysis: move the specular analysis surface, project onto the asymptotic channels and
     // accumulate the S-matrix. Fortran: BalintKurtiCoeffs
     if (const auto z_fixed = surface_.update(backend_->specular()); z_fixed && observer.on_surface_fixed)
-      observer.on_surface_fixed(*z_fixed);
+      observer.on_surface_fixed(time, *z_fixed);
     const BkCoefficients bk =
         balint_kurti_.coefficients(backend_->z_plane(grids_.iz_analysis), backend_->specular(), surface_);
     s_matrix_.add(bk, time);

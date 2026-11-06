@@ -220,8 +220,10 @@ spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda
 
 Output:
 - **Screen:** an input summary, the grids, a memory estimate, the surface symmetry (with
-  `UseSymmetry`), the gas-phase states, the initial wave packet, the analysis basis, a table of averages during the propagation, and compact probability tables
-  (one row per energy) at the end.
+  `UseSymmetry`), the gas-phase states, the initial wave packet, the analysis basis, a table of averages during the propagation (on a terminal with a live progress line:
+  step, time per step, estimated remaining time), and compact probability tables (one row per
+  energy) at the end. Colour and the progress line are off when the output is not a terminal (a
+  pipe, `tee`, a file) or with `--no-color`.
 - **Data files** (in the output directory, full precision, tab-separated with a commented header
   that explains every column; they load with `pandas.read_csv(f, sep="\t", comment="#")`):
 

@@ -149,22 +149,24 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   }
   for (const auto& [time, bk] : earlier) bk_out.append(time, bk);
 
-  const AveragesTable table(out, style);
+  const InputParameters& p = config.input;
+  AveragesTable table(out, style, p.n_steps, p.time_step, p.t_end - p.n_steps * p.time_step);
   table.print_header();
   std::vector<Averages> averages;
-  const auto start = std::chrono::steady_clock::now();
   PropagationObserver observer;
   observer.on_averages = [&](const Averages& a) {
     table.print_row(a);
     averages.push_back(a);
   };
-  observer.on_surface_fixed = [&](double z) {
-    table.print_note("analysis surface on the specular grid fixed at Z = " + fixed(z, 6) + " bohr");
+  observer.on_surface_fixed = [&](double time, double z) {
+    table.print_note("analysis surface on the specular grid fixed at Z = " + fixed(z, 6) + " bohr", time);
   };
-  observer.on_analysis_step = [&](double time, const BkCoefficients& bk) { bk_out.append(time, bk); };
+  observer.on_analysis_step = [&](double time, const BkCoefficients& bk) {
+    bk_out.append(time, bk);
+    table.print_status(time);
+  };
   propagation.run(observer);
-  const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
-  out << "\n  Propagation time: " << fixed(elapsed.count(), 1) << " s\n";
+  table.finish();
 
   // Checkpoint for a restart. Fortran: SaveWaveFunc
   const AnalysisSurfaceState surface = propagation.analysis_surface().state();

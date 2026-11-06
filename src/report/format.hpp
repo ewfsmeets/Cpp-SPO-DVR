@@ -15,6 +15,8 @@ struct Style {
   [[nodiscard]] std::string heading(std::string_view text) const;
   [[nodiscard]] std::string emphasis(std::string_view text) const;
   [[nodiscard]] std::string warning(std::string_view text) const;
+  [[nodiscard]] std::string accent(std::string_view text) const;
+  [[nodiscard]] std::string dim(std::string_view text) const;
 };
 
 // Full-precision scientific notation (%.16e), used for every regression-relevant number.
@@ -22,6 +24,8 @@ struct Style {
 // Fixed or scientific formatting with the given number of significant/decimal digits.
 [[nodiscard]] std::string fixed(double x, int decimals);
 [[nodiscard]] std::string scientific(double x, int decimals);
+// Wall-clock duration as "m:ss" (under an hour) or "h:mm:ss".
+[[nodiscard]] std::string format_duration(double seconds);
 // Memory size in binary units: "512 B", "3.2 MiB", "4.0 GiB".
 [[nodiscard]] std::string format_bytes(std::size_t bytes);
 

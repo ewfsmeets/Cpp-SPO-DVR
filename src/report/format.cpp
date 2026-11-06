@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdio>
 
 namespace spodvr {
@@ -25,9 +26,23 @@ std::string format(const char* fmt, int decimals, double x) {
 std::string Style::heading(std::string_view text) const { return wrap(color, "1;36", text); }
 std::string Style::emphasis(std::string_view text) const { return wrap(color, "1", text); }
 std::string Style::warning(std::string_view text) const { return wrap(color, "1;33", text); }
+std::string Style::accent(std::string_view text) const { return wrap(color, "36", text); }
+std::string Style::dim(std::string_view text) const { return wrap(color, "2", text); }
 
 std::string full_precision(double x) { return format("%.*e", 16, x); }
 std::string fixed(double x, int decimals) { return format("%.*f", decimals, x); }
+
+std::string format_duration(double seconds) {
+  const long long total = std::llround(std::max(seconds, 0.0));
+  const long long hours = total / 3600;
+  const long long minutes = total / 60 % 60;
+  char buffer[32];
+  if (hours > 0)
+    std::snprintf(buffer, sizeof buffer, "%lld:%02lld:%02lld", hours, minutes, total % 60);
+  else
+    std::snprintf(buffer, sizeof buffer, "%lld:%02lld", minutes, total % 60);
+  return buffer;
+}
 
 std::string format_bytes(std::size_t bytes) {
   if (bytes < 1024) return std::to_string(bytes) + " B";
