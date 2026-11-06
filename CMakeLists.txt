@@ -4,53 +4,59 @@ project(SpoDvr VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)  # for clang-tidy
+if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
+# =============================================================================================
+# Build options (-D<name>=<value>; README.md lists the usual combinations)
+# =============================================================================================
+option(SPODVR_USE_MKL "Use Intel oneMKL (BLAS/LAPACK, FFTs) when it is found" ON)
+set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "FFT library: AUTO (oneMKL if found, else FFTW), MKL or FFTW")
+set(SPODVR_ARCH "x86-64-v3" CACHE STRING "-march value: x86-64-v3 (AVX2), x86-64-v4 (AVX-512), native, or empty")
+option(SPODVR_FAST_MATH "Experimental: -ffast-math (and FMA in the CUDA kernels); changes rounding" OFF)
+set(SPODVR_PGO "OFF" CACHE STRING "Profile-guided optimisation: OFF, GENERATE or USE (docs/performance.md)")
+set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of the PGO profile data")
+option(SPODVR_USE_CUDA "Build the GPU backend (--device cuda; docs/cuda.md)" OFF)
+option(SPODVR_CUDA_SYNC_DEBUG "Debug: wait for and check every CUDA kernel right after its launch" OFF)
+option(SPODVR_POISON_UNINITIALISED "Debug: fill new AlignedVector elements with NaN" OFF)
 option(SPODVR_WARNINGS_AS_ERRORS "Treat compiler warnings as errors (CI)" OFF)
 option(SPODVR_BUILD_TESTS "Build the unit and regression tests" ON)
-option(SPODVR_POISON_UNINITIALISED "Debug: fill uninitialised AlignedVector elements with NaN" OFF)
 option(SPODVR_BUILD_TOOLS "Build the developer tools (operator timing, wave function dump/compare)" ON)
 
-# ---------------------------------------------------------------------------------------------
-# Dependencies
-# ---------------------------------------------------------------------------------------------
+# =============================================================================================
+# Libraries
+# =============================================================================================
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 find_package(PkgConfig REQUIRED)
 
-# Intel oneMKL (sequential: the program calls it from inside its own OpenMP threads; LP64:
-# 32-bit integers). If found it provides BLAS/LAPACK, replacing the system libraries, and by
-# default also the FFTs through its FFTW3 interface. See docs/performance.md.
-option(SPODVR_USE_MKL "Use Intel oneMKL when it is found" ON)
-set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "Implementation of the FFTW3 API: AUTO (oneMKL if found), MKL or FFTW")
-set_property(CACHE SPODVR_FFT_LIBRARY PROPERTY STRINGS AUTO MKL FFTW)
+# Intel oneMKL, sequential (it is called from inside our own OpenMP threads) and LP64 (32-bit
+# integers). When found it provides BLAS/LAPACK and, by default, the FFTs through its FFTW3
+# interface. Without it: the system LAPACK and FFTW. See docs/performance.md.
 if(SPODVR_USE_MKL)
   set(MKL_THREADING sequential)
   set(MKL_INTERFACE lp64)
   set(MKL_LINK dynamic)
   find_package(MKL CONFIG QUIET HINTS $ENV{MKLROOT} /opt/intel/oneapi/mkl/latest)
 endif()
-set(SPODVR_HAVE_MKL ${MKL_FOUND})  # MKL_FOUND is unset when SPODVR_USE_MKL is OFF
+if(NOT MKL_FOUND)
+  find_package(LAPACK REQUIRED)
+endif()
 
+set(SPODVR_FFT_LIBRARY_USED ${SPODVR_FFT_LIBRARY})
 if(SPODVR_FFT_LIBRARY STREQUAL "AUTO")
-  if(SPODVR_HAVE_MKL)
+  if(MKL_FOUND)
     set(SPODVR_FFT_LIBRARY_USED MKL)
   else()
     set(SPODVR_FFT_LIBRARY_USED FFTW)
   endif()
-else()
-  set(SPODVR_FFT_LIBRARY_USED ${SPODVR_FFT_LIBRARY})
 endif()
-if(SPODVR_FFT_LIBRARY_USED STREQUAL "MKL" AND NOT SPODVR_HAVE_MKL)
+if(SPODVR_FFT_LIBRARY_USED STREQUAL "MKL" AND NOT MKL_FOUND)
   message(FATAL_ERROR "SPODVR_FFT_LIBRARY=MKL but oneMKL was not found")
 endif()
 if(SPODVR_FFT_LIBRARY_USED STREQUAL "FFTW")
   pkg_check_modules(FFTW3 REQUIRED IMPORTED_TARGET fftw3)
-endif()
-if(NOT SPODVR_HAVE_MKL)
-  find_package(LAPACK REQUIRED)
 endif()
 
 include(FetchContent)
@@ -60,69 +66,60 @@ FetchContent_Declare(nlohmann_json
   GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(nlohmann_json)
 
-# ---------------------------------------------------------------------------------------------
-# Warnings
-# ---------------------------------------------------------------------------------------------
-# (C++ only: these options must not reach nvcc when the CUDA backend is built.)
-add_library(spodvr_warnings INTERFACE)
-target_compile_options(spodvr_warnings INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wpedantic -Wshadow
-                                                 -Wconversion -Wno-sign-conversion>)
+# =============================================================================================
+# Compiler flags of our own C++ code. They are applied to C++ files only ($<COMPILE_LANGUAGE:CXX>),
+# because the GPU backend also contains .cu files, which nvcc compiles with its own flags.
+# =============================================================================================
+set(warning_flags -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wno-sign-conversion)
 if(SPODVR_WARNINGS_AS_ERRORS)
-  target_compile_options(spodvr_warnings INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
+  list(APPEND warning_flags -Werror)
 endif()
 
-# Floating-point semantics. No contraction (FMA) and no fast-math, so that results stay
-# comparable with the Fortran reference and independent of the target CPU. The other flags do
-# not change any result, they only enable optimisations (see docs/performance.md):
-#   -fcx-fortran-rules  complex * and / without the C99 NaN-recovery call (__muldc3), i.e. the
-#                       gfortran semantics; lets GCC vectorise complex multiplication loops
+# Floating-point semantics. By default no FMA contraction and no fast-math, so that the results
+# stay comparable with the Fortran reference and do not depend on the target CPU. The other flags
+# change no result, they only allow optimisations (docs/performance.md):
+#   -fcx-fortran-rules  complex * and / as gfortran does (no C99 NaN-recovery call); lets GCC
+#                       vectorise complex multiplications
 #   -fno-math-errno     math functions need not set errno (sqrt is inlined)
-#   -fno-trapping-math  no floating-point traps are assumed (more if-conversion/vectorisation)
-#
-# SPODVR_FAST_MATH (experimental, default OFF): -ffast-math instead (FMA contraction, reassociation,
-# vectorised math functions). Changes rounding; only for speed experiments, checked with the gates.
-option(SPODVR_FAST_MATH "Experimental: compile with -ffast-math (changes rounding)" OFF)
-# (C++ only, like the warnings; the CUDA kernels get their own flags, see SPODVR_USE_CUDA.)
-add_library(spodvr_fp INTERFACE)
+#   -fno-trapping-math  no floating-point traps (more vectorisation)
 if(SPODVR_FAST_MATH)
-  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-ffast-math -fcx-fortran-rules>)
+  set(fp_flags -ffast-math -fcx-fortran-rules)
 else()
-  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-ffp-contract=off -fno-fast-math
-                                             -fcx-fortran-rules -fno-math-errno -fno-trapping-math>)
+  set(fp_flags -ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math)
 endif()
 
-# Target instruction set. The default x86-64-v3 (AVX2) runs on any recent x86-64 CPU; "native"
-# uses everything the build machine has (e.g. AVX-512). With -ffp-contract=off the results of
-# our own code do not depend on this choice.
-set(SPODVR_ARCH "x86-64-v3" CACHE STRING "Value for -march (e.g. x86-64-v3, x86-64-v4, native; empty: compiler default)")
+# Target instruction set. With -ffp-contract=off our results do not depend on it.
 if(SPODVR_ARCH)
-  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-march=${SPODVR_ARCH}>)
+  list(APPEND fp_flags -march=${SPODVR_ARCH})
 endif()
 
-# Profile-guided optimisation (two builds, see docs/performance.md): GENERATE builds an
-# instrumented program that writes profiles to SPODVR_PGO_DIR when run; USE rebuilds with them.
-set(SPODVR_PGO "OFF" CACHE STRING "Profile-guided optimisation: OFF, GENERATE or USE")
-set_property(CACHE SPODVR_PGO PROPERTY STRINGS OFF GENERATE USE)
-set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of the PGO profile data")
+# Profile-guided optimisation: GENERATE builds a program that writes profile data to
+# SPODVR_PGO_DIR when it runs; USE rebuilds with that data.
+set(pgo_link_flags)
 if(SPODVR_PGO STREQUAL "GENERATE")
-  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-fprofile-generate=${SPODVR_PGO_DIR}
-                                             -fprofile-update=atomic>)
-  target_link_options(spodvr_fp INTERFACE -fprofile-generate=${SPODVR_PGO_DIR})
+  list(APPEND fp_flags -fprofile-generate=${SPODVR_PGO_DIR} -fprofile-update=atomic)
+  set(pgo_link_flags -fprofile-generate=${SPODVR_PGO_DIR})
 elseif(SPODVR_PGO STREQUAL "USE")
-  target_compile_options(spodvr_fp INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-fprofile-use=${SPODVR_PGO_DIR}
-                                             -fprofile-correction -Wno-missing-profile>)
+  list(APPEND fp_flags -fprofile-use=${SPODVR_PGO_DIR} -fprofile-correction -Wno-missing-profile)
 endif()
 
-# Link-time optimisation for optimised builds.
+# Every target of the project links these two (empty) libraries to get the flags above.
+add_library(spodvr_warnings INTERFACE)
+target_compile_options(spodvr_warnings INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${warning_flags}>")
+add_library(spodvr_fp INTERFACE)
+target_compile_options(spodvr_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${fp_flags}>")
+target_link_options(spodvr_fp INTERFACE ${pgo_link_flags})
+
+# Link-time optimisation in Release builds.
 include(CheckIPOSupported)
-check_ipo_supported(RESULT spodvr_ipo_supported OUTPUT spodvr_ipo_output)
-if(spodvr_ipo_supported)
+check_ipo_supported(RESULT ipo_supported)
+if(ipo_supported)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 endif()
 
-# ---------------------------------------------------------------------------------------------
-# Core library
-# ---------------------------------------------------------------------------------------------
+# =============================================================================================
+# spodvr_core: everything except the program driver and the GPU backend
+# =============================================================================================
 add_library(spodvr_core
   src/core/loop_schedule.cpp
   src/core/machine_epsilon.cpp
@@ -188,41 +185,42 @@ endif()
 target_link_libraries(spodvr_core
   PUBLIC nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
   PRIVATE spodvr_warnings spodvr_fp)
-# The real FFTW must come before oneMKL in the link line: oneMKL also exports the fftw_*
-# functions, and the first library that defines a symbol wins.
+
+# The FFTs. The real FFTW must come before oneMKL in the link line: oneMKL also defines the
+# fftw_* functions, and the first library that defines a symbol wins.
 if(SPODVR_FFT_LIBRARY_USED STREQUAL "FFTW")
   target_link_libraries(spodvr_core PUBLIC PkgConfig::FFTW3)
 else()
   target_include_directories(spodvr_core PRIVATE ${MKL_INCLUDE}/fftw ${MKL_INCLUDE})
   target_compile_definitions(spodvr_core PUBLIC SPODVR_FFT_FROM_MKL)
 endif()
-if(SPODVR_HAVE_MKL)
+
+# BLAS/LAPACK.
+if(MKL_FOUND)
   target_link_libraries(spodvr_core PUBLIC MKL::MKL)
   target_compile_definitions(spodvr_core PUBLIC SPODVR_HAVE_MKL SPODVR_MKL_VERSION="${MKL_VERSION}")
-else()
-  target_link_libraries(spodvr_core PUBLIC LAPACK::LAPACK)
-endif()
-if(SPODVR_HAVE_MKL)
   message(STATUS "SPO-DVR: BLAS/LAPACK from oneMKL ${MKL_VERSION} (sequential), FFT library ${SPODVR_FFT_LIBRARY_USED}")
 else()
+  target_link_libraries(spodvr_core PUBLIC LAPACK::LAPACK)
   message(STATUS "SPO-DVR: BLAS/LAPACK from the system, FFT library ${SPODVR_FFT_LIBRARY_USED}")
 endif()
 
-# ---------------------------------------------------------------------------------------------
-# Optional GPU backend (CUDA): the wave packet lives in GPU memory (src/cuda/, docs/cuda.md).
-# Kernels (.cu) are compiled by nvcc; the host code of the backend (.cpp) by the C++ compiler.
-# ---------------------------------------------------------------------------------------------
-option(SPODVR_USE_CUDA "Build the CUDA propagation backend (--device cuda)" OFF)
-option(SPODVR_CUDA_SYNC_DEBUG "Debug: wait for and check every CUDA kernel right after its launch" OFF)
+# =============================================================================================
+# spodvr_cuda (optional): the GPU backend, the wave packet lives in GPU memory (src/cuda/,
+# docs/cuda.md). The kernels (.cu) are compiled by nvcc, the host code (.cpp) by the C++ compiler.
+# =============================================================================================
 if(SPODVR_USE_CUDA)
-  # nvcc compiles the host side of the .cu files with a host compiler it supports: CUDA 12.0
-  # rejects GCC > 12 (crt/host_config.h), so use g++-12 when it is installed.
-  if(NOT CMAKE_CUDA_HOST_COMPILER AND EXISTS /usr/bin/g++-12)
-    set(CMAKE_CUDA_HOST_COMPILER /usr/bin/g++-12)
-  endif()
+  # nvcc from PATH, else from where NVIDIA's packages install it.
+  find_program(CMAKE_CUDA_COMPILER nvcc HINTS /usr/local/cuda/bin)
+  # The kernels are compiled for the GPU of this machine. For a build that runs elsewhere, set
+  # e.g. -DCMAKE_CUDA_ARCHITECTURES="80-real;90-real" (A100, H100).
   if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 89-real)  # RTX 40xx; e.g. "80-real;90-real" for A100/H100
+    set(CMAKE_CUDA_ARCHITECTURES native)
   endif()
+  # nvcc compiles the host side of the .cu files with the system g++ (CUDA 13 accepts GCC up to
+  # 16; Ubuntu's own CUDA packages bring a matching g++). An older CUDA from NVIDIA stops with
+  # "unsupported GNU version" if the system GCC is too new for it; then name an older GCC, e.g.
+  # -DCMAKE_CUDA_HOST_COMPILER=g++-12.
   enable_language(CUDA)
   find_package(CUDAToolkit REQUIRED)
 
@@ -238,33 +236,39 @@ if(SPODVR_USE_CUDA)
     src/cuda/specular_kernels.cu
     src/cuda/wave_function_kernels.cu
   )
-  # The kernels only need C++17 (nvcc 12.0 does not handle every C++20 construct of the host code,
-  # which is why the backend's host code is in .cpp files).
+  # The kernels are C++17: nvcc 12.0 cannot compile every C++20 construct of the project headers,
+  # which is why all host code of the backend is in .cpp files. No link-time optimisation (nvcc
+  # objects cannot take part in GCC's LTO).
   set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON
                                                INTERPROCEDURAL_OPTIMIZATION OFF)
   if(SPODVR_FAST_MATH)
-    # The most aggressive device code (build-cuda-fast), the CUDA twin of -ffast-math:
-    # --use_fast_math = FMA contraction (-fmad=true; the one that matters for our FP64 kernels)
-    # plus fast FP32 division/sqrt/intrinsics and flush-to-zero (FP32 only, unused here).
-    target_compile_options(spodvr_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math
-                                               --extra-device-vectorization -Xcompiler=-ffast-math>)
+    # The most aggressive device code (build-cuda-fast). Of --use_fast_math only the FMA
+    # contraction matters for our FP64 kernels; the rest (flush-to-zero, fast division and
+    # square root) acts on FP32.
+    set(cuda_flags --use_fast_math --extra-device-vectorization -Xcompiler=-ffast-math)
   else()
     # No FMA contraction, as on the CPU.
-    target_compile_options(spodvr_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-fmad=false
-                                               -Xcompiler=-ffp-contract=off,-fno-fast-math>)
+    set(cuda_flags -fmad=false -Xcompiler=-ffp-contract=off,-fno-fast-math)
   endif()
+  target_compile_options(spodvr_cuda PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:${cuda_flags}>")
   if(SPODVR_CUDA_SYNC_DEBUG)
     target_compile_definitions(spodvr_cuda PRIVATE SPODVR_CUDA_SYNC_DEBUG)
   endif()
-  target_link_libraries(spodvr_cuda PUBLIC spodvr_core CUDA::cudart CUDA::cufft PRIVATE spodvr_warnings spodvr_fp)
+  target_link_libraries(spodvr_cuda
+    PUBLIC spodvr_core CUDA::cudart CUDA::cufft
+    PRIVATE spodvr_warnings spodvr_fp)
+  set(host_compiler "${CMAKE_CUDA_HOST_COMPILER}")
+  if(NOT host_compiler)
+    set(host_compiler "the system g++")
+  endif()
   message(STATUS "SPO-DVR: CUDA backend ON (nvcc ${CMAKE_CUDA_COMPILER_VERSION}, host compiler "
-                 "${CMAKE_CUDA_HOST_COMPILER}, architectures ${CMAKE_CUDA_ARCHITECTURES})")
+                 "${host_compiler}, architectures ${CMAKE_CUDA_ARCHITECTURES})")
 endif()
 
-# ---------------------------------------------------------------------------------------------
-# Program driver (command line, run modes, choice of the propagation backend). A separate library
-# so that an optional GPU backend can sit between it and spodvr_core.
-# ---------------------------------------------------------------------------------------------
+# =============================================================================================
+# spodvr_app and the program: command line, run modes, choice of the propagation backend. A
+# separate library, so that the optional GPU backend can sit between it and spodvr_core.
+# =============================================================================================
 add_library(spodvr_app
   src/app/backend_factory.cpp
   src/app/cli.cpp
@@ -280,9 +284,9 @@ endif()
 add_executable(spodvr src/app/main.cpp)
 target_link_libraries(spodvr PRIVATE spodvr_app spodvr_warnings spodvr_fp)
 
-# ---------------------------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------------------------
+# =============================================================================================
+# Tests and developer tools
+# =============================================================================================
 if(SPODVR_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)

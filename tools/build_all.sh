@@ -24,8 +24,9 @@ order=(build build-fftw build-nomkl build-poison build-fast build-cuda build-cud
 variants=("$@")
 if [ ${#variants[@]} -eq 0 ]; then variants=("${order[@]}"); fi
 
+# nvcc on PATH, or where NVIDIA's packages put it (CMake looks there too).
 have_nvcc=0
-if command -v nvcc > /dev/null; then have_nvcc=1; fi
+if command -v nvcc > /dev/null || [ -x /usr/local/cuda/bin/nvcc ]; then have_nvcc=1; fi
 
 # Configures and builds one variant with the given extra CMake options.
 build_variant() {

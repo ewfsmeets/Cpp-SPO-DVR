@@ -1,4 +1,4 @@
-# Developer tools (see docs/performance.md).
+# Developer tools (docs/performance.md): spodvr_operator_timing, spodvr_dump_wave, spodvr_compare_wave.
 foreach(tool benchmark/operator_timing compare/dump_wave compare/compare_wave)
   get_filename_component(name ${tool} NAME)
   add_executable(spodvr_${name} ${tool}.cpp)

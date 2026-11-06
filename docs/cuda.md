@@ -19,11 +19,15 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 | Option | Default | Meaning |
 |---|---|---|
 | `SPODVR_USE_CUDA` | `OFF` | build the backend. Without it nothing CUDA-related is compiled, and `--device cuda` stops with a clear error |
-| `CMAKE_CUDA_ARCHITECTURES` | `89-real` | GPU generation (RTX 40xx). Use e.g. `80-real` (A100) or `90-real` (H100), or a list |
-| `CMAKE_CUDA_HOST_COMPILER` | `/usr/bin/g++-12` if present | host compiler of nvcc. CUDA 12.0 rejects GCC 13 (`crt/host_config.h`); CUDA ≥ 12.4 accepts it |
+| `CMAKE_CUDA_COMPILER` | nvcc from `PATH`, else `/usr/local/cuda/bin/nvcc` | the CUDA compiler |
+| `CMAKE_CUDA_ARCHITECTURES` | `native` (the GPU of the build machine) | set e.g. `89-real` (RTX 40xx), `80-real` (A100), `90-real` (H100), or a list, for a build that runs elsewhere |
+| `CMAKE_CUDA_HOST_COMPILER` | the system `g++` | host compiler of nvcc. Each CUDA release accepts GCC only up to a limit (`crt/host_config.h`): 12.0–12.3 GCC ≤ 12, 13.5 GCC ≤ 16. Ubuntu's CUDA packages bring a matching g++ |
 | `SPODVR_CUDA_SYNC_DEBUG` | `OFF` | wait for and check every kernel right after its launch (errors are reported where they happen) |
 
-- **Toolchain:** CUDA 12.0 from the Ubuntu packages (nvcc, cuFFT 11.0).
+- **Toolchain:** recommended is the newest CUDA 13 (NVIDIA's apt repository, see the README),
+  whose nvcc accepts the GCC of current distributions (Ubuntu 26.04: GCC 15), so host code and
+  kernels use the same compiler. Developed and tested with CUDA 12.0 (Ubuntu 24.04 packages,
+  cuFFT 11.0; nvcc uses the packaged g++-12).
 - **Tests:** the GPU tests in `tests/cuda/` are only built with the option, and they skip on a
   machine without a GPU.
 - **Host code:** only kernels and their launch functions are in `.cu` files (C++17, nvcc). All host

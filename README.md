@@ -45,8 +45,8 @@ Status:
 - nlohmann/json and GoogleTest are downloaded by CMake (internet access needed on the first
   configure).
 - **Optional, for the GPU backend**: an NVIDIA GPU with its driver, and the CUDA toolkit (nvcc,
-  cudart, cuFFT; tested with CUDA 12.0). CUDA 12.0–12.3 only accept GCC ≤ 12 as nvcc's host
-  compiler, so these also need g++-12 (CMake picks `/usr/bin/g++-12` automatically). FP64 speed
+  cudart, cuFFT). Recommended: the newest CUDA 13 (13.5 accepts GCC 6–16, so nvcc uses the same
+  GCC as the rest of the build). Developed with CUDA 12.0 (Ubuntu 24.04 packages). FP64 speed
   matters: data-centre GPUs (A100, H100) run FP64 at 1/2 of the FP32 rate, GeForce cards at 1/64.
 
 On Debian/Ubuntu (also under WSL2):
@@ -74,13 +74,25 @@ building). The program always uses the sequential, LP64 oneMKL.
 sudo apt install libfftw3-dev liblapack-dev
 ```
 
-**3. CUDA** (optional, for `--device cuda`). Ubuntu 24.04 packages CUDA 12.0, which needs g++-12:
+**3. CUDA** (optional, for `--device cuda`), the newest CUDA 13 from NVIDIA's apt repository
+(replace `ubuntu2604` by `ubuntu2404` on Ubuntu 24.04):
 ```bash
-sudo apt install nvidia-cuda-toolkit g++-12
-nvidia-smi                                  # checks that the GPU and its driver are visible
+nvidia-smi                                  # first: the GPU and its driver must be visible
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt update
+sudo apt install cuda-toolkit-13            # newest 13.x; installs into /usr/local/cuda
 ```
-Under WSL2 the GPU driver is the Windows NVIDIA driver; do not install a Linux driver inside WSL.
-A newer toolkit from NVIDIA's own repository works as well (CUDA ≥ 12.4 accepts GCC 13).
+- **WSL2:** the GPU driver is the Windows NVIDIA driver (recent enough for the toolkit: CUDA 13
+  needs driver ≥ 580). Never install a Linux driver inside WSL; from CUDA 13.4 on, the toolkit
+  packages above install no driver.
+- `/usr/local/cuda/bin` need not be on `PATH`: CMake finds nvcc there. It also sets the GPU
+  architecture from `nvidia-smi` (override with `-DCMAKE_CUDA_ARCHITECTURES`, e.g.
+  `"80-real;90-real"` for A100 and H100).
+- Ubuntu's own packages (`sudo apt install nvidia-cuda-toolkit`) work as well, but are older
+  (Ubuntu 24.04: CUDA 12.0). They bring the GCC version their nvcc needs.
+- An older CUDA from NVIDIA's repository may reject a newer system GCC ("unsupported GNU
+  version"); then install a GCC it accepts and add e.g. `-DCMAKE_CUDA_HOST_COMPILER=g++-12`.
 
 ## Building
 ```bash

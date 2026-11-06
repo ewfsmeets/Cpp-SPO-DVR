@@ -2,6 +2,7 @@
 // propagate one analysis step; the wave packets must agree to rounding (cuFFT and the
 // CPU FFT library differ in the last bits). Also: copies between host and GPU are exact, the BK
 // plane and the densities equal the CPU's, and two GPU runs are bitwise identical.
+#include <cstdint>
 #include <fstream>
 #include <memory>
 #include <vector>

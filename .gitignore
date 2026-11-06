@@ -17,4 +17,3 @@ fil21*
 fort.*
 # reference data is tracked
 !tests/reference/**
-CLAUDE.md
