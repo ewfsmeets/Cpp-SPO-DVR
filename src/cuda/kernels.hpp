@@ -53,6 +53,29 @@ struct SpecularStepArgs {
 void apply_specular_gas_phase_and_absorbers(const SpecularStepArgs& args, Complex* specular);
 
 // --- potential stage (potential_kernels.cu) ------------------------------------------------
+// exp(i A), A = -V dt, at the (x, y) representatives of the surface symmetry, as the potential
+// kernels and the cuFFT callback (fft_callbacks.cu) read it. Values (izr, itp, irep), izr fastest,
+// with itp = iphi + n_phi * itheta. Point ixy takes the values of its representative
+// representative_of[ixy] at the mapped phi phi_index[iphi + n_phi * operation_of[ixy]] (rotated
+// or mirrored; the identity without symmetry).
+struct ExpPotentialTable {
+  const Complex* values;
+  const int* representative_of;  // per ixy
+  const int* operation_of;       // per ixy
+  const int* phi_index;          // per symmetry operation: n_phi values
+  std::int64_t n_zr_potential;
+  int n_theta;
+  int n_phi;
+
+  // exp(i A) at DVR point (itheta, iphi) of the (Z, r) point izr and the (x, y) point ixy.
+  SPODVR_HOST_DEVICE Complex at(std::int64_t izr, std::int64_t ixy, int itheta, int iphi) const {
+    const std::int64_t mapped_phi = phi_index[n_phi * operation_of[ixy] + iphi];
+    const std::int64_t itp = mapped_phi + std::int64_t(n_phi) * itheta;
+    const std::int64_t n_tp = std::int64_t(n_theta) * n_phi;
+    return values[izr + n_zr_potential * (n_tp * representative_of[ixy] + itp)];
+  }
+};
+
 // Everything the potential kernels read. One (Z, r) slab of the interaction region at a time:
 // points izr_first .. izr_first + n_slab - 1, i.e. n_slab * n_xy DVR columns, column
 // col = (izr - izr_first) + n_slab * ixy. DVR scratch layout (col, theta, phi), phi slowest.
@@ -84,13 +107,7 @@ struct PotentialArgs {
   const int* block_matrix_offset;
   const double* matrix;
 
-  // exp(i A), A = -V dt, at the (x, y) representatives: (izr, itp, irep), izr fastest, with
-  // itp = iphi + n_phi * itheta. Point ixy uses representative representative_of[ixy] at
-  // phi phi_index[iphi + n_phi * operation_of[ixy]] (surface symmetry; identity without).
-  const Complex* exp_potential;
-  const int* representative_of;
-  const int* operation_of;
-  const int* phi_index;
+  ExpPotentialTable exp_potential;
 };
 // Largest number of J values in one mJ block that the DVR kernels support.
 inline constexpr int max_j_per_mj_block = 64;
@@ -100,7 +117,9 @@ void apply_gas_phase_step(const PotentialArgs& args, Complex* psi);
 // Interaction region, one slab: absorption, rot(dt/2), add the specular wave to the initial
 // channel, FBR -> DVR in theta (the phi FFT follows separately).
 void absorb_and_transform_to_dvr(const PotentialArgs& args, const Complex* psi, const Complex* specular, Complex* dvr);
-// dvr *= exp(i A) at every (theta, phi) point of the slab.
+// dvr *= exp(i A) at every (theta, phi) point of the slab. The propagation applies exp(i A) in the
+// load callback of the inverse phi FFT instead; this kernel serves for nphi = 1 (no phi FFT) and
+// as the reference of the callback (test).
 void multiply_by_exp_potential(const PotentialArgs& args, Complex* dvr);
 // DVR -> FBR in theta (after the phi FFT), then rot(dt/2); writes the slab of psi.
 void transform_to_fbr_and_rotate(const PotentialArgs& args, const Complex* dvr, Complex* psi);

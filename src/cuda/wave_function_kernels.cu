@@ -18,8 +18,8 @@ __global__ void block_densities_kernel(const Complex* psi, DeviceLayout layout, 
   for (std::int64_t ixy = 0; ixy < layout.n_xy; ++ixy)
     for (std::int64_t irot = 0; irot < layout.n_rot; ++irot) {
       const Complex c = psi[layout(izr, irot, ixy)];
-      const double a = hypot(c.re, c.im);
-      sum = sum + a * a;
+      const double abs_c = hypot(c.re, c.im);
+      sum = sum + abs_c * abs_c;
     }
   densities[izr] = sum;
 }
@@ -27,11 +27,11 @@ __global__ void block_densities_kernel(const Complex* psi, DeviceLayout layout, 
 // One thread per output element (irot, ixy, ir) of the plane.
 __global__ void pack_z_plane_kernel(const Complex* psi, DeviceLayout layout, int nr, int iz, Complex* plane) {
   const std::int64_t i = thread_index();
-  const std::int64_t k_count = layout.n_rot * layout.n_xy;  // values per (Z, r) point
-  if (i >= k_count * nr) return;
-  const std::int64_t k = i % k_count;  // irot + n_rot * ixy
-  const std::int64_t ir = i / k_count;
-  plane[i] = psi[(ir + std::int64_t(nr) * iz) + layout.n_zr * k];
+  const std::int64_t n_rot_xy = layout.n_rot * layout.n_xy;  // values per (Z, r) point: (irot, ixy)
+  if (i >= n_rot_xy * nr) return;
+  const std::int64_t rot_xy = i % n_rot_xy;  // irot + n_rot * ixy
+  const std::int64_t ir = i / n_rot_xy;
+  plane[i] = psi[(ir + std::int64_t(nr) * iz) + layout.n_zr * rot_xy];
 }
 
 // One thread per element; i runs izr fastest, so the device-layout side is coalesced (the host
@@ -39,21 +39,21 @@ __global__ void pack_z_plane_kernel(const Complex* psi, DeviceLayout layout, int
 __global__ void host_chunk_to_device_kernel(const Complex* chunk, DeviceLayout layout, std::int64_t izr_first,
                                             std::int64_t n_points, Complex* psi) {
   const std::int64_t i = thread_index();
-  const std::int64_t k_count = layout.n_rot * layout.n_xy;
-  if (i >= k_count * n_points) return;
+  const std::int64_t n_rot_xy = layout.n_rot * layout.n_xy;
+  if (i >= n_rot_xy * n_points) return;
   const std::int64_t point = i % n_points;
-  const std::int64_t k = i / n_points;
-  psi[(izr_first + point) + layout.n_zr * k] = chunk[k + k_count * point];
+  const std::int64_t rot_xy = i / n_points;
+  psi[(izr_first + point) + layout.n_zr * rot_xy] = chunk[rot_xy + n_rot_xy * point];
 }
 
 __global__ void device_to_host_chunk_kernel(const Complex* psi, DeviceLayout layout, std::int64_t izr_first,
                                             std::int64_t n_points, Complex* chunk) {
   const std::int64_t i = thread_index();
-  const std::int64_t k_count = layout.n_rot * layout.n_xy;
-  if (i >= k_count * n_points) return;
+  const std::int64_t n_rot_xy = layout.n_rot * layout.n_xy;
+  if (i >= n_rot_xy * n_points) return;
   const std::int64_t point = i % n_points;
-  const std::int64_t k = i / n_points;
-  chunk[k + k_count * point] = psi[(izr_first + point) + layout.n_zr * k];
+  const std::int64_t rot_xy = i / n_points;
+  chunk[rot_xy + n_rot_xy * point] = psi[(izr_first + point) + layout.n_zr * rot_xy];
 }
 
 }  // namespace

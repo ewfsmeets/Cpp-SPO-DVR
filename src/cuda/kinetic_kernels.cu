@@ -12,11 +12,11 @@ namespace {
 // consecutive elements: coalesced), y over the periods (grid_2d).
 __global__ void multiply_by_periodic_factors_kernel(Complex* data, const Complex* factors, FftScales scales,
                                                     std::int64_t period, std::int64_t n_periods) {
-  const std::int64_t k = thread_index();
-  if (k >= period) return;
-  const Complex factor = factors[k];
-  for (std::int64_t p = blockIdx.y; p < n_periods; p += gridDim.y) {
-    Complex& v = data[k + period * p];
+  const std::int64_t in_period = thread_index();
+  if (in_period >= period) return;
+  const Complex factor = factors[in_period];
+  for (std::int64_t period_number = blockIdx.y; period_number < n_periods; period_number += gridDim.y) {
+    Complex& v = data[in_period + period * period_number];
     v = factor * (scales.backward * (scales.forward * v));
   }
 }
@@ -24,11 +24,11 @@ __global__ void multiply_by_periodic_factors_kernel(Complex* data, const Complex
 // data = (block, n / block): x over the position in the block, y over the blocks.
 __global__ void multiply_by_blocked_factors_kernel(Complex* data, const Complex* factors, FftScales scales,
                                                    std::int64_t block, std::int64_t n_blocks) {
-  const std::int64_t i = thread_index();
-  if (i >= block) return;
-  for (std::int64_t b = blockIdx.y; b < n_blocks; b += gridDim.y) {
-    Complex& v = data[i + block * b];
-    v = factors[b] * (scales.backward * (scales.forward * v));
+  const std::int64_t in_block = thread_index();
+  if (in_block >= block) return;
+  for (std::int64_t block_number = blockIdx.y; block_number < n_blocks; block_number += gridDim.y) {
+    Complex& v = data[in_block + block * block_number];
+    v = factors[block_number] * (scales.backward * (scales.forward * v));
   }
 }
 

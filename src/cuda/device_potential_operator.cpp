@@ -105,6 +105,13 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
   representative_of_ = DeviceBuffer<int>(std::span<const int>(representative));
   operation_of_ = DeviceBuffer<int>(std::span<const int>(operation));
   phi_index_ = DeviceBuffer<int>(std::span<const int>(phi_map));
+  const ExpPotentialTable exp_table{exp_potential_.data(),
+                                    representative_of_.data(),
+                                    operation_of_.data(),
+                                    phi_index_.data(),
+                                    n_zr_potential,
+                                    n_theta,
+                                    n_phi};
 
   // Slab, scratch and the phi FFTs: one transform of length n_phi per (column, theta), the phi
   // values n_columns * n_theta apart (scratch layout (col, theta, phi)).
@@ -119,8 +126,7 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
     std::optional<DeviceFftLoadCallback> exp_potential_callback;
     if (mode == ExpPotentialMode::FftCallback) {
       const std::array<ExpPotentialCallbackInfo, 1> info{
-          {{exp_potential_.data(), representative_of_.data(), operation_of_.data(), phi_index_.data(), n_zr_potential,
-            0, static_cast<int>(n_slab), static_cast<int>(n_columns), n_theta, n_phi}}};
+          {{exp_table, 0, static_cast<int>(n_slab), static_cast<int>(n_columns)}}};
       callback_info_ = DeviceBuffer<ExpPotentialCallbackInfo>(std::span<const ExpPotentialCallbackInfo>(info));
       std::vector<std::int64_t> starts;
       for (std::int64_t izr_first = 0; izr_first < n_zr_potential; izr_first += n_slab) starts.push_back(izr_first);
@@ -154,10 +160,7 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
   args_.block_phi_slot = block_phi_slot_.data();
   args_.block_matrix_offset = block_matrix_offset_.data();
   args_.matrix = matrix_.data();
-  args_.exp_potential = exp_potential_.data();
-  args_.representative_of = representative_of_.data();
-  args_.operation_of = operation_of_.data();
-  args_.phi_index = phi_index_.data();
+  args_.exp_potential = exp_table;
 }
 
 std::vector<DeviceFftPlan*> DevicePotentialOperator::fft_plans() {

@@ -10,24 +10,18 @@
 #include <span>
 
 #include "cuda/device_complex.hpp"
+#include "cuda/kernels.hpp"
 
 namespace spodvr::cuda {
 
 // Everything the callback reads; lives in device memory (one struct), izr_first is updated before
-// every slab in stream order. Same indexing as multiply_by_exp_potential_kernel
-// (potential_kernels.cu): scratch element o = col + n_columns * (itheta + n_theta * iphi), column
-// col = (izr - izr_first) + n_slab * ixy.
+// every slab in stream order. The DVR scratch of a slab as in potential_kernels.cu: element
+// o = col + n_columns * (itheta + n_theta * iphi), column col = (izr - izr_first) + n_slab * ixy.
 struct ExpPotentialCallbackInfo {
-  const Complex* exp_potential;   // exp(i A), (izr, itp, irep) with izr fastest
-  const int* representative_of;   // per ixy
-  const int* operation_of;        // per ixy
-  const int* phi_index;           // per symmetry operation: n_phi values
-  std::int64_t n_zr_potential;
-  std::int64_t izr_first;         // the current slab
+  ExpPotentialTable exp_potential;
+  std::int64_t izr_first;  // the current slab
   int n_slab;
-  int n_columns;                  // n_slab * n_xy
-  int n_theta;
-  int n_phi;
+  int n_columns;           // n_slab * n_xy
 };
 
 // Name of the callback function in the LTO-IR (unmangled; cuFFT allows no namespace or extern "C").

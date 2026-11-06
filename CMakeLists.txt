@@ -238,7 +238,7 @@ if(SPODVR_USE_CUDA)
     COMMAND ${CMAKE_CUDA_COMPILER} -ccbin ${CMAKE_CUDA_HOST_COMPILER} -std=c++20 -fmad=false
             -I${CMAKE_CURRENT_SOURCE_DIR}/src -gencode arch=compute_75,code=lto_75 -dc -fatbin
             -o ${callback_dir}/fft_callbacks.fatbin ${CMAKE_CURRENT_SOURCE_DIR}/src/cuda/fft_callbacks.cu
-    DEPENDS src/cuda/fft_callbacks.cu src/cuda/fft_callbacks.hpp src/cuda/device_complex.hpp
+    DEPENDS src/cuda/fft_callbacks.cu src/cuda/fft_callbacks.hpp src/cuda/kernels.hpp src/cuda/device_complex.hpp
     COMMENT "LTO-IR of the cuFFT callback")
   add_custom_command(
     OUTPUT ${callback_dir}/fft_callbacks_fatbin.h

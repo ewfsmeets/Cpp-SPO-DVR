@@ -7,18 +7,18 @@ namespace spodvr::cuda {
 
 namespace {
 
-// One thread per specular point (ir, iz), index ir + nr * iz. The three CPU passes (gas phase,
+// One thread per specular point, point = ir + nr * iz. The three CPU passes (gas phase,
 // Z absorber, r absorber) are applied to each point in the same order, so the result is the same.
-__global__ void specular_gas_phase_and_absorbers_kernel(SpecularStepArgs a, Complex* spec) {
-  const std::int64_t i = thread_index();
-  if (i >= std::int64_t(a.nr) * a.nz) return;
-  const int ir = static_cast<int>(i % a.nr);
-  const int iz = static_cast<int>(i / a.nr);
-  Complex v = spec[i];
-  if (iz >= a.nz_potential) v = a.gas_phase_step[ir] * v;
-  if (iz >= a.z_absorber_first && iz <= a.z_absorber_last) v = a.z_optical[iz] * v;
-  if (a.nr > 1 && ir >= a.r_absorber_first && ir <= a.r_absorber_last) v = a.r_optical[ir] * v;
-  spec[i] = v;
+__global__ void specular_gas_phase_and_absorbers_kernel(SpecularStepArgs args, Complex* spec) {
+  const std::int64_t point = thread_index();
+  if (point >= std::int64_t(args.nr) * args.nz) return;
+  const int ir = static_cast<int>(point % args.nr);
+  const int iz = static_cast<int>(point / args.nr);
+  Complex v = spec[point];
+  if (iz >= args.nz_potential) v = args.gas_phase_step[ir] * v;
+  if (iz >= args.z_absorber_first && iz <= args.z_absorber_last) v = args.z_optical[iz] * v;
+  if (args.nr > 1 && ir >= args.r_absorber_first && ir <= args.r_absorber_last) v = args.r_optical[ir] * v;
+  spec[point] = v;
 }
 
 }  // namespace
