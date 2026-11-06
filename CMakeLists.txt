@@ -239,11 +239,20 @@ if(SPODVR_USE_CUDA)
     src/cuda/wave_function_kernels.cu
   )
   # The kernels only need C++17 (nvcc 12.0 does not handle every C++20 construct of the host code,
-  # which is why the backend's host code is in .cpp files). No FMA contraction, as on the CPU.
+  # which is why the backend's host code is in .cpp files).
   set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON
                                                INTERPROCEDURAL_OPTIMIZATION OFF)
-  target_compile_options(spodvr_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-fmad=false
-                                             -Xcompiler=-ffp-contract=off,-fno-fast-math>)
+  if(SPODVR_FAST_MATH)
+    # The most aggressive device code (build-cuda-fast), the CUDA twin of -ffast-math:
+    # --use_fast_math = FMA contraction (-fmad=true; the one that matters for our FP64 kernels)
+    # plus fast FP32 division/sqrt/intrinsics and flush-to-zero (FP32 only, unused here).
+    target_compile_options(spodvr_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math
+                                               --extra-device-vectorization -Xcompiler=-ffast-math>)
+  else()
+    # No FMA contraction, as on the CPU.
+    target_compile_options(spodvr_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-fmad=false
+                                               -Xcompiler=-ffp-contract=off,-fno-fast-math>)
+  endif()
   if(SPODVR_CUDA_SYNC_DEBUG)
     target_compile_definitions(spodvr_cuda PRIVATE SPODVR_CUDA_SYNC_DEBUG)
   endif()

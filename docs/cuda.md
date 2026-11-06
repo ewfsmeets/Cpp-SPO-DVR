@@ -30,7 +30,8 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
   code of the backend is in `.cpp` files compiled by the normal C++ compiler. nvcc 12.0 cannot
   compile some C++20 constructs of the project headers (parenthesised aggregate initialisation).
 - **Compile flags:** `spodvr_warnings` and `spodvr_fp` apply to C++ only. The kernels get
-  `-fmad=false` (no FMA contraction, as on the CPU).
+  `-fmad=false` (no FMA contraction, as on the CPU). With `SPODVR_FAST_MATH=ON` they get
+  `--use_fast_math --extra-device-vectorization` instead (see "Fast build" under Performance).
 
 ## Running
 ```bash
@@ -172,8 +173,41 @@ and fewer passes pay off directly):
   result is no longer bitwise equal to the CPU.
 - **A fused angular kernel** with an in-kernel φ transform: removes the DVR scratch and its four
   passes, but needs more FP64 work for the DFT.
-- **An optional FMA build** (like `SPODVR_FAST_MATH` on the CPU): doubles the FP64 rate, but
-  changes rounding (not the default).
+
+### Fast build (`build-cuda-fast`: FMA in the kernels)
+```bash
+cmake -S . -B build-cuda-fast -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON \
+      -DSPODVR_FAST_MATH=ON -DSPODVR_ARCH=native
+```
+`SPODVR_FAST_MATH` also switches the kernels to `--use_fast_math --extra-device-vectorization`.
+For our FP64 kernels only the FMA contraction (`-fmad=true`) matters; the rest of
+`--use_fast_math` (flush-to-zero, approximate division, square root and intrinsics) acts on FP32
+only. The host code gets `-ffast-math -march=native`. No PGO: in a GPU run the host code is a small
+part of the time, and the PGO training of a build that mixes g++-13 objects with nvcc's g++-12
+host objects failed (libgcov "version mismatch", no profile written); not investigated further.
+
+Measured on the RTX 4070 Ti (2026-11-06):
+
+| | `build-cuda` | `build-cuda-fast` |
+|---|---|---|
+| DZ, Legendre sums FBR → DVR / DVR → FBR | 68 / 64 ms | 38 / 50 ms |
+| DZ, one time step (timing tool, 10 repetitions) | 571 ms | 536 ms (−6%) |
+| DZ, 200 steps, propagation time | 124.9 s | 115.0 s (−8%) |
+| cu111_dailight_small (JMax 4), 7000 steps, propagation time | 109.3 s | 108.6 s |
+
+The gain is in the Legendre sums only (FFTs and multiplication passes are memory-bound); it is
+larger for larger JMax and smaller on A100/H100, where FP64 is not the limit.
+
+Results, fast against strict build:
+- All GPU tests pass, including the Fortran gates 3 and 4 (also the long ones) and the CPU-vs-GPU
+  analysis-step tests (≤ 1e-13).
+- Full cu111_dailight_small (7000 steps): norm 2.0e-12 relative, rest norm 3.9e-12, ⟨Z⟩ 2.2e-14,
+  ⟨r⟩ 4.3e-15; S-matrix elements 1.0e-12 absolute, probabilities 1.6e-12 absolute. The same level
+  as the CPU fast-math build (docs/performance.md).
+- DZ, 200 steps: averages ≤ 2.7e-14 relative, S ≤ 3e-14 absolute.
+
+So the fast build is within the regression tolerances, but no longer comparable to the CPU build
+to the last bits; use the strict build when comparing with the CPU or the Fortran code.
 
 ## Files
 | File | Content |

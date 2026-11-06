@@ -30,18 +30,26 @@ Status:
   (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
   potential really has that symmetry.
 - Implemented: checkpoint/restart (native files and Fortran-compatible files).
+- Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
+  Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
+  [docs/cuda.md](docs/cuda.md)).
 - Not yet implemented: the flux analysis and the Fortran potentials that need data files not
   included in the Fortran code.
 
 ## Dependencies
 
-- **Build tools**: GCC ≥ 13 (C++20, OpenMP), CMake ≥ 3.24, Ninja, pkg-config.
+- **Build tools**: a C++20 compiler with OpenMP (developed and tested with GCC 13), CMake ≥ 3.24,
+  Ninja, pkg-config (CMake looks up FFTW3 through it).
 - **Math libraries**, one of:
-  - **Intel oneMKL** 2024 or later (recommended): BLAS/LAPACK and the FFTs (through its FFTW3
-    interface);
+  - **Intel oneMKL** (recommended; tested with 2026.2, found through its `MKLConfig.cmake`):
+    BLAS/LAPACK and the FFTs (through its FFTW3 interface);
   - FFTW3 + LAPACK (fallback when oneMKL is not installed).
 - nlohmann/json and GoogleTest are downloaded by CMake (internet access needed on the first
   configure).
+- **Optional, for the GPU backend**: an NVIDIA GPU with its driver, and the CUDA toolkit (nvcc,
+  cudart, cuFFT; tested with CUDA 12.0). CUDA 12.0–12.3 only accept GCC ≤ 12 as nvcc's host
+  compiler, so these also need g++-12 (CMake picks `/usr/bin/g++-12` automatically). FP64 speed
+  matters: data-centre GPUs (A100, H100) run FP64 at 1/2 of the FP32 rate, GeForce cards at 1/64.
 
 On Debian/Ubuntu (also under WSL2):
 
@@ -68,16 +76,36 @@ building). The program always uses the sequential, LP64 oneMKL.
 sudo apt install libfftw3-dev liblapack-dev
 ```
 
+**3. CUDA** (optional, for `--device cuda`). Ubuntu 24.04 packages CUDA 12.0, which needs g++-12:
+```bash
+sudo apt install nvidia-cuda-toolkit g++-12
+nvidia-smi                                  # checks that the GPU and its driver are visible
+```
+Under WSL2 the GPU driver is the Windows NVIDIA driver; do not install a Linux driver inside WSL.
+A newer toolkit from NVIDIA's own repository works as well (CUDA ≥ 12.4 accepts GCC 13).
+
 ## Building
 ```bash
 git clone https://github.com/ewfsmeets/Cpp-SPO-DVR.git
 cd Cpp-SPO-DVR
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-ctest --test-dir build --output-on-failure     # unit and regression tests (a few minutes)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure   # unit and regression tests (a few minutes)
 ```
 The configure step reports which libraries it uses, e.g.
 `SPO-DVR: BLAS/LAPACK from oneMKL 2026.2 (sequential), FFT library MKL`.
+Run ctest serially (no `-j`): many tests use all OpenMP threads themselves. Set `OMP_NUM_THREADS` to
+the number of physical cores. `SPODVR_LONG_TESTS=1 ctest --test-dir build -R Long` adds the
+full-length regression runs.
+
+With the GPU backend (the GPU tests are in `tests/cuda/` and skip on a machine without a GPU):
+```bash
+cmake -S . -B build-cuda -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON
+cmake --build build-cuda
+OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
+```
+Set `-DCMAKE_CUDA_ARCHITECTURES` for the GPU you run on (default `89-real`, RTX 40xx; `80-real`
+A100, `90-real` H100); the configure step prints the nvcc version, host compiler and architectures.
 
 Useful CMake options:
 
@@ -86,13 +114,28 @@ Useful CMake options:
 | `-DSPODVR_USE_MKL=OFF` | `ON` | ignore oneMKL; use the system LAPACK and FFTW |
 | `-DSPODVR_FFT_LIBRARY=FFTW` | `AUTO` | use the real FFTW for the FFTs even when oneMKL is present (`AUTO` picks oneMKL when found) |
 | `-DSPODVR_ARCH=native` | `x86-64-v3` | `-march` value (`x86-64-v3` = AVX2; `x86-64-v4` = AVX-512) |
-| `-DSPODVR_PGO=GENERATE/USE` | `OFF` | profile-guided optimisation, about 15% faster (see docs/performance.md) |
-| `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math`; about 10% faster, changes results at the 1e-12 level (see Benchmark) |
+| `-DSPODVR_PGO=GENERATE/USE` | `OFF` | profile-guided optimisation, two builds and a training run (see docs/performance.md) |
+| `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math` (with CUDA also `--use_fast_math`, i.e. FMA, in the GPU kernels); changes results at the 1e-12 level (see Benchmark) |
 | `-DSPODVR_USE_CUDA=ON` | `OFF` | build the GPU backend (`--device cuda`, NVIDIA GPU, CUDA toolkit; see [docs/cuda.md](docs/cuda.md)) |
 | `-DSPODVR_BUILD_TESTS=OFF` | `ON` | skip the tests |
 
 Performance notes, reproducibility across machines and the PGO workflow are in
 [docs/performance.md](docs/performance.md).
+
+### Build variants and `tools/build_all.sh`
+The development builds live side by side in git-ignored directories.
+`tools/build_all.sh [variant ...]` configures and builds them (all by default; the CUDA ones only
+when nvcc is found). It does not use PGO; for that, see docs/performance.md:
+
+| Directory | Options | Purpose |
+|---|---|---|
+| `build` | (defaults) | the reference build: oneMKL, no FMA, LTO |
+| `build-fftw` | `SPODVR_FFT_LIBRARY=FFTW` | oneMKL LAPACK with the real FFTW |
+| `build-nomkl` | `SPODVR_USE_MKL=OFF` | system LAPACK + FFTW: the fallback that must keep working |
+| `build-poison` | `SPODVR_POISON_UNINITIALISED=ON` | NaN-fills new large arrays: finds reads before the first write |
+| `build-fast` | `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fast CPU build (results differ at the 1e-12 level; add PGO by hand for the fastest) |
+| `build-cuda` | `SPODVR_USE_CUDA=ON` | GPU backend, no FMA (results comparable with the CPU build) |
+| `build-cuda-fast` | `SPODVR_USE_CUDA=ON`, `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fastest GPU build (FMA in the kernels; no PGO) |
 
 ### Formatting and linting
 clang-format runs as a git pre-commit hook; clang-tidy is run on demand. Both versions are pinned
@@ -175,6 +218,7 @@ vector extensions (see docs/performance.md).
 | Directory | Content |
 |---|---|
 | `inputs/hardwall_small/` | The hard wall reference case (H₂ on a hard wall, Cu(211)-like grid, 0.2–0.6 eV). `input.json` is the C++ input. `DVR.inp` is the same calculation for the Fortran reference code. |
+| `inputs/thesis_fig5_3_dz/`, `inputs/thesis_fig5_3_er/` | H₂ + Cu(111) on the Dai–Zhang and Persson (ER) PES, the two curves of Fig. 5.3 of M. F. Somers' PhD thesis, at the grid sizes of the thesis (JMax 28, ψ ≈ 5 GB; hours per run). Each directory has a README with the parameter choices. The DZ case is the GPU benchmark. |
 
 - The JSON keys mirror the Fortran `DVR.inp` field names. All keys, defaults, units and checks
   are described in [docs/input_schema.md](docs/input_schema.md).
@@ -182,8 +226,8 @@ vector extensions (see docs/performance.md).
 - The test copies of these inputs (with the Fortran reference output) live in
   `tests/reference/`, together with the corrugated test cases (`cu111_dailight_*`,
   `cu111_persson_small`), whose `input.json` files can be run in the same way.
-- The example grids are deliberately tiny so that they run quickly. Production calculations use
-  much larger grids (more than 64 GB of memory).
+- The hard wall and test grids are deliberately tiny so that they run quickly. Production
+  calculations use much larger grids (more than 64 GB of memory).
 
 ## Benchmark
 Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps on a 176 × 56 × 8 × 8
@@ -200,6 +244,19 @@ The C++ code needs less CPU time than the Fortran code, but keeps the threads le
 slower in wall time; this is still being investigated. The fast-math build passes all regression
 gates, but its results differ from the default build at the 1e-12 level, so it is not the default.
 Details in [docs/performance.md](docs/performance.md).
+
+GPU (`--device cuda`), DZ case of `inputs/thesis_fig5_3_dz` (128 × 40 × 12 × 12 grid, 435 rotational
+states, 4.8 GiB wave function), NVIDIA RTX 4070 Ti (a GeForce card: FP64 at 1/64 rate) against
+8 threads of the Ryzen 7 5800X, per time step:
+
+| Build | Time per step | Speed-up |
+|---|---|---|
+| CPU, default flags | 3.6 s | 1× |
+| GPU, `build-cuda` (no FMA; agrees with the CPU to ≈1e-14 here) | 0.61 s | 5.9× |
+| GPU, `build-cuda-fast` (FMA; differs at the 1e-12 level over a long run) | 0.54–0.57 s | 6.3–6.7× |
+
+The 10 000 steps of the benchmark take about 1.5–1.8 h on the GPU instead of about 10 h. Details
+and the limits of this card in [docs/cuda.md](docs/cuda.md).
 
 ## Repository layout
 | Path | Content |
