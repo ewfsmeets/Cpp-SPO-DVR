@@ -271,6 +271,23 @@ and fewer passes pay off directly):
 - **A fused angular kernel** with an in-kernel φ transform: removes the DVR scratch and its four
   passes, but needs more FP64 work for the DFT.
 
+Considered and not done (2026-11-06):
+- **Two potential slabs at once on two streams.** The idea: the FP64-bound Legendre kernels of one
+  slab overlap the memory-bound φ FFTs of the other. Skipped, because:
+  - each Legendre kernel is one wave of 282 blocks × 256 threads (48/46 registers, ≈ 94% of the
+    GPU), which leaves little room for the other stream;
+  - the exp(iA) callback already removed the most memory-bound step of the slab;
+  - it only helps grids with several slabs (DZ: 8; the cu111 test cases: 1).
+
+  What it would need:
+  - two created (blocking) streams;
+  - one φ plan pair, one cuFFT work area and one DVR scratch per stream;
+  - a cap on the residency of the Legendre kernels;
+  - a single scratch formula in the GPU memory estimate.
+- **Overlapping the host analysis with the GPU** (start the next analysis step before the BK
+  analysis of the previous one). Skipped: an nsys trace of DZ showed the GPU idle for less than
+  1 ms per time step.
+
 ### Fast build (`build-cuda-fast`: FMA in the kernels)
 ```bash
 cmake -S . -B build-cuda-fast -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON \
