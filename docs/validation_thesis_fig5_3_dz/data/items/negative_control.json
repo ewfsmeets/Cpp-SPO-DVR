@@ -1,0 +1,44 @@
+{
+ "1e-09": {
+  "all_channels_p95": 2.6008545025869598e-11,
+  "channel_median_over_p95": 38.26446975228224,
+  "channel_residual_median": 9.952031844432579e-10,
+  "channel_residual_min": 9.63776781080191e-10,
+  "delta": 1e-09,
+  "energies_where_channel_above_p99_of_unperturbed": 111,
+  "max_change_P_reaction": 7.198985851886164e-11,
+  "n_energies": 111
+ },
+ "1e-10": {
+  "all_channels_p95": 2.0813059939045942e-11,
+  "channel_median_over_p95": 4.745763504287852,
+  "channel_residual_median": 9.877386027127978e-11,
+  "channel_residual_min": 9.618615381222096e-11,
+  "delta": 1e-10,
+  "energies_where_channel_above_p99_of_unperturbed": 111,
+  "max_change_P_reaction": 7.199130180879365e-12,
+  "n_energies": 111
+ },
+ "1e-11": {
+  "all_channels_p95": 2.0440133740846084e-11,
+  "channel_median_over_p95": 0.46257826659633505,
+  "channel_residual_median": 9.455161634837843e-12,
+  "channel_residual_min": 8.227246858310805e-12,
+  "delta": 1e-11,
+  "energies_where_channel_above_p99_of_unperturbed": 0,
+  "max_change_P_reaction": 7.198686091669515e-13,
+  "n_energies": 111
+ },
+ "channel": {
+  "J": 0,
+  "m": -1,
+  "mJ": 0,
+  "n": -1,
+  "v": 0
+ },
+ "unperturbed": {
+  "all_channels_p95": 2.040441408024302e-11,
+  "all_channels_p99": 4.4029575042311674e-11,
+  "channel_residual_median": 1.170836845204071e-12
+ }
+}

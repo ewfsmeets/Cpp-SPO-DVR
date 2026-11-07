@@ -1,0 +1,19 @@
+{
+ "gap_ratios_of_medians": [
+  13.018652455272173,
+  4922.027290448344,
+  2366.6022417581567
+ ],
+ "medians": {
+  "C++ CPU vs Fortran, full precision (replay)": 1.026e-11,
+  "C++ GPU vs C++ CPU, full precision (same C++ code, two executions)": 7.881e-13,
+  "Fortran print resolution: \u00bd unit of the 7th digit of P_reaction": 5.05e-08,
+  "Norm left on the grids at T = 17 500 a.u.": 0.00011951341320878691,
+  "Reaction floor below threshold (E \u2264 0.50 eV)": 0.0003538423678101088,
+  "Spread between symmetry- equivalent diffraction channels (median, max)": 0.0017281850810231976
+ },
+ "print_over_propagation_E_le_053_max": 4.04971932638332,
+ "print_over_propagation_min": 3.6647314949201744,
+ "print_over_propagation_min_at_E": 0.4,
+ "print_over_propagation_min_gpu": 3.2227185705169115
+}

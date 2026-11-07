@@ -1,0 +1,54 @@
+{
+ "allowance": 0.01,
+ "cpu": {
+  "P_run_there": 0.06844654379972054,
+  "P_thesis_there": 0.05451,
+  "agrees": true,
+  "at_E": 0.63184,
+  "best_shift_eV": -0.0046,
+  "max_abs_dP": 0.013936543799720535,
+  "max_ratio_to_tolerance": 0.8674744397204794,
+  "mean_dP": 0.007166589849900927,
+  "median_abs_dP": 0.0077341481336187234,
+  "n_within": 67,
+  "rms_at_best_shift": 0.0029749428000739628,
+  "rms_unshifted": 0.008205669808799313
+ },
+ "fortran": {
+  "P_run_there": 0.0684465443199999,
+  "P_thesis_there": 0.05451,
+  "agrees": true,
+  "at_E": 0.63184,
+  "best_shift_eV": -0.0046,
+  "max_abs_dP": 0.013936544319999897,
+  "max_ratio_to_tolerance": 0.8674743820181424,
+  "mean_dP": 0.007166585727940298,
+  "median_abs_dP": 0.0077341729999999,
+  "n_within": 67,
+  "rms_at_best_shift": 0.002974945908988599,
+  "rms_unshifted": 0.008205665795505057
+ },
+ "gpu": {
+  "P_run_there": 0.06844654379889281,
+  "P_thesis_there": 0.05451,
+  "agrees": true,
+  "at_E": 0.63184,
+  "best_shift_eV": -0.0046,
+  "max_abs_dP": 0.013936543798892809,
+  "max_ratio_to_tolerance": 0.8674744396588523,
+  "mean_dP": 0.007166589849154673,
+  "median_abs_dP": 0.0077341481331058,
+  "n_within": 67,
+  "rms_at_best_shift": 0.002974942800066227,
+  "rms_unshifted": 0.008205669808190302
+ },
+ "n_points_in_range": 67,
+ "n_points_total": 74,
+ "range_eV": [
+  0.4,
+  0.95
+ ],
+ "u_E_eV": 0.0020446056065709433,
+ "u_P": 0.002391252308773925,
+ "x_axis": "normal incidence energy (thesis caption) = E_coll of the runs (normal incidence, EParallel = 0)"
+}

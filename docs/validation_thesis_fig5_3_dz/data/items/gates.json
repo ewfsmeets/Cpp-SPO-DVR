@@ -1,0 +1,368 @@
+{
+ "build (strict), hard-wall vasy gate only": {
+  "failed": 0,
+  "failures": [],
+  "passed": 4,
+  "skipped": 0,
+  "tests": [
+   {
+    "id": 222,
+    "name": "RegressionHardWall.Gate1AsymptoticPotentialTable",
+    "result": "Passed",
+    "seconds": 0.28
+   },
+   {
+    "id": 225,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 1.02
+   },
+   {
+    "id": 226,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.44
+   },
+   {
+    "id": 227,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.2
+   }
+  ]
+ },
+ "build-cuda-fast": {
+  "failed": 1,
+  "failures": [
+   {
+    "actual": 1.637523849702121e-14,
+    "detail": "ir = 5: 0.060171516557395402 vs 0.060171516557396387",
+    "limit": 1e-14
+   }
+  ],
+  "passed": 23,
+  "skipped": 4,
+  "tests": [
+   {
+    "id": 216,
+    "name": "RegressionFineAnalysis.Gate5Full",
+    "result": "Passed",
+    "seconds": 0.07
+   },
+   {
+    "id": 217,
+    "name": "RegressionFineAnalysis.Gate5Truncated",
+    "result": "Passed",
+    "seconds": 0.05
+   },
+   {
+    "id": 218,
+    "name": "RegressionFineAnalysis.Gate5Nen95",
+    "result": "Passed",
+    "seconds": 0.07
+   },
+   {
+    "id": 219,
+    "name": "RegressionFineAnalysis.Gate5Small",
+    "result": "Passed",
+    "seconds": 0.03
+   },
+   {
+    "id": 220,
+    "name": "RegressionFineAnalysis.Gate5Empty",
+    "result": "Passed",
+    "seconds": 0.01
+   },
+   {
+    "id": 221,
+    "name": "RegressionFineAnalysis.Gate5DaiLight",
+    "result": "Passed",
+    "seconds": 0.22
+   },
+   {
+    "id": 222,
+    "name": "RegressionHardWall.Gate1AsymptoticPotentialTable",
+    "result": "Failed",
+    "seconds": 0.02
+   },
+   {
+    "id": 223,
+    "name": "RegressionHardWall.Gate1FullPotentialAndAngularGrid",
+    "result": "Passed",
+    "seconds": 0.02
+   },
+   {
+    "id": 224,
+    "name": "RegressionHardWall.Gate2RovibrationalStates",
+    "result": "Passed",
+    "seconds": 0.02
+   },
+   {
+    "id": 225,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 0.69
+   },
+   {
+    "id": 226,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.27
+   },
+   {
+    "id": 227,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.15
+   },
+   {
+    "id": 228,
+    "name": "Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 0.73
+   },
+   {
+    "id": 229,
+    "name": "Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.29
+   },
+   {
+    "id": 230,
+    "name": "Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.17
+   },
+   {
+    "id": 231,
+    "name": "Cu111/RegressionPes.Gate2RovibrationalStates/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 0.72
+   },
+   {
+    "id": 232,
+    "name": "Cu111/RegressionPes.Gate2RovibrationalStates/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.28
+   },
+   {
+    "id": 233,
+    "name": "Cu111/RegressionPes.Gate2RovibrationalStates/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.14
+   },
+   {
+    "id": 234,
+    "name": "RegressionPropagation.Gate3ShortRun",
+    "result": "Passed",
+    "seconds": 24.99
+   },
+   {
+    "id": 235,
+    "name": "RegressionPropagation.Gate3FullRunLong",
+    "result": "Skipped",
+    "seconds": 0.0
+   },
+   {
+    "id": 236,
+    "name": "RegressionPropagation.Gate3DaiLightShort",
+    "result": "Passed",
+    "seconds": 114.98
+   },
+   {
+    "id": 237,
+    "name": "RegressionPropagation.Gate3DaiLightShortSymmetric",
+    "result": "Passed",
+    "seconds": 90.23
+   },
+   {
+    "id": 238,
+    "name": "RegressionPropagation.Gate3DaiLightFullRunLong",
+    "result": "Skipped",
+    "seconds": 0.0
+   },
+   {
+    "id": 298,
+    "name": "CudaRegressionPropagation.Gate3ShortRun",
+    "result": "Passed",
+    "seconds": 3.56
+   },
+   {
+    "id": 299,
+    "name": "CudaRegressionPropagation.Gate3DaiLightShort",
+    "result": "Passed",
+    "seconds": 15.84
+   },
+   {
+    "id": 300,
+    "name": "CudaRegressionPropagation.Gate3DaiLightShortSymmetric",
+    "result": "Passed",
+    "seconds": 18.12
+   },
+   {
+    "id": 301,
+    "name": "CudaRegressionPropagation.Gate3FullRunLong",
+    "result": "Skipped",
+    "seconds": 0.11
+   },
+   {
+    "id": 302,
+    "name": "CudaRegressionPropagation.Gate3DaiLightFullRunLong",
+    "result": "Skipped",
+    "seconds": 0.16
+   }
+  ]
+ },
+ "build-fast": {
+  "failed": 1,
+  "failures": [
+   {
+    "actual": 1.637523849702121e-14,
+    "detail": "ir = 5: 0.060171516557395402 vs 0.060171516557396387",
+    "limit": 1e-14
+   }
+  ],
+  "passed": 20,
+  "skipped": 2,
+  "tests": [
+   {
+    "id": 216,
+    "name": "RegressionFineAnalysis.Gate5Full",
+    "result": "Passed",
+    "seconds": 0.2
+   },
+   {
+    "id": 217,
+    "name": "RegressionFineAnalysis.Gate5Truncated",
+    "result": "Passed",
+    "seconds": 0.06
+   },
+   {
+    "id": 218,
+    "name": "RegressionFineAnalysis.Gate5Nen95",
+    "result": "Passed",
+    "seconds": 0.07
+   },
+   {
+    "id": 219,
+    "name": "RegressionFineAnalysis.Gate5Small",
+    "result": "Passed",
+    "seconds": 0.03
+   },
+   {
+    "id": 220,
+    "name": "RegressionFineAnalysis.Gate5Empty",
+    "result": "Passed",
+    "seconds": 0.02
+   },
+   {
+    "id": 221,
+    "name": "RegressionFineAnalysis.Gate5DaiLight",
+    "result": "Passed",
+    "seconds": 0.24
+   },
+   {
+    "id": 222,
+    "name": "RegressionHardWall.Gate1AsymptoticPotentialTable",
+    "result": "Failed",
+    "seconds": 0.02
+   },
+   {
+    "id": 223,
+    "name": "RegressionHardWall.Gate1FullPotentialAndAngularGrid",
+    "result": "Passed",
+    "seconds": 0.02
+   },
+   {
+    "id": 224,
+    "name": "RegressionHardWall.Gate2RovibrationalStates",
+    "result": "Passed",
+    "seconds": 0.02
+   },
+   {
+    "id": 225,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 0.71
+   },
+   {
+    "id": 226,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.35
+   },
+   {
+    "id": 227,
+    "name": "Cu111/RegressionPes.Gate1AsymptoticPotentialTable/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.16
+   },
+   {
+    "id": 228,
+    "name": "Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 0.75
+   },
+   {
+    "id": 229,
+    "name": "Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.29
+   },
+   {
+    "id": 230,
+    "name": "Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.17
+   },
+   {
+    "id": 231,
+    "name": "Cu111/RegressionPes.Gate2RovibrationalStates/\"cu111_dailight_small\"",
+    "result": "Passed",
+    "seconds": 0.71
+   },
+   {
+    "id": 232,
+    "name": "Cu111/RegressionPes.Gate2RovibrationalStates/\"cu111_persson_small\"",
+    "result": "Passed",
+    "seconds": 0.25
+   },
+   {
+    "id": 233,
+    "name": "Cu111/RegressionPes.Gate2RovibrationalStates/\"cu111_dailight_short_sym\"",
+    "result": "Passed",
+    "seconds": 0.14
+   },
+   {
+    "id": 234,
+    "name": "RegressionPropagation.Gate3ShortRun",
+    "result": "Passed",
+    "seconds": 25.81
+   },
+   {
+    "id": 235,
+    "name": "RegressionPropagation.Gate3FullRunLong",
+    "result": "Skipped",
+    "seconds": 0.0
+   },
+   {
+    "id": 236,
+    "name": "RegressionPropagation.Gate3DaiLightShort",
+    "result": "Passed",
+    "seconds": 126.45
+   },
+   {
+    "id": 237,
+    "name": "RegressionPropagation.Gate3DaiLightShortSymmetric",
+    "result": "Passed",
+    "seconds": 96.01
+   },
+   {
+    "id": 238,
+    "name": "RegressionPropagation.Gate3DaiLightFullRunLong",
+    "result": "Skipped",
+    "seconds": 0.0
+   }
+  ]
+ }
+}

@@ -1,0 +1,30 @@
+| Fortran line | C++ | Kind | Verdict |
+|---|---|---|---|
+| `grid interval size in kz dir. (scat. grid) = 0.327249` | dkz (scattering / specular): `0.3272492347489368` | printed | printed |
+| `grid interval size in kz dir. (spec. grid) = 0.204531` | dkz (scattering / specular): `0.2045307717180855` | printed | printed |
+| `initial momentum in z direction = 13.205180` | Initial kz: `13.20517968891641` | printed | printed |
+| `grid interval size in kr dir. = 0.785398` | dkr: `0.7853981633974483` | printed | printed |
+| `grid interval size in kx dir. = 1.499008` | dkx, dky: `1.4990077390365437` | printed | printed |
+| `grid interval size in ky dir. = 1.499008` | dkx, dky: `1.4990077390365437` | printed | printed |
+| `initial momentum in reciprocal x direction = 0.000000` | Parallel kinetic energy (hartree): `0.0` | printed | printed |
+| `initial momentum in reciprocal y direction = 0.000000` | Parallel kinetic energy (hartree): `0.0` | printed | printed |
+| `For backward compatibility: nmoder = 4` | -: `None` | n/a | n/a |
+| `asymptotic analysis at z = 15.000000` | Analysis at Z (index): `15.000000` | printed | printed |
+| `No flux analysis performed. = no` | (no FluxAnalysis key): `no` | text | identical |
+| `nzpot = 125` | Z points in interaction region: `125` | int | identical |
+| `nzchsp = 126` | Optical potential Z (indices) (0-based): `125` | int | identical |
+| `z(nzchsp) = 15.000000` | z_scattering[125] (helper grids.txt): `15.0` | printed | printed |
+| `nzchmx = 160` | Optical potential Z (indices) (0-based): `159` | int | identical |
+| `z(nzchmx) = 19.080000` | z_scattering[159] (helper grids.txt): `19.08` | printed | printed |
+| `nschsp = 185` | Optical potential Z specular (indices) (0-based): `184` | int | identical |
+| `z(nschsp) = 22.080000` | z_specular[184] (helper grids.txt): `22.08` | printed | printed |
+| `nschmx = 256` | Optical potential Z specular (indices) (0-based): `255` | int | identical |
+| `z(nschmx) = 30.600000` | z_specular[255] (helper grids.txt): `30.599999999999998` | printed | printed |
+| `nrchsp = 19` | Optical potential r (indices) (0-based): `18` | int | identical |
+| `r(nrchsp) = 4.100000` | r[18] (helper grids.txt): `4.1000000000000005` | printed | printed |
+| `nrchmx = 40` | Optical potential r (indices) (0-based): `39` | int | identical |
+| `r(nrchmx) = 8.300000` | r[39] (helper grids.txt): `8.3` | printed | printed |
+| `max kinetic energy in r (ev) = 3.654734` | Max. kinetic energy in r: `3.654734` | printed | printed |
+| `the max total energy ... (eV) = 4.274357` | Max. analysis energy: `4.274357` | printed | printed |
+| `ectmin (ev) = 0.400000` | 95% confidence interval: `0.400000` | printed | printed |
+| `ectmax (ev) = 0.950000` | 95% confidence interval: `0.950000` | printed | printed |

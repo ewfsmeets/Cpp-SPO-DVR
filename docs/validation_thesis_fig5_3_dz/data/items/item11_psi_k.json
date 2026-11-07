@@ -1,0 +1,61 @@
+{
+ "alpha_ulps": 11.0,
+ "by_parameters": {
+  "cpp": {
+   "exact_edge": 3.019624439184506e-10,
+   "exact_zero": 1.4079982762236527e-10,
+   "max": 0.5321458371327547,
+   "numpy_edge": 3.019624396661252e-10,
+   "numpy_zero": 1.4079984938068943e-10,
+   "sum_abs_terms": 0.5326830509936498
+  },
+  "fortran": {
+   "exact_edge": 3.0196069410266196e-10,
+   "exact_zero": 1.408015498952457e-10,
+   "max": 0.5321458371327547,
+   "numpy_edge": 3.0196068748602284e-10,
+   "numpy_zero": 1.4080154529207057e-10,
+   "sum_abs_terms": 0.5326830509936499
+  }
+ },
+ "edge": {
+  "cpp_minus_exact": -4.252325476958315e-18,
+  "cpp_minus_fortran": 1.749666125130217e-15,
+  "cpp_onemkl": 3.019624396661251e-10,
+  "effect_of_fortran_alpha_kz": -1.7498157886245063e-15,
+  "exact_fsum": 3.019624439184506e-10,
+  "fortran_fftw": 3.0196069e-10,
+  "fortran_half_unit": 5.05e-18,
+  "fortran_minus_exact": -1.7539184506071754e-15,
+  "fortran_minus_exact_with_fortran_alpha_kz": -4.1026619826690824e-18,
+  "fortran_text": "0.30196069E-09",
+  "numpy_minus_exact": -4.2523253735607385e-18,
+  "numpy_pocketfft": 3.019624396661252e-10,
+  "within_fortran_half_unit_with_fortran_alpha_kz": true
+ },
+ "fft_bound": 9.462351808651621e-16,
+ "inputs": {
+  "alpha_cpp": 1.9767175470965856,
+  "alpha_fortran": 1.9767175470965832,
+  "kz_cpp": 13.20517968891641,
+  "kz_fortran": 13.205179688916404
+ },
+ "kz_ulps": 3.0,
+ "max_cpp": 0.5321458371327545,
+ "phase_ulp_at_z0": 2.842170943040401e-14,
+ "zero": {
+  "cpp_minus_exact": 2.175832413947038e-17,
+  "cpp_minus_fortran": -1.7006193105889814e-15,
+  "cpp_onemkl": 1.407998493806894e-10,
+  "effect_of_fortran_alpha_kz": 1.7222728804205817e-15,
+  "exact_fsum": 1.4079982762236527e-10,
+  "fortran_fftw": 1.4080155e-10,
+  "fortran_half_unit": 5.05e-18,
+  "fortran_minus_exact": 1.7223776347284518e-15,
+  "fortran_minus_exact_with_fortran_alpha_kz": 1.0475430787008028e-19,
+  "fortran_text": "0.14080155E-09",
+  "numpy_minus_exact": 2.1758324165319774e-17,
+  "numpy_pocketfft": 1.4079984938068943e-10,
+  "within_fortran_half_unit_with_fortran_alpha_kz": true
+ }
+}

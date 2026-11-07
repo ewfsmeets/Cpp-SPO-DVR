@@ -1,0 +1,75 @@
+{
+ "cpu-fortran": {
+  "argmax": {
+   "ir": 1,
+   "iz": 11
+  },
+  "global_phase_rad": 1.3161433418744001e-11,
+  "max_block_rel": 1.0795914309491854e-06,
+  "overlap_modulus_minus_1": -1.1102230246251565e-15,
+  "rel_l2": 2.0414306468643386e-10,
+  "scattering_abs_rel_initial_norm": 1.1692330431149106e-13,
+  "scattering_amplitude_ratio_minus_1": 1.439381946966023e-11,
+  "specular_abs_rel_initial_norm": 8.539900905671378e-14,
+  "specular_amplitude_ratio_minus_1": 7.65698615623478e-12,
+  "specular_norm": 0.07047025631537616,
+  "specular_rel_l2": 7.822424125034756e-12
+ },
+ "gpu-cpu": {
+  "argmax": {
+   "ir": 1,
+   "iz": 11
+  },
+  "global_phase_rad": -3.1134801638439018e-12,
+  "max_block_rel": 1.4997004104947412e-06,
+  "overlap_modulus_minus_1": 0.0,
+  "rel_l2": 3.357068830203862e-11,
+  "scattering_abs_rel_initial_norm": 1.922767158568243e-14,
+  "scattering_amplitude_ratio_minus_1": 9.392486788328824e-14,
+  "specular_abs_rel_initial_norm": 3.099625029190617e-14,
+  "specular_norm": 0.07047025631591576,
+  "specular_rel_l2": 2.839211119042377e-12
+ },
+ "gpu-fortran": {
+  "argmax": {
+   "ir": 1,
+   "iz": 11
+  },
+  "global_phase_rad": 1.0047957557351266e-11,
+  "max_block_rel": 1.2695609744795367e-06,
+  "overlap_modulus_minus_1": -3.3306690738754696e-16,
+  "rel_l2": 2.035812690307367e-10,
+  "scattering_abs_rel_initial_norm": 1.1660153484793936e-13,
+  "scattering_amplitude_ratio_minus_1": 1.4487744337543518e-11,
+  "specular_abs_rel_initial_norm": 1.1309196608609306e-13,
+  "specular_norm": 0.07047025631537616,
+  "specular_rel_l2": 1.0359058420361359e-11
+ },
+ "norm_at_T": {
+  "scattering": 3.2804460507137353e-07,
+  "specular": 0.00011918536860371553,
+  "total": 0.00011951341320878691
+ },
+ "squared_norms_scattering_grid_sum": {
+  "cpu": 9.702034013578892e-05,
+  "fortran": 9.702034013299592e-05,
+  "gpu": 9.702034013580714e-05
+ },
+ "surface": {
+  "cpu": {
+   "surface_fixed": 1,
+   "surface_index": 125,
+   "time": 17500.0
+  },
+  "fortran": {
+   "fixed": 1,
+   "izanlySpecChan_1based": 126,
+   "nproj": 2
+  },
+  "gpu": {
+   "surface_fixed": 1,
+   "surface_index": 125,
+   "time": 17500.0
+  }
+ }
+}

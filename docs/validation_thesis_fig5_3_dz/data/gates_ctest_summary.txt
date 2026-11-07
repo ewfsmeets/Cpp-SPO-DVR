@@ -1,0 +1,62 @@
+## build-fast: 20 passed, 1 failed, 2 skipped
+Passed   RegressionFineAnalysis.Gate5Full
+Passed   RegressionFineAnalysis.Gate5Truncated
+Passed   RegressionFineAnalysis.Gate5Nen95
+Passed   RegressionFineAnalysis.Gate5Small
+Passed   RegressionFineAnalysis.Gate5Empty
+Passed   RegressionFineAnalysis.Gate5DaiLight
+Failed   RegressionHardWall.Gate1AsymptoticPotentialTable
+Passed   RegressionHardWall.Gate1FullPotentialAndAngularGrid
+Passed   RegressionHardWall.Gate2RovibrationalStates
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_dailight_short_sym"
+Passed   Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/"cu111_dailight_short_sym"
+Passed   Cu111/RegressionPes.Gate2RovibrationalStates/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate2RovibrationalStates/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate2RovibrationalStates/"cu111_dailight_short_sym"
+Passed   RegressionPropagation.Gate3ShortRun
+Skipped  RegressionPropagation.Gate3FullRunLong
+Passed   RegressionPropagation.Gate3DaiLightShort
+Passed   RegressionPropagation.Gate3DaiLightShortSymmetric
+Skipped  RegressionPropagation.Gate3DaiLightFullRunLong
+  failure: 1.6375e-14 > 1e-14 (ir = 5: 0.060171516557395402 vs 0.060171516557396387)
+
+## build-cuda-fast: 23 passed, 1 failed, 4 skipped
+Passed   RegressionFineAnalysis.Gate5Full
+Passed   RegressionFineAnalysis.Gate5Truncated
+Passed   RegressionFineAnalysis.Gate5Nen95
+Passed   RegressionFineAnalysis.Gate5Small
+Passed   RegressionFineAnalysis.Gate5Empty
+Passed   RegressionFineAnalysis.Gate5DaiLight
+Failed   RegressionHardWall.Gate1AsymptoticPotentialTable
+Passed   RegressionHardWall.Gate1FullPotentialAndAngularGrid
+Passed   RegressionHardWall.Gate2RovibrationalStates
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_dailight_short_sym"
+Passed   Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate1FullPotentialAndAngularGrid/"cu111_dailight_short_sym"
+Passed   Cu111/RegressionPes.Gate2RovibrationalStates/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate2RovibrationalStates/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate2RovibrationalStates/"cu111_dailight_short_sym"
+Passed   RegressionPropagation.Gate3ShortRun
+Skipped  RegressionPropagation.Gate3FullRunLong
+Passed   RegressionPropagation.Gate3DaiLightShort
+Passed   RegressionPropagation.Gate3DaiLightShortSymmetric
+Skipped  RegressionPropagation.Gate3DaiLightFullRunLong
+Passed   CudaRegressionPropagation.Gate3ShortRun
+Passed   CudaRegressionPropagation.Gate3DaiLightShort
+Passed   CudaRegressionPropagation.Gate3DaiLightShortSymmetric
+Skipped  CudaRegressionPropagation.Gate3FullRunLong
+Skipped  CudaRegressionPropagation.Gate3DaiLightFullRunLong
+  failure: 1.6375e-14 > 1e-14 (ir = 5: 0.060171516557395402 vs 0.060171516557396387)
+
+## build (strict), hard-wall vasy gate only: 4 passed, 0 failed, 0 skipped
+Passed   RegressionHardWall.Gate1AsymptoticPotentialTable
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_dailight_small"
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_persson_small"
+Passed   Cu111/RegressionPes.Gate1AsymptoticPotentialTable/"cu111_dailight_short_sym"

@@ -1,0 +1,29 @@
+{
+ "delta_per_block": {
+  "specular": {
+   "cpp": -9.215882299687113e-17,
+   "fortran": -5.932028511915244e-17
+  },
+  "xy": {
+   "cpp": 1.3931922649511053e-16,
+   "fortran": 3.633457171500511e-17
+  },
+  "zr": {
+   "cpp": -2.278624894059812e-16,
+   "fortran": -1.8687977781621557e-16
+  }
+ },
+ "n_kinetic_blocks": 7875,
+ "note": "IEEE double semantics for the C++ factors; the run used -ffast-math, which may evaluate divisions as multiplications by reciprocals (different last bits)",
+ "predicted_amplitude_ratio_minus_1": {
+  "scattering_grid": 4.882653026239257e-13,
+  "specular_grid": -2.5860348578703474e-13
+ },
+ "scale_factors": {
+  "sr": 0.07978845608028655,
+  "sx_cpp": 0.18333333333333335,
+  "sx_fortran_quad": 0.18333333333333332,
+  "sx_ulps_apart": 1.0,
+  "sz": 0.04787307364817193
+ }
+}

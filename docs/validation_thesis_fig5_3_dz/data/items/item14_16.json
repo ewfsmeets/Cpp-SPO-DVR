@@ -1,0 +1,1044 @@
+{
+ "dS": {
+  "measured": {
+   "cpu-fortran": 1.7016700677078033e-12,
+   "gpu-fortran": 2.17504024339908e-12
+  },
+  "predicted": 1e-11
+ },
+ "explanation_method": "replay",
+ "item14": {
+  "cpu_vs_fortran": {
+   "E_avg": {
+    "dS_used": 1.7016700677078033e-12,
+    "explained_examples": [],
+    "explained_max_abs_diff": 0.0,
+    "explained_max_propagation_diff": 0.0,
+    "explained_max_value": 0.0,
+    "explained_methods": [],
+    "n": 333,
+    "n_explained": 0,
+    "n_outside": 0,
+    "n_within_printed": 333,
+    "outside": [],
+    "ratio_median": 0.42325815097001823,
+    "worst": {
+     "abs_diff": 4.961441602696626e-07,
+     "cpp": 0.08712449614416026,
+     "fortran": "0.087124",
+     "ratio": 0.9824636837023023,
+     "where": {
+      "E": 0.8999999999999999,
+      "quantity": "E_rot_mean"
+     }
+    }
+   },
+   "P_reaction": {
+    "dS_used": 1.7016700677078033e-12,
+    "explained_examples": [
+     {
+      "abs_diff": 6.20731651843065e-11,
+      "cpp": 0.0004661085379268348,
+      "fortran": "0.4661086D-03",
+      "fortran_print_rounding": 4.863113991365742e-11,
+      "half_unit": 5.05e-11,
+      "method": "replay",
+      "propagation_diff": 1.3442025270649083e-11,
+      "replay_fortran": 0.0004661085513688601,
+      "where": {
+       "E": 0.41500000000000004
+      }
+     },
+     {
+      "abs_diff": 5.4136193629057e-11,
+      "cpp": 0.00030976274586380637,
+      "fortran": "0.3097628D-03",
+      "fortran_print_rounding": 4.134353780551117e-11,
+      "half_unit": 5.05e-11,
+      "method": "replay",
+      "propagation_diff": 1.2792655823545829e-11,
+      "replay_fortran": 0.0003097627586564622,
+      "where": {
+       "E": 0.465
+      }
+     }
+    ],
+    "explained_max_abs_diff": 6.20731651843065e-11,
+    "explained_max_propagation_diff": 1.3442025270649083e-11,
+    "explained_max_value": 0.0004661086,
+    "explained_methods": [
+     "replay"
+    ],
+    "n": 111,
+    "n_explained": 2,
+    "n_outside": 0,
+    "n_within_printed": 109,
+    "outside": [],
+    "ratio_median": 0.5661569299184291,
+    "worst": {
+     "abs_diff": 6.20731651843065e-11,
+     "cpp": 0.0004661085379268348,
+     "fortran": "0.4661086D-03",
+     "ratio": 1.2291715878080496,
+     "where": {
+      "E": 0.41500000000000004
+     }
+    }
+   },
+   "P_sum": {
+    "dS_used": 1.7016700677078033e-12,
+    "explained_examples": [],
+    "explained_max_abs_diff": 0.0,
+    "explained_max_propagation_diff": 0.0,
+    "explained_max_value": 0.0,
+    "explained_methods": [],
+    "n": 111,
+    "n_explained": 0,
+    "n_outside": 0,
+    "n_within_printed": 111,
+    "outside": [],
+    "ratio_median": 0.5298266182221045,
+    "worst": {
+     "abs_diff": 4.887443283418946e-08,
+     "cpp": 0.6623450511255672,
+     "fortran": "0.6623451",
+     "ratio": 0.9678105511720687,
+     "where": {
+      "E": 0.7799999999999999
+     }
+    }
+   },
+   "P_v": {
+    "dS_used": 1.7016700677078033e-12,
+    "explained_examples": [],
+    "explained_max_abs_diff": 0.0,
+    "explained_max_propagation_diff": 0.0,
+    "explained_max_value": 0.0,
+    "explained_methods": [],
+    "n": 222,
+    "n_explained": 0,
+    "n_outside": 0,
+    "n_within_printed": 222,
+    "outside": [],
+    "ratio_median": 0.4507190776228208,
+    "worst": {
+     "abs_diff": 4.990706892887831e-10,
+     "cpp": 0.0025962505009293107,
+     "fortran": "0.2596251E-02",
+     "ratio": 0.9882587906708575,
+     "where": {
+      "E": 0.865,
+      "v": 1
+     }
+    }
+   },
+   "P_vjm": {
+    "dS_used": 1.7016700677078033e-12,
+    "explained_examples": [
+     {
+      "abs_diff": 5.47008322302026e-19,
+      "cpp": 8.532146452991678e-12,
+      "fortran": "0.8532147E-11",
+      "fortran_print_rounding": 4.887208901888734e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 5.828743211315255e-20,
+      "replay_fortran": 8.53214651127911e-12,
+      "where": {
+       "E": 0.8899999999999999,
+       "j": 10,
+       "mJ": 0,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 5.423271537348107e-19,
+      "cpp": 8.298714542327154e-12,
+      "fortran": "0.8298714E-11",
+      "fortran_print_rounding": 4.757212508773525e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 6.660590285745818e-20,
+      "replay_fortran": 8.298714475721251e-12,
+      "where": {
+       "E": 0.595,
+       "j": 8,
+       "mJ": 0,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 5.071649959415079e-19,
+      "cpp": 2.328966492835004e-12,
+      "fortran": "0.2328967E-11",
+      "fortran_print_rounding": 4.997662543148235e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 7.398741626684348e-21,
+      "replay_fortran": 2.3289665002337455e-12,
+      "where": {
+       "E": 0.8949999999999999,
+       "j": 10,
+       "mJ": 2,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 5.071302523362967e-19,
+      "cpp": 2.3289664928697475e-12,
+      "fortran": "0.2328967E-11",
+      "fortran_print_rounding": 4.997486714761486e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 7.38158086014814e-21,
+      "replay_fortran": 2.3289665002513283e-12,
+      "where": {
+       "E": 0.8949999999999999,
+       "j": 10,
+       "mJ": -2,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 1.690485718078926e-19,
+      "cpp": 8.384173309514282e-13,
+      "fortran": "0.8384175E-12",
+      "fortran_print_rounding": 4.113290376276575e-20,
+      "half_unit": 5.05e-20,
+      "method": "replay",
+      "propagation_diff": 1.2791566804512685e-19,
+      "replay_fortran": 8.384174588670963e-13,
+      "where": {
+       "E": 0.54,
+       "j": 8,
+       "mJ": 0,
+       "v": 0
+      }
+     }
+    ],
+    "explained_max_abs_diff": 5.47008322302026e-19,
+    "explained_max_propagation_diff": 1.2791566804512685e-19,
+    "explained_max_value": 8.532147e-12,
+    "explained_methods": [
+     "replay"
+    ],
+    "n": 14652,
+    "n_explained": 17,
+    "n_outside": 0,
+    "n_within_printed": 14635,
+    "outside": [],
+    "ratio_median": 0.0,
+    "worst": {
+     "abs_diff": 9.989146895303945e-20,
+     "cpp": 7.216140989146895e-14,
+     "fortran": "0.7216131E-13",
+     "ratio": 9.989146895303945,
+     "where": {
+      "E": 0.51,
+      "j": 8,
+      "mJ": 0,
+      "v": 0
+     }
+    }
+   }
+  },
+  "gpu_vs_cpu": {
+   "E_dif_mean": {
+    "argmax": 0.505,
+    "max": 1.2656542480726785e-14,
+    "median": 5.162537064506978e-15,
+    "n": 111,
+    "p95": 1.0658141036401503e-14
+   },
+   "E_rot_mean": {
+    "argmax": 0.9149999999999999,
+    "max": 5.218048215738236e-15,
+    "median": 1.672273430841642e-15,
+    "n": 111,
+    "p95": 4.1598668953923834e-15
+   },
+   "E_vib_mean": {
+    "argmax": 0.95,
+    "max": 3.3497510321112145e-15,
+    "median": 2.280048912247291e-19,
+    "n": 111,
+    "p95": 2.645886981733625e-15
+   },
+   "P_reaction": {
+    "argmax": 0.4,
+    "max": 1.8836043835790406e-12,
+    "median": 7.881473251813986e-13,
+    "n": 111,
+    "p95": 1.2987388942065081e-12
+   },
+   "P_scattered": {
+    "argmax": 0.4,
+    "max": 1.8836043835790406e-12,
+    "median": 7.881473251813986e-13,
+    "n": 111,
+    "p95": 1.2987388942065081e-12
+   },
+   "P_v0": {
+    "argmax": 0.4,
+    "max": 1.8836043835790406e-12,
+    "median": 7.881473251813986e-13,
+    "n": 111,
+    "p95": 1.2987388942065081e-12
+   },
+   "P_v1": {
+    "argmax": 0.95,
+    "max": 8.259885830863567e-15,
+    "median": 3.5788465510474274e-19,
+    "n": 111,
+    "p95": 6.856060857929336e-15
+   },
+   "P_vjm": {
+    "argmax": {
+     "E": 0.4,
+     "j": 0,
+     "mJ": 0,
+     "v": 0
+    },
+    "max": 1.4523937608146298e-12,
+    "median": 0.0,
+    "n": 14652,
+    "p95": 1.5578510703662058e-14
+   }
+  },
+  "gpu_vs_fortran": {
+   "E_avg": {
+    "dS_used": 2.17504024339908e-12,
+    "explained_examples": [],
+    "explained_max_abs_diff": 0.0,
+    "explained_max_propagation_diff": 0.0,
+    "explained_max_value": 0.0,
+    "explained_methods": [],
+    "n": 333,
+    "n_explained": 0,
+    "n_outside": 0,
+    "n_within_printed": 333,
+    "outside": [],
+    "ratio_median": 0.42325814866163375,
+    "worst": {
+     "abs_diff": 4.96144158604328e-07,
+     "cpp": 0.0871244961441586,
+     "fortran": "0.087124",
+     "ratio": 0.9824636804046101,
+     "where": {
+      "E": 0.8999999999999999,
+      "quantity": "E_rot_mean"
+     }
+    }
+   },
+   "P_reaction": {
+    "dS_used": 2.17504024339908e-12,
+    "explained_examples": [
+     {
+      "abs_diff": 6.337445759146965e-11,
+      "cpp": 0.0004661085366255424,
+      "fortran": "0.4661086D-03",
+      "fortran_print_rounding": 4.863113991365742e-11,
+      "half_unit": 5.05e-11,
+      "method": "replay",
+      "propagation_diff": 1.474331767781223e-11,
+      "replay_fortran": 0.0004661085513688601,
+      "where": {
+       "E": 0.41500000000000004
+      }
+     },
+     {
+      "abs_diff": 5.5326241689152705e-11,
+      "cpp": 0.0003097627446737583,
+      "fortran": "0.3097628D-03",
+      "fortran_print_rounding": 4.134353780551117e-11,
+      "half_unit": 5.05e-11,
+      "method": "replay",
+      "propagation_diff": 1.3982703883641534e-11,
+      "replay_fortran": 0.0003097627586564622,
+      "where": {
+       "E": 0.465
+      }
+     }
+    ],
+    "explained_max_abs_diff": 6.337445759146965e-11,
+    "explained_max_propagation_diff": 1.474331767781223e-11,
+    "explained_max_value": 0.0004661086,
+    "explained_methods": [
+     "replay"
+    ],
+    "n": 111,
+    "n_explained": 2,
+    "n_outside": 0,
+    "n_within_printed": 109,
+    "outside": [],
+    "ratio_median": 0.5664488963488344,
+    "worst": {
+     "abs_diff": 6.337445759146965e-11,
+     "cpp": 0.0004661085366255424,
+     "fortran": "0.4661086D-03",
+     "ratio": 1.2549397542865277,
+     "where": {
+      "E": 0.41500000000000004
+     }
+    }
+   },
+   "P_sum": {
+    "dS_used": 2.17504024339908e-12,
+    "explained_examples": [],
+    "explained_max_abs_diff": 0.0,
+    "explained_max_propagation_diff": 0.0,
+    "explained_max_value": 0.0,
+    "explained_methods": [],
+    "n": 111,
+    "n_explained": 0,
+    "n_outside": 0,
+    "n_within_printed": 111,
+    "outside": [],
+    "ratio_median": 0.5298519291086045,
+    "worst": {
+     "abs_diff": 4.887372540007817e-08,
+     "cpp": 0.6623450511262746,
+     "fortran": "0.6623451",
+     "ratio": 0.9677965425758055,
+     "where": {
+      "E": 0.7799999999999999
+     }
+    }
+   },
+   "P_v": {
+    "dS_used": 2.17504024339908e-12,
+    "explained_examples": [],
+    "explained_max_abs_diff": 0.0,
+    "explained_max_propagation_diff": 0.0,
+    "explained_max_value": 0.0,
+    "explained_methods": [],
+    "n": 222,
+    "n_explained": 0,
+    "n_outside": 0,
+    "n_within_printed": 222,
+    "outside": [],
+    "ratio_median": 0.44925117598047976,
+    "worst": {
+     "abs_diff": 4.990662119674916e-10,
+     "cpp": 0.002596250500933788,
+     "fortran": "0.2596251E-02",
+     "ratio": 0.9882499246881021,
+     "where": {
+      "E": 0.865,
+      "v": 1
+     }
+    }
+   },
+   "P_vjm": {
+    "dS_used": 2.17504024339908e-12,
+    "explained_examples": [
+     {
+      "abs_diff": 5.462831046246672e-19,
+      "cpp": 8.532146453716896e-12,
+      "fortran": "0.8532147E-11",
+      "fortran_print_rounding": 4.887208901888734e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 5.756221443579375e-20,
+      "replay_fortran": 8.53214651127911e-12,
+      "where": {
+       "E": 0.8899999999999999,
+       "j": 10,
+       "mJ": 0,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 5.427952652600947e-19,
+      "cpp": 8.298714542795266e-12,
+      "fortran": "0.8298714E-11",
+      "fortran_print_rounding": 4.757212508773525e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 6.707401438274217e-20,
+      "replay_fortran": 8.298714475721251e-12,
+      "where": {
+       "E": 0.595,
+       "j": 8,
+       "mJ": 0,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 5.071885689733785e-19,
+      "cpp": 2.328966492811431e-12,
+      "fortran": "0.2328967E-11",
+      "fortran_print_rounding": 4.997486714761486e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 7.439897497229912e-21,
+      "replay_fortran": 2.3289665002513283e-12,
+      "where": {
+       "E": 0.8949999999999999,
+       "j": 10,
+       "mJ": -2,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 5.070881295368515e-19,
+      "cpp": 2.3289664929118703e-12,
+      "fortran": "0.2328967E-11",
+      "fortran_print_rounding": 4.997662543148235e-19,
+      "half_unit": 5.05e-19,
+      "method": "replay",
+      "propagation_diff": 7.321875222028004e-21,
+      "replay_fortran": 2.3289665002337455e-12,
+      "where": {
+       "E": 0.8949999999999999,
+       "j": 10,
+       "mJ": 2,
+       "v": 0
+      }
+     },
+     {
+      "abs_diff": 1.6941584757293084e-19,
+      "cpp": 8.384173305841525e-13,
+      "fortran": "0.8384175E-12",
+      "fortran_print_rounding": 4.113290376276575e-20,
+      "half_unit": 5.05e-20,
+      "method": "replay",
+      "propagation_diff": 1.282829438101651e-19,
+      "replay_fortran": 8.384174588670963e-13,
+      "where": {
+       "E": 0.54,
+       "j": 8,
+       "mJ": 0,
+       "v": 0
+      }
+     }
+    ],
+    "explained_max_abs_diff": 5.462831046246672e-19,
+    "explained_max_propagation_diff": 1.282829438101651e-19,
+    "explained_max_value": 8.532147e-12,
+    "explained_methods": [
+     "replay"
+    ],
+    "n": 14652,
+    "n_explained": 17,
+    "n_outside": 0,
+    "n_within_printed": 14635,
+    "outside": [],
+    "ratio_median": 0.0,
+    "worst": {
+     "abs_diff": 1.0003694651599473e-19,
+     "cpp": 7.216141003694651e-14,
+     "fortran": "0.7216131E-13",
+     "ratio": 10.003694651599474,
+     "where": {
+      "E": 0.51,
+      "j": 8,
+      "mJ": 0,
+      "v": 0
+     }
+    }
+   }
+  },
+  "n_per_v_average_energies_without_counterpart": 444
+ },
+ "item15": {
+  "cpp_rows_not_printed_by_fortran": {
+   "max_P": 0.0,
+   "n": 93336
+  },
+  "cpu_vs_fortran": {
+   "cpp_rows": 175824,
+   "dS_used": 1.7016700677078033e-12,
+   "explained_examples": [
+    {
+     "abs_diff": 5.383026328033478e-18,
+     "cpp": 9.136437538302633e-11,
+     "fortran": "0.9136437E-10",
+     "fortran_print_rounding": 4.580332588057493e-18,
+     "half_unit": 5.05e-18,
+     "method": "replay",
+     "propagation_diff": 8.0269373997598525e-19,
+     "replay_fortran": 9.136437458033259e-11,
+     "where": {
+      "E": 0.405,
+      "j": 6,
+      "mJ": 0,
+      "order": 2,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 5.074688092022997e-18,
+     "cpp": 1.2735005074688092e-11,
+     "fortran": "0.1273500E-10",
+     "fortran_print_rounding": 4.9062468514275544e-18,
+     "half_unit": 5.05e-18,
+     "method": "replay",
+     "propagation_diff": 1.6844124059544227e-19,
+     "replay_fortran": 1.2735004906246852e-11,
+     "where": {
+      "E": 0.715,
+      "j": 8,
+      "mJ": 0,
+      "order": 4,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 5.065348156619765e-18,
+     "cpp": 9.835424493465184e-11,
+     "fortran": "0.9835425E-10",
+     "fortran_print_rounding": 4.890465179149406e-18,
+     "half_unit": 5.05e-18,
+     "method": "replay",
+     "propagation_diff": 1.748829774703586e-19,
+     "replay_fortran": 9.835424510953482e-11,
+     "where": {
+      "E": 0.7899999999999999,
+      "j": 8,
+      "mJ": 0,
+      "order": 5,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 7.088549353380328e-19,
+     "cpp": 3.3589752911450647e-12,
+     "fortran": "0.3358976E-11",
+     "fortran_print_rounding": 3.632171464132965e-19,
+     "half_unit": 5.05e-19,
+     "method": "replay",
+     "propagation_diff": 3.4563778892473628e-19,
+     "replay_fortran": 3.3589756367828536e-12,
+     "where": {
+      "E": 0.625,
+      "j": 8,
+      "mJ": 0,
+      "order": 4,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 6.903960409046715e-19,
+     "cpp": 3.841352309603959e-12,
+     "fortran": "0.3841353E-11",
+     "fortran_print_rounding": 2.99365366850831e-19,
+     "half_unit": 5.05e-19,
+     "method": "replay",
+     "propagation_diff": 3.9103067405384047e-19,
+     "replay_fortran": 3.841352700634633e-12,
+     "where": {
+      "E": 0.62,
+      "j": 8,
+      "mJ": 0,
+      "order": 4,
+      "v": 0
+     }
+    }
+   ],
+   "explained_max_abs_diff": 5.383026328033478e-18,
+   "explained_max_propagation_diff": 8.0269373997598525e-19,
+   "explained_max_value": 9.835425e-11,
+   "explained_methods": [
+    "replay"
+   ],
+   "fortran_rows": 82488,
+   "fortran_rows_missing_in_cpp": 0,
+   "n": 82488,
+   "n_explained": 56,
+   "n_outside": 0,
+   "n_within_printed": 82432,
+   "outside": [],
+   "ratio_median": 0.08137635924698909,
+   "worst": {
+    "abs_diff": 9.989146895303945e-20,
+    "cpp": 7.216140989146895e-14,
+    "fortran": "0.7216131E-13",
+    "ratio": 9.989146895303945,
+    "where": {
+     "E": 0.51,
+     "j": 8,
+     "mJ": 0,
+     "order": 0,
+     "v": 0
+    }
+   }
+  },
+  "gpu_vs_cpu": {
+   "max": 6.376010830422274e-13,
+   "median": 0.0,
+   "n": 175824,
+   "p95": 3.8259055212125454e-16
+  },
+  "gpu_vs_fortran": {
+   "cpp_rows": 175824,
+   "dS_used": 2.17504024339908e-12,
+   "explained_examples": [
+    {
+     "abs_diff": 5.381809235159683e-18,
+     "cpp": 9.136437538180923e-11,
+     "fortran": "0.9136437E-10",
+     "fortran_print_rounding": 4.580332588057493e-18,
+     "half_unit": 5.05e-18,
+     "method": "replay",
+     "propagation_diff": 8.0147664710219e-19,
+     "replay_fortran": 9.136437458033259e-11,
+     "where": {
+      "E": 0.405,
+      "j": 6,
+      "mJ": 0,
+      "order": 2,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 5.073849641074598e-18,
+     "cpp": 1.2735005073849641e-11,
+     "fortran": "0.1273500E-10",
+     "fortran_print_rounding": 4.9062468514275544e-18,
+     "half_unit": 5.05e-18,
+     "method": "replay",
+     "propagation_diff": 1.676027896470432e-19,
+     "replay_fortran": 1.2735004906246852e-11,
+     "where": {
+      "E": 0.715,
+      "j": 8,
+      "mJ": 0,
+      "order": 4,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 5.066154489695942e-18,
+     "cpp": 9.835424493384551e-11,
+     "fortran": "0.9835425E-10",
+     "fortran_print_rounding": 4.890465179149406e-18,
+     "half_unit": 5.05e-18,
+     "method": "replay",
+     "propagation_diff": 1.7568931054653588e-19,
+     "replay_fortran": 9.835424510953482e-11,
+     "where": {
+      "E": 0.7899999999999999,
+      "j": 8,
+      "mJ": 0,
+      "order": 5,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 7.089171883531663e-19,
+     "cpp": 3.3589752910828117e-12,
+     "fortran": "0.3358976E-11",
+     "fortran_print_rounding": 3.632171464132965e-19,
+     "half_unit": 5.05e-19,
+     "method": "replay",
+     "propagation_diff": 3.457000419398698e-19,
+     "replay_fortran": 3.3589756367828536e-12,
+     "where": {
+      "E": 0.625,
+      "j": 8,
+      "mJ": 0,
+      "order": 4,
+      "v": 0
+     }
+    },
+    {
+     "abs_diff": 6.902940020368819e-19,
+     "cpp": 3.841352309705998e-12,
+     "fortran": "0.3841353E-11",
+     "fortran_print_rounding": 2.99365366850831e-19,
+     "half_unit": 5.05e-19,
+     "method": "replay",
+     "propagation_diff": 3.9092863518605094e-19,
+     "replay_fortran": 3.841352700634633e-12,
+     "where": {
+      "E": 0.62,
+      "j": 8,
+      "mJ": 0,
+      "order": 4,
+      "v": 0
+     }
+    }
+   ],
+   "explained_max_abs_diff": 5.381809235159683e-18,
+   "explained_max_propagation_diff": 8.0147664710219e-19,
+   "explained_max_value": 9.835425e-11,
+   "explained_methods": [
+    "replay"
+   ],
+   "fortran_rows": 82488,
+   "fortran_rows_missing_in_cpp": 0,
+   "n": 82488,
+   "n_explained": 58,
+   "n_outside": 0,
+   "n_within_printed": 82430,
+   "outside": [],
+   "ratio_median": 0.08161945200681064,
+   "worst": {
+    "abs_diff": 1.0003694651599473e-19,
+    "cpp": 7.216141003694651e-14,
+    "fortran": "0.7216131E-13",
+    "ratio": 10.003694651599474,
+    "where": {
+     "E": 0.51,
+     "j": 8,
+     "mJ": 0,
+     "order": 0,
+     "v": 0
+    }
+   }
+  }
+ },
+ "item16": {
+  "cpu_vs_fortran": {
+   "Im S": {
+    "max_abs_diff": 4.976714716997677e-07,
+    "max_abs_diff_explained": 5.105755867839442e-12,
+    "n": 636373,
+    "n_explained": 380,
+    "n_explained_in_specular_inelastic_family": 5,
+    "n_outside": 0,
+    "n_outside_where_replay_misses_fortran_print": 0,
+    "n_within_printed": 635993,
+    "worst": {
+     "E_coll": 0.77,
+     "j": 8,
+     "m": -5,
+     "mJ": -2,
+     "n": -4,
+     "v": 0
+    },
+    "worst_ratio": 134.9220290227698,
+    "worst_values": {
+     "cpp": -8.518058643753435e-12,
+     "fortran": -8.51874e-12
+    }
+   },
+   "Re S": {
+    "max_abs_diff": 4.964608127516756e-07,
+    "max_abs_diff_explained": 5.426802728878213e-12,
+    "n": 636373,
+    "n_explained": 502,
+    "n_explained_in_specular_inelastic_family": 7,
+    "n_outside": 0,
+    "n_outside_where_replay_misses_fortran_print": 0,
+    "n_within_printed": 635871,
+    "worst": {
+     "E_coll": 0.9249999999999999,
+     "j": 10,
+     "m": 4,
+     "mJ": -2,
+     "n": 1,
+     "v": 0
+    },
+    "worst_ratio": 70.4576839195357,
+    "worst_values": {
+     "cpp": 1.5268341886962064e-12,
+     "fortran": 1.52719e-12
+    }
+   },
+   "cpp_only": 0,
+   "cpp_only_max_P": 0.0,
+   "cpp_rows": 636373,
+   "fortran_only": 353483,
+   "fortran_only_all_S_zero": true,
+   "joined": 636373,
+   "order_label_equal": true,
+   "phase": {
+    "max_abs_diff_rad": 5.000175474778601e-07,
+    "n": 327734,
+    "n_within_printed": 327734,
+    "worst": {
+     "E_coll": 0.85,
+     "j": 8.0,
+     "m": 2.0,
+     "mJ": -2.0,
+     "n": 1.0,
+     "v": 0.0
+    },
+    "worst_ratio": 0.9901337573819013
+   },
+   "|S|^2": {
+    "max_abs_diff": 4.998113984147623e-08,
+    "max_abs_diff_explained": 5.059015450873753e-18,
+    "n": 636373,
+    "n_explained": 46,
+    "n_explained_in_specular_inelastic_family": 10,
+    "n_outside": 0,
+    "n_outside_where_replay_misses_fortran_print": 0,
+    "n_within_printed": 636327,
+    "worst": {
+     "E_coll": 0.51,
+     "j": 8,
+     "m": 0,
+     "mJ": 0,
+     "n": 0,
+     "v": 0
+    },
+    "worst_ratio": 2.1760686921037435,
+    "worst_values": {
+     "cpp": 7.216140989146895e-14,
+     "fortran": 7.21613e-14
+    }
+   }
+  },
+  "fortran_rows": 989856,
+  "fortran_rows_with_S_zero": 353483,
+  "gpu_vs_cpu": {
+   "P_abs": {
+    "max": 2.6535718067322023e-13,
+    "median": 1.852884572118782e-20,
+    "n": 636373,
+    "p95": 4.63301272346507e-16
+   },
+   "S_abs": {
+    "max": 5.476880211078e-13,
+    "median": 2.6798254850039544e-16,
+    "n": 636373,
+    "p95": 1.21143361176514e-14
+   },
+   "identical_rows": 0,
+   "phase_rad_P_gt_1e-8": {
+    "max": 8.789333150183154e-11,
+    "median": 1.8707257964933888e-13,
+    "n": 327734,
+    "p95": 7.875321922368171e-13
+   },
+   "rows": 636373
+  },
+  "gpu_vs_fortran": {
+   "Im S": {
+    "max_abs_diff": 4.976712673354644e-07,
+    "max_abs_diff_explained": 5.103601127829976e-12,
+    "n": 636373,
+    "n_explained": 383,
+    "n_explained_in_specular_inelastic_family": 5,
+    "n_outside": 0,
+    "n_outside_where_replay_misses_fortran_print": 0,
+    "n_within_printed": 635990,
+    "worst": {
+     "E_coll": 0.77,
+     "j": 8,
+     "m": -5,
+     "mJ": -2,
+     "n": -4,
+     "v": 0
+    },
+    "worst_ratio": 129.84164059336598,
+    "worst_values": {
+     "cpp": -8.518084299715003e-12,
+     "fortran": -8.51874e-12
+    }
+   },
+   "Re S": {
+    "max_abs_diff": 4.964608648905244e-07,
+    "max_abs_diff_explained": 5.419166996215193e-12,
+    "n": 636373,
+    "n_explained": 501,
+    "n_explained_in_specular_inelastic_family": 7,
+    "n_outside": 0,
+    "n_outside_where_replay_misses_fortran_print": 0,
+    "n_within_printed": 635872,
+    "worst": {
+     "E_coll": 0.645,
+     "j": 8,
+     "m": 1,
+     "mJ": 0,
+     "n": -2,
+     "v": 0
+    },
+    "worst_ratio": 60.96642148910115,
+    "worst_values": {
+     "cpp": 2.65557211957148e-11,
+     "fortran": 2.65588e-11
+    }
+   },
+   "cpp_only": 0,
+   "cpp_only_max_P": 0.0,
+   "cpp_rows": 636373,
+   "fortran_only": 353483,
+   "fortran_only_all_S_zero": true,
+   "joined": 636373,
+   "order_label_equal": true,
+   "phase": {
+    "max_abs_diff_rad": 5.000170366087353e-07,
+    "n": 327734,
+    "n_within_printed": 327734,
+    "worst": {
+     "E_coll": 0.85,
+     "j": 8.0,
+     "m": 2.0,
+     "mJ": -2.0,
+     "n": 1.0,
+     "v": 0.0
+    },
+    "worst_ratio": 0.9901327457598721
+   },
+   "|S|^2": {
+    "max_abs_diff": 4.998112043338998e-08,
+    "max_abs_diff_explained": 5.0583786991127754e-18,
+    "n": 636373,
+    "n_explained": 47,
+    "n_explained_in_specular_inelastic_family": 10,
+    "n_outside": 0,
+    "n_outside_where_replay_misses_fortran_print": 0,
+    "n_within_printed": 636326,
+    "worst": {
+     "E_coll": 0.51,
+     "j": 8,
+     "m": 0,
+     "mJ": 0,
+     "n": 0,
+     "v": 0
+    },
+    "worst_ratio": 2.17894943592464,
+    "worst_values": {
+     "cpp": 7.216141003694651e-14,
+     "fortran": 7.21613e-14
+    }
+   }
+  }
+ },
+ "n_energies": 111,
+ "p_reaction_7digit_mismatches": {
+  "cases": [
+   {
+    "E": 0.41500000000000004,
+    "cpp": 0.0004661085379268348,
+    "distance_to_boundary": 1.2073165184306498e-11,
+    "fortran": "0.4661086D-03",
+    "run": "cpu"
+   },
+   {
+    "E": 0.41500000000000004,
+    "cpp": 0.0004661085366255424,
+    "distance_to_boundary": 1.3374457591469644e-11,
+    "fortran": "0.4661086D-03",
+    "run": "gpu"
+   },
+   {
+    "E": 0.465,
+    "cpp": 0.00030976274586380637,
+    "distance_to_boundary": 4.136193629056998e-12,
+    "fortran": "0.3097628D-03",
+    "run": "cpu"
+   },
+   {
+    "E": 0.465,
+    "cpp": 0.0003097627446737583,
+    "distance_to_boundary": 5.3262416891527035e-12,
+    "fortran": "0.3097628D-03",
+    "run": "gpu"
+   }
+  ],
+  "max_distance_to_boundary": 1.3374457591469644e-11
+ },
+ "p_reaction_range": [
+  0.00024865317261202335,
+  0.5977071710245022
+ ],
+ "p_reaction_same_7_digits": {
+  "n": 222,
+  "n_same": 218
+ }
+}

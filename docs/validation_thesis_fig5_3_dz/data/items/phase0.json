@@ -1,0 +1,215 @@
+{
+ "builds": {
+  "cpu": {
+   "cache": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+    "MKL_INCLUDE": "/opt/intel/oneapi/mkl/2026.2/include",
+    "SPODVR_ARCH": "native",
+    "SPODVR_FAST_MATH": "ON",
+    "SPODVR_FFT_LIBRARY": "AUTO",
+    "SPODVR_PGO": "OFF",
+    "SPODVR_USE_CUDA": "OFF",
+    "SPODVR_USE_MKL": "ON"
+   },
+   "dir": "build-fast",
+   "libspodvr_core_mtime": "2026-11-06T15:56:21+01:00",
+   "sources_newer_than_binary": [],
+   "spodvr_mtime": "2026-11-06T15:56:45+01:00"
+  },
+  "fortran": {
+   "exe": "~/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x",
+   "flags": "-O3 -fopenmp -fdefault-real-8 (GFORTRAN.mk), FFTW_ESTIMATE plans",
+   "ldd": [
+    "linux-vdso.so.1",
+    "libfftw3.so.3",
+    "libgfortran.so.5",
+    "libm.so.6",
+    "libmvec.so.1",
+    "libgomp.so.1",
+    "libgcc_s.so.1",
+    "libc.so.6",
+    "/lib64/ld-linux-x86-64.so.2"
+   ],
+   "mtime": "2026-11-06T11:39:05+01:00"
+  },
+  "gpu": {
+   "cache": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc",
+    "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+    "MKL_INCLUDE": "/opt/intel/oneapi/mkl/2026.2/include",
+    "SPODVR_ARCH": "native",
+    "SPODVR_FAST_MATH": "ON",
+    "SPODVR_FFT_LIBRARY": "AUTO",
+    "SPODVR_PGO": "OFF",
+    "SPODVR_USE_CUDA": "ON",
+    "SPODVR_USE_MKL": "ON"
+   },
+   "dir": "build-cuda-fast",
+   "libspodvr_core_mtime": "2026-11-06T15:57:59+01:00",
+   "sources_newer_than_binary": [],
+   "spodvr_mtime": "2026-11-06T15:58:33+01:00"
+  }
+ },
+ "dvr_inp_identical_to_committed": true,
+ "files": {
+  "cpu": [
+   "analysis.json",
+   "asymptotic_potential.dat",
+   "averages.dat",
+   "bk_coefficients.bin",
+   "checkpoint.bin",
+   "gas_phase_states.dat",
+   "probabilities_diffraction.tsv",
+   "probabilities_rovib.tsv",
+   "s_matrix.tsv",
+   "scattering_summary.tsv"
+  ],
+  "fortran": [
+   "DVR.inp",
+   "H2Cu111DaiLight_125_0.000_0.120_40_0.500_0.200_12_12_4.840_28_28.pes",
+   "averages.out",
+   "fort.21",
+   "fort.25",
+   "fort.9",
+   "fort.99"
+  ],
+  "gpu": [
+   "analysis.json",
+   "asymptotic_potential.dat",
+   "averages.dat",
+   "bk_coefficients.bin",
+   "checkpoint.bin",
+   "gas_phase_states.dat",
+   "probabilities_diffraction.tsv",
+   "probabilities_rovib.tsv",
+   "s_matrix.tsv",
+   "scattering_summary.tsv"
+  ]
+ },
+ "generated": "2026-11-07T22:49:11+01:00",
+ "git_head": "e0c231b",
+ "git_head_date": "2026-11-06T18:10:47+01:00",
+ "git_last_src_commit": "abc47f0",
+ "git_last_src_commit_date": "2026-11-06T15:53:26+01:00",
+ "hardware": {
+  "cores_per_socket": "8",
+  "cpu_model": "AMD Ryzen 7 5800X 8-Core Processor",
+  "fftw_package": "3.3.10-2fakesync1build3",
+  "gfortran": "GNU Fortran (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "gpu": "NVIDIA GeForce RTX 4070 Ti, 12282 MiB, 617.42",
+  "gxx": "g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "kernel": "6.18.54.1-microsoft-standard-WSL2",
+  "l3": "32 MiB (1 instance)",
+  "logical_cpus": "16",
+  "mem_total_gib": 27.4,
+  "numa_nodes": "1",
+  "nvcc": "Cuda compilation tools, release 13.3, V13.3.73",
+  "os": "Ubuntu 26.04.1 LTS",
+  "threads_per_core": "2"
+ },
+ "input_commit": "e0c231b 2026-11-06T18:10:47+01:00",
+ "input_dirty": "",
+ "runs": {
+  "cpu": {
+   "banner": "SPO-DVR (C++) version 0.1.0  -  8 OpenMP thread(s), loop schedule dynamic,1 (1 NUMA node)",
+   "binary_age_h": 3.5425,
+   "binary_older_than_run": true,
+   "command": "OMP_NUM_THREADS=8 /usr/bin/time -v build-fast/spodvr inputs/thesis_fig5_3_dz/input.json --device cpu --threads 8 --output-dir runs/thesis_fig5_3_dz_cpu_fast",
+   "end": "2026-11-07 03:43:56+01:00",
+   "exit_code": 0,
+   "libraries": "BLAS/LAPACK: oneMKL 2026.2.0 (sequential), reproducibility branch AUTO (default); FFT: oneMKL (FFTW3 interface)",
+   "program_timing": {
+    "propagation_s": 29665.6,
+    "s_per_step": 4.238,
+    "steps": 7000
+   },
+   "start": "2026-11-06 19:29:18+01:00",
+   "time": {
+    "cpu_percent": 776.0,
+    "exit_status": "0",
+    "max_rss_gib": 7.906352996826172,
+    "max_rss_kb": 8290412,
+    "system_s": 16.91,
+    "user_s": 230485.27,
+    "wall": "8:14:37",
+    "wall_s": 29677.0
+   }
+  },
+  "fortran": {
+   "binary_age_h": 16.080833333333334,
+   "binary_older_than_run": true,
+   "command": "cd runs/thesis_fig5_3_dz_fortran && OMP_NUM_THREADS=8 /usr/bin/time -v ~/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x",
+   "end": "2026-11-07 19:31:55+01:00",
+   "exit_code": 0,
+   "header": "SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Nov  6 2026 at 11:39:04) run on 20261107 at 034356.286",
+   "program_timing": {
+    "Absorbing the wavefunction": 430.7276,
+    "Asymptotic analysis": 2.6148,
+    "Calculating and saving BK-coeffs": 7.841,
+    "Calculating averages": 2.5525,
+    "FFTs along X": 933.4869,
+    "FFTs along X and Y": 1862.6113,
+    "FFTs along Y": 929.1243,
+    "Flux analysis": 0.0,
+    "Kinetic energy multiplications (xy)": 260.8757,
+    "Kinetic energy operation along Z": 24678.9469,
+    "Kinetic energy operation along r": 9219.7487,
+    "Legengre transforms": 10733.4773,
+    "Operations on specular grid": 0.1813,
+    "Potential energy multiplication": 7455.719,
+    "Potential initialisation time": 0.0,
+    "Potential setup time": 5.8226,
+    "Projection formalism": 4.316,
+    "Propagating the wavefunction": 56816.2658,
+    "Saving the flux coefficients": 0.0,
+    "Saving the wave function for rerun": 22.3208,
+    "Setup time": 8.5834,
+    "Shifting the wavefunction": 889.7166,
+    "Sum": 56860.1783,
+    "Time spent on FGH for asympwf": 0.0554,
+    "Total computation": 56878.638
+   },
+   "start": "2026-11-07 03:43:56+01:00",
+   "time": {
+    "cpu_percent": 766.0,
+    "exit_status": "0",
+    "max_rss_gib": 9.854511260986328,
+    "max_rss_kb": 10333204,
+    "system_s": 41.98,
+    "user_s": 435768.28,
+    "wall": "15:47:58",
+    "wall_s": 56878.0
+   }
+  },
+  "gpu": {
+   "banner": "SPO-DVR (C++) version 0.1.0  -  8 OpenMP thread(s), loop schedule dynamic,1 (1 NUMA node)",
+   "binary_age_h": 2.2325,
+   "binary_older_than_run": true,
+   "command": "OMP_NUM_THREADS=8 /usr/bin/time -v build-cuda-fast/spodvr inputs/thesis_fig5_3_dz/input.json --device cuda --threads 8 --output-dir runs/thesis_fig5_3_dz_cuda_fast",
+   "device": "GPU NVIDIA GeForce RTX 4070 Ti (12.0 GiB, compute capability 8.9), CUDA runtime 13.3, driver 13.4, cuFFT 12.3.0",
+   "end": "2026-11-06 19:29:18+01:00",
+   "exit_code": 0,
+   "libraries": "BLAS/LAPACK: oneMKL 2026.2.0 (sequential), reproducibility branch AUTO (default); FFT: oneMKL (FFTW3 interface)",
+   "program_timing": {
+    "propagation_s": 4593.2,
+    "s_per_step": 0.656,
+    "steps": 7000
+   },
+   "start": "2026-11-06 18:12:30+01:00",
+   "time": {
+    "cpu_percent": 101.0,
+    "exit_status": "0",
+    "max_rss_gib": 6.3345947265625,
+    "max_rss_kb": 6642304,
+    "system_s": 14.02,
+    "user_s": 4671.98,
+    "wall": "1:16:47",
+    "wall_s": 4607.0
+   }
+  }
+ },
+ "src_diff_since_build_commit": "",
+ "worktree_status_src": ""
+}

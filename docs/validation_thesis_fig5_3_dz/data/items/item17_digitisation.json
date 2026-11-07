@@ -1,0 +1,26 @@
+{
+ "E_range": [
+  0.4110826624268941,
+  0.9924315861306512
+ ],
+ "dot_size_pt_median": 1.67999267578125,
+ "frame_pt": {
+  "x_left": 178.7949981689453,
+  "x_right": 467.03501892089844,
+  "y_bottom": 618.864990234375,
+  "y_top": 299.4250183105469
+ },
+ "n_components_inside": 88,
+ "n_points": 74,
+ "n_x_ticks": 108,
+ "n_y_ticks": 24,
+ "printed_page": 170,
+ "pt_per_P": 399.2153862195135,
+ "pt_per_eV": 480.53757256581315,
+ "pymupdf": "2.1",
+ "source": "~/work/mf_somers_phd_thesis.pdf",
+ "u_E_eV": 0.0020446056065709433,
+ "u_P": 0.002391252308773925,
+ "x_calibration_residual_max_eV": 0.0002965709348896124,
+ "y_calibration_residual_max_P": 0.0002871341638165993
+}

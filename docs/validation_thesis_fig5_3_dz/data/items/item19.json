@@ -1,0 +1,275 @@
+{
+ "bounds": {
+  "cpu": {
+   "max_sum_P": 0.999751346827388,
+   "min_P": 5.562658626825466e-22,
+   "min_P_reaction": 0.00024865317261202335
+  },
+  "fortran": {
+   "max_sum_P": 0.9997513,
+   "min_P": 5.56266e-22,
+   "min_P_reaction": 0.0002486532
+  },
+  "gpu": {
+   "max_sum_P": 0.9997513468286057,
+   "min_P": 5.562656372236138e-22,
+   "min_P_reaction": 0.00024865317139433074
+  }
+ },
+ "first_order_shell_v0_j0": {
+  "0.6": {
+   "(-1,-1)": 0.003869606998698215,
+   "(-1,0)": 0.00385178603943972,
+   "(0,-1)": 0.0038517860394397803,
+   "(0,1)": 0.0038379906325210116,
+   "(1,0)": 0.0038379906325209353,
+   "(1,1)": 0.0038412890713852175
+  },
+  "0.865": {
+   "(-1,-1)": 0.0033388694196301296,
+   "(-1,0)": 0.001465690803024743,
+   "(0,-1)": 0.0014656908030247211,
+   "(0,1)": 0.00023257661403564147,
+   "(1,0)": 0.00023257661403563052,
+   "(1,1)": 0.00039157963540667804
+  }
+ },
+ "norm_left_at_T": {
+  "cpu": 0.00011951341320878691,
+  "fortran_text": "0.11951341E-03",
+  "gpu": 0.00011951341320938115
+ },
+ "per_operation_cpu": {
+  "rot0": {
+   "median": 0.0,
+   "n": 58325,
+   "p95": 0.0
+  },
+  "rot0_mirror": {
+   "median": 0.024618847213512405,
+   "n": 51562,
+   "p95": 0.462861676221353
+  },
+  "rot120": {
+   "median": 0.031883531728557554,
+   "n": 49513,
+   "p95": 0.534299453298665
+  },
+  "rot120_mirror": {
+   "median": 0.02461884721351044,
+   "n": 51562,
+   "p95": 0.46286167622136615
+  },
+  "rot180": {
+   "median": 0.03899730330545122,
+   "n": 53003,
+   "p95": 0.5928168446055411
+  },
+  "rot180_mirror": {
+   "median": 0.03188353172855129,
+   "n": 49513,
+   "p95": 0.5342994532986602
+  },
+  "rot240": {
+   "median": 0.031883531728557554,
+   "n": 49513,
+   "p95": 0.534299453298665
+  },
+  "rot240_mirror": {
+   "median": 0.038997303305495896,
+   "n": 53003,
+   "p95": 0.5928168446055416
+  },
+  "rot300": {
+   "median": 0.024618847213511423,
+   "n": 51562,
+   "p95": 0.46286167622136665
+  },
+  "rot300_mirror": {
+   "median": 0.03188353172856332,
+   "n": 49513,
+   "p95": 0.5342994532986735
+  },
+  "rot60": {
+   "median": 0.024618847213511423,
+   "n": 51562,
+   "p95": 0.46286167622136665
+  },
+  "rot60_mirror": {
+   "median": 2.561107366494168e-14,
+   "n": 58325,
+   "p95": 4.5162851979292296e-13
+  }
+ },
+ "per_operation_summary": {
+  "broken_median_max": 0.038997303305495896,
+  "broken_median_min": 0.02461884721351044,
+  "broken_p95_max": 0.5928168446055416,
+  "broken_p95_min": 0.462861676221353,
+  "diagonal_mirror_median": 2.561107366494168e-14,
+  "diagonal_mirror_p95": 4.5162851979292296e-13
+ },
+ "subthreshold": {
+  "E_max": 0.5,
+  "P_reaction_max": 0.000519974262316758,
+  "P_reaction_median": 0.0003538423678101088,
+  "P_reaction_min": 0.00024865317261202335,
+  "fortran_same_range": [
+   0.0002486532,
+   0.0005199743
+  ],
+  "n": 21
+ },
+ "symmetry": {
+  "cpu": {
+   "diagonal_mirror": {
+    "max_relative": 2.013896540033086e-11,
+    "n_pairs": 26158,
+    "where": {
+     "E": 0.405,
+     "j": 0,
+     "m": 2,
+     "n": -4,
+     "v": 0
+    }
+   },
+   "diffraction_orbits": {
+    "max_abs_spread": 0.003448709175227482,
+    "max_relative_spread": 0.9995336603175624,
+    "median_abs_spread": 7.660986818913034e-06,
+    "median_relative_spread": 0.108462904222562,
+    "n_orbits_compared": 8525,
+    "p95_relative_spread": 0.7258987139717638,
+    "where": {
+     "E": 0.865,
+     "j": 0,
+     "members": 12,
+     "orbit": [
+      -3,
+      -2
+     ],
+     "v": 1
+    }
+   },
+   "mJ_symmetry": {
+    "max_abs": 5.2208237732997986e-14,
+    "max_relative": 2.411278267472189e-12,
+    "n_pairs": 1750,
+    "where": {
+     "E": 0.755,
+     "j": 2,
+     "mJ": 2,
+     "v": 1
+    }
+   },
+   "n_orbits": 27,
+   "order_constant_on_orbits": true
+  },
+  "fortran": {
+   "diagonal_mirror": {
+    "max_relative": 2.262788323329189e-16,
+    "n_pairs": 26158,
+    "where": {
+     "E": 0.9099999999999999,
+     "j": 2,
+     "m": 0,
+     "n": -3,
+     "v": 1
+    }
+   },
+   "diffraction_orbits": {
+    "max_abs_spread": 0.0034487150000000006,
+    "max_relative_spread": 0.9995336589569074,
+    "median_abs_spread": 7.660940000000001e-06,
+    "median_relative_spread": 0.10846281472536014,
+    "n_orbits_compared": 8525,
+    "p95_relative_spread": 0.7258988702972677,
+    "where": {
+     "E": 0.865,
+     "j": 0,
+     "members": 12,
+     "orbit": [
+      -3,
+      -2
+     ],
+     "v": 1
+    }
+   },
+   "mJ_symmetry": {
+    "max_abs": 5.551115123125783e-17,
+    "max_relative": 3.0222008070305257e-12,
+    "n_pairs": 1750,
+    "where": {
+     "E": 0.465,
+     "j": 6,
+     "mJ": 1,
+     "v": 0
+    }
+   },
+   "n_orbits": 27,
+   "order_constant_on_orbits": true
+  },
+  "gpu": {
+   "diagonal_mirror": {
+    "max_relative": 2.0473539981187137e-11,
+    "n_pairs": 26158,
+    "where": {
+     "E": 0.41000000000000003,
+     "j": 0,
+     "m": 4,
+     "n": -2,
+     "v": 0
+    }
+   },
+   "diffraction_orbits": {
+    "max_abs_spread": 0.003448709175230328,
+    "max_relative_spread": 0.9995336603175828,
+    "median_abs_spread": 7.660986818920195e-06,
+    "median_relative_spread": 0.10846290422246972,
+    "n_orbits_compared": 8525,
+    "p95_relative_spread": 0.7258987139716645,
+    "where": {
+     "E": 0.865,
+     "j": 0,
+     "members": 12,
+     "orbit": [
+      -3,
+      -2
+     ],
+     "v": 1
+    }
+   },
+   "mJ_symmetry": {
+    "max_abs": 1.182665076981948e-13,
+    "max_relative": 4.683659791601502e-12,
+    "n_pairs": 1750,
+    "where": {
+     "E": 0.745,
+     "j": 8,
+     "mJ": 8,
+     "v": 0
+    }
+   },
+   "n_orbits": 27,
+   "order_constant_on_orbits": true
+  }
+ },
+ "symmetry_spread_codes_max_difference": 1.360675461192784e-09,
+ "thresholds": {
+  "cpu_listed_equals_rule": true,
+  "fortran_nonzero_S_subset_of_rule": true,
+  "fortran_open_with_S_exactly_zero": 0,
+  "gpu_listed_equals_rule": true,
+  "n_open_cpp_by_energy_rule": 636373,
+  "n_open_fortran_by_energy_rule": 636373,
+  "rule_sets_equal": true,
+  "smallest_margin_eV": {
+   "cpp": 0.00013227944442907274,
+   "fortran": 0.00013227944444417811
+  },
+  "smallest_margin_hartree": {
+   "cpp": 4.8611774634554905e-06,
+   "fortran": 4.861177464010602e-06
+  }
+ }
+}

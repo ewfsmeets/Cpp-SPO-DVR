@@ -1,0 +1,2514 @@
+{
+ "channel_energies": {
+  "argmax": {
+   "E_hartree": -0.1441765288906996,
+   "J": 4,
+   "is": 1852,
+   "m": 3,
+   "n": -5,
+   "v": 0
+  },
+  "gpu_identical_to_cpu": true,
+  "max_abs_hartree": 1.7486012637846216e-15,
+  "max_relative": 1.3102853901376082e-14,
+  "median_abs": 7.216449660063518e-16,
+  "n": 19008,
+  "n_identical": 0
+ },
+ "cpp_echo_vs_input": {
+  "checks": [
+   {
+    "check": "Title",
+    "ok": true
+   },
+   {
+    "check": "System",
+    "ok": true
+   },
+   {
+    "check": "Run mode",
+    "ok": true
+   },
+   {
+    "check": "Masses",
+    "ok": true
+   },
+   {
+    "check": "Homonuclear",
+    "ok": true
+   },
+   {
+    "check": "Time step",
+    "ok": true
+   },
+   {
+    "check": "Steps (total / per analysis)",
+    "ok": true
+   },
+   {
+    "check": "95% confidence interval",
+    "ok": true
+   },
+   {
+    "check": "Z (scattering): points, start, step",
+    "ok": true
+   },
+   {
+    "check": "Z (specular): points, start, step",
+    "ok": true
+   },
+   {
+    "check": "r: points, start, step",
+    "ok": true
+   },
+   {
+    "check": "x, y points",
+    "ok": true
+   },
+   {
+    "check": "J range",
+    "ok": true
+   },
+   {
+    "check": "MJMax (basis)",
+    "ok": true
+   },
+   {
+    "check": "Analysis at Z",
+    "ok": true
+   },
+   {
+    "check": "cpu: restart parameters in bk_coefficients.bin = input.json (30 keys)",
+    "ok": true
+   },
+   {
+    "check": "gpu: restart parameters in bk_coefficients.bin = input.json (30 keys)",
+    "ok": true
+   }
+  ],
+  "n": 17,
+  "n_ok": 17
+ },
+ "energy_grid": {
+  "E_coll": {
+   "n": 111,
+   "n_within": 111,
+   "worst_ratio": 2.1984614349012998e-08
+  },
+  "E_total": {
+   "n": 111,
+   "n_within": 111,
+   "worst_ratio": 0.05475301620235499
+  },
+  "E_z": {
+   "n": 111,
+   "n_within": 111,
+   "worst_ratio": 2.1984614349012998e-08
+  },
+  "gpu_E_columns_equal": true,
+  "momentum": {
+   "n": 111,
+   "n_within": 111,
+   "note": "derived on the C++ side: k = sqrt(2 M E_coll), M = total mass of the C++ log, legacy eV",
+   "worst_ratio": 0.9897013637670388
+  }
+ },
+ "fortran_echo_vs_input": {
+  "n": 54,
+  "n_ok": 54,
+  "not_ok": [],
+  "rows": [
+   {
+    "fortran": "H2Cu111DaiLight",
+    "input": "H2Cu111DaiLight",
+    "key": "SystemID",
+    "label": "SystemID",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "NewCalc",
+    "label": "NewCalc",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "ZDoF",
+    "label": "Z degree of freedom",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "RDoF",
+    "label": "R degree of freedom",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "XDoF",
+    "label": "X degree of freedom",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "YDoF",
+    "label": "Y degree of freedom",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "ThetaDoF",
+    "label": "Theta degree of freedom",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "PhiDoF",
+    "label": "Phi degree of freedom",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.10078000E+01",
+    "input": 1.0078,
+    "key": "Mass1",
+    "label": "Mass of atom 1 (amu)",
+    "ok": true,
+    "tolerance": 5.0499999999999996e-08
+   },
+   {
+    "fortran": "0.10078000E+01",
+    "input": 1.0078,
+    "key": "Mass2",
+    "label": "Mass of atom 2 (amu)",
+    "ok": true,
+    "tolerance": 5.0499999999999996e-08
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "HomoNuc",
+    "label": "Homo-nuclear molecule",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "160",
+    "input": 160,
+    "key": "nZ",
+    "label": "Number of points on the scattering grid in Z",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.12000000E+00",
+    "input": 0.12,
+    "key": "dZ",
+    "label": "Step size of the scattering Z (bohr)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.00000000E+00",
+    "input": 0.0,
+    "key": "ZStart",
+    "label": "Starting point of the scattering in Z (bohr)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "256",
+    "input": 256,
+    "key": "nZSpecular",
+    "label": "Number of points on the specular grid in Z",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "40",
+    "input": 40,
+    "key": "nR",
+    "label": "Number of points on the scattering grid in r",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.20000000E+00",
+    "input": 0.2,
+    "key": "dR",
+    "label": "Step size of the scattering r (bohr)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.50000000E+00",
+    "input": 0.5,
+    "key": "RStart",
+    "label": "Starting point of the scattering in r (bohr)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "12",
+    "input": 12,
+    "key": "nX",
+    "label": "Number of points on the scattering grid in X",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "12",
+    "input": 12,
+    "key": "nY",
+    "label": "Number of points on the scattering grid in Y",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "28",
+    "input": 28,
+    "key": "JMax",
+    "label": "Maximum J value in grid representation.",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "28",
+    "input": 28,
+    "key": "MJMax",
+    "label": "Maximum Mj value in grid representation.",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.00000000E+00",
+    "input": 0.0,
+    "key": "tStart",
+    "label": "Calculation starts at (aut)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.17500000E+05",
+    "input": 17500.0,
+    "key": "tEnd",
+    "label": "Calculation ends at (aut)",
+    "ok": true,
+    "tolerance": 0.000505
+   },
+   {
+    "fortran": "0.25000000E+01",
+    "input": 2.5,
+    "key": "dtStep",
+    "label": "Time step used in the propagation (aut)",
+    "ok": true,
+    "tolerance": 5.0499999999999996e-08
+   },
+   {
+    "fortran": "7000",
+    "input": 7000,
+    "key": "nStep",
+    "label": "Number of time steps taken",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.20000000E+02",
+    "input": 20.0,
+    "key": "dtAna",
+    "label": "Wave function analysed every (aut)",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "0.50000000E+03",
+    "input": 500.0,
+    "key": "dtAve",
+    "label": "Averages printed every (aut)",
+    "ok": true,
+    "tolerance": 5.050000000000001e-06
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "DynamZSpAna",
+    "label": "Initially using a dynamical specular analysis surface",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.15000000E+02",
+    "input": 15.0,
+    "key": "Zana",
+    "label": "Wave function analysed at (bohr)",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "111",
+    "input": 111,
+    "key": "NrOfEs",
+    "label": "Number of energies that are on-the-fly analysed",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.40000000E+00",
+    "input": 0.4,
+    "key": "EMinWP",
+    "label": "Lowest energy of the initial wave packet",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.95000000E+00",
+    "input": 0.95,
+    "key": "EMaxWP",
+    "label": "Highest energy of the initial wave packet",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.18000000E+02",
+    "input": 18.0,
+    "key": "Z0",
+    "label": "Average position of the initial wave packet",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "0",
+    "input": 0,
+    "key": "JIn",
+    "label": "Initial rotational quantum number J",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0",
+    "input": 0,
+    "key": "MJIn",
+    "label": "Initial rotational quantum number Mj",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0",
+    "input": 0,
+    "key": "VIn",
+    "label": "Initial rotational quantum number V",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "UseSymmetry",
+    "label": "Using symmetry in setting up the potential",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "nPhisOptimal",
+    "label": "Will try to find an optimal number of phis",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.15000000E+02",
+    "input": 15.0,
+    "key": "ZOptStart",
+    "label": "Optical potential in Z start at (bohr)",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "0.19080000E+02",
+    "input": 19.08,
+    "key": "ZOptEnd",
+    "label": "Optical potential in Z ends at (bohr)",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "0.20000000E+00",
+    "input": 0.2,
+    "key": "ZOptEnergy",
+    "label": "Optical potential in Z absorbs optimally for (eV)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.41000000E+01",
+    "input": 4.1,
+    "key": "ROptStart",
+    "label": "Optical potential in r start at (bohr)",
+    "ok": true,
+    "tolerance": 5.0499999999999996e-08
+   },
+   {
+    "fortran": "0.83000000E+01",
+    "input": 8.3,
+    "key": "ROptEnd",
+    "label": "Optical potential in r ends at (bohr)",
+    "ok": true,
+    "tolerance": 5.0499999999999996e-08
+   },
+   {
+    "fortran": "0.30000000E+00",
+    "input": 0.3,
+    "key": "ROptEnergy",
+    "label": "Optical potential in r absorbs optimally for (eV)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.22080000E+02",
+    "input": 22.08,
+    "key": "ZSpOptStart",
+    "label": "Optical potential in Z start at (bohr)",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "0.30600000E+02",
+    "input": 30.6,
+    "key": "ZSpOptEnd",
+    "label": "Optical potential in Z ends at (bohr)",
+    "ok": true,
+    "tolerance": 5.049999999999999e-07
+   },
+   {
+    "fortran": "0.40000000E+00",
+    "input": 0.4,
+    "key": "ZSpOptEnergy",
+    "label": "Optical potential in Z specular absorbs optimally for (eV",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.00000000E+00",
+    "input": 0.0,
+    "key": "EParallel",
+    "label": "Initial energy parallel to the surface (eV)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "0.00000000E+00",
+    "input": 0.0,
+    "key": "PhiParallel",
+    "label": "Azimuthal angle of the incident molecule (degrees)",
+    "ok": true,
+    "tolerance": 5.0500000000000006e-09
+   },
+   {
+    "fortran": "F",
+    "input": false,
+    "key": "writeSMatrix",
+    "label": "S-matrix elements written to file 3",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "writeProbs",
+    "label": "Rot-vib-diff resolved probs written to file 25",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "T",
+    "input": true,
+    "key": "writeRDProbs",
+    "label": "Rot-diff resolved probs written to file 10",
+    "ok": true,
+    "tolerance": null
+   },
+   {
+    "fortran": "0.10000000E-06",
+    "input": 1e-07,
+    "key": "TolSp",
+    "label": "Tolerance for transferring the wavefunction (nproj = 2)",
+    "ok": true,
+    "tolerance": 5.0500000000000004e-15
+   }
+  ]
+ },
+ "gpu_vs_cpu_setup_log": {
+  "cpu_lines": 266,
+  "differing": 0,
+  "excluded": "GPU MEMORY ESTIMATE block (GPU run only), 'Data files written to' line",
+  "first_differences": [],
+  "gpu_lines": 266
+ },
+ "json_vs_dvr": {
+  "dvr_only": [],
+  "n": 56,
+  "n_equal": 55,
+  "rows": [
+   {
+    "dvr": "H2(v=0,j=0)/Cu(111), DZ PES, Somers thesis Fig. 5.3 (dotted), dZ 0.12",
+    "equal": false,
+    "json": "H2(v=0,j=0)/Cu(111), DZ PES: Somers PhD thesis ch. 5, Table 5.1 column 1 (Figure 5.3, dotted), dZ 0.12",
+    "key": "Title",
+    "type": "STRING"
+   },
+   {
+    "dvr": "H2Cu111DaiLight",
+    "equal": true,
+    "json": "H2Cu111DaiLight",
+    "key": "SystemID",
+    "type": "STRING"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "NewCalc",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "ZDoF",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "RDoF",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "XDoF",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "YDoF",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "ThetaDoF",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "PhiDoF",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "1.0078",
+    "equal": true,
+    "json": 1.0078,
+    "key": "Mass1",
+    "type": "REAL"
+   },
+   {
+    "dvr": "1.0078",
+    "equal": true,
+    "json": 1.0078,
+    "key": "Mass2",
+    "type": "REAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "HomoNuc",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "0.0",
+    "equal": true,
+    "json": 0.0,
+    "key": "ZStart",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.12",
+    "equal": true,
+    "json": 0.12,
+    "key": "dZ",
+    "type": "REAL"
+   },
+   {
+    "dvr": "160",
+    "equal": true,
+    "json": 160,
+    "key": "nZ",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "256",
+    "equal": true,
+    "json": 256,
+    "key": "nZSpecular",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "0.5",
+    "equal": true,
+    "json": 0.5,
+    "key": "RStart",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.20",
+    "equal": true,
+    "json": 0.2,
+    "key": "dR",
+    "type": "REAL"
+   },
+   {
+    "dvr": "40",
+    "equal": true,
+    "json": 40,
+    "key": "nR",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "12",
+    "equal": true,
+    "json": 12,
+    "key": "nX",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "12",
+    "equal": true,
+    "json": 12,
+    "key": "nY",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "28",
+    "equal": true,
+    "json": 28,
+    "key": "JMax",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "28",
+    "equal": true,
+    "json": 28,
+    "key": "MJMax",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "2",
+    "equal": true,
+    "json": 2,
+    "key": "ProjOp",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "0.0",
+    "equal": true,
+    "json": 0.0,
+    "key": "tStart",
+    "type": "REAL"
+   },
+   {
+    "dvr": "17500.0",
+    "equal": true,
+    "json": 17500.0,
+    "key": "tEnd",
+    "type": "REAL"
+   },
+   {
+    "dvr": "2.5",
+    "equal": true,
+    "json": 2.5,
+    "key": "dtStep",
+    "type": "REAL"
+   },
+   {
+    "dvr": "7000",
+    "equal": true,
+    "json": 7000,
+    "key": "nStep",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "20.0",
+    "equal": true,
+    "json": 20.0,
+    "key": "dtAna",
+    "type": "REAL"
+   },
+   {
+    "dvr": "500.0",
+    "equal": true,
+    "json": 500.0,
+    "key": "dtAve",
+    "type": "REAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "DynamZSpAna",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "15.0",
+    "equal": true,
+    "json": 15.0,
+    "key": "Zana",
+    "type": "REAL"
+   },
+   {
+    "dvr": "111",
+    "equal": true,
+    "json": 111,
+    "key": "NrOfEs",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "0.40",
+    "equal": true,
+    "json": 0.4,
+    "key": "EMinWP",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.95",
+    "equal": true,
+    "json": 0.95,
+    "key": "EMaxWP",
+    "type": "REAL"
+   },
+   {
+    "dvr": "18.0",
+    "equal": true,
+    "json": 18.0,
+    "key": "Z0",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0",
+    "equal": true,
+    "json": 0,
+    "key": "VIn",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "0",
+    "equal": true,
+    "json": 0,
+    "key": "JIn",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "0",
+    "equal": true,
+    "json": 0,
+    "key": "MJIn",
+    "type": "INTEGER"
+   },
+   {
+    "dvr": "0.0",
+    "equal": true,
+    "json": 0.0,
+    "key": "EParallel",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.0",
+    "equal": true,
+    "json": 0.0,
+    "key": "PhiParallel",
+    "type": "REAL"
+   },
+   {
+    "dvr": "15.0",
+    "equal": true,
+    "json": 15.0,
+    "key": "ZOptStart",
+    "type": "REAL"
+   },
+   {
+    "dvr": "19.08",
+    "equal": true,
+    "json": 19.08,
+    "key": "ZOptEnd",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.2",
+    "equal": true,
+    "json": 0.2,
+    "key": "ZOptEnergy",
+    "type": "REAL"
+   },
+   {
+    "dvr": "22.08",
+    "equal": true,
+    "json": 22.08,
+    "key": "ZSpOptStart",
+    "type": "REAL"
+   },
+   {
+    "dvr": "30.60",
+    "equal": true,
+    "json": 30.6,
+    "key": "ZSpOptEnd",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.4",
+    "equal": true,
+    "json": 0.4,
+    "key": "ZSpOptEnergy",
+    "type": "REAL"
+   },
+   {
+    "dvr": "4.1",
+    "equal": true,
+    "json": 4.1,
+    "key": "ROptStart",
+    "type": "REAL"
+   },
+   {
+    "dvr": "8.3",
+    "equal": true,
+    "json": 8.3,
+    "key": "ROptEnd",
+    "type": "REAL"
+   },
+   {
+    "dvr": "0.3",
+    "equal": true,
+    "json": 0.3,
+    "key": "ROptEnergy",
+    "type": "REAL"
+   },
+   {
+    "dvr": "1.0E-07",
+    "equal": true,
+    "json": 1e-07,
+    "key": "TolSp",
+    "type": "REAL"
+   },
+   {
+    "dvr": "FALSE",
+    "equal": true,
+    "json": false,
+    "key": "writeSMatrix",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "writeProbs",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "writeRDProbs",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "UseSymmetry",
+    "type": "LOGICAL"
+   },
+   {
+    "dvr": "TRUE",
+    "equal": true,
+    "json": true,
+    "key": "nPhisOptimal",
+    "type": "LOGICAL"
+   }
+  ],
+  "unequal": [
+   "Title"
+  ]
+ },
+ "phi": {
+  "max_abs_diff": 0.0,
+  "n": 60,
+  "n_identical": 60
+ },
+ "rovib": {
+  "n_states": 58,
+  "n_values": 348,
+  "outside": [],
+  "sign_flipped_states": [],
+  "worst_ratio_by_quantity": {
+   "e": {
+    "cpp": -3.4792985096838547,
+    "fortran": "-3.479299",
+    "j": 8,
+    "ratio": 0.9709230603223746,
+    "v": 1
+   },
+   "erel": {
+    "cpp": 2.395141521679248,
+    "fortran": "2.395142",
+    "j": 20,
+    "ratio": 0.9471698057335979,
+    "v": 0
+   },
+   "norm": {
+    "cpp": 1.0,
+    "fortran": "1.0000000",
+    "j": 0,
+    "ratio": 0.0,
+    "v": 0
+   },
+   "psi1": {
+    "cpp": -8.371620490746617e-08,
+    "fortran": "-0.8371620D-07",
+    "j": 28,
+    "ratio": 0.97177547891336,
+    "v": 0
+   },
+   "psinr": {
+    "cpp": 3.2852724995566135e-05,
+    "fortran": "0.3285272D-04",
+    "j": 24,
+    "ratio": 0.989221016878536,
+    "v": 1
+   },
+   "r": {
+    "cpp": 2.021948849533,
+    "fortran": "2.0219488",
+    "j": 24,
+    "ratio": 0.9808416752256285,
+    "v": 0
+   }
+  }
+ },
+ "rows": [
+  {
+   "cpp": "4.840000",
+   "cpp_label": "Lattice constants (x, y)",
+   "delta": 0.0,
+   "fortran": "0.48400000E+01",
+   "fortran_label": "The surface lattice constant in X (bohr)",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "printed",
+   "note": "",
+   "quantity": "lattice constant x",
+   "ratio": 0.0,
+   "tolerance": 5.554999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "4.840000",
+   "cpp_label": "Lattice constants (x, y)",
+   "delta": 0.0,
+   "fortran": "0.48400000E+01",
+   "fortran_label": "The surface lattice constant in Y (bohr)",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "printed",
+   "note": "",
+   "quantity": "lattice constant y",
+   "ratio": 0.0,
+   "tolerance": 5.554999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "15.000000",
+   "cpp_label": "Z asymptotic",
+   "delta": 0.0,
+   "fortran": "0.15000000E+02",
+   "fortran_label": "The asymptotic value in Z (bohr)",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "printed",
+   "note": "",
+   "quantity": "Z asymptotic",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "60.000000",
+   "cpp_label": "Skewing angle",
+   "delta": 0.0,
+   "fortran": "0.60000000E+02",
+   "fortran_label": "The unit cell skewing angle (degrees)",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "printed",
+   "note": "",
+   "quantity": "skew angle",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "C6v",
+   "cpp_label": "Point group",
+   "fortran": "C6v",
+   "fortran_label": "The unit cell point group",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "text",
+   "note": "",
+   "quantity": "point group",
+   "verdict": "identical"
+  },
+  {
+   "cpp": null,
+   "cpp_label": "-",
+   "fortran": "0.10000000E+04",
+   "fortran_label": "The cutoff value in r (bohr)",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "n/a",
+   "note": "UseRCutOff is not ported (forced off by the Fortran ProcessInput; fortran_deviations.md)",
+   "quantity": "r cut-off",
+   "verdict": "n/a"
+  },
+  {
+   "cpp": "using two grids all the way",
+   "cpp_label": "ProjOp (input; only 2 is accepted)",
+   "fortran": "using two grids all the way",
+   "fortran_label": "The projection operator scheme used",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "text",
+   "note": "",
+   "quantity": "projection scheme",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "F",
+   "cpp_label": "Switching to gas phase",
+   "fortran": "F",
+   "fortran_label": "Using a switching function for the potential in Z",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "text",
+   "note": "",
+   "quantity": "switching function",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "FF",
+   "cpp_label": "Run mode",
+   "fortran": "FF",
+   "fortran_label": "Only / Also performing a fine analysis",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "text",
+   "note": "",
+   "quantity": "only/also fine analysis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "determined by the program (see info Analysis)",
+   "cpp_label": "(JAna, VAna, MDifAna absent from input.json)",
+   "fortran": "determined by the program (see info Analysis)",
+   "fortran_label": "Maximum J/V/diffraction order analysed",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "text",
+   "note": "",
+   "quantity": "analysed J, v, diffraction order",
+   "verdict": "identical"
+  },
+  {
+   "cpp": null,
+   "cpp_label": "(VMin, VMax absent; PESMixingAlfa rejected)",
+   "fortran": "FF0.00000000E+00",
+   "fortran_label": "Imposing a minimum / maximum value; mixing alfa",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "n/a",
+   "note": "C++ has no mixing (NotSupportedError); no limits in either input",
+   "quantity": "potential limits, mixing",
+   "verdict": "n/a"
+  },
+  {
+   "cpp": null,
+   "cpp_label": "-",
+   "fortran": "yes",
+   "fortran_label": "A general MjIn independant grid will be used",
+   "gpu_equal_to_cpu": true,
+   "item": 1,
+   "kind": "n/a",
+   "note": "Fortran setupdvr.f90 message; the C++ grid is always MJIn independent",
+   "quantity": "mJ-independent grid",
+   "verdict": "n/a"
+  },
+  {
+   "cpp": "60",
+   "cpp_label": "Phi points",
+   "delta": 0,
+   "fortran": "60",
+   "fortran_label": "Number of phi's",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "",
+   "quantity": "number of phi points",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "15",
+   "cpp_label": "Theta points",
+   "delta": 0,
+   "fortran": "15",
+   "fortran_label": "Number of theta's",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "",
+   "quantity": "number of theta points",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 28.0,
+   "cpp_label": "J range (step)",
+   "delta": 0,
+   "fortran": "28",
+   "fortran_label": "JMax in basis set",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "",
+   "quantity": "J max in basis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "J range (step)",
+   "delta": 0,
+   "fortran": "0",
+   "fortran_label": "JMin in basis set",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "",
+   "quantity": "J min in basis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 2.0,
+   "cpp_label": "J range (step)",
+   "delta": 0,
+   "fortran": "2",
+   "fortran_label": "Delta J in basis set",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "",
+   "quantity": "J step in basis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 0.10471975511965977,
+   "cpp_label": "phi[1] - phi[0] (helper grids.txt)",
+   "delta": 0.0,
+   "fortran": "0.10471975511965977",
+   "fortran_label": "Delta value in phi coordinate",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "Fortran prints 17 significant digits",
+   "quantity": "phi step",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 19.0,
+   "cpp_label": "(x, y) points computed / total",
+   "delta": 0,
+   "fortran": "19",
+   "fortran_label": "Number of points in (x,y) for which the potential is calculated",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "",
+   "quantity": "(x, y) points with V computed",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 19,
+   "cpp_label": "C++ representatives",
+   "delta": 0,
+   "fortran": "19",
+   "fortran_label": ".pes n_xy_computed",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "int",
+   "note": "different fundamental regions: 5 of 19 points in common",
+   "quantity": "(x, y) points in .pes vs C++ representatives",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "0.0",
+   "fortran_label": ".pes header z1",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "Z scattering, first",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 14.879999999999999,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "14.879999999999999",
+   "fortran_label": ".pes header zn",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "Z(nzpot), last point of the potential",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 0.5,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "0.5",
+   "fortran_label": ".pes header r1",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "r first",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 8.3,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "8.3",
+   "fortran_label": ".pes header rn",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "r last",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "0.0",
+   "fortran_label": ".pes header x1",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "x first",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 4.4366666666666665,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "4.4366666666666665",
+   "fortran_label": ".pes header xn",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "x last",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "0.0",
+   "fortran_label": ".pes header y1",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "y first",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 4.4366666666666665,
+   "cpp_label": "helper grids.txt",
+   "delta": 0.0,
+   "fortran": "4.4366666666666665",
+   "fortran_label": ".pes header yn",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "full",
+   "note": "",
+   "quantity": "y last",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": null,
+   "cpp_label": "helper grids.txt / log theta table",
+   "fortran": "15 values",
+   "fortran_label": ".pes header thetas",
+   "gpu_equal_to_cpu": true,
+   "item": 2,
+   "kind": "n/a",
+   "note": "see full comparison: max |d| 3.33e-16 rad, 8/15 identical, max 6 ulp",
+   "quantity": "theta nodes (15)",
+   "verdict": "n/a"
+  },
+  {
+   "cpp": 0.3272492347489368,
+   "cpp_label": "dkz (scattering / specular)",
+   "delta": 2.3474893678931963e-07,
+   "fortran": "0.327249",
+   "fortran_label": "grid interval size in kz dir. (scat. grid)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "dk_Z scattering",
+   "ratio": 0.464849379780831,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.2045307717180855,
+   "cpp_label": "dkz (scattering / specular)",
+   "delta": -2.2828191448276414e-07,
+   "fortran": "0.204531",
+   "fortran_label": "grid interval size in kz dir. (spec. grid)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "dk_Z specular",
+   "ratio": 0.4520433950153746,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 13.20517968891641,
+   "cpp_label": "Initial kz",
+   "delta": -3.110835908870513e-07,
+   "fortran": "13.205180",
+   "fortran_label": "initial momentum in z direction",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial k_Z",
+   "ratio": 0.6160071106674284,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.7853981633974483,
+   "cpp_label": "dkr",
+   "delta": 1.6339744823845592e-07,
+   "fortran": "0.785398",
+   "fortran_label": "grid interval size in kr dir.",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "dk_r",
+   "ratio": 0.323559303442487,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 1.4990077390365437,
+   "cpp_label": "dkx, dky",
+   "delta": -2.609634561778762e-07,
+   "fortran": "1.499008",
+   "fortran_label": "grid interval size in kx dir.",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "dk_x",
+   "ratio": 0.5167593191641113,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 1.4990077390365437,
+   "cpp_label": "dkx, dky",
+   "delta": -2.609634561778762e-07,
+   "fortran": "1.499008",
+   "fortran_label": "grid interval size in ky dir.",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "dk_y",
+   "ratio": 0.5167593191641113,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "Parallel kinetic energy (hartree)",
+   "delta": 0.0,
+   "fortran": "0.000000",
+   "fortran_label": "initial momentum in reciprocal x direction",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "C++ prints the parallel kinetic energy (0 for k_x = k_y = 0)",
+   "quantity": "initial k_x",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "Parallel kinetic energy (hartree)",
+   "delta": 0.0,
+   "fortran": "0.000000",
+   "fortran_label": "initial momentum in reciprocal y direction",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial k_y",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": null,
+   "cpp_label": "-",
+   "fortran": "4",
+   "fortran_label": "For backward compatibility: nmoder",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "n/a",
+   "note": "legacy diagnostic, no C++ counterpart",
+   "quantity": "nmoder",
+   "verdict": "n/a"
+  },
+  {
+   "cpp": "15.000000",
+   "cpp_label": "Analysis at Z (index)",
+   "delta": 0.0,
+   "fortran": "15.000000",
+   "fortran_label": "asymptotic analysis at z",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "analysis line Z",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "no",
+   "cpp_label": "(no FluxAnalysis key)",
+   "fortran": "no",
+   "fortran_label": "No flux analysis performed.",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "text",
+   "note": "",
+   "quantity": "flux analysis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "125",
+   "cpp_label": "Z points in interaction region",
+   "delta": 0,
+   "fortran": "125",
+   "fortran_label": "nzpot",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nzpot",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 125,
+   "cpp_label": "Optical potential Z (indices) (0-based)",
+   "delta": 0,
+   "fortran": "126",
+   "fortran_label": "nzchsp",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nzchsp",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 15.0,
+   "cpp_label": "z_scattering[125] (helper grids.txt)",
+   "delta": 0.0,
+   "fortran": "15.000000",
+   "fortran_label": "z(nzchsp)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "z(nzchsp)",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 159,
+   "cpp_label": "Optical potential Z (indices) (0-based)",
+   "delta": 0,
+   "fortran": "160",
+   "fortran_label": "nzchmx",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nzchmx",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 19.08,
+   "cpp_label": "z_scattering[159] (helper grids.txt)",
+   "delta": 0.0,
+   "fortran": "19.080000",
+   "fortran_label": "z(nzchmx)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "z(nzchmx)",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 184,
+   "cpp_label": "Optical potential Z specular (indices) (0-based)",
+   "delta": 0,
+   "fortran": "185",
+   "fortran_label": "nschsp",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nschsp",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 22.08,
+   "cpp_label": "z_specular[184] (helper grids.txt)",
+   "delta": 0.0,
+   "fortran": "22.080000",
+   "fortran_label": "z(nschsp)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "z(nschsp)",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 255,
+   "cpp_label": "Optical potential Z specular (indices) (0-based)",
+   "delta": 0,
+   "fortran": "256",
+   "fortran_label": "nschmx",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nschmx",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 30.599999999999998,
+   "cpp_label": "z_specular[255] (helper grids.txt)",
+   "delta": -3.552713678800501e-15,
+   "fortran": "30.600000",
+   "fortran_label": "z(nschmx)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "z(nschmx)",
+   "ratio": 7.035076591684162e-09,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 18,
+   "cpp_label": "Optical potential r (indices) (0-based)",
+   "delta": 0,
+   "fortran": "19",
+   "fortran_label": "nrchsp",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nrchsp",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 4.1000000000000005,
+   "cpp_label": "r[18] (helper grids.txt)",
+   "delta": 8.881784197001252e-16,
+   "fortran": "4.100000",
+   "fortran_label": "r(nrchsp)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "r(nrchsp)",
+   "ratio": 1.7587691479210404e-09,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 39,
+   "cpp_label": "Optical potential r (indices) (0-based)",
+   "delta": 0,
+   "fortran": "40",
+   "fortran_label": "nrchmx",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "int",
+   "note": "",
+   "quantity": "nrchmx",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 8.3,
+   "cpp_label": "r[39] (helper grids.txt)",
+   "delta": 0.0,
+   "fortran": "8.300000",
+   "fortran_label": "r(nrchmx)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "r(nrchmx)",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "3.654734",
+   "cpp_label": "Max. kinetic energy in r",
+   "delta": 0.0,
+   "fortran": "3.654734",
+   "fortran_label": "max kinetic energy in r (ev)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "max kinetic energy in r",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "4.274357",
+   "cpp_label": "Max. analysis energy",
+   "delta": 0.0,
+   "fortran": "4.274357",
+   "fortran_label": "the max total energy ... (eV)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "max analysable total energy",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "0.400000",
+   "cpp_label": "95% confidence interval",
+   "delta": 0.0,
+   "fortran": "0.400000",
+   "fortran_label": "ectmin (ev)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "ectmin",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "0.950000",
+   "cpp_label": "95% confidence interval",
+   "delta": 0.0,
+   "fortran": "0.950000",
+   "fortran_label": "ectmax (ev)",
+   "gpu_equal_to_cpu": true,
+   "item": 3,
+   "kind": "printed",
+   "note": "",
+   "quantity": "ectmax",
+   "ratio": 0.0,
+   "tolerance": 1.0099999999999999e-06,
+   "verdict": "printed"
+  },
+  {
+   "cpp": -4.4770373027650265,
+   "cpp_label": "energy",
+   "delta": -3.0276502638315606e-07,
+   "fortran": "-4.477037",
+   "fortran_label": "energy initial v,j state",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial state: energy initial v,j state",
+   "ratio": 0.59953470570922,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": -4.609423005389428,
+   "cpp_label": "potential energy",
+   "delta": -5.389428459068313e-09,
+   "fortran": "-4.609423",
+   "fortran_label": "potential energy",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial state: potential energy",
+   "ratio": 0.010672135562511512,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.0,
+   "cpp_label": "rotational energy",
+   "delta": 0.0,
+   "fortran": "0.000000",
+   "fortran_label": "rotational energy",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial state: rotational energy",
+   "ratio": 0.0,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.1323857026244013,
+   "cpp_label": "vibrational energy",
+   "delta": -2.9737559870124386e-07,
+   "fortran": "0.132386",
+   "fortran_label": "vibrational energy",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial state: vibrational energy",
+   "ratio": 0.5888625716856315,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.1323857026244013,
+   "cpp_label": "rovibrational kinetic energy",
+   "delta": -2.9737559870124386e-07,
+   "fortran": "0.132386",
+   "fortran_label": "rovibrational energy",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial state: rovibrational energy",
+   "ratio": 0.5888625716856315,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 1.4427680834424175,
+   "cpp_label": "<r>",
+   "delta": 8.344241742008762e-08,
+   "fortran": "1.442768",
+   "fortran_label": "expectation value r",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "printed",
+   "note": "",
+   "quantity": "initial state: expectation value r",
+   "ratio": 0.16523250974274778,
+   "tolerance": 5.049999999999999e-07,
+   "verdict": "printed"
+  },
+  {
+   "cpp": -0.16452800307095652,
+   "cpp_label": "gas_phase_states.dat E(0,0)",
+   "delta": -1.1657341758564144e-15,
+   "fortran": "-0.16452800307095536",
+   "fortran_label": "fort.21 record 2: eviroi",
+   "gpu_equal_to_cpu": true,
+   "item": 6,
+   "kind": "full",
+   "note": "criterion 1e-12 relative (gate 2: LAPACK vs Jacobi)",
+   "quantity": "initial rovibrational energy (hartree)",
+   "relative": 7.0853237995824494e-15,
+   "ulps": 42.0,
+   "verdict": "rounding"
+  },
+  {
+   "cpp": "yes",
+   "cpp_label": "Warning: the diffraction basis is too small to describe all open channels.",
+   "fortran": "yes",
+   "fortran_label": "WARNING: Diffractional basis too small to describe all open channels!",
+   "gpu_equal_to_cpu": true,
+   "item": 7,
+   "kind": "text",
+   "note": "",
+   "quantity": "warning: basis too small",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 144.0,
+   "cpp_label": "Diffraction channels analysed (ndifa): '144 of N'",
+   "delta": 0,
+   "fortran": "144",
+   "fortran_label": "ndftow",
+   "gpu_equal_to_cpu": true,
+   "item": 7,
+   "kind": "int",
+   "note": "",
+   "quantity": "diffraction channels in basis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 144.0,
+   "cpp_label": "Diffraction channels analysed (ndifa)",
+   "delta": 0,
+   "fortran": "144",
+   "fortran_label": "ndifa",
+   "gpu_equal_to_cpu": true,
+   "item": 7,
+   "kind": "int",
+   "note": "",
+   "quantity": "diffraction channels analysed",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "11",
+   "cpp_label": "Highest diffraction order analysed (mdifa)",
+   "delta": 0,
+   "fortran": "11",
+   "fortran_label": "maxord",
+   "gpu_equal_to_cpu": true,
+   "item": 7,
+   "kind": "int",
+   "note": "",
+   "quantity": "highest diffraction order",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 30,
+   "cpp_label": "derived: max count per order of the 144 channels (bk_coefficients.bin labels)",
+   "delta": 0,
+   "fortran": "30",
+   "fortran_label": "maxnum",
+   "gpu_equal_to_cpu": true,
+   "item": 7,
+   "kind": "int",
+   "note": "",
+   "quantity": "largest number of channels of one order",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "435",
+   "cpp_label": "Rotational basis functions",
+   "delta": 0,
+   "fortran": "435",
+   "fortran_label": "nrotw",
+   "gpu_equal_to_cpu": true,
+   "item": 8,
+   "kind": "int",
+   "note": "",
+   "quantity": "rotation channels in basis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "66",
+   "cpp_label": "Rotational states analysed (nana)",
+   "delta": 0,
+   "fortran": "66",
+   "fortran_label": "nana",
+   "gpu_equal_to_cpu": true,
+   "item": 8,
+   "kind": "int",
+   "note": "",
+   "quantity": "rotational states analysed",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "210",
+   "cpp_label": "Initial channel (index: J, mJ) (0-based)",
+   "delta": 0,
+   "fortran": "211",
+   "fortran_label": "ichn",
+   "gpu_equal_to_cpu": true,
+   "item": 8,
+   "kind": "int",
+   "note": "",
+   "quantity": "initial rotational state",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "210",
+   "cpp_label": "Initial channel (0-based)",
+   "delta": 0,
+   "fortran": "211",
+   "fortran_label": "fort.21 record 3: ichn",
+   "gpu_equal_to_cpu": true,
+   "item": 8,
+   "kind": "int",
+   "note": "",
+   "quantity": "initial rotational state (fort.21)",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 62640,
+   "cpp_label": "derived: rotational basis x diffraction channels",
+   "delta": 0,
+   "fortran": "62640",
+   "fortran_label": "nstatw",
+   "gpu_equal_to_cpu": true,
+   "item": 9,
+   "kind": "int",
+   "note": "",
+   "quantity": "rotation-diffraction channels in basis",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "9504",
+   "cpp_label": "Rotation-diffraction states (nstata)",
+   "delta": 0,
+   "fortran": "9504",
+   "fortran_label": "nstata",
+   "gpu_equal_to_cpu": true,
+   "item": 9,
+   "kind": "int",
+   "note": "",
+   "quantity": "rotation-diffraction states analysed",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "4320",
+   "cpp_label": "Initial channel (index) (0-based)",
+   "delta": 0,
+   "fortran": "4321",
+   "fortran_label": "inchna",
+   "gpu_equal_to_cpu": true,
+   "item": 9,
+   "kind": "int",
+   "note": "",
+   "quantity": "initial rot-dif channel",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "1.27096140e-02",
+   "cpp_label": "CAP strengths (log, %.8e)",
+   "delta": 0.0,
+   "fortran": "0.12709614E-01",
+   "fortran_label": "Optical potential in Z absorbs with coefficient",
+   "gpu_equal_to_cpu": true,
+   "item": 10,
+   "kind": "printed",
+   "note": "",
+   "quantity": "CAP coefficient: Z",
+   "ratio": 0.0,
+   "tolerance": 5.555e-10,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.012709613996342364,
+   "cpp_label": "bk_coefficients.bin: ZOptFactor (effective)",
+   "delta": -3.657634958798006e-12,
+   "fortran": "0.12709614E-01",
+   "fortran_label": "Optical potential in Z absorbs with coefficient",
+   "gpu_equal_to_cpu": true,
+   "item": 10,
+   "kind": "printed",
+   "note": "",
+   "quantity": "CAP coefficient (full precision C++)",
+   "ratio": 0.007242841502570309,
+   "tolerance": 5.05e-10,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "2.45596439e-02",
+   "cpp_label": "CAP strengths (log, %.8e)",
+   "delta": -9.999999786569624e-11,
+   "fortran": "0.24559644E-01",
+   "fortran_label": "Optical potential in r absorbs with coefficient",
+   "gpu_equal_to_cpu": true,
+   "item": 10,
+   "kind": "printed",
+   "note": "",
+   "quantity": "CAP coefficient: r",
+   "ratio": 0.18001799795804904,
+   "tolerance": 5.555e-10,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.024559643875052824,
+   "cpp_label": "bk_coefficients.bin: ROptFactor (effective)",
+   "delta": -1.2494717413491507e-10,
+   "fortran": "0.24559644E-01",
+   "fortran_label": "Optical potential in r absorbs with coefficient",
+   "gpu_equal_to_cpu": true,
+   "item": 10,
+   "kind": "printed",
+   "note": "",
+   "quantity": "CAP coefficient (full precision C++)",
+   "ratio": 0.247420146801812,
+   "tolerance": 5.05e-10,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "1.01936078e-02",
+   "cpp_label": "CAP strengths (log, %.8e)",
+   "delta": -1.9999999920083944e-10,
+   "fortran": "0.10193608E-01",
+   "fortran_label": "Optical potential in Z specular absorbs with coefficient",
+   "gpu_equal_to_cpu": true,
+   "item": 10,
+   "kind": "printed",
+   "note": "",
+   "quantity": "CAP coefficient: Z specular",
+   "ratio": 0.36003600216172715,
+   "tolerance": 5.555e-10,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 0.010193607830697777,
+   "cpp_label": "bk_coefficients.bin: ZSpOptFactor (effective)",
+   "delta": -1.6930222328237488e-10,
+   "fortran": "0.10193608E-01",
+   "fortran_label": "Optical potential in Z specular absorbs with coefficient",
+   "gpu_equal_to_cpu": true,
+   "item": 10,
+   "kind": "printed",
+   "note": "",
+   "quantity": "CAP coefficient (full precision C++)",
+   "ratio": 0.33525192729183145,
+   "tolerance": 5.05e-10,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 1.0000000000000002,
+   "cpp_label": "Norm of the initial wave packet",
+   "delta": 2.220446049250313e-16,
+   "fortran": "0.10000000E+01",
+   "fortran_label": "Norm initial wave packet (Z,r)",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "printed",
+   "note": "",
+   "quantity": "norm of the initial packet",
+   "ratio": 4.3969228698026e-09,
+   "tolerance": 5.0499999999999996e-08,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 1.407998493806894e-10,
+   "cpp_label": "|psi(k)| at k = 0",
+   "delta": -1.7006193105889814e-15,
+   "fortran": "0.14080155E-09",
+   "fortran_label": "at k = 0",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "printed",
+   "note": "reproduced: the correctly rounded DFT of the samples with the Fortran's alpha and k_Z (11 and 3 ulp from the C++ values, quad-precision site) gives the Fortran value within its half unit (item11_psi_k.py)",
+   "quantity": "|psi(k)| at k = 0",
+   "ratio": 336.75629912653096,
+   "tolerance": 5.05e-18,
+   "verdict": "explained"
+  },
+  {
+   "cpp": 3.019624396661251e-10,
+   "cpp_label": "|psi(k)| at the grid edge",
+   "delta": 1.749666125130217e-15,
+   "fortran": "0.30196069E-09",
+   "fortran_label": "at the end/beginning of the grid",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "printed",
+   "note": "reproduced: the correctly rounded DFT of the samples with the Fortran's alpha and k_Z (11 and 3 ulp from the C++ values, quad-precision site) gives the Fortran value within its half unit (item11_psi_k.py)",
+   "quantity": "|psi(k)| at the grid edge",
+   "ratio": 346.468539629746,
+   "tolerance": 5.05e-18,
+   "verdict": "explained"
+  },
+  {
+   "cpp": 0.5321458371327545,
+   "cpp_label": "|psi(k)| maximum",
+   "delta": -2.8672454410738624e-09,
+   "fortran": "0.53214584E+00",
+   "fortran_label": "maximum value",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "printed",
+   "note": "",
+   "quantity": "|psi(k)| maximum",
+   "ratio": 0.5677713744700716,
+   "tolerance": 5.0500000000000006e-09,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 125.0,
+   "cpp_label": "Allowed region (indices) (0-based)",
+   "delta": 0,
+   "fortran": "126",
+   "fortran_label": "iLow",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "int",
+   "note": "",
+   "quantity": "iLow",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 183.0,
+   "cpp_label": "Allowed region (indices) (0-based)",
+   "delta": 0,
+   "fortran": "184",
+   "fortran_label": "iHigh",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "int",
+   "note": "",
+   "quantity": "iHigh",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 1.0000000000000002,
+   "cpp_label": "Norm inside the allowed region",
+   "delta": 2.220446049250313e-16,
+   "fortran": "0.10000000E+01",
+   "fortran_label": "Norm of the initial wave packet between iLow and iHigh",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "printed",
+   "note": "",
+   "quantity": "norm between iLow and iHigh",
+   "ratio": 4.3969228698026e-09,
+   "tolerance": 5.0499999999999996e-08,
+   "verdict": "printed"
+  },
+  {
+   "cpp": 13.20517968891641,
+   "cpp_label": "Initial kz (log %.16e)",
+   "delta": 5.329070518200751e-15,
+   "fortran": "13.205179688916404",
+   "fortran_label": "fort.21 record 2: rkz",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "full",
+   "note": "",
+   "quantity": "initial k_Z (fort.21, full)",
+   "relative": 4.035591066340155e-16,
+   "ulps": 3.0,
+   "verdict": "rounding"
+  },
+  {
+   "cpp": 1.9767175470965856,
+   "cpp_label": "Wave packet alpha (log %.16e)",
+   "delta": 2.4424906541753444e-15,
+   "fortran": "1.9767175470965832",
+   "fortran_label": "fort.21 record 2: alfwv",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "full",
+   "note": "",
+   "quantity": "packet alpha (fort.21, full)",
+   "relative": 1.2356295707309788e-15,
+   "ulps": 11.0,
+   "verdict": "rounding"
+  },
+  {
+   "cpp": 0.6457207001484491,
+   "cpp_label": "Translational energy (log %.16e)",
+   "delta": 4.440892098500626e-16,
+   "fortran": "0.6457207001484486",
+   "fortran_label": "fort.21 record 3: enrgy",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "full",
+   "note": "",
+   "quantity": "translational energy (fort.21, full)",
+   "relative": 6.877419443855033e-16,
+   "ulps": 4.0,
+   "verdict": "rounding"
+  },
+  {
+   "cpp": 18.0,
+   "cpp_label": "input Z0",
+   "delta": 0.0,
+   "fortran": "18.0",
+   "fortran_label": "fort.21 record 2: z0",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "full",
+   "note": "",
+   "quantity": "Z0 (fort.21)",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 15.0,
+   "cpp_label": "Analysis at Z",
+   "delta": 0.0,
+   "fortran": "15.0",
+   "fortran_label": "fort.21 record 2: ZAnalysis",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "full",
+   "note": "",
+   "quantity": "analysis line (fort.21)",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 20.0,
+   "cpp_label": "dtAna (bk header)",
+   "delta": 0.0,
+   "fortran": "20.0",
+   "fortran_label": "fort.21 record 2: deltat",
+   "gpu_equal_to_cpu": true,
+   "item": 11,
+   "kind": "full",
+   "note": "",
+   "quantity": "analysis time step (fort.21)",
+   "relative": 0.0,
+   "ulps": 0.0,
+   "verdict": "identical"
+  },
+  {
+   "cpp": 9.999999999999998e-08,
+   "cpp_label": "tolerance for fixing it",
+   "delta": -1.3234889800848443e-23,
+   "fortran": "0.10000000E-06",
+   "fortran_label": "Tolerance for fixing the dynamical analysis surface",
+   "gpu_equal_to_cpu": true,
+   "item": 12,
+   "kind": "printed",
+   "note": "",
+   "quantity": "tolerance for fixing the specular analysis line",
+   "ratio": 2.6207702575937508e-09,
+   "tolerance": 5.0500000000000004e-15,
+   "verdict": "printed"
+  },
+  {
+   "cpp": "10",
+   "cpp_label": "Highest j analysed (jana)",
+   "delta": 0,
+   "fortran": "10",
+   "fortran_label": "Maximum j in analysis: jana",
+   "gpu_equal_to_cpu": true,
+   "item": 12,
+   "kind": "int",
+   "note": "",
+   "quantity": "jana",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "2",
+   "cpp_label": "Vibrational levels analysed (nviba)",
+   "delta": 0,
+   "fortran": "2",
+   "fortran_label": "Maximum v in analysis: nviba",
+   "gpu_equal_to_cpu": true,
+   "item": 12,
+   "kind": "int",
+   "note": "",
+   "quantity": "nviba",
+   "verdict": "identical"
+  },
+  {
+   "cpp": "11",
+   "cpp_label": "Highest diffraction order analysed (mdifa)",
+   "delta": 0,
+   "fortran": "11",
+   "fortran_label": "Maximum diffraction order in analysis: mdifa",
+   "gpu_equal_to_cpu": true,
+   "item": 12,
+   "kind": "int",
+   "note": "",
+   "quantity": "mdifa",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 111.0,
+   "cpp_label": "Analysis energies: number",
+   "delta": 0,
+   "fortran": "111",
+   "fortran_label": "per-energy blocks in stdout",
+   "gpu_equal_to_cpu": true,
+   "item": 12,
+   "kind": "int",
+   "note": "",
+   "quantity": "number of analysis energies",
+   "verdict": "identical"
+  },
+  {
+   "cpp": 183,
+   "cpp_label": "Analysis surface on the specular grid: starts at Z",
+   "delta": 0,
+   "fortran": "184",
+   "fortran_label": "iHigh (Z = zsp[iHigh-1])",
+   "gpu_equal_to_cpu": true,
+   "item": 12,
+   "kind": "int",
+   "note": "",
+   "quantity": "specular analysis line start",
+   "verdict": "identical"
+  }
+ ],
+ "state_labels": {
+  "equal": {
+   "J": true,
+   "m": true,
+   "mJ": true,
+   "n": true
+  },
+  "gpu_equal_to_cpu": true,
+  "n_states": 9504,
+  "nviba": 2,
+  "rotation_pointer_consistent": true
+ },
+ "theta": {
+  "max_abs_diff": 3.3306690738754696e-16,
+  "max_ulps": 6.0,
+  "n": 15,
+  "n_identical": 8
+ },
+ "theta_log_equals_helper": true,
+ "title_lengths": {
+  "dvr": 69,
+  "json": 102
+ },
+ "vasy": {
+  "argmax_ir": 2,
+  "argmax_r": 0.9,
+  "criterion": 1e-14,
+  "gpu_file_identical": true,
+  "max_scaled": 5.118556341669106e-16,
+  "median_scaled": 0.0,
+  "n": 40,
+  "n_identical": 28,
+  "r_identical": true,
+  "verdict": "rounding",
+  "z": "15.000000000000000"
+ },
+ "verdicts_by_item": {
+  "1": {
+   "identical": 5,
+   "n/a": 3,
+   "printed": 4
+  },
+  "10": {
+   "printed": 6
+  },
+  "11": {
+   "explained": 2,
+   "identical": 5,
+   "printed": 3,
+   "rounding": 3
+  },
+  "12": {
+   "identical": 5,
+   "printed": 1
+  },
+  "2": {
+   "identical": 16,
+   "n/a": 1
+  },
+  "3": {
+   "identical": 8,
+   "n/a": 1,
+   "printed": 19
+  },
+  "6": {
+   "printed": 6,
+   "rounding": 1
+  },
+  "7": {
+   "identical": 5
+  },
+  "8": {
+   "identical": 4
+  },
+  "9": {
+   "identical": 3
+  }
+ }
+}
