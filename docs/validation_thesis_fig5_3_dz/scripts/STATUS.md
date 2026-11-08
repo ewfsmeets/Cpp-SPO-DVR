@@ -39,11 +39,14 @@ One line per item and figure: status, script, verdict. Tiers from the task (A mu
 | review round 1 | A | done | `review_log.md` | 20 points: 16 accepted, 3 partly, 1 rejected; new finding (verifier): channel-local excess, document rewritten |
 | review round 2 | A | done | `review_log.md` | 18 points: 17 accepted, 1 partly, 0 rejected; added negative control, global analysis-bias test, ψ(T) amplitude, fit variants; per-step reading dropped |
 | adversarial verifier | B | done (rounds 1, 2) | `review_log.md` | headline numbers re-derived and matching |
-| review round 3 | B | done (cap) | `review_log.md` | 16 points: 15 accepted, 1 partly; professor: accept with minor revision; open follow-ups: offline angular-matrix test, strict-build GPU run (D2) |
+| review round 3 | B | done (cap) | `review_log.md` | 16 points: 15 accepted, 1 partly; professor: accept with minor revision; open follow-ups: offline angular-matrix test, strict-build GPU run (D2); both done 2026-11-08 |
 | number check | B | done | `check_numbers.py` | 0 unmatched after round 3; weak check (coincidental matches possible), headline numbers also checked by hand |
 | Markdown check | A | done | `check_markdown.py` | 0 problems (links, anchors, tables, details, ignored files, sizes, whitespace) |
 | make_all.sh --heavy | C | cut (tier C) | `make_all.sh` | default and `--extract` modes run clean; every `--heavy` step ran individually during the work, the script as a whole was not rerun |
-| sha256 manifest | C | done | `manifest.py` | 78 files (66 + the strict GPU run, its log and `build-cuda/spodvr`, 2026-11-08) |
+| sha256 manifest | C | done | `manifest.py` | 87 files (66 + the strict GPU run, its log and `build-cuda/spodvr`, 2026-11-08; + the 9 Fortran objects of the angular driver, 2026-11-08) |
 | mermaid diagram | C | cut (tier C) | — | not drawn: time spent on the review findings instead |
 | byte-identical PNG reruns | C | done | `make_all.sh --extract` | all 5 PNGs byte-identical after a full extract rerun |
 | strict-build GPU run (D2, 2026-11-08) | A | done | `strict_gpu.py`, `strict_bk_copy.py`, `make_all.sh --strict` | criteria written during the run; valid; κ: fast math (1.5e-13 vs 6.0e-12); family j = 10: partly (8.9× smaller); end to end pass; self-check bitwise; README section added |
+| strict run in the figures (2026-11-08) | B | done | `fig1`–`fig4`, `strict_gpu.py` (writes `data/strict_*.tsv`) | green series in Figures 1–4 and a timing-table row; ladder gaps unchanged (the strict row sits outside the ladder); `strict_gpu.json` byte-identical |
+| docs outside the folder (2026-11-08) | B | done | README.md, docs/validation.md, performance.md, cuda.md | links to this report; fast-math effect 7.8e-12 on the thesis grid; hard-wall V_asy gate fails in fast-math builds (GCC 15); native restart files not interchangeable between fast-math and strict builds |
+| offline angular-matrix test (2026-11-08) | A | done | `angular_check.cpp`, `angular_fortran.f90`, `angular_matrices.py`, `make_all.sh --angular` | criteria written before computing; valid (Fortran θ = .pes header, strict helper = strict log, bitwise); verdict partly: J = 8, 10 predicted within 1.07×, collinearity 0.86/0.89 < 0.9; J = 2…6 not resolved; README section added |

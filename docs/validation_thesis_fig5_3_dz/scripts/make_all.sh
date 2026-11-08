@@ -3,6 +3,8 @@
 #   make_all.sh            from the extracts in data/: results.json, figures, tables, checks
 #   make_all.sh --extract  first re-read the run directories and logs (runs/, ~ minutes)
 #   make_all.sh --strict   first the strict-build GPU run: its replays, cleaned log, strict_gpu.py
+#   make_all.sh --angular  first the angular-matrix test: helpers, Fortran driver, angular_matrices.py
+#                          (needs the extract and strict logs and the potential of the heavy pass; ~1 min)
 #   make_all.sh --heavy    also rebuild the C++ helpers and redo the potential, replay,
 #                          onlyAnalysis, final-psi, thesis-extraction and sha256 passes (~15 min;
 #                          needs the build directories, runs/, ~/work/SPO-DVR, uv for pymupdf)
@@ -82,6 +84,22 @@ if [[ "$mode" == "--strict" || "$mode" == "--heavy" ]]; then
   gzip -9 -n -c "$REPO/runs/thesis_fig5_3_dz_cuda.log" > ../data/logs/thesis_fig5_3_dz_cuda.log.gz
   cp "$WORK/logs/gpu_strict.txt" ../data/logs/cleaned_cuda_strict.txt
   $PY strict_gpu.py
+fi
+
+if [[ "$mode" == "--angular" || "$mode" == "--heavy" ]]; then
+  # angular matrices (criteria.md, 2026-11-08): each code's FBR<->DVR round trip on the thesis grid
+  for b in build-cuda build-fast build-cuda-fast; do
+    $PY build_helper.py "$b" angular_check.cpp
+    OMP_NUM_THREADS=8 "$WORK/helpers/$b/angular_check" "$REPO/inputs/thesis_fig5_3_dz/input.json" "$WORK/angular/$b"
+  done
+  O="$HOME/work/SPO-DVR/procfiles.dir/OBJS.dir"     # the reference executable's objects (read only)
+  F="$WORK/angular/fortran"
+  mkdir -p "$F"
+  gfortran -O3 -fopenmp -fdefault-real-8 -ffree-line-length-none -I"$O" -J"$F" -c angular_fortran.f90 -o "$F/angular_fortran.o"
+  gfortran -O3 -fopenmp "$F/angular_fortran.o" "$O"/{transform,angulargrid,legendre,ffts,fftw_2_scs,constants,errortrap,MPI_wrapper,x86_hack}.o \
+    -lfftw3 -o "$F/angular_fortran"
+  (cd "$F" && OMP_NUM_THREADS=8 ./angular_fortran)
+  $PY angular_matrices.py
 fi
 
 $PY item17_thesis.py

@@ -123,7 +123,9 @@ grid is always independent of mJ<sub>in</sub>).
 
 **Answer.** Yes: all coordinate grids, counts and φ nodes are bitwise identical; the 15 θ nodes
 agree to ≤ 6 ulp (3.3e-16 rad), the libmvec-vs-scalar `acos` difference listed in
-docs/fortran_deviations.md. Verdict: **identical / rounding**.
+docs/fortran_deviations.md. Verdict: **identical / rounding**. (Added on 2026-11-08: these are the
+nodes of the fast-math helper; the strict build's are 1 ulp from the Fortran's at most, 9/15
+identical, [README](README.md#angular-matrices-added-2026-11-08).)
 
 **Compared.** The Fortran `.pes` file holds the grid end points and the θ, φ nodes in double
 precision; the C++ values come from the helper `potential_check` (library of the build that ran,
@@ -485,8 +487,8 @@ m<sub>J</sub> = 0, j = 2…10); over the whole run they carry 2.2%. In those cha
 a channel-local excess, not a uniform scale. Its pattern follows a selection rule: the specular
 component is (x, y)-uniform, φ-independent and in j = 0, so any defect of the angular DVR⇄FBR round
 trip acting on it lands exactly in these channels with |Δc| independent of |c|. The CPU and GPU
-runs share the angular matrices. Not yet attributed (open; testable offline,
-[README](README.md#the-argument-two-ladders-of-error-scales)). No relative per-channel criterion
+runs share the angular matrices. Traced afterwards, in part, to the angular round trip (offline
+test added on 2026-11-08, verdict *partly*: [README](README.md#angular-matrices-added-2026-11-08)). No relative per-channel criterion
 was set in advance, so the absolute criterion could not flag it. Per channel, coefficients above
 1e-6 of max |c| (17068 of 19008) differ by 8.1e-12 relative (median) and at most 2.0e-9.
 
@@ -583,7 +585,9 @@ Both C++ executions carry the same κ: κ(GPU−F) 6.6e-12 ≈ κ(CPU−F) 6.0e-
 operator decomposition) or from the Fortran side (quad-precision sites, libmvec), not from rounding
 inside one propagation kernel. κ(E) correlates with 1/√E (r = 0.96), consistent with an error
 accumulated along the incoming path. Not yet attributed to single operations. A
-strict-build run would separate fast-math from the rest (proposed in the summary). All of it is
+strict-build run would separate fast-math from the rest (proposed in the summary). Added on
+2026-11-08: the strict GPU run attributes κ to fast math
+([README](README.md#strict-build-gpu-run-added-2026-11-08)). All of it is
 within the criterion (1e-10) and ≥ 3.7× below the print resolution at every energy (median 5×10³).
 
 <!-- BEGIN table:composition -->

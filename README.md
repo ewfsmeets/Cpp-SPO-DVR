@@ -148,7 +148,7 @@ Useful CMake options:
 | `-DSPODVR_FFT_LIBRARY=FFTW` | `AUTO` | use the real FFTW for the FFTs even when oneMKL is present (`AUTO` picks oneMKL when found) |
 | `-DSPODVR_ARCH=native` | `x86-64-v3` | `-march` value (`x86-64-v3` = AVX2; `x86-64-v4` = AVX-512) |
 | `-DSPODVR_PGO=GENERATE/USE` | `OFF` | profile-guided optimisation, two builds and a training run (see docs/performance.md) |
-| `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math` (with CUDA also `--use_fast_math`, i.e. FMA, in the GPU kernels); changes results at the 1e-12 level (see Benchmark) |
+| `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math` (with CUDA also `--use_fast_math`, i.e. FMA, in the GPU kernels); changes results at the 1e-12 to 1e-11 level (see Benchmark) |
 | `-DSPODVR_USE_CUDA=ON` | `OFF` | build the GPU backend (`--device cuda`, NVIDIA GPU, CUDA toolkit; see [docs/cuda.md](docs/cuda.md)) |
 | `-DSPODVR_BUILD_TESTS=OFF` | `ON` | skip the tests |
 
@@ -166,9 +166,16 @@ when nvcc is found). It does not use PGO; for that, see docs/performance.md:
 | `build-fftw` | `SPODVR_FFT_LIBRARY=FFTW` | oneMKL LAPACK with the real FFTW |
 | `build-nomkl` | `SPODVR_USE_MKL=OFF` | system LAPACK + FFTW: the fallback that must keep working |
 | `build-poison` | `SPODVR_POISON_UNINITIALISED=ON` | NaN-fills new large arrays: finds reads before the first write |
-| `build-fast` | `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fast CPU build (results differ at the 1e-12 level; add PGO by hand for the fastest) |
+| `build-fast` | `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fast CPU build (results differ at the 1e-12 to 1e-11 level; add PGO by hand for the fastest) |
 | `build-cuda` | `SPODVR_USE_CUDA=ON` | GPU backend, no FMA (results comparable with the CPU build) |
 | `build-cuda-fast` | `SPODVR_USE_CUDA=ON`, `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fastest GPU build (FMA in the kernels; no PGO) |
+
+Native restart files (`checkpoint.bin`, `bk_coefficients.bin`) only work between builds with the
+same `SPODVR_FAST_MATH` setting. A restart or `onlyAnalysis` run checks the stored set-up parameters
+exactly, and the fast-math builds compute one of them (the effective `ZOptFactor`) 1 ulp
+differently, so a default build refuses a fast-math build's native files and vice versa. Files in
+the Fortran format (`CheckpointFormat` `"fortran"` or `"both"`, read with `RestartFormat`
+`"fortran"`) carry no parameter list and can be used across builds.
 
 ### Formatting and linting
 clang-format runs as a git pre-commit hook; clang-tidy is run on demand. Both versions are pinned
@@ -213,10 +220,16 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   need the Fortran program (`SPODVR_FORTRAN_EXE`).
 - **Other build variants** ([Build variants](#build-variants-and-toolsbuild_allsh)): run the same
   ctest command in their build directory. Use `build-poison` after touching the uninitialised-memory
-  code. `build-fast` (fast-math) is expected to fail a few unit tests by one ulp; its gates pass.
+  code. The fast-math builds (`build-fast`, `build-cuda-fast`) are expected to fail a few unit tests
+  by one ulp, and with GCC 15 also the hard-wall V<sub>asy</sub> table of gate 1 (1.6e-14 against 1e-14);
+  their other gates pass.
 - **Numerically neutral changes** (refactors) must leave the results bitwise unchanged:
   `tools/check_bitwise_refactor.sh [base-ref]`. For changes that may alter rounding:
   `tools/compare_propagation.sh [base-ref] [tolerance]`.
+- **Production-grid validation:** beyond the gates, the full thesis calculation
+  (`inputs/thesis_fig5_3_dz`, 7000 steps) was run with the Fortran, the C++ CPU and the C++ GPU
+  code and compared state by state: [docs/validation_thesis_fig5_3_dz](docs/validation_thesis_fig5_3_dz/README.md).
+  With the default (strict) GPU build, all 111 reaction probabilities match the Fortran's 7 printed digits.
 
 ## Running
 The program reads one JSON input file:
@@ -316,8 +329,11 @@ Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps o
 | C++, fast-math + native + PGO | 675 s | 4489 s | 6.7 |
 
 The C++ code needs less CPU time than the Fortran code, but keeps the threads less busy, so it is
-slower in wall time; this is still being investigated. The fast-math build passes all regression
-gates, but its results differ from the default build at the 1e-12 level, so it is not the default.
+slower in wall time; this is still being investigated. The fast-math build passes the regression
+gates except the hard-wall V<sub>asy</sub> table (by 1.6e-14, with GCC 15), and its results differ from the
+default build: by ~1e-12 on the gate grids, by 7.8e-12 on the thesis grid (GPU builds)
+([validation report](docs/validation_thesis_fig5_3_dz/README.md#strict-build-gpu-run-added-2026-11-08)).
+It is therefore not the default.
 Details in [docs/performance.md](docs/performance.md).
 
 GPU (`--device cuda`), DZ case of `inputs/thesis_fig5_3_dz` as of 3c1d91b (128 × 40 × 12 × 12 grid, 435 rotational
@@ -328,7 +344,7 @@ states, 4.8 GiB wave function), NVIDIA RTX 4070 Ti (a GeForce card: FP64 at 1/64
 |---|---|---|
 | CPU, default flags | 3.6 s | 1× |
 | GPU, `build-cuda` (no FMA; agrees with the CPU to ≈1e-14 here) | 0.61 s | 5.9× |
-| GPU, `build-cuda-fast` (FMA; differs at the 1e-12 level over a long run) | 0.54–0.57 s | 6.3–6.7× |
+| GPU, `build-cuda-fast` (FMA; S matrix of the thesis run 7.8e-12 from `build-cuda`) | 0.54–0.57 s | 6.3–6.7× |
 
 The 10 000 steps of the benchmark take about 1.5–1.8 h on the GPU instead of about 10 h. Details
 and the limits of this card in [docs/cuda.md](docs/cuda.md).

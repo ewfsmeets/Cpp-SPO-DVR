@@ -15,5 +15,6 @@
  "print_over_propagation_E_le_053_max": 4.04971932638332,
  "print_over_propagation_min": 3.6647314949201744,
  "print_over_propagation_min_at_E": 0.4,
- "print_over_propagation_min_gpu": 3.2227185705169115
+ "print_over_propagation_min_gpu": 3.2227185705169115,
+ "strict_gpu_vs_fortran_median": 1.941e-13
 }

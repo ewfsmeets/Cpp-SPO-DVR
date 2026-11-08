@@ -106,8 +106,9 @@ def fit_growth(t, e, t_min):
     return {"exponent": float(b), "prefactor": float(np.exp(a)), "t_min": float(t_min), "n": int(sel.sum())}
 
 
-def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv"):
-    """tsv_path: where the Figure 3 time series go (None: not written)."""
+def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv", series_out=None):
+    """tsv_path: where the Figure 3 time series go (None: not written); series_out: a dict that
+    receives the same time series."""
     labels = bk["labels"]
     ns = bk["nstata"]
     t = bk["times"]
@@ -239,6 +240,8 @@ def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv"):
         lines.append("\t".join(f"{series[c][i]:.6e}" for c in cols))
     if tsv_path is not None:
         tsv_path.write_text("\n".join(lines) + "\n")
+    if series_out is not None:
+        series_out.update(series)
     return res
 
 

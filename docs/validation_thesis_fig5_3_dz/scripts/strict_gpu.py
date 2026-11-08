@@ -11,15 +11,17 @@ items 13a, 13c, 14 and 18b, with the strict run in the place of the fast GPU run
   self-check    the run's tables vs replay(strict BK file) with a helper linked against build-cuda
   end to end    P_reaction vs the Fortran's printed values (item 14)
 
-Needs `make_all.sh --strict` first (helper, replays, cleaned log). Writes data/items/strict_gpu.json."""
+Needs `make_all.sh --strict` first (helper, replays, cleaned log). Writes data/items/strict_gpu.json and,
+for Figures 1–3, data/strict_reaction_probability.tsv and data/strict_bk_error_vs_time.tsv."""
 from __future__ import annotations
 
 import datetime as dt
 import re
 
 import numpy as np
+import pandas as pd
 
-from common import (REPO, RUN_DIRS, RUNS, WORK, FortranBk, NativeBk, clean_log_lines, load_item, parse_fortran_real,
+from common import (DATA, REPO, RUN_DIRS, RUNS, WORK, FortranBk, NativeBk, clean_log_lines, load_item, parse_fortran_real,
                     printed_half_unit, save_item)
 from item13_propagation import averages_vs_fortran, bk_compare
 from item18b_replay import REPLAY, decompose, files_identical, load, s_diff, summary_diff
@@ -32,6 +34,8 @@ STRICT_CLEAN = WORK / "logs" / "gpu_strict.txt"
 BUILD = REPO / "build-cuda"
 INPUT = "inputs/thesis_fig5_3_dz/input.json"
 REPLAY_FAST = REPLAY / "build-fast"
+STRICT_RP_TSV = DATA / "strict_reaction_probability.tsv"
+STRICT_BK_TSV = DATA / "strict_bk_error_vs_time.tsv"
 NUMBER = re.compile(r"[-+]?\d+\.\d+(?:[eE][-+]?\d+)?")
 
 
@@ -146,13 +150,46 @@ def bk_part(t_fix):
             "times_fortran_minus_cpp_max": float(np.max(np.abs(F.times() - t)))}
     # bk_compare's pairs are (cpu, fortran), (gpu, fortran), (gpu, cpu): the strict run takes the
     # place of "gpu", and "cpu" is the fast CPU run (first call) or the fast GPU run (second call)
-    with_cpu = bk_compare(base | {"cpu": c["cpu"], "gpu": c["strict"]}, t_fix, tsv_path=None)
-    with_gpu = bk_compare(base | {"cpu": c["gpu"], "gpu": c["strict"]}, t_fix, tsv_path=None)
+    s_cpu, s_gpu = {}, {}
+    with_cpu = bk_compare(base | {"cpu": c["cpu"], "gpu": c["strict"]}, t_fix, tsv_path=None, series_out=s_cpu)
+    with_gpu = bk_compare(base | {"cpu": c["gpu"], "gpu": c["strict"]}, t_fix, tsv_path=None, series_out=s_gpu)
+    write_bk_series(s_cpu, s_gpu, with_cpu["scale"])
     return {"strict-fortran": bk_summary(with_cpu, "gpu-fortran"),
             "strict-cpu_fast": bk_summary(with_cpu, "gpu-cpu"),
             "strict-gpu_fast": bk_summary(with_gpu, "gpu-cpu"),
             "cpu_fast-fortran": bk_summary(with_cpu, "cpu-fortran"),     # check: equals item 13c
             "gpu_fast-fortran": bk_summary(with_gpu, "cpu-fortran")}
+
+
+def write_bk_series(s_cpu, s_gpu, scale):
+    """Figure 3 time series of the strict run, in the format of data/bk_error_vs_time.tsv."""
+    cols = {"t": s_cpu["t"], "norm_c_t": s_cpu["norm_c_t"],
+            "strict-fortran": s_cpu["gpu-fortran"], "strict-fortran_alpha": s_cpu["gpu-fortran_alpha"],
+            "strict-gpu_fast": s_gpu["gpu-cpu"], "strict-gpu_fast_alpha": s_gpu["gpu-cpu_alpha"]}
+    lines = ["# Strict-build GPU run: BK coefficient differences per analysis step, max over channels |c_a - c_b| / scale "
+             f"(scale = max(max|c_Fortran|, 1e-4) = {scale:.6e}); *_alpha: amplitude part (item 13c)", "\t".join(cols)]
+    for i in range(len(cols["t"])):
+        lines.append("\t".join(f"{v[i]:.6e}" for v in cols.values()))
+    STRICT_BK_TSV.write_text("\n".join(lines) + "\n")
+
+
+def write_reaction_tsv():
+    """Per-energy P_reaction of the strict run (Figures 1 and 2): the run's own table, the replay of its
+    BK file and its propagation-only difference from the Fortran (same build-fast helper as
+    data/replay_reaction_probability.tsv), and the largest |dP(v, j, mJ)| per energy."""
+    run = load(STRICT, "scattering_summary.tsv")
+    rs, rf = (load(REPLAY_FAST / k, "scattering_summary.tsv") for k in ("gpu_strict", "fortran"))
+    vs, vf = (load(REPLAY_FAST / k, "probabilities_rovib.tsv") for k in ("gpu_strict", "fortran"))
+    vjm = pd.Series(np.abs(vs["P"].to_numpy() - vf["P"].to_numpy())).groupby(vf["E_coll"].to_numpy()).max().to_numpy()
+    E, P_run, P_rs, P_rf = (x.to_numpy() for x in (run["E_coll"], run["P_reaction"], rs["P_reaction"], rf["P_reaction"]))
+    assert np.allclose(E, rf["E_coll"].to_numpy(), rtol=0, atol=1e-12) and vjm.size == E.size   # grids agree to 1 ulp
+    assert all(np.array_equal(vs[k].to_numpy(), vf[k].to_numpy()) for k in ("v", "j", "mJ"))
+    lines = ["# Strict-build GPU run: P_reaction of the run, of the replay of its BK file and of the Fortran's BK file "
+             "(helper `replay`, build-fast); abs_strict_minus_F = |replay strict - replay Fortran| (propagation only).",
+             "E_coll\tP_run_strict\tP_replay_strict\tP_replay_fortran\tabs_strict_minus_F\tmax_dPvjm_strict_F"]
+    for i in range(E.size):
+        lines.append(f"{E[i]:.4f}\t{P_run[i]:.16e}\t{P_rs[i]:.16e}\t{P_rf[i]:.16e}\t{abs(P_rs[i] - P_rf[i]):.3e}\t{vjm[i]:.3e}")
+    STRICT_RP_TSV.write_text("\n".join(lines) + "\n")
 
 
 def decomposition_summary(d):
@@ -255,6 +292,7 @@ def main():
     res = {"validity": validity(lines), "averages": averages()}
     res["bk"] = bk_part(res["validity"]["analysis_line"]["t"])
     res["replay"] = replay_part()
+    write_reaction_tsv()
     res["self_check"] = self_check()
     res["end_to_end"] = end_to_end()
     fast_wall = load_item("phase0")["runs"]["gpu"]["time"]["wall_s"]

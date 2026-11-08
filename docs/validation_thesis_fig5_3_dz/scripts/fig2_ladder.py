@@ -3,7 +3,8 @@
 rung on a shared log axis: the CPU<->GPU rounding floor, C++<->Fortran at full precision (replay),
 the Fortran's print resolution, and visible artefacts of the calculation that are identical in all
 codes. Bars: min-max; dots: the individual values; gaps between adjacent rungs annotated with the
-ratio of their medians. Writes data/items/ladder.json (the numbers on the figure)."""
+ratio of their medians. Bottom row (added 2026-11-08): the strict-build GPU run vs the Fortran,
+outside the ladder (no gap arrow). Writes data/items/ladder.json (the numbers on the figure)."""
 from __future__ import annotations
 
 import numpy as np
@@ -22,6 +23,7 @@ def col(path, name, skip_comment=1):
 def main():
     setup()
     rp, rr = DATA / "reaction_probability.tsv", DATA / "replay_reaction_probability.tsv"
+    rs = DATA / "strict_reaction_probability.tsv"
     E = col(rp, "E_coll")
     i19 = load_item("item19")
     i13 = load_item("item13")
@@ -39,11 +41,20 @@ def main():
         ("Reaction floor below\nthreshold (E ≤ 0.50 eV)", col(rp, "P_cpu")[low]),
         ("Spread between symmetry-\nequivalent diffraction channels\n(median, max)", np.array([sym["median_abs_spread"], sym["max_abs_spread"]])),
     ]
-    fig, ax = plt.subplots(figsize=(8.8, 5.6))
-    y = 0
+    fig, ax = plt.subplots(figsize=(8.8, 6.2))
     labels, ys = [], []
     medians = []
     rng = np.random.default_rng(1)
+    # strict-build GPU run, below the ladder (its own row, not part of the gap arrows)
+    st = PAIR["gpu_strict-fortran"]
+    sa, sb = col(rs, "abs_strict_minus_F"), col(rs, "max_dPvjm_strict_F")
+    sv = np.concatenate([sa, sb])
+    ax.plot([sv.min(), sv.max()], [0, 0], color=st["color"], lw=7, alpha=0.25, solid_capstyle="butt")
+    ax.scatter(sa, rng.uniform(-0.13, 0.13, sa.size), s=10, color=st["color"], zorder=3)
+    ax.scatter(sb, rng.uniform(-0.13, 0.13, sb.size), s=10, facecolors="white", edgecolors=st["color"], zorder=3)
+    strict_median = float(np.median(sa))
+    ax.axhline(0.5, color=MUTED, lw=0.6, ls=(0, (2, 2)))
+    y = 1
     for name, color, a, b in rungs:
         vals = a if b is None else np.concatenate([a, b])
         ax.plot([vals.min(), vals.max()], [y, y], color=color, lw=7, alpha=0.25, solid_capstyle="butt")
@@ -62,14 +73,14 @@ def main():
         labels.append(name)
         ys.append(y)
         y += 1
-    ax.set_yticks(ys, labels, fontsize=8.6)
+    ax.set_yticks([0] + ys, ["C++ GPU strict vs Fortran,\nfull precision (replay;\nstrict build, added 2026-11-08)"] + labels, fontsize=8.6)
     ax.set_xscale("log")
-    ax.set_xlim(1e-14, 3e-2)
+    ax.set_xlim(1e-16, 3e-2)
     ax.set_ylim(-0.6, y - 0.4)
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("Absolute difference or size in probability (per collision energy)")
-    ax.axhspan(2.5, y - 0.4, color="#fbeceb", lw=0, zorder=0)
-    ax.text(1.5e-14, y - 0.55, "artefacts of this calculation, identical in all three codes", ha="left", va="top",
+    ax.axhspan(ys[len(rungs)] - 0.5, y - 0.4, color="#fbeceb", lw=0, zorder=0)
+    ax.text(1.5e-16, y - 0.55, "artefacts of this calculation, identical in all three codes", ha="left", va="top",
             fontsize=8.5, color=INK_2)
     # gaps between rungs 0-1, 1-2, 2-3 (medians)
     gaps = []
@@ -92,7 +103,7 @@ def main():
     margin_g = col(rp, "half_unit") / col(rr, "abs_gpu_minus_F")
     save_item("ladder", {"print_over_propagation_min": float(margin.min()), "print_over_propagation_min_gpu": float(margin_g.min()), "print_over_propagation_min_at_E": float(E[int(np.argmin(margin))]),
                          "print_over_propagation_E_le_053_max": float(margin[E <= 0.53 + 1e-9].max()),"medians": dict(zip([l.replace("\n", " ") for l in labels], medians)),
-                         "gap_ratios_of_medians": gaps})
+                         "gap_ratios_of_medians": gaps, "strict_gpu_vs_fortran_median": strict_median})
     print("medians", [f"{m:.2e}" for m in medians], "gaps", [f"{g:.1f}" for g in gaps])
 
 

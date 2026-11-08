@@ -78,3 +78,12 @@ b3e4442d501cb8f28112bc00136c5b966b9eb63aa135b0cdec776c4c5ba0e800       2070528  
 fb7435edfb33d4a6f0fee3d80b865e8c18715620179119daae43d7769966bc67       2663346  ~/work/mf_somers_phd_thesis.pdf
 a73eb5daf068631d089df6cd1ce5cb55b92caf3a6deafb61e602fcc49c7247ab          1063  inputs/thesis_fig5_3_dz/input.json
 7927d527ff3c25443b5be68d52aad4ec69ea035878fd1aeedc46272d16967e7f          2381  inputs/thesis_fig5_3_dz/DVR.inp
+37131b364918f03f646fd5295a6a3c7ddddedaf9372bd83d9eac5198f4af125e         14736  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/transform.o
+ca831eb80e8ce4e3a8aeae1cb4ada29595f937e94d122017aa6e413f31f66187          8440  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/angulargrid.o
+e0a1338dd24b7a93c998e529a874dabacf6bfd157504323ce2dc16005a6975bc         12328  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/legendre.o
+d5763e881c55fdfbb33551dfd17fabe12b655a280b4d61c000d3f3e8d16084eb         64800  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/ffts.o
+ac6e0370a67f1f3ee4f5797b4b71b141c993e8c8aa483cb9c0e8428965a5bcb9          9840  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/fftw_2_scs.o
+d0d7f95e7b4c28135b05f45aab581e6409c5bc84c2e40f27a402a03fb77611ff          4832  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/constants.o
+6e9152c52a673fe02810139932ebb48e3e3c699b88825cd922ca8c0f610fcd1f          4408  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/errortrap.o
+6708bb0d988d17418f32d8c638df1bcb8710e965454e9c5dbab3aecf7fece7a1         84104  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/MPI_wrapper.o
+d59129476423b5a2ed993200dd6c6c038f8b45b09ebf63957887f6dae902cb2a          1936  ~/work/SPO-DVR/procfiles.dir/OBJS.dir/x86_hack.o

@@ -14,6 +14,13 @@ max(half a printed unit, floor), raising the floor changes nothing while the pri
 Known differences between the two programs (Fortran bugs fixed in C++, quirks kept on purpose,
 quad-precision sites) are listed in [fortran_deviations.md](fortran_deviations.md).
 
+**Production grid.** The gates use small grids. A full thesis calculation (`inputs/thesis_fig5_3_dz`,
+Dai–Zhang PES, 7000 steps, 435 rotational functions) was run with the Fortran, the C++ CPU and the
+C++ GPU code and compared state by state, with criteria written before the comparisons:
+[validation_thesis_fig5_3_dz](validation_thesis_fig5_3_dz/README.md). With the default (strict)
+GPU build the S matrix agrees with the Fortran to 3.5e-13 (norm-weighted relative) and all 111
+reaction probabilities match the Fortran's 7 printed digits.
+
 ## Gates
 Main reference case: `tests/reference/hardwall_small/DVR.inp` (Fortran input), with the Fortran
 output next to it; the corrugated Cu(111) cases are in their own directories.
@@ -24,7 +31,8 @@ derived from exactly the same parameters.
 1. **Hard wall PES, gas-phase potential** (`tests/test_regression_hardwall.cpp`): V(r) at Z = zasymp = 7.0, θ = π/2 (Fortran
    "INFO FROM SETTING UP THE ROVIBRATIONAL ASYMPTOTIC POTENTIAL" table, r = 0.8 … 9.05, 56 points)
    reproduced to ~1e-14 relative (full 6D potential ~1e-13, see the quad-precision sites in
-   fortran_deviations.md). Sanity: V(r = 1.4) = 0 exactly.
+   fortran_deviations.md). Sanity: V(r = 1.4) = 0 exactly. With GCC 15 the fast-math builds
+   (`SPODVR_FAST_MATH`) fail the V(r) table by 1.6e-14 (at r index 5); the default build passes.
 2. **Gas-phase rovibrational states** (same test; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): energies
    e(v,j) for v = 0,1 and j = 0…4 (Fortran "INFO FROM SETTING UP THE ASYMPTOTIC ROVIBRATIONAL
    STATES"), e.g. e(0,0) = 0.258378 eV, e(1,0) = 0.762842 eV; also ⟨r⟩, psi(1), psi(nr), norms.

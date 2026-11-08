@@ -332,6 +332,12 @@ Results, fast against strict build:
   ⟨r⟩ 4.3e-15; S-matrix elements 1.0e-12 absolute, probabilities 1.6e-12 absolute. The same level
   as the CPU fast-math build (docs/performance.md).
 - DZ, 200 steps: averages ≤ 2.7e-14 relative, S ≤ 3e-14 absolute.
+- DZ, the full 7000-step thesis run (2026-11-08, [validation report](validation_thesis_fig5_3_dz/README.md#strict-build-gpu-run-added-2026-11-08)):
+  S 7.8e-12 (norm-weighted relative), mostly a uniform amplitude offset of 6.4e-12. Against the
+  Fortran the strict build is 3.5e-13 off, the fast build 7.9e-12. The strict run took 1.12× as long.
+- The host code is fast-math too: with GCC 15 gate 1's hard-wall V<sub>asy</sub> table fails by 1.6e-14
+  against 1e-14, as in the CPU fast-math build, and native restart files are not interchangeable
+  with the strict build (README "Build variants").
 
 So the fast build is within the regression tolerances, but no longer comparable to the CPU build
 to the last bits; use the strict build when comparing with the CPU or the Fortran code.

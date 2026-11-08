@@ -3,7 +3,9 @@
 max over channels |c_a - c_b| / max(max|c_F|, 1e-4) with the criterion 1e-10; (b) the amplitude
 part kappa(t) of the difference, c_a = c_b (1 + kappa + i beta) on average (|c_b|^2 weighted),
 where ||c(t)|| >= 0.1% of its maximum, with its median per quarter of the signal window
-(item13_propagation.py). Reads data/bk_error_vs_time.tsv, data/items/item13.json."""
+(item13_propagation.py). The strict-build GPU run against the Fortran is added (2026-11-08,
+data/strict_bk_error_vs_time.tsv from strict_gpu.py). Reads data/bk_error_vs_time.tsv,
+data/strict_bk_error_vs_time.tsv, data/items/item13.json."""
 from __future__ import annotations
 
 import numpy as np
@@ -19,6 +21,11 @@ def main():
     a = np.array([[float(x) for x in l.split("\t")] for l in lines[2:]])
     col = {h: a[:, i] for i, h in enumerate(head)}
     t = col["t"]
+    sl = (DATA / "strict_bk_error_vs_time.tsv").read_text().splitlines()
+    sh = sl[1].split("\t")
+    sa = np.array([[float(x) for x in l.split("\t")] for l in sl[2:]])
+    scol = {h: sa[:, i] for i, h in enumerate(sh)}
+    assert np.array_equal(scol["t"], t)
     it = load_item("item13")
     b = it["bk"]
     t_fix = it["analysis_line"]["time_of_that_record"]["fortran"]
@@ -33,6 +40,10 @@ def main():
         sel = col["norm_c_t"] >= 1e-3 * col["norm_c_t"].max()     # where the signal is not noise
         a_ = np.where(sel, 1e12 * col[f"{key}_alpha"], np.nan)
         ax2.plot(t, a_, color=st["color"], ls=st["ls"], lw=1.3, label=st["label"])
+    st = PAIR["gpu_strict-fortran"]
+    ax1.plot(t, np.maximum(scol["strict-fortran"], 1e-18), color=st["color"], ls=st["ls"], lw=1.3, label=st["label"] + " (added 2026-11-08)")
+    ax2.plot(t, np.where(sel, 1e12 * scol["strict-fortran_alpha"], np.nan), color=st["color"], ls=st["ls"], lw=1.3,
+             label=st["label"] + " (added 2026-11-08)")
     edges = np.linspace(w0, w1, 5)
     for key in ("cpu-fortran", "gpu-cpu"):
         q = b["amplitude_vs_time"][key]["window_quartile_medians"]

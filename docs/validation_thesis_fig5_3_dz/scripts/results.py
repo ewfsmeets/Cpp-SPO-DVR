@@ -4,6 +4,7 @@ the single source of the numbers in the report, plus a few derived values used i
 from __future__ import annotations
 
 import json
+import math
 
 from common import INPUT_DIR, ITEMS, RESULTS, to_jsonable
 
@@ -23,6 +24,11 @@ def main():
         "propagation_share_min": min(
             [p0["fortran"]["program_timing"]["Propagating the wavefunction"] / wall["fortran"],
              p0["cpu"]["program_timing"]["propagation_s"] / wall["cpu"], p0["gpu"]["program_timing"]["propagation_s"] / wall["gpu"]]),
+        # with the strict GPU run (added 2026-11-08), rounded down to 0.1% for "≥ x%" (Figure 4)
+        "propagation_share_min_with_strict_floor": math.floor(1000 * min(
+            [p0["fortran"]["program_timing"]["Propagating the wavefunction"] / wall["fortran"],
+             p0["cpu"]["program_timing"]["propagation_s"] / wall["cpu"], p0["gpu"]["program_timing"]["propagation_s"] / wall["gpu"],
+             res["strict_gpu"]["validity"]["program_timing"]["propagation_s"] / res["strict_gpu"]["validity"]["time"]["wall_s"]])) / 1000,
         "p_reaction_full_precision_max": {
             "cpu-fortran": rb["cpu-fortran"]["summary"]["P_reaction"]["max"],
             "gpu-fortran": rb["gpu-fortran"]["summary"]["P_reaction"]["max"],

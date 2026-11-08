@@ -178,3 +178,45 @@ logic difference; above the fast-math/FMA level it may motivate a strict-build r
   numbers; the numeric differences are reported. The replay of the strict BK file with the
   `build-fast` helper goes through a header copy (`strict_bk_copy.py`): the reader's exact check of
   the stored restart parameters rejects the strict file over one 1-ulp parameter.
+- 2026-11-08, angular matrices (the offline test of the specular rotationally inelastic family;
+  `angular_matrices.py`). Written before any of the matrices or round trips below were computed.
+  Hypothesis: the family excess is the codes' different angular round trip acting on the large j =
+  0, (n, m) = (0, 0) component. In the potential operator every (Z, r) point with Z < Zana goes FBR
+  → DVR → exp(−iV dt) → DVR → FBR, with the specular wave added to that component first; whatever
+  the round trip leaks from j = 0 into (J, m_J = 0) stays on the scattering grid, in exactly the
+  family's channels.
+  - R_J (per code): the (J, m_J = 0) component of the round trip DVR→FBR(FBR→DVR(e_(j=0, mJ=0))) −
+    e_(j=0), J = 2…28 even, computed by each code's own routines in its own arithmetic on the thesis
+    grid: Fortran `transform.f90` etc. from the object files of the reference executable, called by
+    a small driver; C++ `AngularTransform` linked against `build-cuda` (the strict run),
+    `build-fast` (the fast CPU run) and `build-cuda-fast` (the fast GPU run). exp(−iV dt) is
+    replaced by 1 (the asymptotic-like case). The part due to the matrix values alone (the round
+    trip in exact rational arithmetic of each code's stored matrix) is reported as a decomposition.
+    ΔR_J^(a−b) = R_J^(a) − R_J^(b).
+  - Observed: the family part of the BK difference, d_J^(a−b)(t) = Δc_J(t) − z(t) c_J^(b)(t) (v = 0,
+    (n, m) = (0, 0), m_J = 0; z(t) the per-record uniform factor of item 13c), its norm over the
+    signal window, for strict − Fortran, fast CPU − Fortran and strict − fast CPU.
+  - If the hypothesis holds, d_J^(a−b)(t) = T_J(t) ΔR_J^(a−b) with one transfer T_J for all pairs.
+    T_J is calibrated on the C++ pair strict − fast CPU; prediction: ‖d_J^(strict−F)‖ =
+    ‖d_J^(strict−fast)‖ · |ΔR_J^(strict−F)| / |ΔR_J^(strict−fast)|. Collinearity: the fraction of
+    ‖d_J^(strict−F)‖² explained by one complex multiple of d_J^(strict−fast)(t), and the sign of
+    that multiple's real part against the sign of the ΔR ratio.
+  - Verdict on J = 8 and J = 10 (where the family excess dominates its channels' residual; J = 2…6
+    reported only). **Explains the family**: for both J the prediction is within a factor 1.5 of the
+    observed norm, collinearity ≥ 0.9 and the sign matches. **Partly**: not that, but both
+    predictions within a factor 3, or one J meets the "explains" conditions. **Does not**:
+    otherwise, including ΔR_J^(strict−F) = 0 (identical round trips) at J = 8 or 10.
+  - Reported, not part of the verdict: θ nodes and weights of the three, the round trip applied to
+    every m_J = 0 basis function, and, as a robustness check, ΔR with exp(−iV dt) averaged over x, y
+    and φ (the C++ potential on the full grid, item 4) at the (Z, r) points with Z < Zana where the
+    averaged V is less than 1 eV above the asymptotic minimum: the range of the predicted ratio over
+    those points.
+- 2026-11-08, after the first run of `angular_matrices.py` (after seeing its results; the verdict
+  rule is unchanged): the validity check first required every helper's θ nodes and weights to equal
+  its run's log table. The fast-math helper's nodes differ from the fast run's at 3 of 15 nodes by
+  1 ulp (weights identical): its machine code is generated at its own link, as the replay
+  helper's. Validity now requires exact tables for the Fortran driver (θ vs the `.pes` header) and
+  the strict helper only; the effect of moving the fast helper's nodes to the run's is estimated
+  (first-order, from the Legendre derivative) and reported. Also added after the results, as
+  reported numbers only: the predicted ratio at every (Z, r) point of the interaction region, by
+  the anisotropy of the averaged exp(−iV dt), and the θ nodes behind each pair's leak.

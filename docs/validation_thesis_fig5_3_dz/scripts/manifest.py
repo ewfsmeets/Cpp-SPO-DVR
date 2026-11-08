@@ -14,7 +14,10 @@ STRICT = RUNS / "thesis_fig5_3_dz_cuda"          # strict-build GPU run (strict_
 EXTRA = [REPO / "build-fast" / "spodvr", REPO / "build-cuda-fast" / "spodvr", REPO / "build-cuda" / "spodvr",
          Path.home() / "work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x",
          Path.home() / "work/mf_somers_phd_thesis.pdf",
-         REPO / "inputs/thesis_fig5_3_dz/input.json", REPO / "inputs/thesis_fig5_3_dz/DVR.inp"]
+         REPO / "inputs/thesis_fig5_3_dz/input.json", REPO / "inputs/thesis_fig5_3_dz/DVR.inp",
+         # the reference executable's objects linked by the angular-matrix driver (2026-11-08)
+         *[Path.home() / f"work/SPO-DVR/procfiles.dir/OBJS.dir/{n}.o" for n in
+           ("transform", "angulargrid", "legendre", "ffts", "fftw_2_scs", "constants", "errortrap", "MPI_wrapper", "x86_hack")]]
 
 
 def sha256(path, chunk=1 << 24):
