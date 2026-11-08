@@ -15,7 +15,11 @@ analysis.
 
 - **DZ PES**: the Dai–Zhang LEPS potential (J. Dai and J. Z. H. Zhang, J. Chem. Phys. 102, 6280
   (1995)); in both codes the module is named `DaiLight` (SystemID `H2Cu111DaiLight`).
-  **Thesis**: M. F. Somers, PhD thesis (Leiden), chapter 5, Figure 5.3.
+  **Thesis**: M. F. Somers, PhD thesis (Leiden, [repository](https://hdl.handle.net/1887/3250648)),
+  chapter 5, Figure 5.3. **Paper**: chapter 5 is published as M. F. Somers, S. M. Kingma,
+  E. Pijper, G. J. Kroes and D. Lemoine, *Six-dimensional quantum dynamics of scattering of
+  (v=0, j=0) H<sub>2</sub> and D<sub>2</sub> from Cu(111): test of two LEPS potential energy surfaces*,
+  Chem. Phys. Lett. 360, 390 (2002), [DOI](https://doi.org/10.1016/S0009-2614%2802%2900869-2).
 - **BK coefficients c(t)**: the Balint-Kurti projection of the wave packet on the asymptotic channels
   (v, j, m<sub>J</sub>, diffraction (n, m)) at the analysis line Z<sub>ana</sub> = 15 a₀, every 20 a.u.;
   their time-to-energy transform gives the S-matrix. 19008 coefficients per step, 875 steps.
@@ -316,6 +320,10 @@ from a script reading the raw files ([scripts/](scripts/), `make_all.sh`):
   [scripts/review_log.md](scripts/review_log.md).
 
 ## Comparison with the thesis
+
+Chapter 5 of the thesis is published as Somers et al., Chem. Phys. Lett. (2002); the full
+reference is in the *Terms* box at the top. The curve below was taken from the thesis PDF; the
+paper's figure was not compared.
 
 The x-axis of thesis Fig. 5.3 is the normal incidence energy, the runs' E<sub>coll</sub>. The dotted
 curve was taken from the PDF's vector drawing: 74 dots, axes calibrated on 108 x and 24 y tick
