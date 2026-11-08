@@ -15,7 +15,29 @@ A modern C++20 rewrite of the Fortran SPO-DVR code: six-dimensional quantum wave
 of a diatomic molecule scattering from a surface (coordinates Z, r, x, y, θ, φ). It uses
 split-operator propagation, FFT grids in Z, r, x and y, and a Gauss-Legendre/FFT DVR in θ and φ.
 
-Status:
+## About this project
+
+This project is a full reimplementation of the original SPO-DVR Fortran 90 code, written by
+Prof. Dr. Mark F. Somers during his PhD at Leiden University:
+
+- M. F. Somers, *Six-Dimensional Quantum Dynamics of Dissociative Chemisorption of Hydrogen on
+  Metal Surfaces*, PhD thesis, Leiden University (2004),
+  [repository](https://scholarlypublications.universiteitleiden.nl/handle/1887/3250648).
+- G. J. Kroes and M. F. Somers, *Six-dimensional dynamics of dissociative chemisorption of H₂ on
+  metal surfaces*, J. Theor. Comput. Chem. 4, 493 (2005),
+  [DOI](https://www.worldscientific.com/doi/abs/10.1142/S0219633605001647).
+
+I am very grateful that I could use the original Fortran code during my own PhD. Making it faster
+and porting it to CUDA has been a years-long endeavour: faster calculations open the door to more
+avenues of approach with quantum dynamics calculations.
+
+Over the years SPO-DVR has been my go-to code whenever I wanted to apply newly learned programming
+skills to highly complex, performance-critical code. I tinkered with and refactored small parts of
+it by hand, but it took Claude to pull all the ideas together into a working program and to
+benchmark its accuracy. Without Claude this would have been too big for a hobby project.
+
+## Status
+
 - Implemented and checked against the Fortran code: set-up, the hard wall test potential, the
   gas-phase rovibrational states, the wave-packet propagation, the on-the-fly asymptotic
   analysis (S-matrix and state-to-state probabilities) and the fine analysis of the BK time series
