@@ -18,7 +18,7 @@ split-operator propagation, FFT grids in Z, r, x and y, and a Gauss-Legendre/FFT
 ## About this project
 
 This project is a full reimplementation of the original SPO-DVR Fortran 90 code, written by
-Prof. Dr. Mark F. Somers during his PhD at Leiden University:
+Dr. Mark F. Somers during his PhD at Leiden University:
 
 - M. F. Somers, *Six-Dimensional Quantum Dynamics of Dissociative Chemisorption of Hydrogen on
   Metal Surfaces*, PhD thesis, Leiden University (2004),
