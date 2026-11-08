@@ -136,6 +136,75 @@ def analysis_setup_correction(M):
     return s * (factor(kz_f, kz0_f, a_f) / factor(kz_c, kz0_c, a_c))
 
 
+def decompose(A, B_):
+    """Decomposition of the difference of two replayed S-matrices per energy: S_a = S_b (1 + alpha + i beta)
+    on average (weighted by |S_b|^2): alpha = relative amplitude, beta = phase; the predicted
+    dSum P = 2 alpha Sum P against the measured one; and the per-channel residual."""
+    sa = A["Re_S"].to_numpy() + 1j * A["Im_S"].to_numpy()
+    sb = B_["Re_S"].to_numpy() + 1j * B_["Im_S"].to_numpy()
+    rows = []
+    for e in np.unique(B_["E_coll"].to_numpy()):
+        m = B_["E_coll"].to_numpy() == e
+        z = np.sum(np.conj(sb[m]) * (sa[m] - sb[m])) / np.sum(np.abs(sb[m]) ** 2)
+        dsum = float(np.sum(A["P"].to_numpy()[m] - B_["P"].to_numpy()[m]))
+        psum = float(np.sum(B_["P"].to_numpy()[m]))
+        rows.append({"E": float(e), "alpha": float(z.real), "beta": float(z.imag), "dsumP": dsum,
+                     "predicted_2alpha_sumP": 2 * float(z.real) * psum})
+    # per-channel residual after removing the uniform amplitude-and-phase factor of its energy:
+    # a logic error that touches only some channels would show here
+    zE = {r["E"]: complex(r["alpha"], r["beta"]) for r in rows}
+    zz = np.array([zE[float(e)] for e in B_["E_coll"].to_numpy()])
+    resid = np.abs((sa - sb) - zz * sb)
+    selr = np.abs(sb) ** 2 > 1e-8
+    rel = resid[selr] / np.abs(sb[selr])
+    kmax = int(np.argmax(rel))
+    idx = np.flatnonzero(selr)[kmax]
+    # where the non-uniform part sits: the specular rotationally inelastic family
+    fam = ((B_["n"] == 0) & (B_["m"] == 0) & (B_["mJ"] == 0) & (B_["j"] > 0) & (B_["v"] == 0)).to_numpy()
+    tot2 = float(np.sum(np.abs(sa - sb) ** 2))
+    res2 = float(np.sum(resid ** 2))
+    fam_j = {}
+    for jj in sorted(set(B_["j"].to_numpy()[fam].tolist())):
+        mj = fam & (B_["j"].to_numpy() == jj)
+        fam_j[int(jj)] = {"rel_residual_normweighted": float(np.sqrt(np.sum(resid[mj] ** 2) / np.sum(np.abs(sb[mj]) ** 2))),
+                          "rel_residual_max_where_P_gt_1e-8": float(np.max(np.where(np.abs(sb[mj]) ** 2 > 1e-8,
+                                                                                    resid[mj] / np.abs(sb[mj]), 0)))}
+    per_el = {}
+    for jj in sorted(set(B_["j"].to_numpy()[fam].tolist())):
+        mj = fam & (B_["j"].to_numpy() == jj) & (np.abs(sb) > 0)
+        r_el = np.abs(sa[mj] - sb[mj]) / np.abs(sb[mj])
+        per_el[int(jj)] = {"median": float(np.median(r_el)), "max": float(r_el.max())}
+    bins = {}
+    P_ = np.abs(sb) ** 2
+    for lo, hi, name in ((1e-2, 1.0, "P>1e-2"), (1e-4, 1e-2, "1e-4<P<1e-2"), (1e-6, 1e-4, "1e-6<P<1e-4"), (1e-8, 1e-6, "1e-8<P<1e-6")):
+        mb = (P_ > lo) & (P_ <= hi)
+        rb = resid[mb] / np.abs(sb[mb])
+        bins[name] = {"n": int(mb.sum()), "p95": float(np.percentile(rb, 95)), "max": float(rb.max()),
+                      "n_above_1e-10": int(np.sum(rb > 1e-10))}
+    family = {"per_element_relative": per_el, "residual_by_size": bins,
+              "residual_norm2_fraction_of_total": float(res2 / tot2),
+              "residual_norm_fraction_of_total_dS": float(np.sqrt(res2 / tot2)),
+              "family_fraction_of_residual_norm2": float(np.sum(resid[fam] ** 2) / res2),
+              "residual_rel_normweighted_outside_family": float(np.sqrt(np.sum(resid[~fam] ** 2) / np.sum(np.abs(sb[~fam]) ** 2))),
+              "per_J": fam_j}
+    al = np.array([r["alpha"] for r in rows]); be = np.array([r["beta"] for r in rows])
+    kappa_corr_inv_sqrtE = float(np.corrcoef(al, 1 / np.sqrt(np.array([r["E"] for r in rows])))[0, 1])
+    ratio = np.array([r["dsumP"] / r["predicted_2alpha_sumP"] for r in rows])
+    big = np.abs(sb) ** 2 > 1e-2
+    return {"rel_dS_large_channels_median": float(np.median(np.abs(sa[big] - sb[big]) / np.abs(sb[big]))),
+           "rel_dS_large_channels_max": float(np.max(np.abs(sa[big] - sb[big]) / np.abs(sb[big]))),
+           "n_large_channels": int(big.sum()), "kappa_corr_inv_sqrtE": kappa_corr_inv_sqrtE, "max_P_single_channel": float(np.max(np.abs(sb) ** 2)),
+           "specular_inelastic_family": family, "residual_rel_median": float(np.median(rel)), "residual_rel_p95": float(np.percentile(rel, 95)),
+           "residual_rel_max": float(rel.max()), "residual_abs_max": float(resid.max()),
+           "residual_n": int(selr.sum()),
+           "residual_argmax": {k_: (float(B_[k_].iloc[idx]) if k_ == "E_coll" else int(B_[k_].iloc[idx]))
+                               for k_ in KEYS} | {"abs_S": float(abs(sb[idx]))},
+           "alpha_min": float(al.min()), "alpha_max": float(al.max()), "alpha_median": float(np.median(al)),
+           "beta_abs_max": float(np.abs(be).max()), "beta_median": float(np.median(be)),
+           "dsumP_over_2alpha_sumP_min": float(ratio.min()), "dsumP_over_2alpha_sumP_max": float(ratio.max()),
+           "by_energy": rows}
+
+
 def main():
     res = {"helper_builds_identical": {
         "fortran": files_identical(REPLAY / "build-fast" / "fortran", REPLAY / "build-cuda-fast" / "fortran"),
@@ -164,77 +233,9 @@ def main():
         po[f"{a[7:]}-{b[7:]}"] = {"s_matrix": s_diff(sm[a], sm[b]), "summary": summary_diff(su[a], su[b]),
                                   "rovib": rovib_diff(rv[a], rv[b])}
     res["propagation_only"] = po
-    # decomposition of the propagation-only difference per energy: S_a = S_F (1 + alpha + i beta) on
-    # average (weighted by |S_F|^2): alpha = relative amplitude, beta = phase; and the predicted
-    # dSum P = 2 alpha Sum P against the measured one
-    dec = {}
-    for a, bref in (("cpu", "fortran"), ("gpu", "fortran"), ("gpu", "cpu")):
-        A, B_ = sm[f"replay_{a}"], sm[f"replay_{bref}"]
-        sa = A["Re_S"].to_numpy() + 1j * A["Im_S"].to_numpy()
-        sb = B_["Re_S"].to_numpy() + 1j * B_["Im_S"].to_numpy()
-        rows = []
-        for e in np.unique(B_["E_coll"].to_numpy()):
-            m = B_["E_coll"].to_numpy() == e
-            z = np.sum(np.conj(sb[m]) * (sa[m] - sb[m])) / np.sum(np.abs(sb[m]) ** 2)
-            dsum = float(np.sum(A["P"].to_numpy()[m] - B_["P"].to_numpy()[m]))
-            psum = float(np.sum(B_["P"].to_numpy()[m]))
-            rows.append({"E": float(e), "alpha": float(z.real), "beta": float(z.imag), "dsumP": dsum,
-                         "predicted_2alpha_sumP": 2 * float(z.real) * psum})
-        # per-channel residual after removing the uniform amplitude-and-phase factor of its energy:
-        # a logic error that touches only some channels would show here
-        zE = {r["E"]: complex(r["alpha"], r["beta"]) for r in rows}
-        zz = np.array([zE[float(e)] for e in B_["E_coll"].to_numpy()])
-        resid = np.abs((sa - sb) - zz * sb)
-        selr = np.abs(sb) ** 2 > 1e-8
-        rel = resid[selr] / np.abs(sb[selr])
-        kmax = int(np.argmax(rel))
-        idx = np.flatnonzero(selr)[kmax]
-        # where the non-uniform part sits: the specular rotationally inelastic family
-        fam = ((B_["n"] == 0) & (B_["m"] == 0) & (B_["mJ"] == 0) & (B_["j"] > 0) & (B_["v"] == 0)).to_numpy()
-        tot2 = float(np.sum(np.abs(sa - sb) ** 2))
-        res2 = float(np.sum(resid ** 2))
-        fam_j = {}
-        for jj in sorted(set(B_["j"].to_numpy()[fam].tolist())):
-            mj = fam & (B_["j"].to_numpy() == jj)
-            fam_j[int(jj)] = {"rel_residual_normweighted": float(np.sqrt(np.sum(resid[mj] ** 2) / np.sum(np.abs(sb[mj]) ** 2))),
-                              "rel_residual_max_where_P_gt_1e-8": float(np.max(np.where(np.abs(sb[mj]) ** 2 > 1e-8,
-                                                                                        resid[mj] / np.abs(sb[mj]), 0)))}
-        per_el = {}
-        for jj in sorted(set(B_["j"].to_numpy()[fam].tolist())):
-            mj = fam & (B_["j"].to_numpy() == jj) & (np.abs(sb) > 0)
-            r_el = np.abs(sa[mj] - sb[mj]) / np.abs(sb[mj])
-            per_el[int(jj)] = {"median": float(np.median(r_el)), "max": float(r_el.max())}
-        bins = {}
-        P_ = np.abs(sb) ** 2
-        for lo, hi, name in ((1e-2, 1.0, "P>1e-2"), (1e-4, 1e-2, "1e-4<P<1e-2"), (1e-6, 1e-4, "1e-6<P<1e-4"), (1e-8, 1e-6, "1e-8<P<1e-6")):
-            mb = (P_ > lo) & (P_ <= hi)
-            rb = resid[mb] / np.abs(sb[mb])
-            bins[name] = {"n": int(mb.sum()), "p95": float(np.percentile(rb, 95)), "max": float(rb.max()),
-                          "n_above_1e-10": int(np.sum(rb > 1e-10))}
-        family = {"per_element_relative": per_el, "residual_by_size": bins,
-                  "residual_norm2_fraction_of_total": float(res2 / tot2),
-                  "residual_norm_fraction_of_total_dS": float(np.sqrt(res2 / tot2)),
-                  "family_fraction_of_residual_norm2": float(np.sum(resid[fam] ** 2) / res2),
-                  "residual_rel_normweighted_outside_family": float(np.sqrt(np.sum(resid[~fam] ** 2) / np.sum(np.abs(sb[~fam]) ** 2))),
-                  "per_J": fam_j}
-        al = np.array([r["alpha"] for r in rows]); be = np.array([r["beta"] for r in rows])
-        kappa_corr_inv_sqrtE = float(np.corrcoef(al, 1 / np.sqrt(np.array([r["E"] for r in rows])))[0, 1])
-        ratio = np.array([r["dsumP"] / r["predicted_2alpha_sumP"] for r in rows])
-        big = np.abs(sb) ** 2 > 1e-2
-        Es = np.array([r["E"] for r in rows])
-        corr = float(np.corrcoef(al, 1 / np.sqrt(Es))[0, 1]) if False else None
-        dec[f"{a}-{bref}"] = {"rel_dS_large_channels_median": float(np.median(np.abs(sa[big] - sb[big]) / np.abs(sb[big]))),
-                              "rel_dS_large_channels_max": float(np.max(np.abs(sa[big] - sb[big]) / np.abs(sb[big]))),
-                              "n_large_channels": int(big.sum()), "kappa_corr_inv_sqrtE": kappa_corr_inv_sqrtE, "max_P_single_channel": float(np.max(np.abs(sb) ** 2)),
-                              "specular_inelastic_family": family, "residual_rel_median": float(np.median(rel)), "residual_rel_p95": float(np.percentile(rel, 95)),
-                               "residual_rel_max": float(rel.max()), "residual_abs_max": float(resid.max()),
-                               "residual_n": int(selr.sum()),
-                               "residual_argmax": {k_: (float(B_[k_].iloc[idx]) if k_ == "E_coll" else int(B_[k_].iloc[idx]))
-                                                   for k_ in KEYS} | {"abs_S": float(abs(sb[idx]))},
-                               "alpha_min": float(al.min()), "alpha_max": float(al.max()), "alpha_median": float(np.median(al)),
-                               "beta_abs_max": float(np.abs(be).max()), "beta_median": float(np.median(be)),
-                               "dsumP_over_2alpha_sumP_min": float(ratio.min()), "dsumP_over_2alpha_sumP_max": float(ratio.max()),
-                               "by_energy": rows}
+    # decomposition of the propagation-only difference (see decompose)
+    dec = {f"{a}-{bref}": decompose(sm[f"replay_{a}"], sm[f"replay_{bref}"])
+           for a, bref in (("cpu", "fortran"), ("gpu", "fortran"), ("gpu", "cpu"))}
     res["amplitude_decomposition"] = dec
     # overall norm-weighted relative difference of the S-matrices, every pair
     rel_all = {}

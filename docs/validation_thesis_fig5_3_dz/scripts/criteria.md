@@ -146,3 +146,35 @@ logic difference; above the fast-math/FMA level it may motivate a strict-build r
   unweighted linear fit of the amplitude part gives R² 0.66, the |c|²-weighted fit a different
   slope. Reported instead: the window quartile medians of the amplitude part, both fits, and the
   absence of a jump at the fixing step (a discrete decision would show as one).
+- 2026-11-08, strict-build GPU run (the D2 proposal; `strict_gpu.py`). Written while the run was
+  still propagating, before any of its results were read. Same input, `build-cuda`
+  (`SPODVR_FAST_MATH` OFF: no `-ffast-math` on the host, no FMA in the kernels), into
+  `runs/thesis_fig5_3_dz_cuda/`. The question is where the uniform amplitude part κ and the
+  specular rotationally inelastic excess come from (README, composition of the difference).
+  Estimators are those of items 13c and 18b, with the strict run in the GPU's place; replays use
+  the same `build-fast` helper as before, so replay vs replay differences are propagation only.
+  1. Validity: the run finished (exit status 0, 7000 steps), the binary is built from the same
+     source as the fast runs, the analysis line is fixed at the same step (t = 2220 a.u.).
+  2. κ, the median over energies of the uniform amplitude part of replay(strict) − replay(fort.21)
+     (fast runs: CPU 6.0e-12, GPU 6.6e-12). **Fast math is the cause** if |κ| ≤ 1.5e-12 (a drop by
+     a factor 4, to within 3× the GPU−CPU spread of the fast runs); **not fast math** if
+     |κ| ≥ 4.5e-12 (≥ 75% of the CPU value); in between: partly. The BK-level amplitude part
+     (window median, fast CPU 6.7e-12) is reported as the second estimator.
+  3. Specular rotationally inelastic family, the j = 10 norm-weighted residual after the uniform
+     factor (fast runs 8.4e-9): **fast math involved** if ≤ 8.4e-10 (a factor 10); **not fast
+     math** if ≥ 4.2e-9 (≥ 50%); in between: partly.
+  4. Strict vs fast GPU, i.e. the size of the fast-math effect: predicted ≈ 1e-12 relative (the
+     documented fast-math level), as the norm-weighted relative S difference.
+  5. End to end, the criteria of items 13a and 14: averages and P_reaction within half a printed
+     unit of the Fortran (P_reaction floor 1e-11); |ΔP_reaction| > 1e-6 would be investigated.
+  6. Replay self-check with a helper linked against `build-cuda`: predicted **bitwise** (without
+     fast math the rounding does not depend on inlining). If not, the offset is reported.
+- 2026-11-08, after the first run of `strict_gpu.py` (after seeing its results): the validity check
+  "same input" first required the INPUT echo of the strict run's log to equal the fast GPU run's
+  verbatim. The echo also prints derived values at full precision (E_trans, α, k_Z, θ nodes and
+  weights, the PES symmetry self-check), which differ by fast-math rounding (largest 1.3e-13, a θ
+  quadrature weight). The input identity now rests on `input.json` (unchanged since before the fast
+  runs, clean working tree, named by both commands) and on an echo whose text agrees apart from
+  numbers; the numeric differences are reported. The replay of the strict BK file with the
+  `build-fast` helper goes through a header copy (`strict_bk_copy.py`): the reader's exact check of
+  the stored restart parameters rejects the strict file over one 1-ulp parameter.

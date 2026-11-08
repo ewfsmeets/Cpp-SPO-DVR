@@ -19,28 +19,33 @@ from parse_logs import averages_out, cpp_surface_fixed, fortran_surface_fixed
 COLS = ["t", "norm", "Z", "r", "rest_norm"]
 
 
+def averages_vs_fortran(f, rows):
+    """C++ averages.dat rows against the Fortran averages.out rows, each value to half a printed unit."""
+    per_col = {}
+    worst = {"ratio": -1}
+    n_out = 0
+    for frow, crow in zip(f, rows):
+        for j, col in enumerate(COLS):
+            if col == "t":
+                continue      # the time stamps are the same by construction; not counted
+            ft, c = frow[j], float(crow[j])
+            tol = printed_half_unit(ft)
+            ratio = abs(c - parse_fortran_real(ft)) / tol
+            per_col.setdefault(col, []).append(ratio)
+            if ratio > worst["ratio"]:
+                worst = {"ratio": ratio, "t": float(crow[0]), "column": col, "fortran": ft, "cpp": c}
+            n_out += ratio > 1
+    return {"n_values": len(f) * (len(COLS) - 1), "n_times": len(f), "n_outside": int(n_out), "worst": worst,
+            "worst_ratio_by_column": {c: max(v) for c, v in per_col.items()}}
+
+
 def averages():
     f = averages_out(RUN_DIRS["fortran"] / "averages.out")
     cpp = {k: [l.split() for l in (RUN_DIRS[k] / "averages.dat").read_text().splitlines() if not l.startswith("#")]
            for k in ("cpu", "gpu")}
     res = {"n_rows": {"fortran": len(f), "cpu": len(cpp["cpu"]), "gpu": len(cpp["gpu"])}}
     for k in ("cpu", "gpu"):
-        per_col = {}
-        worst = {"ratio": -1}
-        n_out = 0
-        for frow, crow in zip(f, cpp[k]):
-            for j, col in enumerate(COLS):
-                if col == "t":
-                    continue      # the time stamps are the same by construction; not counted
-                ft, c = frow[j], float(crow[j])
-                tol = printed_half_unit(ft)
-                ratio = abs(c - parse_fortran_real(ft)) / tol
-                per_col.setdefault(col, []).append(ratio)
-                if ratio > worst["ratio"]:
-                    worst = {"ratio": ratio, "t": float(crow[0]), "column": col, "fortran": ft, "cpp": c}
-                n_out += ratio > 1
-        res[f"{k}_vs_fortran"] = {"n_values": len(f) * (len(COLS) - 1), "n_times": len(f), "n_outside": int(n_out), "worst": worst,
-                                  "worst_ratio_by_column": {c: max(v) for c, v in per_col.items()}}
+        res[f"{k}_vs_fortran"] = averages_vs_fortran(f, cpp[k])
     a = np.array([[float(x) for x in r] for r in cpp["gpu"]])
     b = np.array([[float(x) for x in r] for r in cpp["cpu"]])
     gc = {}
@@ -101,7 +106,8 @@ def fit_growth(t, e, t_min):
     return {"exponent": float(b), "prefactor": float(np.exp(a)), "t_min": float(t_min), "n": int(sel.sum())}
 
 
-def bk_compare(bk, t_fix):
+def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv"):
+    """tsv_path: where the Figure 3 time series go (None: not written)."""
     labels = bk["labels"]
     ns = bk["nstata"]
     t = bk["times"]
@@ -231,7 +237,8 @@ def bk_compare(bk, t_fix):
              "\t".join(cols)]
     for i in range(len(t)):
         lines.append("\t".join(f"{series[c][i]:.6e}" for c in cols))
-    (DATA / "bk_error_vs_time.tsv").write_text("\n".join(lines) + "\n")
+    if tsv_path is not None:
+        tsv_path.write_text("\n".join(lines) + "\n")
     return res
 
 

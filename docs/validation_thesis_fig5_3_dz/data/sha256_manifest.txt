@@ -1,5 +1,5 @@
 # sha256 of the raw files behind this report (scripts/manifest.py). Sizes in bytes.
-# data/logs/*.log.gz are `gzip -9 -n` of the three raw logs listed here (sha256 of the uncompressed log).
+# data/logs/*.log.gz are `gzip -9 -n` of the raw logs listed here (sha256 of the uncompressed log).
 577007d2bef0f329bcf09a7bb99b043a71b616fb2ee8c37221cae12aa409a95a           921  runs/thesis_fig5_3_dz_cpu_fast/analysis.json
 8e73230e38e8c626858af00691a8e0cfa753b0b4645699a7741a013cc56b221d          3054  runs/thesis_fig5_3_dz_cpu_fast/asymptotic_potential.dat
 d3a6f5dcaf11bd91b9b00eb0b0645b737a0cbba97528b3daeeba3522d5f816cc          4236  runs/thesis_fig5_3_dz_cpu_fast/averages.dat
@@ -27,9 +27,20 @@ a05511ac3f366ec5bebf76a7a331400060259f9a59542d4cd4e3991a76a9e805          3239  
 6686b952cbdff46d75f89d907ee385d0af6e6137770574240811e9095f43b87c      70818771  runs/thesis_fig5_3_dz_fortran/fort.25
 5f15acb846201dd8f18bcca7373ecda2531937b9b6c12391d6a15d28830d5dc2    6414551076  runs/thesis_fig5_3_dz_fortran/fort.9
 3a60f6942f361f87293f0591b94777b64d91065a62f1bdd0ce1107cdedce9e78         17375  runs/thesis_fig5_3_dz_fortran/fort.99
+577007d2bef0f329bcf09a7bb99b043a71b616fb2ee8c37221cae12aa409a95a           921  runs/thesis_fig5_3_dz_cuda/analysis.json
+652e793af79a8ca90c34476ad2ea190d37ca662767a35cf90c824798a8bb7475          3054  runs/thesis_fig5_3_dz_cuda/asymptotic_potential.dat
+36c34a2639e4f392c7b63e7e2a52761796e6426676ea050c628952ab48ff2c19          4236  runs/thesis_fig5_3_dz_cuda/averages.dat
+32cddf9fa134187fa4b7f683ce5422c445a17f0dcab3d7cb7656b98a8de5fa78     266462044  runs/thesis_fig5_3_dz_cuda/bk_coefficients.bin
+bd9a8209d40f17eacb9531061bd1736e622c846de2d8a40d329db32287f3975d    6414500785  runs/thesis_fig5_3_dz_cuda/checkpoint.bin
+a70662dec1f083950ad400273161f06b3e63dcecaced3eb7c4f138978683e764       1123920  runs/thesis_fig5_3_dz_cuda/gas_phase_states.dat
+cbac862699026e51c436f6f5a7e77c8452a0167b970c202f86cecee7b698bd44       9665246  runs/thesis_fig5_3_dz_cuda/probabilities_diffraction.tsv
+2fe25a4f671b42f6b7fc4bc1ad770a68f6834250e09528d6b5807baada00a13d        773848  runs/thesis_fig5_3_dz_cuda/probabilities_rovib.tsv
+8fd4eaa71c52af485efb1494bf1e1f8e38af83b88cde7d4b53b1da92d9770d5f      97893714  runs/thesis_fig5_3_dz_cuda/s_matrix.tsv
+3d3003706ce01d79f57fbef357e51e0ca3cabd58284a8c8d7002fcf72d8500c9         26184  runs/thesis_fig5_3_dz_cuda/scattering_summary.tsv
 849c85a29bd8b138f10ad54648e8891360ebcafd295fa2c2c8b3ee49e79b6817        203272  runs/thesis_fig5_3_dz_cpu_fast.log
 2d5337aeafe3087a43484b6b635f6fa13217c1f90e789c032fc3554d9dd90dde        203840  runs/thesis_fig5_3_dz_cuda_fast.log
 25c355e287a3ff814866929ef16af22aa886e64dd2e626ba3256f60d8a90a921       2796301  runs/thesis_fig5_3_dz_fortran.log
+80652a2d463184d46f9ce8dfaea47ec7f1e21c9f248a1d85f01a33870a1fa0e0        203972  runs/thesis_fig5_3_dz_cuda.log
 fd6e936ca7c39d4752c5dc63e63d877049deb10748ba8bc4f32beff7edff902c           924  runs/thesis_fig5_3_dz_oa_cpu/fine_analysis/analysis.json
 19fc2c5f94bd431cdfceacff8d5e83ca3c005215aebfc3bd167fc921a9faa63b           486  runs/thesis_fig5_3_dz_oa_cpu/fine_analysis/grid.json
 230be351ebdfa78276d71688412a321179f9773071164b12e722d162967240a3       9491102  runs/thesis_fig5_3_dz_oa_cpu/fine_analysis/probabilities_diffraction.tsv
@@ -62,6 +73,7 @@ eba173a05ee400d076066bb019d4202f2e38c5ab0d5982dec7daa6bd12c58a37        752938  
 ca1246215db983fabf3f4a832add51a52ca7a339c5ecdd2414984209053b0a55         25491  runs/thesis_fig5_3_dz_oa_fortran/fine_analysis/spectrum/scattering_summary.tsv
 7b214d3a65de1f9bc77dc7fed877174e57fde1585f2558e271449f1438cec435        868344  build-fast/spodvr
 7f25856299470c54ed032a659237fdead55a2fd8e0f1b51a7cb3ebf22b8809c2       1202616  build-cuda-fast/spodvr
+9c9f38f360639914d4f28c7a86e5750a71aaf2e6a3a9adcef111a4ac80477a65       1208432  build-cuda/spodvr
 b3e4442d501cb8f28112bc00136c5b966b9eb63aa135b0cdec776c4c5ba0e800       2070528  ~/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x
 fb7435edfb33d4a6f0fee3d80b865e8c18715620179119daae43d7769966bc67       2663346  ~/work/mf_somers_phd_thesis.pdf
 a73eb5daf068631d089df6cd1ce5cb55b92caf3a6deafb61e602fcc49c7247ab          1063  inputs/thesis_fig5_3_dz/input.json

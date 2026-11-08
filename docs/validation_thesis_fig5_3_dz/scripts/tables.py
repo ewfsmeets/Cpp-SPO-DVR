@@ -36,6 +36,71 @@ def verdict_counts(item):
     return ", ".join(f"{k} {n}" for k, n in v.items())
 
 
+INPUT_NAME = "inputs/thesis_fig5_3_dz/input.json"
+
+
+def strict_tables():
+    """Strict-build GPU run (criteria.md, 2026-11-08): validity and end to end; the composition of
+    the propagation-only difference with the strict run beside the fast runs."""
+    sg = R["strict_gpu"]
+    v, rp, bk, e2e, vd = sg["validity"], sg["replay"], sg["bk"], sg["end_to_end"], sg["verdicts"]
+    cm = v["build"]["cmake"]
+    sv = v["setup_files_vs_fast_gpu"]
+    av = sg["averages"]["strict_vs_fortran"]
+    ie, bh = v["input_echo_vs_fast_gpu"], v["bk_header_vs_fast_gpu"]
+    write("strict_validity", table(["Check", "Result"], [
+        ("Run", f"exit status {v['script']['exit_code']}, {v['program_timing']['steps']} steps, wall "
+                f"{sg['timing']['wall_s'] / 3600:.2f} h ({sg['timing']['strict_over_fast']:.2f}× the fast GPU run)"),
+        ("Build", f"`build-cuda/spodvr` ({v['build']['spodvr_mtime'][:16].replace('T', ' ')}), FAST_MATH {cm.get('SPODVR_FAST_MATH')}, "
+                  f"ARCH {cm.get('SPODVR_ARCH')}; source commits after the build: {v['source_commits_after_build'] or 'none'}"),
+        ("Input", f"`{INPUT_NAME}` unchanged since before the fast runs and clean: "
+                  f"{'yes' if v['input_unchanged_since_fast_runs'] and v['input_working_tree_clean'] else '**no**'}"),
+        ("Input echo vs the fast GPU run", f"{ie['n_lines']} lines: {ie['identical']} identical, "
+                                           f"{ie['numbers_within_1e-13'] + len(ie['numbers_above_1e-13'])} with derived values differing "
+                                           f"(≤ {fmt(ie['numbers_max_rel'])} rel., {len(ie['numbers_above_1e-13'])} above 1e-13), "
+                                           f"{len(ie['diagnostic'])} PES self-check diagnostics, {len(ie['text_differing'])} text differences"),
+        ("BK file header vs the fast GPU run", f"{bh['n_parameters'] - len(bh['differing_parameters'])}/{bh['n_parameters']} restart "
+                                               f"parameters identical; " + "; ".join(f"{k}: {fmt(x['rel'])} rel." for k, x in
+                                                                                     bh["differing_parameters"].items())),
+        ("Analysis line", f"fixed at Z = {v['analysis_line']['Z']:g} a₀, t = {v['analysis_line']['t']:g} a.u."),
+        ("V_asy and gas-phase states vs the fast GPU run", f"max \\|Δ\\| / max \\|value\\|: "
+                                                          f"{fmt(sv['asymptotic_potential.dat']['max_abs_over_max_value'])} and "
+                                                          f"{fmt(sv['gas_phase_states.dat']['max_abs_over_max_value'])}"),
+        ("Averages vs Fortran (item 13a rule)", f"{av['n_values'] - av['n_outside']}/{av['n_values']} within ½ printed unit, "
+                                                f"worst {av['worst']['ratio']:.2f} of it"),
+        ("P_reaction vs Fortran printed (item 14 rule)", f"{e2e['n_within_half_unit_or_floor']}/{e2e['n']} within ½ unit (floor 1e-11), "
+                                                         f"{e2e['n_explained']} explained, {e2e['n_outside_unexplained']} outside"),
+        ("Replay self-check, helper linked against `build-cuda`", "bitwise" if sg["self_check"]["bitwise"]
+         else f"not bitwise, \\|ΔS\\| ≤ {fmt(sg['self_check']['S_abs_max'])}")]))
+    d = {k: rp[k]["decomposition"] for k in ("cpu_fast-fortran", "gpu_fast-fortran", "strict-fortran", "strict-gpu_fast")}
+    po = R["item18b"]["propagation_only"]
+    rel = R["item18b"]["S_relative_normweighted"]
+    def row(label, f, crit=""):
+        return (label, *(f(k) for k in d), crit)
+    rows = [
+        row("κ, uniform amplitude part (median over E)", lambda k: fmt(d[k]["kappa_median"]),
+            "fast math if \\|κ\\| ≤ 1.5e-12, not if ≥ 4.5e-12"),
+        row("κ range over E", lambda k: f"{fmt(d[k]['kappa_min'])} … {fmt(d[k]['kappa_max'])}"),
+        row("BK amplitude part (window median)", lambda k: fmt(bk[{"cpu_fast-fortran": "cpu_fast-fortran", "gpu_fast-fortran": "gpu_fast-fortran",
+                                                                  "strict-fortran": "strict-fortran", "strict-gpu_fast": "strict-gpu_fast"}[k]]
+                                                               ["amplitude_window_median"]), "second estimator"),
+        row("residual outside the family (norm-weighted)", lambda k: fmt(d[k]["residual_rel_normweighted_outside_family"])),
+        row("family j = 10, residual (norm-weighted)", lambda k: fmt(d[k]["family_rel_normweighted_by_J"]["10"]),
+            "fast math involved if ≤ 8.4e-10, not if ≥ 4.2e-9"),
+        row("family j = 10, per element (max)", lambda k: fmt(d[k]["family_per_element_max_by_J"]["10"])),
+        row("family j = 8, per element (max)", lambda k: fmt(d[k]["family_per_element_max_by_J"]["8"])),
+        row("S, norm-weighted relative difference", lambda k: fmt(rel["cpu-fortran"] if k == "cpu_fast-fortran" else rel["gpu-fortran"]
+                                                                  if k == "gpu_fast-fortran" else rp[k]["S_relative_normweighted"]),
+            "strict − fast predicted ≈ 1e-12"),
+        row("\\|ΔS\\| max", lambda k: fmt(po["cpu-fortran"]["s_matrix"]["S_abs"]["max"] if k == "cpu_fast-fortran" else
+                                              po["gpu-fortran"]["s_matrix"]["S_abs"]["max"] if k == "gpu_fast-fortran" else rp[k]["S_abs_max"])),
+        row("\\|ΔP_reaction\\| max", lambda k: fmt(po["cpu-fortran"]["summary"]["P_reaction"]["max"] if k == "cpu_fast-fortran" else
+                                                      po["gpu-fortran"]["summary"]["P_reaction"]["max"] if k == "gpu_fast-fortran"
+                                                      else rp[k]["P_reaction"]["max"]))]
+    write("strict_composition", table(["Propagation only (replay vs replay, relative to \\|S\\|)", "C++ CPU fast − F", "C++ GPU fast − F",
+                                       "C++ GPU strict − F", "GPU strict − GPU fast", "Criterion (2026-11-08)"], rows))
+
+
 def main():
     s, i4, i13, i14 = R["setup"], R["item04"], R["item13"], R["item14_16"]
     i13p, i17, i18a, i18b, i19 = R["item13_psi"], R["item17"], R["item18a"], R["item18b"], R["item19"]
@@ -357,6 +422,8 @@ def main():
         rows.append((a[0], f"`{a[1]}`", f"{float(a[4]):.10e}", f"{float(a[5]):.10e}", b_[4], b_[5], a[8]))
     write("appendix_p_reaction", table(["E (eV)", "Fortran (printed)", "C++ CPU", "C++ GPU", "\\|CPU − F\\| (replay, full)",
                                         "\\|GPU − F\\| (replay, full)", "\\|GPU − CPU\\| (full)"], rows))
+    if "strict_gpu" in R:
+        strict_tables()
     print("tables written:", len(list(TABLES.glob("*.md"))))
 
 

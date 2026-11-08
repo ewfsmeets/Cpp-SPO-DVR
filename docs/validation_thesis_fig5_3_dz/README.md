@@ -1,6 +1,6 @@
 # Fortran vs C++ vs CUDA: three-way validation on thesis Figure 5.3 (DZ PES)
 
-2026-11-07 · source commit `abc47f0` (unchanged to `e0c231b`) · input
+2026-11-07, strict GPU run added 2026-11-08 · source commit `abc47f0` (unchanged to `e0c231b`) · input
 [`inputs/thesis_fig5_3_dz/`](../../inputs/thesis_fig5_3_dz/) · runs on one machine, 8 threads
 
 **What was done.** The same input ran in the original Fortran code and in the C++ port on the CPU
@@ -57,8 +57,11 @@ analysis.
 **For the fast-math builds that ran, the C++ port and its CUDA backend reproduce the Fortran code:
 the reaction probabilities to 1.4e-11 (absolute) and every appreciably populated channel to ~1e-11
 relative. One weakly populated family of channels differs by up to ~1e-6 relative and is not yet
-attributed.** The strict default build did not run on this grid; that was the owner's decision,
-based on earlier strict-vs-fast comparisons (1–2 ulp). A strict GPU run is proposed.
+attributed.** A GPU run of the strict default build, added on 2026-11-08
+([section](#strict-build-gpu-run-added-2026-11-08)), agrees with the Fortran 17× more closely in
+P_reaction (8.2e-13) and 21× in the S-matrix (3.5e-13, norm-weighted). The uniform part of the
+fast-math runs' difference is therefore fast math. The family excess shrinks 8.9× in the strict run
+but remains (single elements up to 1.8e-7).
 
 - **Propagation** (full precision; the same C++ analysis applied to both codes' BK coefficients).
   P_reaction differs by ≤ **1.4e-11** (C++ CPU vs Fortran) and ≤ **1.6e-11** (C++ GPU vs Fortran),
@@ -77,7 +80,8 @@ based on earlier strict-vs-fast comparisons (1–2 ulp). A strict GPU run is pro
   specular rotationally inelastic channels (v = 0, (n, m) = (0, 0), m<sub>J</sub> = 0, j = 2…10) they
   reach 8.4e-9 relative (norm-weighted; single elements up to 1.6e-6), 31–303× the GPU↔CPU value.
   In absolute terms this excess is small (≤ 3.3e-13 in the BK coefficients) and within the absolute
-  criteria; no relative per-channel criterion was set in advance.
+  criteria; no relative per-channel criterion was set in advance. In the strict GPU run κ is gone
+  and the family excess is 8.9× smaller, still 3.8 × 10³ times the residual of all other channels.
 
 **Thesis:** all three runs agree with the digitised curve at **67 of 67** points.
 **Performance, as run:** the GPU run took **1.28 h**, **12.3×** faster than the Fortran (15.80 h);
@@ -183,7 +187,8 @@ that energy:
   (Figure 3). The final specular wave differs almost only in amplitude (7.7e-12 of its 7.8e-12), and
   κ(E) correlates with 1/√E (r = 0.96). That is consistent with an amplitude error accumulated along
   the incoming path, which slow components travel longer. The FFT scale factors of the two codes
-  predict an amplitude ratio of 4.9e-13 by T (`item13_norm_bias.py`), < 10% of it.
+  predict an amplitude ratio of 4.9e-13 by T (`item13_norm_bias.py`), < 10% of it. **The strict
+  GPU run settles it: κ is fast math** (1.5e-13 there; [section](#strict-build-gpu-run-added-2026-11-08)).
 - **The specular rotationally inelastic channels.** The specular component is uniform in (x, y),
   independent of φ and in j = 0. Whatever an angular DVR⇄FBR round trip does to it lands exactly in
   v = 0, (n, m) = (0, 0), m<sub>J</sub> = 0, even j, with |Δc| independent of the channel's size. That is
@@ -191,7 +196,8 @@ that energy:
   before the analysis line is fixed. The CPU and GPU runs share the angular matrices and cannot show
   it. The θ nodes of the two codes differ by up to 6 ulp, and the Fortran evaluates its Legendre
   functions with libmvec. **Not yet attributed**; testable offline with both codes' angular
-  matrices (not done).
+  matrices (not done). The strict GPU run reduces it 8.9× but does not remove it
+  ([section](#strict-build-gpu-run-added-2026-11-08)).
 - **Per channel**, the large elements (|S|² > 1e-2) differ by 7.0e-12 relative (median), i.e. by κ.
   P_reaction shows the same 1e-11. It is the physics headline, but the state-resolved values are
   the primary evidence.
@@ -220,6 +226,74 @@ the signal window ([criteria change](scripts/criteria.md#criteria-changes)).
 per analysis step, with its criterion 1e-10. Bottom: the amplitude part κ(t) of the difference
 (c<sub>a</sub> = c<sub>b</sub> (1 + κ + iβ) on average, |c<sub>b</sub>|² weighted), shown where ‖c(t)‖ ≥ 0.1% of its
 maximum, with its median per quarter of the signal window (shaded: ‖c(t)‖ ≥ 1%).*
+
+## Strict-build GPU run (added 2026-11-08)
+
+The fast-math runs left κ unattributed: both C++ executions share it, so it came from what they
+share (host tables built with fast math, the operator decomposition) or from the Fortran side. The
+same input therefore ran once more on the GPU with the strict default build (`build-cuda`: no fast
+math on the host, no FMA in the kernels). It was compared with the same estimators and through the
+same `build-fast` replay helper as the other runs. The criteria were written while it was still
+propagating ([criteria.md](scripts/criteria.md#criteria-changes), 2026-11-08).
+
+<!-- BEGIN table:strict_composition -->
+
+| Propagation only (replay vs replay, relative to \|S\|) | C++ CPU fast − F | C++ GPU fast − F | C++ GPU strict − F | GPU strict − GPU fast | Criterion (2026-11-08) |
+|---|---|---|---|---|---|
+| κ, uniform amplitude part (median over E) | 6.0e-12 | 6.6e-12 | 1.5e-13 | -6.4e-12 | fast math if \|κ\| ≤ 1.5e-12, not if ≥ 4.5e-12 |
+| κ range over E | 5.4e-12 … 6.9e-12 | 6.0e-12 … 7.8e-12 | -3.8e-14 … 4.1e-13 | -7.4e-12 … -5.8e-12 |  |
+| BK amplitude part (window median) | 6.7e-12 | 7.3e-12 | 2.0e-13 | -7.1e-12 | second estimator |
+| residual outside the family (norm-weighted) | 4.2e-12 | 4.2e-12 | 2.5e-13 | 4.2e-12 |  |
+| family j = 10, residual (norm-weighted) | 8.4e-9 | 8.4e-9 | 9.5e-10 | 9.3e-9 | fast math involved if ≤ 8.4e-10, not if ≥ 4.2e-9 |
+| family j = 10, per element (max) | 1.6e-6 | 1.6e-6 | 1.8e-7 | 1.8e-6 |  |
+| family j = 8, per element (max) | 8.0e-7 | 8.0e-7 | 3.1e-8 | 7.7e-7 |  |
+| S, norm-weighted relative difference | 7.5e-12 | 7.9e-12 | 3.5e-13 | 7.8e-12 | strict − fast predicted ≈ 1e-12 |
+| \|ΔS\| max | 1.7e-12 | 2.2e-12 | 2.5e-13 | 2.0e-12 |  |
+| \|ΔP_reaction\| max | 1.4e-11 | 1.6e-11 | 8.2e-13 | 1.5e-11 |  |
+
+<!-- END table:strict_composition -->
+
+- **κ is fast math.** Against the Fortran it drops from 6.0e-12 (fast CPU run) to 1.5e-13, 39×
+  less. The strict and fast GPU runs differ by κ = −6.4e-12, so the fast-math build adds it. With it
+  go most of the diffuse residual (4.2e-12 → 2.5e-13), the reaction-probability difference
+  (1.4e-11 → 8.2e-13) and the BK difference (6.1e-12 → 6.6e-13 of the maximum). The strict GPU run
+  is closer to the Fortran than the fast GPU run is to the fast CPU run (0.56× in ‖ΔS‖/‖S‖). The
+  fast-math effect itself is 7.8e-12, 7.8× the ~1e-12 documented for the gate grids and predicted
+  here.
+- **The specular rotationally inelastic family is partly fast math.** Its j = 10 residual drops
+  8.9× (8.4e-9 → 9.5e-10), short of the pre-registered 8.4e-10 for "fast math involved": partly. It
+  still stands 3.8 × 10³ times above the residual of all other channels, with single elements up
+  to 1.8e-7 (j = 10) and 3.1e-8 (j = 8). The angular quadrature is where the set-ups of the two
+  builds differ most (the first θ weight by 1.3e-13 relative). That fits the angular-transform
+  hypothesis but does not test it; the offline comparison of both codes' angular matrices would.
+- **End to end**, the strict run meets every criterion: averages 144/144 within ½ printed unit, and
+  P_reaction 111/111 within ½ unit of the Fortran's 7 digits, none needing the 1e-11 floor. A replay
+  helper linked against `build-cuda` reproduces its tables bitwise, as predicted (the fast-math
+  helper reproduces its runs to 2.0e-14).
+- **Cost:** 1.43 h, 1.12× the fast GPU run.
+
+<!-- BEGIN table:strict_validity -->
+
+| Check | Result |
+|---|---|
+| Run | exit status 0, 7000 steps, wall 1.43 h (1.12× the fast GPU run) |
+| Build | `build-cuda/spodvr` (2026-11-06 15:57), FAST_MATH OFF, ARCH x86-64-v3; source commits after the build: none |
+| Input | `inputs/thesis_fig5_3_dz/input.json` unchanged since before the fast runs and clean: yes |
+| Input echo vs the fast GPU run | 84 lines: 65 identical, 17 with derived values differing (≤ 1.3e-13 rel., 1 above 1e-13), 2 PES self-check diagnostics, 0 text differences |
+| BK file header vs the fast GPU run | 34/35 restart parameters identical; ZOptFactor (effective): 1.4e-16 rel. |
+| Analysis line | fixed at Z = 15 a₀, t = 2220 a.u. |
+| V_asy and gas-phase states vs the fast GPU run | max \|Δ\| / max \|value\|: 6.5e-17 and 2.3e-14 |
+| Averages vs Fortran (item 13a rule) | 144/144 within ½ printed unit, worst 0.95 of it |
+| P_reaction vs Fortran printed (item 14 rule) | 111/111 within ½ unit (floor 1e-11), 0 explained, 0 outside |
+| Replay self-check, helper linked against `build-cuda` | bitwise |
+
+<!-- END table:strict_validity -->
+
+One stored restart parameter differs between the builds: the effective absorber factor ZOptFactor,
+by 1 ulp. The C++ BK reader checks these parameters exactly, so the `build-fast` helper reads a copy
+of the strict file with that one header field set to its own value
+([scripts/strict_bk_copy.py](scripts/strict_bk_copy.py); records untouched). For the same reason a
+restart from a fast-math build's checkpoint is refused by a strict build, and vice versa.
 
 ## Verdict per item
 
@@ -365,10 +439,12 @@ was not part of this validation (docs/performance.md, docs/cuda.md have controll
   in unit tests. Two consequences seen here: the hard-wall V<sub>asy</sub> gate fails by 1.6e-14 in both
   fast-math builds (the docs say their gates pass), and the replay helper reproduces the runs'
   analysis only to |ΔS| ≤ 2.0e-14 instead of bitwise (machine code generated at link time,
-  [item 18b](stages.md#item-18b)). Because κ is common to both C++ executions, a strict run, which
-  changes the host-computed tables, would test whether fast-math causes it.
-- **Open**: the composition of the C++↔Fortran difference (above): within every criterion, 12×
-  the GPU↔CPU spread, above the prediction per channel, not yet attributed.
+  [item 18b](stages.md#item-18b)). The strict GPU run added on 2026-11-08
+  ([section](#strict-build-gpu-run-added-2026-11-08)) shows that κ is fast math. The fast-math
+  effect on this grid is 7.8e-12 (‖ΔS‖/‖S‖), 7.8× the ~1e-12 of the gate grids, and fast and strict
+  builds refuse each other's restart files (one parameter differs by 1 ulp).
+- **Open**: the specular rotationally inelastic excess (above): within every criterion, 8.9×
+  smaller in the strict build but not removed, not yet attributed.
 - **What these comparisons would miss.** They detected and traced deviations of a few ulp: k<sub>Z</sub>
   and α 3 and 11 ulp apart (item 11), the 1.2e-15 hartree initial-state energy (item 16), and the
   specular inelastic excess. They also check every discrete decision: integers, open channels, the
@@ -379,7 +455,8 @@ was not part of this validation (docs/performance.md, docs/cuda.md have controll
   (ii) a propagation error below the full-precision criterion (1e-10) that is spread over many
   channels. A single-channel error shows from ~1e-12 (|S|² > 1e-2) and ~3e-11 (|S|² > 1e-4) to
   ~1e-9 (|S|² ~ 1e-8) relative.
-  (iii) a uniform amplitude error of ~5e-12, e.g. on the incoming path: it would look exactly like κ.
+  (iii) a uniform amplitude error of ~5e-12 in the fast-math comparison, e.g. on the incoming
+  path: it would look exactly like κ. In the strict run |κ| is 1.5e-13.
   (iv) any error common to both codes: a bug ported faithfully looks like agreement.
   (v) code paths this input does not run (next point).
 - **Not exercised by this input**, and the gates that cover it (docs/validation.md): the hard
@@ -410,10 +487,13 @@ OMP_NUM_THREADS=8 build-cuda-fast/spodvr inputs/thesis_fig5_3_dz/input.json --de
 OMP_NUM_THREADS=8 build-fast/spodvr inputs/thesis_fig5_3_dz/input.json --device cpu --threads 8 --output-dir runs/thesis_fig5_3_dz_cpu_fast
 mkdir -p runs/thesis_fig5_3_dz_fortran && cp inputs/thesis_fig5_3_dz/DVR.inp runs/thesis_fig5_3_dz_fortran/
 cd runs/thesis_fig5_3_dz_fortran && OMP_NUM_THREADS=8 ~/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x
+# strict-build GPU run (added 2026-11-08, ~1.4 h)
+OMP_NUM_THREADS=8 build-cuda/spodvr inputs/thesis_fig5_3_dz/input.json --device cuda --threads 8 --output-dir runs/thesis_fig5_3_dz_cuda
 ```
 
 The report: `scripts/make_all.sh` regenerates `results.json`, all tables and figures from the
 extracts in [data/](data/) (no run files needed); `--extract` re-reads the run directories and logs;
+`--strict` redoes the strict GPU run's replays and comparison (`strict_gpu.py`);
 `--heavy` also rebuilds the helpers and reruns the potential, replay, negative-control,
 `onlyAnalysis`, ψ, thesis and manifest passes. Status of every item:
 [scripts/STATUS.md](scripts/STATUS.md); long tables: [appendix.md](appendix.md).

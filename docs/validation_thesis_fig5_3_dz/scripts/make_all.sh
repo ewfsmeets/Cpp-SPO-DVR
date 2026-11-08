@@ -2,6 +2,7 @@
 # Regenerate the validation report docs/validation_thesis_fig5_3_dz/.
 #   make_all.sh            from the extracts in data/: results.json, figures, tables, checks
 #   make_all.sh --extract  first re-read the run directories and logs (runs/, ~ minutes)
+#   make_all.sh --strict   first the strict-build GPU run: its replays, cleaned log, strict_gpu.py
 #   make_all.sh --heavy    also rebuild the C++ helpers and redo the potential, replay,
 #                          onlyAnalysis, final-psi, thesis-extraction and sha256 passes (~15 min;
 #                          needs the build directories, runs/, ~/work/SPO-DVR, uv for pymupdf)
@@ -67,6 +68,20 @@ if [[ "$mode" == "--extract" || "$mode" == "--heavy" ]]; then
   $PY item14_16_analysis.py
   $PY item18a_only_analysis.py
   $PY item19_physics.py
+fi
+
+if [[ "$mode" == "--strict" || "$mode" == "--heavy" ]]; then
+  # strict-build GPU run (criteria.md, 2026-11-08): replay its BK file with the build-fast helper
+  # (as the other runs; via a header copy) and with a helper linked against build-cuda (self-check)
+  $PY build_helper.py build-cuda replay.cpp
+  $PY strict_bk_copy.py      # header copy for the build-fast helper (1-ulp ZOptFactor, see the script)
+  OMP_NUM_THREADS=8 "$WORK/helpers/build-fast/replay" "$REPO/inputs/thesis_fig5_3_dz/input.json" "$WORK/strict_bk/bk_coefficients.bin" native "$WORK/replay/build-fast/gpu_strict"
+  OMP_NUM_THREADS=8 "$WORK/helpers/build-cuda/replay" "$REPO/inputs/thesis_fig5_3_dz/input.json" "$REPO/runs/thesis_fig5_3_dz_cuda/bk_coefficients.bin" native "$WORK/replay/build-cuda/gpu_strict"
+  mkdir -p "$WORK/logs"
+  $PY clean_log.py "$REPO/runs/thesis_fig5_3_dz_cuda.log" "$WORK/logs/gpu_strict.txt"
+  gzip -9 -n -c "$REPO/runs/thesis_fig5_3_dz_cuda.log" > ../data/logs/thesis_fig5_3_dz_cuda.log.gz
+  cp "$WORK/logs/gpu_strict.txt" ../data/logs/cleaned_cuda_strict.txt
+  $PY strict_gpu.py
 fi
 
 $PY item17_thesis.py

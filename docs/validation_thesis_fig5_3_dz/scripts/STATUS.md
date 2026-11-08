@@ -43,6 +43,7 @@ One line per item and figure: status, script, verdict. Tiers from the task (A mu
 | number check | B | done | `check_numbers.py` | 0 unmatched after round 3; weak check (coincidental matches possible), headline numbers also checked by hand |
 | Markdown check | A | done | `check_markdown.py` | 0 problems (links, anchors, tables, details, ignored files, sizes, whitespace) |
 | make_all.sh --heavy | C | cut (tier C) | `make_all.sh` | default and `--extract` modes run clean; every `--heavy` step ran individually during the work, the script as a whole was not rerun |
-| sha256 manifest | C | done | `manifest.py` | 66 files |
+| sha256 manifest | C | done | `manifest.py` | 78 files (66 + the strict GPU run, its log and `build-cuda/spodvr`, 2026-11-08) |
 | mermaid diagram | C | cut (tier C) | — | not drawn: time spent on the review findings instead |
 | byte-identical PNG reruns | C | done | `make_all.sh --extract` | all 5 PNGs byte-identical after a full extract rerun |
+| strict-build GPU run (D2, 2026-11-08) | A | done | `strict_gpu.py`, `strict_bk_copy.py`, `make_all.sh --strict` | criteria written during the run; valid; κ: fast math (1.5e-13 vs 6.0e-12); family j = 10: partly (8.9× smaller); end to end pass; self-check bitwise; README section added |
