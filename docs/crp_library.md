@@ -161,9 +161,12 @@ equal):
 
 | Data set | plain | S2 | S3 | S4 | all |
 |---|---|---|---|---|---|
-| C6v | 2.45 µs | 2.35 | 1.97 | 1.97 | 1.49 (1.65×) |
-| C3v | 4.46 µs | 3.03 | 3.53 | 3.67 | 1.78 (2.5×) |
-| C4v | 1.95 µs | 1.76 | 1.49 | 1.53 | 1.02 (1.9×) |
+| C6v | 2.41 µs | 2.33 | 1.97 | 1.94 | 1.42 (1.7×) |
+| C3v | 4.46 µs | 3.05 | 3.52 | 3.65 | 1.77 (2.5×) |
+| C4v | 1.97 µs | 1.79 | 1.47 | 1.54 | 1.03 (1.9×) |
+
+With 8 threads on a 12 × 12 grid the potential of the C3v set took 38.6 s in the Fortran, 11.6 s
+here, 2.5 s with `UseSymmetry` ([performance.md](performance.md) "CRP library").
 
 ## Testing without a real data set
 
@@ -184,7 +187,8 @@ No real data set is in the repository. The tests (`tests/crplib/`, see its READM
 ### Mutation check
 
 `tools/crp_mutation_check/run.sh` applies deliberate bugs to a git worktree and runs the library
-tests; each must make a test fail. Result (2026-11-09, 204 tests):
+tests; each must make a test fail, except the removal of a redundant safety margin (marked in
+`mutations.py`). Result (2026-11-09, 226 library tests; the numbers are the failing tests):
 
 | Mutation | Caught by (number of failing tests) |
 |---|---|
@@ -200,11 +204,27 @@ tests; each must make a test fail. Result (2026-11-09, 204 tests):
 | sign flip in a chain-rule term | Fortran comparisons, finite differences (22) |
 | TRANSF regions 4 and 5 swapped | C4v atom-surface PES vs the Fortran (4) |
 | dFso term dropped from the gradient | Fortran comparisons, finite differences (9) |
+| S2: the reachable atoms in reverse order | Fortran comparisons, pruning tests (14) |
+| S2: in-plane selection with half the reach | pruning tests, representable model (31) |
+| S2: per-call z test with half the reach | pruning tests, representable model (20) |
+| S2: no fallback to the full cluster outside the fold cell | pruning test outside the cell (1) |
+| S4: every cut evaluated in the cell of the first group | cut with a moved knot (1) |
+| S4: grids compared with == (merges −0 and +0 knots) | grids differing in a zero knot (1) |
+| S4: only the first group located | cuts with their own grid (2) |
+| S3: sin 3φ of the hollow site skipped for V | Fortran comparisons (10) |
+| S3: the C3v sine stars of the atom PES skipped for V | C3v atom-surface PES vs the Fortran (5) |
+| S3: V-only blend without the gas-phase term | Fortran comparisons (11) |
+| S2 safety margins removed: both; the relative one; the cell enlargement; `<` for `≤` | survive, as expected |
 
-The skew-constant mutation first survived: the pairwise data sets have CutsInterpolation = F, whose
-Fortran comparison allows a few ulp (decision D4), and the one-ulp change of x was within that.
-The impulse sets (compared bitwise) now have QD-wrapper points too, including centres with u = 0,
-where x = cos(π/3)·v alone.
+Three mutations first survived and led to new tests. The skew constant: the pairwise data sets
+have CutsInterpolation = F, whose Fortran comparison allows a few ulp (decision D4), so the impulse
+sets (compared bitwise) got QD-wrapper points too, including centres with u = 0, where
+x = cos(π/3)·v alone. The S2 fallback: no fold output left the cell by more than the margin, so a
+test now evaluates points outside the cell directly. The S4 cell of the first group: the test cut
+with its own grid differed only at the end of its grid, so a cut with a moved interior knot was
+added. The S2 margins are redundant by construction: the z test needs none (the computed distance
+is never below the computed height difference), and in the plane either margin alone covers the
+rounding; no test case can tell them apart.
 
 ## Checking a new data set
 

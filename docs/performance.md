@@ -173,24 +173,34 @@ set-up. Measurements on the synthetic data sets of the library tests: the gate c
 `tests/reference/crp_*_synthetic_small` with nX = nY = 12 and JMax = MJMax = 8 (nθ = 5, nφ = 18;
 C4v with `nPhisOptimal` nφ = 20). That is 80 × 32 × 144 × 90 = 3.3·10⁷ PES evaluations, in
 potential-only runs with 8 threads on an otherwise idle machine (GCC 15 / gfortran 15). The Fortran
-time is the wall time of the whole run; the C++ time is the "6D potential computed in" line.
+time is the wall time of the whole run (two runs differed by up to 15 %); the C++ time is the
+"6D potential computed in" line.
 
-| Data set | Fortran | C++ | C++ with `UseSymmetry` + `nPhisOptimal` (points computed) | C++, one thread, per evaluation |
+| Data set | Fortran | C++ without S2–S4 | C++ | C++ with `UseSymmetry` + `nPhisOptimal` ((x, y) points computed) |
 |---|---|---|---|---|
-| C6v | 22.5 s | 17.4 s | 2.2 s (19 of 144 (x, y)) | 2.9 µs |
-| C3v | 44.7 s | 26.7 s | 6.2 s (31 of 144) | 4.6 µs |
-| C4v | 13.4 s | 12.0 s | 2.6 s (28 of 144) | 1.9 µs |
+| C6v | 19.3 s | 17.4 s | 9.6 s | 1.3 s (19 of 144) |
+| C3v | 38.6 s | 26.7 s | 11.6 s | 2.5 s (31 of 144) |
+| C4v | 14.0 s | 12.0 s | 6.5 s | 1.5 s (28 of 144) |
 
-- Per evaluation: `build/tools/spodvr_crp_timing <data set>` (the QD wrapper at 98496 points
-  spread over the cell, Z = −1..8, r = 0.6..4.1 and the orientations; best of 3).
+One thread, per evaluation (`build/tools/spodvr_crp_timing <data set>`: the QD wrapper at 98496
+points spread over the cell, Z = −1..8, r = 0.6..4.1 and the orientations; best of 3; every V
+checked bitwise against the plain path):
+
+| Data set | plain | S2 cluster pruning | S3 V only | S4 shared grid lookup | all |
+|---|---|---|---|---|---|
+| C6v | 2.41 µs | 2.33 | 1.97 | 1.94 | 1.42 |
+| C3v | 4.46 µs | 3.05 | 3.52 | 3.65 | 1.77 |
+| C4v | 1.97 µs | 1.79 | 1.47 | 1.54 | 1.03 |
+
 - `UseSymmetry` (the Fortran switches it off for C3v and C4v) evaluates the PES only at the
   symmetry-unique (x, y) points; the potential differs from the full one by rounding only (self-check
-  ≤ 6e-13 eV; [crp_library.md](crp_library.md)). Recommended for production runs.
-- Profile (perf, one thread, `-O2` without LTO): the MURII cluster sum of the atom-surface PES takes
-  45 % (C3v: 256 atoms per atom, most beyond the cut-off of the corrugation function), 11 % (C6v)
-  and 13 % (C4v); the grid lookup of the molecular cuts (`locate_interval`, one per cut although
-  the cuts share their grid) 9–15 %; libm (cos/sin of the site functions, acos/atan2) 12–22 %; the
-  rest is spread over the interpolation and the derivatives (which the QD wrapper discards).
+  ≤ 6e-13 eV). Recommended for production runs. The library speed-ups S2–S4 leave every result
+  bitwise unchanged ([crp_library.md](crp_library.md) "Speed").
+- Profile before S2–S4 (perf, one thread, `-O2` without LTO): the MURII cluster sum of the
+  atom-surface PES took 45 % (C3v: 256 atoms per atom, most beyond the cut-off of the corrugation
+  function), 11 % (C6v) and 13 % (C4v); the grid lookup of the molecular cuts (`locate_interval`,
+  once per cut although the cuts share their grid) 9–15 %; libm (cos/sin of the site functions,
+  acos/atan2) 12–22 %; the rest the interpolation and the derivatives the QD wrapper discards.
 
 ## What was optimised (and how it relates to the Fortran code)
 | Change | Results |
