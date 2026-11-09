@@ -130,6 +130,7 @@ add_library(spodvr_crplib_fp INTERFACE)
 target_compile_options(spodvr_crplib_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${crplib_fp_flags}>")
 
 add_library(spodvr_crplib
+  src/crplib/dataset.cpp
   src/crplib/fourier_tables.cpp
   src/crplib/list_directed_reader.cpp
   src/crplib/periodic_spline_3d.cpp
