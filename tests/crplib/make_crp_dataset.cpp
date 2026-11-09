@@ -112,7 +112,10 @@ std::vector<Point> molecule_points(Symmetry symmetry, double a) {
 // The QD wrapper's arguments u, v (bohr along the lattice vectors), Z, r, theta, phi, including
 // points that are clamped in r (both ends) and Z (below Zmin).
 std::vector<Point> wrapper_points(double a) {
-  const std::vector<std::pair<double, double>> centres = {{0, 0}, {0.13, 0.29}, {0.5, 0.5}, {0.83, 0.41}, {1.7, -0.4}};
+  // u = 0, v != 0: x = cos(pi/3) v alone, so the folded skew constant shows up in V (test of the
+  // mutation 0.5 for 0x1.0000000000001p-1; with u != 0 its ulp is rounded away).
+  const std::vector<std::pair<double, double>> centres = {{0, 0},      {0.13, 0.29}, {0.5, 0.5},  {0.83, 0.41},
+                                                          {1.7, -0.4}, {0.0, 0.37},  {0.0, -0.62}};
   const std::vector<double> heights = {-2.0, 0.5, 2.0, 5.5, 6.7, 9.0, 12.0};
   const std::vector<double> bonds = {0.3, 0.8, 1.4, 2.6, 4.0, 9.0};
   const std::vector<double> thetas = {0.05, 0.8, std::numbers::pi / 2};
@@ -191,6 +194,7 @@ int main(int argc, char** argv) {
           for (double phi : {0.0, 0.6, 2.2, -1.9}) points.push_back(molecule(x, y, 2.0, 1.4, theta, phi));
       }
       write_points(dir / "molecule_0_2.in", points);
+      write_points(dir / "wrapper.in", wrapper_points(a));  // compared bitwise (CutsInterpolation = T)
     } else {
       // The atom z range as the library reads it (in the Angstrom case the unit round trip moves
       // the ends by an ulp; a point just outside would stop the Fortran).

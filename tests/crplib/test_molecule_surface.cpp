@@ -79,6 +79,34 @@ void compare_molecule_points(const std::string& case_name, const std::string& li
   }
 }
 
+// The QD wrapper (V in eV at skewed coordinates, clamps, shift) and its parameters at the points
+// of <case>/wrapper.in.
+void compare_qd_wrapper_points(const std::string& case_name) {
+  const auto output_file = reference_file(case_name + "/wrapper.out");
+  REQUIRE_CRP_REFERENCE(output_file);
+  const DataSet data = read_data_set(reference_file(case_name + "/dataset"));
+  const QdWrapper wrapper(data);
+  DriverOutput out(output_file);
+  const auto records = crplib_test::read_driver_output(output_file);
+  EXPECT_EQ(records.at(0).text, "point_group " + wrapper.parameters().point_group);
+  (void)out.next("point_group");
+  const auto params = out.next_bits("params", 4);
+  EXPECT_BITS(wrapper.parameters().lattice_constant, params[0]);
+  EXPECT_BITS(wrapper.parameters().lattice_constant, params[1]);
+  EXPECT_BITS(wrapper.parameters().z_asymptotic, params[2]);
+  EXPECT_BITS(wrapper.parameters().skewing_angle, params[3]);
+  DriverInput in(reference_file(case_name + "/wrapper.in"));
+  const int n = in.integer();
+  for (int i = 0; i < n; ++i) {
+    const double u = in.real(), v = in.real(), z = in.real(), r = in.real(), theta = in.real(), phi = in.real();
+    expect_fortran(wrapper.potential_ev(u, v, z, r, theta, phi), out.next("V").bits, data.cuts_interpolation,
+                   " u, v, Z, r, theta, phi = " + std::to_string(u) + ", " + std::to_string(v) + ", " +
+                       std::to_string(z) + ", " + std::to_string(r) + ", " + std::to_string(theta) + ", " +
+                       std::to_string(phi),
+                   convert_energy(1.0, EnergyUnit::hartree, EnergyUnit::ev));
+  }
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------------------------
@@ -91,31 +119,7 @@ TEST_P(FortranMoleculeSurface, MoleculeInternalUnits) {
   compare_molecule_points(GetParam(), "molecule_0_2", internal_units);
 }
 
-TEST_P(FortranMoleculeSurface, QdWrapper) {
-  const auto output_file = reference_file(GetParam() + "/wrapper.out");
-  REQUIRE_CRP_REFERENCE(output_file);
-  const DataSet data = read_data_set(reference_file(GetParam() + "/dataset"));
-  const QdWrapper wrapper(data);
-  DriverOutput out(output_file);
-  const auto records = crplib_test::read_driver_output(output_file);
-  EXPECT_EQ(records.at(0).text, "point_group " + wrapper.parameters().point_group);
-  (void)out.next("point_group");
-  const auto params = out.next_bits("params", 4);
-  EXPECT_BITS(wrapper.parameters().lattice_constant, params[0]);
-  EXPECT_BITS(wrapper.parameters().lattice_constant, params[1]);
-  EXPECT_BITS(wrapper.parameters().z_asymptotic, params[2]);
-  EXPECT_BITS(wrapper.parameters().skewing_angle, params[3]);
-  DriverInput in(reference_file(GetParam() + "/wrapper.in"));
-  const int n = in.integer();
-  for (int i = 0; i < n; ++i) {
-    const double u = in.real(), v = in.real(), z = in.real(), r = in.real(), theta = in.real(), phi = in.real();
-    expect_fortran(wrapper.potential_ev(u, v, z, r, theta, phi), out.next("V").bits, data.cuts_interpolation,
-                   " u, v, Z, r, theta, phi = " + std::to_string(u) + ", " + std::to_string(v) + ", " +
-                       std::to_string(z) + ", " + std::to_string(r) + ", " + std::to_string(theta) + ", " +
-                       std::to_string(phi),
-                   convert_energy(1.0, EnergyUnit::hartree, EnergyUnit::ev));
-  }
-}
+TEST_P(FortranMoleculeSurface, QdWrapper) { compare_qd_wrapper_points(GetParam()); }
 
 TEST_P(FortranMoleculeSurface, GasPhase) {
   const auto output_file = reference_file(GetParam() + "/gasphase.out");
@@ -194,6 +198,10 @@ TEST(FortranMoleculeSurfaceUnits, AtomSurfaceInAngstromAndEv) {
 class FortranImpulse : public testing::TestWithParam<std::string> {};
 
 TEST_P(FortranImpulse, BitwiseEqual) { compare_molecule_points(GetParam(), "molecule_0_2", internal_units); }
+
+// The QD wrapper bitwise (with CutsInterpolation = F the comparison allows a few ulp, decision D4,
+// which would hide e.g. a wrong skew constant).
+TEST_P(FortranImpulse, QdWrapper) { compare_qd_wrapper_points(GetParam()); }
 
 INSTANTIATE_TEST_SUITE_P(Cuts, FortranImpulse,
                          testing::Values("c6v_impulse_1", "c6v_impulse_5", "c6v_impulse_10", "c6v_impulse_15",

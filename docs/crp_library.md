@@ -121,6 +121,31 @@ No real data set is in the repository. The tests (`tests/crplib/`, see its READM
 - Gates 1 and 2 of the program on the same data sets (`tests/reference/crp_*_synthetic_small`,
   [validation.md](validation.md)).
 
+### Mutation check
+
+`tools/crp_mutation_check/run.sh` applies deliberate bugs to a git worktree and runs the library
+tests; each must make a test fail. Result (2026-11-09, 204 tests):
+
+| Mutation | Caught by (number of failing tests) |
+|---|---|
+| bridge images swapped | impulse responses, Fortran comparisons (10) |
+| 0.5 instead of the folded cos(π/3) in the QD wrapper's skew transform | QD wrapper on the impulse sets, bitwise (10) |
+| 0.5 instead of the folded cos(π/3) in the C3v MURII | C3v atom-surface PES vs the Fortran (1) |
+| SPLINT slope without its curvature term | spline tests, Fortran comparisons (37) |
+| SPLINT instead of DPL for the atom-surface cuts | Fortran comparisons (8) |
+| x / c instead of x · (1/c) (Å → bohr) | Å/eV cases vs the Fortran (6) |
+| (x · (1/a)) · b instead of x · ((1/a) · b) (energy units) | unit tests (1) |
+| `floor` instead of the ORIGEN truncation | fold tests, Fortran comparisons (7) |
+| C3v t2h and t2f cuts swapped | impulse responses, representable model (7) |
+| sign flip in a chain-rule term | Fortran comparisons, finite differences (22) |
+| TRANSF regions 4 and 5 swapped | C4v atom-surface PES vs the Fortran (4) |
+| dFso term dropped from the gradient | Fortran comparisons, finite differences (9) |
+
+The skew-constant mutation first survived: the pairwise data sets have CutsInterpolation = F, whose
+Fortran comparison allows a few ulp (decision D4), and the one-ulp change of x was within that.
+The impulse sets (compared bitwise) now have QD-wrapper points too, including centres with u = 0,
+where x = cos(π/3)·v alone.
+
 ## Checking a new data set
 
 1. Run the program in potential-only mode (`"Potential": true`) and read the `CRP DATA SET`
