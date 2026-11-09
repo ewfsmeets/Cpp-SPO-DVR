@@ -148,12 +148,6 @@ std::vector<Point> scaled(std::vector<Point> points, double factor) {
   return points;
 }
 
-Symmetry symmetry_of(const std::string& name) {
-  if (name.starts_with("c3v")) return Symmetry::c3v;
-  if (name.starts_with("c4v")) return Symmetry::c4v;
-  return Symmetry::c6v;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -165,22 +159,10 @@ int main(int argc, char** argv) {
     using namespace crplib_test;
     const std::string name = argv[1];
     const std::filesystem::path dir = argv[2];
-    const Symmetry symmetry = symmetry_of(name);
+    const Symmetry symmetry = case_symmetry(name);
     const double a = lattice_constant(symmetry);  // bohr
-    crplib::DataSet d;
+    const crplib::DataSet d = case_data_set(name);
     const bool impulse = name.find("_impulse_") != std::string::npos;
-    if (impulse) {
-      d = impulse_data_set(symmetry, std::stoi(name.substr(name.rfind('_') + 1)) - 1, impulse_grids());
-    } else if (name == "c6v_pairwise_angstrom") {
-      d = in_angstrom_and_ev(pairwise_data_set(symmetry));
-    } else if (name == "c4v_negative_spacing") {
-      d = pairwise_data_set(symmetry);
-      d.interlayer_spacings = {-0.98};  // relative: z of the second layer = 0.98 a / sqrt(2)
-    } else if (name.ends_with("_pairwise")) {
-      d = pairwise_data_set(symmetry);
-    } else {
-      throw std::runtime_error("unknown case " + name);
-    }
     std::filesystem::remove_all(dir);
     std::filesystem::create_directories(dir);
     crplib::write_data_set(d, dir / "dataset");

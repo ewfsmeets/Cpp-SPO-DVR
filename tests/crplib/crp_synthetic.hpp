@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <format>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -358,6 +359,29 @@ inline DataSet in_angstrom_and_ev(DataSet d) {
     energies(cut.v);
   }
   return d;
+}
+
+// The symmetry of a reference case (tests/crplib/reference/<case>/): from its name prefix.
+inline Symmetry case_symmetry(const std::string& name) {
+  if (name.starts_with("c3v")) return Symmetry::c3v;
+  if (name.starts_with("c4v")) return Symmetry::c4v;
+  return Symmetry::c6v;
+}
+
+// The data set of a reference case: <sym>_impulse_<k> (cut k = 1), <sym>_pairwise,
+// c6v_pairwise_angstrom and c4v_negative_spacing. Throws std::invalid_argument for other names.
+inline DataSet case_data_set(const std::string& name) {
+  const Symmetry symmetry = case_symmetry(name);
+  if (name.find("_impulse_") != std::string::npos)
+    return impulse_data_set(symmetry, std::stoi(name.substr(name.rfind('_') + 1)) - 1, impulse_grids());
+  if (name == "c6v_pairwise_angstrom") return in_angstrom_and_ev(pairwise_data_set(symmetry));
+  if (name == "c4v_negative_spacing") {
+    DataSet d = pairwise_data_set(symmetry);
+    d.interlayer_spacings = {-0.98};  // relative: z of the second layer = 0.98 a / sqrt(2)
+    return d;
+  }
+  if (name.ends_with("_pairwise")) return pairwise_data_set(symmetry);
+  throw std::invalid_argument("unknown reference case " + name);
 }
 
 }  // namespace crplib_test

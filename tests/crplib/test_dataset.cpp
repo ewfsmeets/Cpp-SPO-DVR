@@ -2,8 +2,12 @@
 // sets (tests/crplib/crp_synthetic.hpp).
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
+#include <vector>
 
 #include "crp_synthetic.hpp"
 #include "crplib/dataset.hpp"
@@ -220,4 +224,43 @@ TEST(DataSet, Warnings) {
   ASSERT_EQ(warnings.size(), 2u);
   EXPECT_NE(warnings[0].find("only the first 18"), std::string::npos);
   EXPECT_NE(warnings[1].find("below ZsoMax"), std::string::npos);
+}
+
+// --- the committed reference data sets -----------------------------------------------------------
+
+namespace {
+
+std::string file_content(const std::filesystem::path& file) {
+  std::ifstream in(file, std::ios::binary);
+  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+
+// The files of a directory tree, relative to it, sorted.
+std::vector<std::filesystem::path> files_below(const std::filesystem::path& dir) {
+  std::vector<std::filesystem::path> files;
+  for (const auto& entry : std::filesystem::recursive_directory_iterator(dir))
+    if (entry.is_regular_file()) files.push_back(std::filesystem::relative(entry.path(), dir));
+  std::sort(files.begin(), files.end());
+  return files;
+}
+
+}  // namespace
+
+// Every data set in tests/crplib/reference/<case>/dataset (read by the Fortran reference runs and
+// by the gate cases of tests/reference/crp_*) is byte for byte what the generator writes today.
+TEST(ReferenceDataSets, MatchTheGenerator) {
+  int cases = 0;
+  for (const auto& entry : std::filesystem::directory_iterator(CRPLIB_REFERENCE_DIR)) {
+    const std::filesystem::path committed = entry.path() / "dataset";
+    if (!std::filesystem::is_directory(committed)) continue;
+    const std::string name = entry.path().filename().string();
+    TemporaryDirectory dir("reference_" + name);
+    write_data_set(crplib_test::case_data_set(name), dir.path());
+    const std::vector<std::filesystem::path> files = files_below(committed);
+    ASSERT_EQ(files, files_below(dir.path())) << name;
+    for (const std::filesystem::path& file : files)
+      EXPECT_EQ(file_content(committed / file), file_content(dir.path() / file)) << name << ": " << file.string();
+    ++cases;
+  }
+  EXPECT_EQ(cases, 19);
 }
