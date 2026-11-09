@@ -26,9 +26,10 @@ struct MoleculeSurfaceValue {
 class MoleculeSurface {
  public:
   // Converts the data to internal units, reduces the cuts by the atom-surface PES (when the data
-  // set holds total energies) and builds the splines. Fortran: Initialize_CRP_*_MoleculeSurface_PES,
+  // set holds total energies) and builds the splines. The options select bitwise-neutral speed-ups
+  // (only the tests switch them off). Fortran: Initialize_CRP_*_MoleculeSurface_PES,
   // Read_MoleculeSurface_Data. Throws DataError.
-  explicit MoleculeSurface(const DataSet& data);
+  explicit MoleculeSurface(const DataSet& data, EvaluationOptions options = {});
 
   // V and gradient for atoms a and b (bohr, Cartesian; the surface atoms of the top layer at
   // z = 0). nullopt where the Fortran gives up silently (Fortran: switch = .TRUE., V = 0): the

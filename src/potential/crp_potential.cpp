@@ -5,6 +5,7 @@
 #include <format>
 
 #include "core/error.hpp"
+#include "crplib/atom_surface.hpp"
 #include "crplib/dataset.hpp"
 #include "crplib/errors.hpp"
 #include "crplib/qd_wrapper.hpp"
@@ -57,6 +58,9 @@ CrpDataSetSummary make_summary(const std::filesystem::path& directory, const crp
   s.zso_max = surface.zso_max();
   s.z_asymptotic = surface.z_asymptotic();
   s.energy_shift = -crplib::convert_energy(surface.h2_asymptote(), crplib::EnergyUnit::hartree, crplib::EnergyUnit::ev);
+  const crplib::ClusterSize cluster = surface.atom_surface().cluster_size();
+  s.cluster_atoms = cluster.atoms;
+  s.cluster_atoms_within_reach = cluster.within_reach;
   s.warnings = surface.warnings();
   return s;
 }

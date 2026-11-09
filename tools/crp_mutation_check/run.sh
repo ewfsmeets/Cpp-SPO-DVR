@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Mutation check of the CRP library tests (docs/crp_library.md "Mutation check"): applies each
 # mutation of mutations.py to a git worktree of HEAD, rebuilds the library tests there and runs
-# ctest -R CrpLib; every mutation must make at least one test fail. The source tree is not touched.
+# ctest -R CrpLib; every mutation must make at least one test fail, except those marked
+# [SAFETY MARGIN] (a redundant guard: removing it alone cannot change a result). The source tree is
+# not touched.
 # The patterns match the code as it was when a mutation was added: update them when that code
 # changes (a pattern that no longer matches is reported as "not applied").
 #
@@ -34,8 +36,12 @@ for ((i = 0; i < n; ++i)); do
   name=$(python3 -I "${here}/mutations.py" "${wt}" "${i}") || { echo "${i}: ${name} (not applied)"; continue; }
   if ! build; then echo "${i} ${name}: BUILD FAILED"; continue; fi
   if run; then
-    echo "${i} ${name}: SURVIVED"
-    survived=$((survived + 1))
+    if [[ "${name}" == *"[SAFETY MARGIN]"* ]]; then
+      echo "${i} ${name}: survived (expected: a redundant margin, no test can tell)"
+    else
+      echo "${i} ${name}: SURVIVED"
+      survived=$((survived + 1))
+    fi
   else
     echo "${i} ${name}: killed by $(grep -cE '\(Failed\)' "${scratch}/ctest.log") tests," \
       "e.g. $(grep -E '\(Failed\)' "${scratch}/ctest.log" | head -1 | sed 's/.*CrpLib\.//; s/ .*//')"

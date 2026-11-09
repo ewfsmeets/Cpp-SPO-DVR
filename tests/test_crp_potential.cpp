@@ -231,6 +231,8 @@ TEST(CrpPotential, Summary) {
   EXPECT_EQ(s.z_asymptotic, 10.0);
   EXPECT_EQ(s.energy_shift, -27.2113961 * crplib_test::PairwiseModel::h2(8.0));  // -VH2(r_last) in eV
   EXPECT_TRUE(s.warnings.empty());
+  EXPECT_EQ(s.cluster_atoms, 256);  // C3v MURII: 8 x 8 x 4
+  EXPECT_EQ(s.cluster_atoms_within_reach, 54);
 
   const fs::path angstrom = repository_root() / "tests/crplib/reference/c6v_pairwise_angstrom/dataset";
   EXPECT_EQ(CrpPotential(angstrom).summary().file_units, "angstrom, eV");

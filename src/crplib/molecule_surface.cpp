@@ -109,11 +109,11 @@ std::pair<double, double> cut_site(Symmetry symmetry, const MoleculeCut& cut, do
 }  // namespace
 
 // Fortran: Initialize_CRP_*_MoleculeSurface_PES and Read_MoleculeSurface_Data
-MoleculeSurface::MoleculeSurface(const DataSet& data)
+MoleculeSurface::MoleculeSurface(const DataSet& data, EvaluationOptions options)
     : symmetry_(data.symmetry),
       lattice_constant_(convert_length(data.lattice_constant, data.units.length, LengthUnit::bohr)) {
   validate_data_set(data);
-  atom_ = make_atom_surface(data);
+  atom_ = make_atom_surface(data, options);
   const Units& in = data.units;
   zso_min_ = convert_length(data.zso_min, in.length, LengthUnit::bohr);
   zso_max_ = convert_length(data.zso_max, in.length, LengthUnit::bohr);

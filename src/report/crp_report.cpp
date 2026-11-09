@@ -40,6 +40,8 @@ void print_crp_data_set(std::ostream& out, const Style& style, const CrpDataSetS
   list.add("Switch to gas phase (ZsoMin .. ZsoMax)", fixed(s.zso_min, 6) + " .. " + fixed(s.zso_max, 6), "bohr");
   list.add("Z asymptotic of the data (Zasy)", fixed(s.z_asymptotic, 6), "bohr");
   list.add("Energy shift (-VH2 at the last r)", full_precision(s.energy_shift), "eV");
+  list.add("Atom cluster of the repulsive sum (in reach)",
+           std::to_string(s.cluster_atoms) + " (" + std::to_string(s.cluster_atoms_within_reach) + ")");
   add_range(list, s, range);
   list.print(out, style);
 

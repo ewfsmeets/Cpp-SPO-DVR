@@ -15,11 +15,11 @@
 
 namespace crplib {
 
-std::unique_ptr<const AtomSurface> make_atom_surface(const DataSet& data) {
+std::unique_ptr<const AtomSurface> make_atom_surface(const DataSet& data, EvaluationOptions options) {
   switch (data.symmetry) {
     case Symmetry::c3v:
-    case Symmetry::c6v: return std::make_unique<detail::HexagonalAtomSurface>(data);
-    case Symmetry::c4v: return std::make_unique<detail::SquareAtomSurface>(data);
+    case Symmetry::c6v: return std::make_unique<detail::HexagonalAtomSurface>(data, options);
+    case Symmetry::c4v: return std::make_unique<detail::SquareAtomSurface>(data, options);
   }
   throw DataError("unknown symmetry");
 }
@@ -172,6 +172,19 @@ double distance_to_polygon(double x, double y, std::span<const std::pair<double,
     distance = std::min(distance, std::hypot(x - (ax + t * ex), y - (ay + t * ey)));
   }
   return inside ? 0.0 : distance;
+}
+
+// S2. In-plane, an atom is kept if a point within 2 cell_margin of the cell can be within reach of
+// it (the folded points are checked against cell_margin / 2 per call). Every computed distance r
+// satisfies r >= (1 - 3 eps) times the in-plane or the z distance, so an atom left out has a
+// computed r > cutoff and contributes zero in the full sum too.
+ReachableCluster::ReachableCluster(std::span<const ClusterAtom> cluster,
+                                   std::span<const std::pair<double, double>> cell, double cutoff,
+                                   double lattice_constant)
+    : reach_(cutoff > 0.0 ? cutoff * (1.0 + 1.0e-10) : std::numeric_limits<double>::infinity()),
+      cell_margin_(1.0e-8 * lattice_constant) {
+  for (const ClusterAtom& atom : cluster)
+    if (distance_to_polygon(atom.x, atom.y, cell) <= reach_ + 2.0 * cell_margin_) atoms_.push_back(atom);
 }
 
 }  // namespace crplib::detail

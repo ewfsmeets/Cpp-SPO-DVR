@@ -1,14 +1,18 @@
 // Timing of the CRP library (docs/performance.md "CRP library"): the cost of one evaluation of the
 // PES as SPO-DVR calls it (QD wrapper, V in eV), on one thread, at points spread like a dynamics
-// grid over the cell, Z, r and the orientations.
+// grid over the cell, Z, r and the orientations; with the speed-ups (crplib::EvaluationOptions)
+// off and on. Every V must be bitwise the same.
 // Usage: spodvr_crp_timing <data set directory> [repetitions]   (best of the repetitions)
 #include <algorithm>
+#include <bit>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <exception>
 #include <numbers>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "crplib/dataset.hpp"
@@ -43,21 +47,32 @@ int main(int argc, char** argv) {
   }
   try {
     const crplib::DataSet data = crplib::read_data_set(argv[1]);
-    const crplib::QdWrapper wrapper(data);
-    const std::vector<Point> points = dynamics_points(wrapper.parameters().lattice_constant);
     const int repetitions = argc == 3 ? std::stoi(argv[2]) : 3;
-    double best = 1e300, checksum = 0.0;
-    for (int k = 0; k < repetitions; ++k) {
-      const auto start = std::chrono::steady_clock::now();
-      double sum = 0.0;
-      for (const Point& p : points) sum += wrapper.potential_ev(p.u, p.v, p.z, p.r, p.theta, p.phi);
-      const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
-      best = std::min(best, elapsed.count());
-      checksum = sum;
+    std::vector<double> reference;
+    for (const auto& [name, options] : {std::pair{"plain", crplib::EvaluationOptions{.prune_cluster = false}},
+                                        std::pair{"default", crplib::EvaluationOptions{}}}) {
+      const crplib::QdWrapper wrapper(data, options);
+      const std::vector<Point> points = dynamics_points(wrapper.parameters().lattice_constant);
+      std::vector<double> v(points.size());
+      double best = 1e300;
+      for (int k = 0; k < repetitions; ++k) {
+        const auto start = std::chrono::steady_clock::now();
+        for (std::size_t i = 0; i < points.size(); ++i) {
+          const Point& p = points[i];
+          v[i] = wrapper.potential_ev(p.u, p.v, p.z, p.r, p.theta, p.phi);
+        }
+        const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+        best = std::min(best, elapsed.count());
+      }
+      if (reference.empty()) reference = v;
+      const bool same = std::equal(v.begin(), v.end(), reference.begin(), [](double a, double b) {
+        return std::bit_cast<std::uint64_t>(a) == std::bit_cast<std::uint64_t>(b);
+      });
+      std::printf("%s %-8s %zu evaluations, %.3f us per evaluation (best of %d)%s\n",
+                  crplib::symmetry_name(data.symmetry), name, points.size(),
+                  1e6 * best / static_cast<double>(points.size()), repetitions, same ? "" : "  V DIFFERS FROM plain");
+      if (!same) return 2;
     }
-    std::printf("%s: %zu evaluations, %.3f us per evaluation (best of %d), checksum %.17g\n",
-                crplib::symmetry_name(data.symmetry), points.size(), 1e6 * best / static_cast<double>(points.size()),
-                repetitions, checksum);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());
     return 1;

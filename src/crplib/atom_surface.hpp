@@ -24,6 +24,19 @@ struct AtomSurfaceValue {
   Vec3 gradient;
 };
 
+// Speed-ups that leave every result bitwise unchanged (docs/crp_library.md "Speed"). The tests switch
+// them off to compare with the plain algorithm of the Fortran.
+struct EvaluationOptions {
+  bool prune_cluster = true;  // S2: sum the corrugation function only over atoms within its reach
+};
+
+// The atom cluster of the repulsive sum (Fortran: MURII, MURO) and the atoms of it that can reach a
+// point of the folded unit cell (speed-up S2).
+struct ClusterSize {
+  int atoms;
+  int within_reach;
+};
+
 class AtomSurface {
  public:
   virtual ~AtomSurface() = default;
@@ -32,10 +45,12 @@ class AtomSurface {
   [[nodiscard]] virtual AtomSurfaceValue evaluate(const Vec3& position) const = 0;
   // Conditions the Fortran accepts but that make the PES questionable (cluster coverage).
   [[nodiscard]] virtual std::vector<std::string> warnings() const = 0;
+  [[nodiscard]] virtual ClusterSize cluster_size() const = 0;
 };
 
 // The atom-surface PES of the data set's symmetry: converts the data to internal units and builds
-// the reduced cuts (data minus the repulsive sum), as Read_AtomSurface_Data. Throws DataError.
-std::unique_ptr<const AtomSurface> make_atom_surface(const DataSet& data);
+// the reduced cuts (data minus the repulsive sum, always over the full cluster), as
+// Read_AtomSurface_Data. Throws DataError.
+std::unique_ptr<const AtomSurface> make_atom_surface(const DataSet& data, EvaluationOptions options = {});
 
 }  // namespace crplib

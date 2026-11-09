@@ -33,8 +33,9 @@ struct RangeReport {
 
 class QdWrapper {
  public:
-  // Fortran: Read_PES_From_Disk (one data set, no multi-PES header)
-  explicit QdWrapper(const DataSet& data);
+  // Fortran: Read_PES_From_Disk (one data set, no multi-PES header). The options select
+  // bitwise-neutral speed-ups (only the tests switch them off).
+  explicit QdWrapper(const DataSet& data, EvaluationOptions options = {});
 
   // V in eV. u, v: the centre in skewed lattice coordinates (bohr along the lattice vectors);
   // theta, phi in radians. Fortran: Get_CRP_QD_Wrapper_Potential_6D

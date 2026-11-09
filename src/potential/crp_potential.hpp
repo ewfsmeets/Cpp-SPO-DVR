@@ -31,6 +31,8 @@ struct CrpDataSetSummary {
   double zso_min = 0.0, zso_max = 0.0;     // switching to the 2D gas-phase potential. Fortran: ZsoMin, ZsoMax
   double z_asymptotic = 0.0;               // Fortran: Zasy
   double energy_shift = 0.0;               // V is shifted by -VH2(r_last) (eV). Fortran: VH2%F(NX)
+  int cluster_atoms = 0;                   // atoms of the repulsive sum. Fortran: MURII, MURO
+  int cluster_atoms_within_reach = 0;      // of these, the ones the corrugation function can reach
   std::vector<std::string> warnings;       // conditions the Fortran accepts that are probably not intended
 };
 

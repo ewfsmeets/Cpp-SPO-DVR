@@ -44,6 +44,32 @@ MUTATIONS = [
     ("dFso term dropped (atom a)", "src/crplib/molecule_surface.cpp",
      "full_a.z * sw.f + (va.v + vb.v + i_v) * df_a - df_a * gp.v + ",
      "full_a.z * sw.f + "),
+    # Speed-up S2 (cluster pruning): real bugs, which the tests must catch ...
+    ("S2: reachable atoms in reverse order", "src/crplib/atom_surface.cpp",
+     "    if (distance_to_polygon(atom.x, atom.y, cell) <= reach_ + 2.0 * cell_margin_) atoms_.push_back(atom);\n}",
+     "    if (distance_to_polygon(atom.x, atom.y, cell) <= reach_ + 2.0 * cell_margin_) atoms_.push_back(atom);\n"
+     "  std::reverse(atoms_.begin(), atoms_.end());\n}"),
+    ("S2: in-plane selection with half the reach", "src/crplib/atom_surface.cpp",
+     "<= reach_ + 2.0 * cell_margin_) atoms_.push_back(atom);",
+     "<= 0.5 * reach_) atoms_.push_back(atom);"),
+    ("S2: per-call z test with half the reach (C3v, C6v)", "src/crplib/hexagonal_atom_surface.cpp",
+     "    if (std::abs(z - atom.z) > z_reach) continue;",
+     "    if (std::abs(z - atom.z) > 0.5 * z_reach) continue;"),
+    ("S2: no fallback to the full cluster outside the fold cell (C3v, C6v)", "src/crplib/hexagonal_atom_surface.cpp",
+     "  if (!in_fold_cell(x, y)) return repulsive_sum(x, y, z);\n",
+     ""),
+    # ... and the safety margins, each of which alone covers the rounding (SAFETY MARGIN: may survive).
+    ("S2: no margins at all [SAFETY MARGIN]", "src/crplib/atom_surface.cpp",
+     "    : reach_(cutoff > 0.0 ? cutoff * (1.0 + 1.0e-10) : std::numeric_limits<double>::infinity()),\n"
+     "      cell_margin_(1.0e-8 * lattice_constant) {",
+     "    : reach_(cutoff > 0.0 ? cutoff : std::numeric_limits<double>::infinity()),\n"
+     "      cell_margin_(0.0 * lattice_constant) {"),
+    ("S2: no relative margin [SAFETY MARGIN]", "src/crplib/atom_surface.cpp",
+     "cutoff * (1.0 + 1.0e-10)", "cutoff"),
+    ("S2: no cell enlargement [SAFETY MARGIN]", "src/crplib/atom_surface.cpp",
+     "cell_margin_(1.0e-8 * lattice_constant)", "cell_margin_(0.0 * lattice_constant)"),
+    ("S2: < instead of <= in the in-plane selection [SAFETY MARGIN]", "src/crplib/atom_surface.cpp",
+     "<= reach_ + 2.0 * cell_margin_)", "< reach_ + 2.0 * cell_margin_)"),
 ]
 
 if sys.argv[1] == "list":

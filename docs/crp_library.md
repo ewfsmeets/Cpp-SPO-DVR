@@ -118,6 +118,25 @@ On the dynamics grid the PES is evaluated tens of millions of times (microsecond
 - Gate 1 also runs with `UseSymmetry` against the full Fortran potential
   (`CrpSymmetric/RegressionPes`, [validation.md](validation.md)).
 
+Inside the library, the speed-ups leave every result bitwise unchanged (`crplib::EvaluationOptions`;
+the tests compare with them switched off, `tools/benchmark/crp_timing.cpp` times both):
+- **Cluster pruning** (S2). The repulsive sum (MURII, MURO) runs over a fixed cluster (C6v 30
+  atoms, C3v 256, C4v 32), but only atoms within the last point of the corrugation function
+  contribute. The library sums over the atoms that can be in reach of a point of the fold cell
+  (chosen once) and skips, per call, those whose height differs by more than the reach. This is
+  exact: an atom out of reach adds +0 to V and ±0 to the gradient sums, which start at +0 and never
+  become −0 (in round-to-nearest x + y = −0 only if both are −0), so leaving it out changes no bit;
+  the other atoms are summed in the cluster order. The computed distance is never below the
+  computed height difference (monotone rounding), so the z test is exact; the in-plane selection
+  keeps a relative margin of 10⁻¹⁰ and 2·10⁻⁸ lattice constants around the cell, and a point that
+  the fold left outside the cell (rounding far from the origin) uses the full cluster. The reduced
+  atom cuts are built with the full cluster. On the synthetic data sets (cut-off 6 bohr) C3v keeps
+  54 of 256 atoms. Verified bitwise (`tests/crplib/test_cluster_pruning.cpp`): dense points in and
+  on the fold cell for cut-offs from 0.35 a to 10 a (where nothing is pruned) and every cluster
+  variant; points at the cut-off distance of an atom, to the last ulp, with a corrugation function
+  that does not vanish there; the PES up to 10⁸ lattice constants from the origin; the QD wrapper
+  on a dynamics grid; 4·10⁷ random points (`SPODVR_LONG_TESTS`); and the mutation check below.
+
 ## Testing without a real data set
 
 No real data set is in the repository. The tests (`tests/crplib/`, see its README) use:

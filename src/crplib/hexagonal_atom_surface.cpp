@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <string>
 
 #include "crplib/atom_surface_detail.hpp"
@@ -26,12 +27,63 @@ constexpr std::array<int, 30> c6v_cluster_j = {-2, -2, -2, -2, -1, -1, -1, -1, -
 constexpr int c3v_cluster_n = 3;
 constexpr int c3v_cluster_layers = 4;
 
+// The atom positions of MURII, in its loop order, computed as the Fortran loops compute them.
+std::vector<ClusterAtom> murii_cluster(Symmetry symmetry, const SlabGeometry& geometry) {
+  const double a = geometry.lattice_constant;
+  std::vector<ClusterAtom> cluster;
+  if (symmetry == Symmetry::c6v) {  // CRP_C6v_AtomSurface.f90 MURII
+    for (std::size_t i = 0; i < c6v_cluster_i.size(); ++i) {
+      const double bigxij = c6v_cluster_i[i] * a;
+      const double bigyij = c6v_cluster_j[i] * a;
+      const double yij = bigyij * sq3 * 0.500;
+      const double xij = bigxij + bigyij * 0.500;
+      cluster.push_back({xij, yij, 0.0, 0});
+    }
+    return cluster;
+  }
+  // CRP_C3v_AtomSurface.f90 MURII (loop order i, j, k)
+  for (int i = -c3v_cluster_n; i <= c3v_cluster_n + 1; ++i) {
+    for (int j = -c3v_cluster_n; j <= c3v_cluster_n + 1; ++j) {
+      for (int k = 0; k < c3v_cluster_layers; ++k) {
+        // fcc(111) ABC stacking: layer k shifted by (k mod 3)/3 along both lattice vectors
+        const double uuc = (static_cast<double>(i) + (k % 3) * (1.0 / 3.0)) * a;
+        const double vuc = (static_cast<double>(j) + (k % 3) * (1.0 / 3.0)) * a;
+        const double xijk = uuc + vuc * cos_pi_3;
+        const double yijk = vuc * sin_pi_3;
+        double zijk = 0.0;
+        for (int l = 0; l < k; ++l) zijk = zijk - geometry.interlayer_spacings[l];
+        cluster.push_back({xijk, yijk, zijk, k});
+      }
+    }
+  }
+  return cluster;
+}
+
+// The STOPs of MURII, out of line (keeps add_atom small enough to be inlined into the cluster loops).
+[[noreturn]] void throw_atom_too_close(double r) {
+  throw EvaluationError("CRP atom-surface PES: atom " + std::to_string(r) +
+                        " bohr from a surface atom, closer than the corrugation function (Fortran MURII: R too small)");
+}
+[[noreturn]] void throw_atom_on_subsurface_atom() {
+  throw EvaluationError("CRP atom-surface PES: atom on a sub-surface atom (Fortran MURII: r smaller then 0)");
+}
+
+// The unit cell into which ORIGEN2 folds (closed rhombus, counter-clockwise), Cartesian.
+std::array<std::pair<double, double>, 4> hexagonal_cell(double a) {
+  const double h = a * sq3 * 0.5;
+  return {{{0.0, 0.0}, {a, 0.0}, {1.5 * a, h}, {0.5 * a, h}}};
+}
+
 }  // namespace
 
-HexagonalAtomSurface::HexagonalAtomSurface(const DataSet& data)
+HexagonalAtomSurface::HexagonalAtomSurface(const DataSet& data, EvaluationOptions options)
     : symmetry_(data.symmetry),
       geometry_(slab_geometry(data)),
       corrugation_(corrugation_function(data)),
+      cluster_(murii_cluster(data.symmetry, geometry_)),
+      reachable_(cluster_, hexagonal_cell(geometry_.lattice_constant), corrugation_.x().back(),
+                 geometry_.lattice_constant),
+      prune_cluster_(options.prune_cluster),
       table_(data.symmetry == Symmetry::c3v ? std::span<const double>(fourier_table_atom_c3v())
                                             : std::span<const double>(fourier_table_atom_c6v())),
       n_basis_(data.symmetry == Symmetry::c3v ? 10 : 7) {
@@ -68,11 +120,7 @@ void HexagonalAtomSurface::add_atom(double dx, double dy, double dz, int layer, 
   const double r = std::sqrt(dx * dx + dy * dy + dz * dz);
   double vr = 0.0, dvdr = 0.0;
   if (!(r > corrugation_.x().back())) {
-    if (r < corrugation_.x().front()) {
-      throw EvaluationError(
-          "CRP atom-surface PES: atom " + std::to_string(r) +
-          " bohr from a surface atom, closer than the corrugation function (Fortran MURII: R too small)");
-    }
+    if (r < corrugation_.x().front()) throw_atom_too_close(r);
     const auto vs = corrugation_.value_and_slope_splint(r);
     vr = vs.value;
     dvdr = vs.slope;
@@ -86,47 +134,43 @@ void HexagonalAtomSurface::add_atom(double dx, double dy, double dz, int layer, 
   } else if (layer == 0) {
     sum.dvdz = sum.dvdz + dvdr;
   } else {
-    throw EvaluationError("CRP atom-surface PES: atom on a sub-surface atom (Fortran MURII: r smaller then 0)");
+    throw_atom_on_subsurface_atom();
   }
 }
 
-// Fortran: CRP_C6v_AtomSurface.f90 MURII
-RepulsiveValue HexagonalAtomSurface::repulsive_sum_top_layer(double x, double y, double z) const {
-  const double a = geometry_.lattice_constant;
-  RepulsiveValue sum{0.0, 0.0, 0.0, 0.0};
-  for (std::size_t i = 0; i < c6v_cluster_i.size(); ++i) {
-    const double bigxij = c6v_cluster_i[i] * a;
-    const double bigyij = c6v_cluster_j[i] * a;
-    const double yij = bigyij * sq3 * 0.500;
-    const double xij = bigxij + bigyij * 0.500;
-    add_atom(x - xij, y - yij, z, 0, sum);
-  }
-  return sum;
-}
-
-// Fortran: CRP_C3v_AtomSurface.f90 MURII (loop order i, j, k)
-RepulsiveValue HexagonalAtomSurface::repulsive_sum_layers(double x, double y, double z) const {
-  const double a = geometry_.lattice_constant;
-  RepulsiveValue sum{0.0, 0.0, 0.0, 0.0};
-  for (int i = -c3v_cluster_n; i <= c3v_cluster_n + 1; ++i) {
-    for (int j = -c3v_cluster_n; j <= c3v_cluster_n + 1; ++j) {
-      for (int k = 0; k < c3v_cluster_layers; ++k) {
-        // fcc(111) ABC stacking: layer k shifted by (k mod 3)/3 along both lattice vectors
-        const double uuc = (static_cast<double>(i) + (k % 3) * (1.0 / 3.0)) * a;
-        const double vuc = (static_cast<double>(j) + (k % 3) * (1.0 / 3.0)) * a;
-        const double xijk = uuc + vuc * cos_pi_3;
-        const double yijk = vuc * sin_pi_3;
-        double zijk = 0.0;
-        for (int l = 0; l < k; ++l) zijk = zijk - geometry_.interlayer_spacings[l];
-        add_atom(x - xijk, y - yijk, z - zijk, k, sum);
-      }
-    }
-  }
-  return sum;
-}
-
+// Fortran: MURII (C6v: the 30 atoms of the top layer; C3v: the 8 x 8 x 4 cluster)
 RepulsiveValue HexagonalAtomSurface::repulsive_sum(double x, double y, double z) const {
-  return symmetry_ == Symmetry::c3v ? repulsive_sum_layers(x, y, z) : repulsive_sum_top_layer(x, y, z);
+  return sum_over(cluster_, x, y, z, std::numeric_limits<double>::infinity());
+}
+
+// S2: the atoms out of reach left out (in the plane once, in z per call); the rest in cluster order.
+RepulsiveValue HexagonalAtomSurface::reachable_repulsive_sum(double x, double y, double z) const {
+  if (!in_fold_cell(x, y)) return repulsive_sum(x, y, z);
+  return sum_over(reachable_.atoms(), x, y, z, reachable_.reach());
+}
+
+// The sum over `atoms` in their order, skipping those with |z - z_atom| > z_reach (S2).
+RepulsiveValue HexagonalAtomSurface::sum_over(std::span<const ClusterAtom> atoms, double x, double y, double z,
+                                              double z_reach) const {
+  RepulsiveValue sum{0.0, 0.0, 0.0, 0.0};
+  for (const ClusterAtom& atom : atoms) {
+    if (std::abs(z - atom.z) > z_reach) continue;
+    add_atom(x - atom.x, y - atom.y, z - atom.z, atom.layer, sum);
+  }
+  return sum;
+}
+
+// (x, y) within half the cell margin of the unit cell, in skewed coordinates (bohr).
+bool HexagonalAtomSurface::in_fold_cell(double x, double y) const {
+  const double a = geometry_.lattice_constant;
+  const double limit = 0.5 * reachable_.cell_margin();
+  const double u = x - y * usq3;
+  const double v = 2.0 * y * usq3;
+  return u >= -limit && u <= a + limit && v >= -limit && v <= a + limit;
+}
+
+ClusterSize HexagonalAtomSurface::cluster_size() const {
+  return {static_cast<int>(cluster_.size()), static_cast<int>(reachable_.atoms().size())};
 }
 
 // Fortran: FOUR3II. Basis functions of the hexagonal cell (sums over stars of reciprocal lattice
@@ -187,7 +231,7 @@ void HexagonalAtomSurface::fourier_basis(double xa, double ya, std::span<double>
 AtomSurfaceValue HexagonalAtomSurface::evaluate(const Vec3& p) const {
   // Contribution from the 1D repulsive terms, at the position folded into the unit cell
   const auto [x0c, y0c] = fold_hexagonal(p.x, p.y, geometry_.lattice_constant);
-  const RepulsiveValue rep = repulsive_sum(x0c, y0c, p.z);
+  const RepulsiveValue rep = prune_cluster_ ? reachable_repulsive_sum(x0c, y0c, p.z) : repulsive_sum(x0c, y0c, p.z);
 
   // Interpolation over z for each site (all sites share the z range of the first)
   const std::vector<double>& z = cuts_.front().x();
@@ -225,7 +269,7 @@ AtomSurfaceValue HexagonalAtomSurface::evaluate(const Vec3& p) const {
 double HexagonalAtomSurface::coverage_radius() const {
   const double a = geometry_.lattice_constant;
   const double h = a * sq3 * 0.5;
-  const std::array<std::pair<double, double>, 4> cell = {{{0.0, 0.0}, {a, 0.0}, {1.5 * a, h}, {0.5 * a, h}}};
+  const std::array<std::pair<double, double>, 4> cell = hexagonal_cell(a);
   const bool c3v = symmetry_ == Symmetry::c3v;
   double radius = std::numeric_limits<double>::infinity();
   const int layers = c3v ? c3v_cluster_layers : 1;

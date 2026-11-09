@@ -21,7 +21,7 @@ constexpr Units output_units{LengthUnit::bohr, EnergyUnit::ev};
 
 // Fortran: Read_PES_From_Disk: SkewingAngle = pi/3 (C3v, C6v) or pi/2 (C4v) and the transformation
 // matrix [[1, cos], [0, sin]] (cos/sin folded by gfortran: crplib/constants.hpp)
-QdWrapper::QdWrapper(const DataSet& data) : surface_(data) {
+QdWrapper::QdWrapper(const DataSet& data, EvaluationOptions options) : surface_(data, options) {
   const bool square = data.symmetry == Symmetry::c4v;
   skewing_angle_ = square ? detail::pi / 2.0 : detail::pi / 3.0;
   cos_skew_ = square ? detail::cos_pi_2 : detail::cos_pi_3;
