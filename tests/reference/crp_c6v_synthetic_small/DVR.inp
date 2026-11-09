@@ -1,0 +1,93 @@
+# Small CRP-library regression case (gates 1 and 2): the synthetic C6v data set of the CRP
+# library tests (pairwise model, tests/crplib/reference/c6v_pairwise/dataset), the
+# cu111_dailight_small layout on coarser grids (dZ = 0.125, dR = 0.25, nX = nY = 6). The data set
+# has Zasy = 10 bohr; the potential is switched to the gas phase between ZminSwitch = 6 and
+# ZmaxSwitch = 8 (zasymp becomes 8). tools/fortran_reference/run_setup_reference.sh copies the data
+# set into the scratch directory as "dataset" (the Fortran library fails for paths longer than 50
+# characters). Every field carries an explicit type ("Name : TYPE : value;").
+# The C++ equivalent of this file is input.json in this directory; keep both in sync.
+
+Title       : STRING  : "CRP library, synthetic C6v data set (pairwise model), small grid";
+SystemID    : STRING  : "CRPlibrary";
+CRPlibDataSet : STRING : "dataset";
+NewCalc     : LOGICAL : TRUE;
+
+ZDoF        : LOGICAL : TRUE;
+RDoF        : LOGICAL : TRUE;
+XDoF        : LOGICAL : TRUE;
+YDoF        : LOGICAL : TRUE;
+ThetaDoF    : LOGICAL : TRUE;
+PhiDoF      : LOGICAL : TRUE;
+
+# H2
+Mass1       : REAL    : 1.0078;
+Mass2       : REAL    : 1.0078;
+HomoNuc     : LOGICAL : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : REAL    : -2.0;
+dZ          : REAL    : 0.125;
+nZ          : INTEGER : 112;
+nZSpecular  : INTEGER : 180;
+
+# Grid in r
+RStart      : REAL    : 0.8;
+dR          : REAL    : 0.25;
+nR          : INTEGER : 32;
+
+# Grid in x, y (C6v: nX = nY; u = k/6 includes the top, bridge, hollow and t2h sites)
+nX          : INTEGER : 6;
+nY          : INTEGER : 6;
+
+# Rotational basis (reduced). MJMax is set explicitly equal to JMax: the Fortran code treats
+# MJMax <= 0 as MJMax = JMax (setupdvr.f90 / transform.f90).
+JMax        : INTEGER : 4;
+MJMax       : INTEGER : 4;
+
+ProjOp      : INTEGER : 2;
+
+# Propagation
+tStart      : REAL    : 0.0;
+tEnd        : REAL    : 14000.0;
+dtStep      : REAL    : 2.0;
+nStep       : INTEGER : 7000;
+
+# Analysis
+dtAna       : REAL    : 10.0;
+dtAve       : REAL    : 100.0;
+DynamZSpAna : LOGICAL : TRUE;
+Zana        : REAL    : 8.0;
+NrOfEs      : INTEGER : 41;
+
+# Initial wave packet and state
+EMinWP      : REAL    : 0.2;
+EMaxWP      : REAL    : 0.6;
+Z0          : REAL    : 11.44;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : REAL    : 0.0;
+PhiParallel : REAL    : 0.0;
+
+# Complex absorbing potentials
+ZOptStart   : REAL    : 8.875;
+ZOptEnd     : REAL    : 11.875;
+ZOptEnergy  : REAL    : 0.3;
+ZSpOptStart : REAL    : 16.75;
+ZSpOptEnd   : REAL    : 20.375;
+ZSpOptEnergy: REAL    : 0.3;
+ROptStart   : REAL    : 4.55;
+ROptEnd     : REAL    : 8.55;
+ROptEnergy  : REAL    : 0.3;
+
+# No default exists in the Fortran code for TolSp; must be given.
+TolSp       : REAL    : 1.0E-07;
+
+writeSMatrix: LOGICAL : FALSE;
+writeProbs  : LOGICAL : TRUE;
+writeRDProbs: LOGICAL : TRUE;
+
+# Switching to the gas phase (Potential.f90 switchPotentialToGasPhase)
+UseSwitching: LOGICAL : TRUE;
+ZminSwitch  : REAL    : 6.0;
+ZmaxSwitch  : REAL    : 8.0;

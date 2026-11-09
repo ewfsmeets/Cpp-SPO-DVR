@@ -13,7 +13,7 @@ Fortran default.
 | Key | Type | Fortran | Meaning |
 |---|---|---|---|
 | `Title` | string | title | |
-| `SystemID` | string | systemID | PES; implemented: `HardWallPES` (C2v), `H2Cu111DaiLight`, `H2Cu111Persson` (both C6v) (case-insensitive) |
+| `SystemID` | string | systemID | PES; implemented: `HardWallPES` (C2v), `H2Cu111DaiLight`, `H2Cu111Persson` (both C6v), `CRPlibrary` (a CRP data set, `CRPlibDataSet`; C3v, C4v or C6v from the data set) (case-insensitive) |
 | `NewCalc` | bool | newcalc | new calculation; `false`: restart from `RestartDir` (tStart = end of the earlier run) |
 | `ZDoF` `RDoF` `XDoF` `YDoF` `ThetaDoF` `PhiDoF` | bool | | must all be true (6D only) |
 | `Mass1` `Mass2` | real | amass1/2 | atom masses (amu) |
@@ -58,6 +58,7 @@ The energy is in eV, and the factor is the strength in hartree.
 | `UseSwitching` `ZminSwitch` `ZmaxSwitch` | bool, real, real | false, 6.0, 8.0 | switch V to the gas phase; zasymp becomes ZmaxSwitch |
 | `UseSymmetry` | bool | false (usePotSymmetry) | compute V only at one (x, y) point per orbit of the PES's surface point group (C2v, C4v, C6v, C3v, C3) and map it to the others; operations that do not fit the grid (nφ, nX ≠ nY) are dropped and reported. Error if none is usable. The Fortran uses this for C6v only |
 | `nPhisOptimal` | bool | false | with `UseSymmetry`: nφ becomes a multiple of what the whole group needs (C2v 2, C4v 4, C6v and C3v 6, C3 3) |
+| `CRPlibDataSet` | string | — | directory of the CRP data set (format: [crp_library.md](crp_library.md)), relative to the working directory; required with `SystemID` `CRPlibrary`, an error with any other PES. The data set is read and checked at start-up; the setup output shows its ranges and the grid points outside them |
 | `SymmetryTolerance` | real | 1e-5 eV | C++ only. With `UseSymmetry` the PES is first compared with its symmetry images at 1000 sample points (x, y, φ anywhere in the cell; θ, Z, r at grid points; images wrapped into the unit cell, VMin/VMax applied); a larger max \|ΔV\| is an error |
 | `DoDump` `FullSMatrix` | bool | false | |
 
@@ -76,12 +77,13 @@ A restart must use the same input as the earlier run except `NewCalc`, `tStart`,
 (and output switches); the program checks the grids, masses, time steps, wave packet and
 absorbers against the checkpoint and names any parameter that differs. This includes the number
 of φ points, which `nPhisOptimal` with `UseSymmetry` can change.
+The checkpoint records the `SystemID` but not the CRP data set: a restart with SystemID
+`CRPlibrary` must use the same `CRPlibDataSet` (not checked).
 
 ## Not supported
 These keys give a "not supported" error. Logical keys are accepted when set to `false`. The list
 is: `SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`,
-`RCutOff`, `write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`, `PESMixingAlfa`,
-`CRPlibDataSet`.
+`RCutOff`, `write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`, `PESMixingAlfa`.
 
 ## Validation
 All checks of `InputNew.f90` ReadInput/ValidateInput are reproduced, with the same tolerant real

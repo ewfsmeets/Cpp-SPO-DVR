@@ -1,0 +1,33 @@
+{
+  "Title": "CRP library, synthetic C4v data set (pairwise model), small grid",
+  "SystemID": "CRPlibrary",
+  "CRPlibDataSet": "tests/crplib/reference/c4v_pairwise/dataset",
+  "NewCalc": true,
+
+  "ZDoF": true, "RDoF": true, "XDoF": true, "YDoF": true, "ThetaDoF": true, "PhiDoF": true,
+
+  "Mass1": 1.0078, "Mass2": 1.0078, "HomoNuc": true,
+
+  "ZStart": -2.0, "dZ": 0.125, "nZ": 112, "nZSpecular": 180,
+  "RStart": 0.8, "dR": 0.25, "nR": 32,
+  "nX": 8, "nY": 8,
+  "JMax": 4, "MJMax": 4,
+  "ProjOp": 2,
+
+  "tStart": 0.0, "tEnd": 14000.0, "dtStep": 2.0, "nStep": 7000,
+
+  "dtAna": 10.0, "dtAve": 100.0, "DynamZSpAna": true, "Zana": 8.0, "NrOfEs": 41,
+
+  "EMinWP": 0.2, "EMaxWP": 0.6, "Z0": 11.44,
+  "VIn": 0, "JIn": 0, "MJIn": 0,
+  "EParallel": 0.0, "PhiParallel": 0.0,
+
+  "ZOptStart": 8.875, "ZOptEnd": 11.875, "ZOptEnergy": 0.3,
+  "ZSpOptStart": 16.75, "ZSpOptEnd": 20.375, "ZSpOptEnergy": 0.3,
+  "ROptStart": 4.55, "ROptEnd": 8.55, "ROptEnergy": 0.3,
+
+  "TolSp": 1.0e-7,
+
+  "writeSMatrix": false, "writeProbs": true, "writeRDProbs": true,
+  "UseSwitching": true, "ZminSwitch": 6.0, "ZmaxSwitch": 8.0
+}

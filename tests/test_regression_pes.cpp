@@ -54,13 +54,17 @@ struct Calculation {
 };
 
 fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / name; }
+fs::path repository_root() { return fs::path(SPODVR_REFERENCE_DIR).parent_path().parent_path(); }
 
 const Calculation& calculation(const std::string& name) {
   static std::map<std::string, std::unique_ptr<Calculation>> cache;
   auto& entry = cache[name];
   if (!entry) {
     std::ifstream file(case_dir(name) / "input.json");
-    Config config = build_config(parse_input(nlohmann::json::parse(file)));
+    InputParameters input = parse_input(nlohmann::json::parse(file));
+    // CRP cases: the data set path in input.json is relative to the repository root.
+    if (!input.crp_dataset.empty()) input.crp_dataset = (repository_root() / input.crp_dataset).string();
+    Config config = build_config(input);
     SpatialGrids grids = make_spatial_grids(config);
     AngularGrid angular = make_angular_grid(config);
     const std::unique_ptr<Potential> pes = make_potential(config.input);
@@ -172,3 +176,9 @@ TEST_P(RegressionPes, Gate2RovibrationalStates) {
 // potential is gathered through its own maps: the first Fortran gate of the symmetry maps.
 INSTANTIATE_TEST_SUITE_P(Cu111, RegressionPes,
                          ::testing::Values("cu111_dailight_small", "cu111_persson_small", "cu111_dailight_short_sym"));
+
+// The CRP library (SystemID CRPlibrary) on the synthetic data sets of its tests (pairwise model,
+// tests/crplib/reference/<sym>_pairwise/dataset); r and Z partly outside the data (clamped).
+INSTANTIATE_TEST_SUITE_P(Crp, RegressionPes,
+                         ::testing::Values("crp_c6v_synthetic_small", "crp_c3v_synthetic_small",
+                                           "crp_c4v_synthetic_small"));

@@ -91,6 +91,8 @@ struct InputParameters {
   bool use_symmetry = false;            // UseSymmetry / usePotSymmetry: V on the symmetry-reduced (x, y) grid
   bool phis_optimal = false;            // nPhisOptimal: nphi a multiple of the point group's multiple
   double symmetry_tolerance = 1e-5;     // SymmetryTolerance (eV): allowed asymmetry of the PES (C++ only)
+  std::string crp_dataset;              // CRPlibDataSet: directory of the CRP data set (SystemID CRPlibrary),
+                                        // relative to the working directory
 
   // --- complex absorbing potentials (exactly one of energy / factor per CAP) --------------
   double z_opt_start = 7.0;             // ZOptStart / zsplmi

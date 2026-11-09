@@ -1,17 +1,26 @@
-# Fails if a file of the CRP library (DIR = src/crplib) includes a project header that is not part
-# of the library: #include "..." must start with crplib/. (System headers use <...>.)
-file(GLOB_RECURSE files "${DIR}/*.hpp" "${DIR}/*.cpp")
+# Checks the boundary of the CRP library (SRC = the src/ directory):
+# - a file of the library (src/crplib) includes only its own headers: #include "..." must start
+#   with crplib/ (system headers use <...>);
+# - outside the library only the adapter src/potential/crp_potential.cpp includes crplib/ headers.
 set(violations "")
+file(GLOB_RECURSE files "${SRC}/*.hpp" "${SRC}/*.cpp" "${SRC}/*.cu" "${SRC}/*.cuh")
 foreach(file IN LISTS files)
   file(STRINGS "${file}" includes REGEX "^[ \t]*#[ \t]*include[ \t]+\"")
+  string(FIND "${file}" "${SRC}/crplib/" in_library)
   foreach(line IN LISTS includes)
-    if(NOT line MATCHES "#[ \t]*include[ \t]+\"crplib/")
-      string(APPEND violations "\n  ${file}: ${line}")
+    set(includes_library FALSE)
+    if(line MATCHES "#[ \t]*include[ \t]+\"crplib/")
+      set(includes_library TRUE)
+    endif()
+    if(in_library EQUAL 0 AND NOT includes_library)
+      string(APPEND violations "\n  ${file}: ${line} (the library includes only crplib/ headers)")
+    elseif(NOT in_library EQUAL 0 AND includes_library AND NOT file STREQUAL "${SRC}/potential/crp_potential.cpp")
+      string(APPEND violations "\n  ${file}: ${line} (only potential/crp_potential.cpp uses the library)")
     endif()
   endforeach()
 endforeach()
 if(violations)
-  message(FATAL_ERROR "src/crplib must not include headers outside the library:${violations}")
+  message(FATAL_ERROR "CRP library include boundary violated:${violations}")
 endif()
 list(LENGTH files n)
-message(STATUS "src/crplib include boundary OK (${n} files)")
+message(STATUS "CRP library include boundary OK (${n} files)")

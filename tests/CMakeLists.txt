@@ -26,3 +26,7 @@ endforeach()
 
 # The CRP library's own tests (they link only spodvr_crplib).
 add_subdirectory(crplib)
+
+# The CRP adapter test writes synthetic data sets with the CRP library's test helpers.
+target_include_directories(test_crp_potential PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/crplib)
+target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)

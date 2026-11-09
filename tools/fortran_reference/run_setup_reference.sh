@@ -7,6 +7,7 @@
 #   fortran_setup_stdout.txt  stdout of the run (vasy table, grid info, e(v,j) table)
 #   debug_asyp.dat            full-precision rovibrational energies and eigenvectors
 #   pes_reference.txt         extracted from the binary .pes file (see extract_pes.py)
+# CRP library cases (SystemID CRPlibrary) get their data set copied into the scratch directory.
 #
 # Usage: tools/fortran_reference/run_setup_reference.sh [case] [scratch_dir]
 #   case         reference case directory name (default: hardwall_small)
@@ -24,6 +25,13 @@ fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5
 
 mkdir -p "${scratch_dir}"
 cp "${case_dir}/DVR.inp" "${scratch_dir}/DVR.inp"
+# CRP library cases: the data set (CRPlibDataSet in input.json, relative to the repository root) is
+# copied as "dataset", the short relative path of DVR.inp (the Fortran fails above 50 characters).
+crp_dataset="$(grep -o '"CRPlibDataSet" *: *"[^"]*"' "${case_dir}/input.json" | sed 's/.*: *"\(.*\)"/\1/' || true)"
+if [[ -n "${crp_dataset}" ]]; then
+  [[ -f "${repo_dir}/${crp_dataset}/CRPData" ]] || { echo "error: CRP data set ${crp_dataset} not found" >&2; exit 1; }
+  rm -rf "${scratch_dir}/dataset" && cp -r "${repo_dir}/${crp_dataset}" "${scratch_dir}/dataset"
+fi
 cat >> "${scratch_dir}/DVR.inp" <<'INP'
 
 # Appended by run_setup_reference.sh: potential-only run with full-precision gas-phase dump.

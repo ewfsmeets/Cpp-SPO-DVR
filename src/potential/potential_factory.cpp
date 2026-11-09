@@ -5,6 +5,7 @@
 
 #include "core/error.hpp"
 #include "core/real_compare.hpp"
+#include "potential/crp_potential.hpp"
 #include "potential/dai_light_cu111_potential.hpp"
 #include "potential/hard_wall_potential.hpp"
 #include "potential/persson_cu111_potential.hpp"
@@ -16,10 +17,11 @@ namespace {
 constexpr const char* hard_wall_id = "HardWallPES";
 constexpr const char* dai_light_id = "H2Cu111DaiLight";
 constexpr const char* persson_id = "H2Cu111Persson";
+constexpr const char* crp_id = "CRPlibrary";  // a CRP data set (CRPlibDataSet)
 }  // namespace
 
 bool potential_is_implemented(std::string_view system_id) {
-  for (const char* id : {hard_wall_id, dai_light_id, persson_id})
+  for (const char* id : {hard_wall_id, dai_light_id, persson_id, crp_id})
     if (fortran_compare::seq(system_id, id)) return true;
   return false;
 }
@@ -29,8 +31,9 @@ std::unique_ptr<Potential> make_potential(const InputParameters& input) {
   if (fortran_compare::seq(system_id, hard_wall_id)) return std::make_unique<HardWallPotential>();
   if (fortran_compare::seq(system_id, dai_light_id)) return std::make_unique<DaiLightCu111Potential>();
   if (fortran_compare::seq(system_id, persson_id)) return std::make_unique<PerssonCu111Potential>();
+  if (fortran_compare::seq(system_id, crp_id)) return std::make_unique<CrpPotential>(input.crp_dataset);
   throw InputError("SystemID", "unknown system ID '" + std::string(system_id) + "' (implemented: " + hard_wall_id +
-                                   ", " + dai_light_id + ", " + persson_id + ")");
+                                   ", " + dai_light_id + ", " + persson_id + ", " + crp_id + ")");
 }
 
 }  // namespace spodvr

@@ -60,6 +60,11 @@ derived from exactly the same parameters.
    switching 6..8), cu111_persson_small and cu111_dailight_short_sym (the Fortran symmetric .pes,
    expanded through symmetryIndex by extract_pes.py, vs the C++ gather): all pass, vasy ≤ 9e-16,
    6D ≤ 3.6e-14 of max(|V|, 1 eV); computed (x, y) points 10 = 10 (C6v triangle 1).
+   The same gates for the CRP library (SystemID `CRPlibrary`) on the synthetic data sets of its
+   tests (pairwise model; `tests/crplib/reference/<sym>_pairwise/dataset`):
+   `crp_c6v_synthetic_small`, `crp_c3v_synthetic_small` (6 × 6) and `crp_c4v_synthetic_small`
+   (8 × 8), with r and Z partly outside the data (clamped) and switching 6..8: all pass, vasy
+   bitwise, 6D ≤ 3.0e-14 of max(|V|, 1 eV) (the grids' quad-precision ulps, as above).
 4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
    Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
    values) to half a unit in the last printed digit (values below 1e-20 are noise and compared

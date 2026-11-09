@@ -39,6 +39,7 @@ void print_input_summary(std::ostream& out, const Style& style, const Config& co
   KeyValueList list;
   list.add("Title", p.title);
   list.add("System", p.system_id);
+  if (!p.crp_dataset.empty()) list.add("CRP data set", p.crp_dataset);
   list.add("Run mode", run_mode_name(d.run_mode));
   list.add("Masses", fixed(p.mass1, 6) + ", " + fixed(p.mass2, 6), "amu");
   list.add("Homonuclear", yes_no(p.homonuclear));

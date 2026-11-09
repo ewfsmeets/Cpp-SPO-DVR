@@ -191,6 +191,7 @@ add_library(spodvr_core
   src/io/fortran_unformatted.cpp
   src/io/fortran_files.cpp
   src/potential/hard_wall_potential.cpp
+  src/potential/crp_potential.cpp
   src/potential/dai_light_cu111_potential.cpp
   src/potential/persson_cu111_potential.cpp
   src/potential/potential_factory.cpp
@@ -204,6 +205,7 @@ add_library(spodvr_core
   src/gasphase/gas_phase.cpp
   src/report/format.cpp
   src/report/sections.cpp
+  src/report/crp_report.cpp
   src/report/propagation_report.cpp
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp

@@ -46,6 +46,11 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 - Potentials: the hard wall test potential and the two analytic H₂/Cu(111) LEPS potentials of the
   Fortran code (Dai–Light and Persson), checked against the Fortran potential on the grid; the
   Dai–Light propagation and analysis are checked against the Fortran code as well.
+- CRP potentials from a data set (SystemID `CRPlibrary`, input key `CRPlibDataSet`): the Fortran
+  CRP library of M. Wijzenbroek (C3v, C4v and C6v surfaces), ported as the self-contained library
+  `src/crplib/` (V and analytic gradients). No real data set is in the repository: the library is
+  checked bitwise against the Fortran library on synthetic data sets, and the program against the
+  Fortran potential on the grid.
 - Surface symmetry (`UseSymmetry`): the potential is computed and stored only for symmetry-unique
   (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
   potential really has that symmetry.
@@ -313,7 +318,9 @@ vector extensions (see docs/performance.md).
 - Unknown keys and inconsistent parameters are reported as errors.
 - The test copies of these inputs (with the Fortran reference output) live in
   `tests/reference/`, together with the corrugated test cases (`cu111_dailight_*`,
-  `cu111_persson_small`), whose `input.json` files can be run in the same way.
+  `cu111_persson_small`, and `crp_*_synthetic_small`, which must be run from the repository root
+  because their `CRPlibDataSet` path is relative to it), whose `input.json` files can be run in
+  the same way.
 - The hard wall and test grids are deliberately tiny so that they run quickly. Production
   calculations use much larger grids (more than 64 GB of memory).
 

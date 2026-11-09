@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <string>
@@ -94,6 +95,34 @@ TEST(Input, UnsupportedFeatures) {
   Json json = reference_json();
   json["RCutOff"] = 3.0;
   EXPECT_THROW((void)build(json), NotSupportedError);
+}
+
+// CRPlibDataSet (directory of the CRP data set, relative to the working directory): required with
+// SystemID CRPlibrary, an error with any other PES. build_config reads the data set (the PES gives
+// the system parameters), so a missing one is reported there; the data-set checks themselves are
+// in tests/crplib and test_crp_potential.
+TEST(Input, CrpDataSetKey) {
+  Json json = reference_json();  // hard wall
+  json["CRPlibDataSet"] = "some/data/set";
+  expect_input_error(json, "CRPlibDataSet");
+
+  json = reference_json();
+  json["SystemID"] = "CRPlibrary";
+  expect_input_error(json, "CRPlibDataSet");  // missing
+  json["CRPlibDataSet"] = "";
+  expect_input_error(json, "CRPlibDataSet");
+  json["CRPlibDataSet"] = "no/such/data/set";
+  expect_input_error(json, "CRPlibDataSet");
+
+  const std::string root = std::filesystem::path(SPODVR_REFERENCE_DIR).parent_path().parent_path().string();
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/crp_c6v_synthetic_small/input.json");
+  json = Json::parse(file);
+  json["SystemID"] = "crplibrary";  // case-insensitive, like the Fortran
+  json["CRPlibDataSet"] = root + "/" + json["CRPlibDataSet"].get<std::string>();
+  const Config config = build(json);
+  EXPECT_EQ(config.input.crp_dataset, json["CRPlibDataSet"].get<std::string>());
+  EXPECT_EQ(config.derived.system.point_group, "C6v");
+  EXPECT_EQ(config.derived.z_asymptotic_unswitched, 10.0);
 }
 
 // UseSymmetry, nPhisOptimal and SymmetryTolerance (eV, default 1e-5, must be > 0). With both

@@ -191,6 +191,7 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("UseSymmetry", p.use_symmetry, optional);
   in.read("nPhisOptimal", p.phis_optimal, optional);
   in.read("SymmetryTolerance", p.symmetry_tolerance, optional);
+  in.read("CRPlibDataSet", p.crp_dataset, optional);
 
   in.read("ZOptEnergy", p.z_opt_energy);
   in.read("ZOptFactor", p.z_opt_factor);
@@ -210,8 +211,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
 // Fortran input fields of features that are not available in this program.
 void reject_unsupported_keys(JsonReader& in) {
   for (const char* key : {"SystemMix", "UseRCutOff", "write2DPES"}) in.reject_logical_if_true(key);
-  for (const char* key : {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES",
-                          "PESMixingAlfa", "CRPlibDataSet"})
+  for (const char* key :
+       {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES", "PESMixingAlfa"})
     in.reject_if_present(key);
 }
 
@@ -224,6 +225,13 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
   // scattering grid drops below tolsp) is a legacy option of the Fortran code; not ported.
   if (p.projection_operator == 1)
     throw InputError("ProjOp", "ProjOp = 1 is a legacy option and not supported; use ProjOp = 2.");
+
+  // The CRP data set: required by the CRP PES, meaningless for any other.
+  const bool crp = fortran_compare::seq(p.system_id, "CRPlibrary");
+  if (crp && p.crp_dataset.empty())
+    throw InputError("CRPlibDataSet", "SystemID CRPlibrary needs CRPlibDataSet (the directory of the data set)");
+  if (!crp && in.contains("CRPlibDataSet"))
+    throw InputError("CRPlibDataSet", "CRPlibDataSet is only used with SystemID CRPlibrary");
 
   if (p.do_flux_analysis) {
     for (const char* key : {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"})

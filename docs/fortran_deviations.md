@@ -19,7 +19,7 @@ differences are in [validation.md](validation.md).
 - Not ported: `.pes` file caching (`ReadPesFromFile`/`WritePesToFile`); the potential is always
   computed. `UseRCutOff` is silently forced off by Fortran `ProcessInput`; C++ rejects
   `UseRCutOff: true` / `RCutOff`. Also rejected (NotSupportedError): `SystemMix` (+`SystemID2`,
-  `SystemMixCoeff`), `write2DPES` (+ coordinates), `PESMixingAlfa`, `CRPlibDataSet`.
+  `SystemMixCoeff`), `write2DPES` (+ coordinates), `PESMixingAlfa`.
 - Surface symmetry, deviations: the Fortran switches `UseSymmetry` off with a warning for C2v and
   C4v (complete but never validated code) and has no code for C3v/C3; C++ supports all five
   (gates for those: C++ with vs without symmetry). nX or nY = 1 with UseSymmetry and a trivial
@@ -135,6 +135,14 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   Hartree, |ΔF| ≤ 2.7e-15 Hartree/bohr at under 12 % of the points (tests compare to
   4e-15·max(unit, |value|)). A scratch build calling `_ZGVbN2v_cos` was bitwise equal everywhere.
   CutsInterpolation = T data sets are bitwise equal.
+- In the program (SystemID `CRPlibrary`, `src/potential/crp_potential.*`): `CRPlibDataSet` is
+  required and is an error with another SystemID (the Fortran reads and ignores it). Data-set
+  paths longer than 50 characters work: the Fortran opens `CRPData` with the full path but every
+  other file through the `CHARACTER(50)` `PES%DataSet`, so it fails there. The library's STOPs
+  (exit status 0 in the Fortran) and data-set errors are input errors naming `CRPlibDataSet`
+  (exit status 2); an evaluation error names the grid point. The setup output reports the clamped
+  r and Z grid points and the (Z, r) points where the library silently returns V = 0 (shifted to
+  −VH2(r_last) by the wrapper; reproduced, decision D2).
 - Kept on purpose: for a vertical molecule (θ = 0 exactly) RRINTII/RRINT set dθ/dX = dθ/dY = 0,
   but the sin 2θ terms of the hollow and t2 site functions give V a lateral slope there; the x and
   y gradient components miss it (z is right). Irrelevant for SPO-DVR (V only; no θ grid point is 0).
