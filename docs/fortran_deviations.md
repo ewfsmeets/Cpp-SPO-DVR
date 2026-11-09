@@ -99,3 +99,34 @@ differences are in [validation.md](validation.md).
 - Reference-case property (not a bug, same in Fortran): the FGH grid is periodic, so the decay of
   ψ_v below r_min wraps around to r_max (ψ_00(r_max) ≈ 7e-4, a ~1e-7 plateau in between). The r
   absorber (ROptStart = 4.55) removes this tail, ≈ 5e-8 of norm per 10 a.u. of propagation.
+
+## CRP library (`src/crplib/`, SystemID `CRPlibrary`)
+
+The port of the Fortran CRP library (`CRPlibrary.dir/`, docs/crp_library.md). V and the analytic
+gradients are bitwise equal to the Fortran library on the synthetic test data sets
+(`tests/crplib/`), except where listed.
+
+- Kept on purpose (Fortran semantics reproduced):
+  - The C6v atom-surface Fourier table (`CRP_C6v_AtomSurface.f90 FOUR3D`) has the truncated DATA
+    literals `0.666666666666667` and `1.333333333333`: it is the inverse of its site basis only to
+    8.4e-14, so the atom PES misses its own data at the sites by ~1e-13 relative.
+  - `ORIGEN`/`ORIGEN2` fold with `INT(ori)` and `INT(ori - 1)` for negative values: a point at an
+    exact negative lattice coordinate lands on the far edge of the cell (u = 1, not 0). Equal
+    values by periodicity, different rounding.
+  - The library's own unit factors (`UnitConversion.f90`: 27.2113961 eV/Hartree, 0.529177249 Å/bohr)
+    and their composition `x * ((1/c_in) * c_out)`; SPO-DVR converts the PES (eV) back with
+    chaev = 27.2114, so data given in Hartree are scaled by 27.2113961/27.2114.
+  - C4v `MURO`: a negative first interlayer spacing is a relative value (z = −IS(1)·a/√2), but it is
+    unit-converted as a length like every spacing.
+  - The cos/sin(π/3) and cos(π/2) that gfortran folded at compile time are hexadecimal literals
+    (`crplib/constants.hpp`); they equal the run-time values on this machine (tested).
+- Errors (DataError) where the Fortran misbehaves silently or crashes: a missing molecular cut
+  file (the Fortran skips it and later evaluates an unallocated spline), wrong numbers of cuts
+  (atom: exactly 7/10 for C6v/C3v, else uninitialised or out-of-bounds sums), spline tables with
+  fewer than 4 points (`DSPLIN` writes `cm(0)`) or more than 999 (`SPLIN2D` stops), grids that are
+  not strictly increasing, an unknown symmetry string (the atom PES continues with garbage),
+  ZsoMin > ZsoMax, cut file names longer than 50 characters (truncated by `CHARACTER(50)`), a
+  `<data set>.dat` file (multi-PES branch, empty in the Fortran), C3v with fewer than 4 layers or
+  Disp1 ≠ 0 and C4v with fewer than 2 layers. A folded coordinate beyond ±2·10⁹ lattice constants
+  (`INT` overflow) is an EvaluationError. Equal ZsoMin and ZsoMax are accepted (as in the Fortran).
+- Not ported: the C4v 1D splines of the atom cuts (computed but never evaluated by the Fortran).

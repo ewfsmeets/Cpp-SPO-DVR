@@ -15,3 +15,7 @@ endforeach()
 # The library includes only the standard library and its own headers.
 add_test(NAME CrpLib.IncludeBoundary
          COMMAND ${CMAKE_COMMAND} -DDIR=${PROJECT_SOURCE_DIR}/src/crplib -P ${CMAKE_CURRENT_SOURCE_DIR}/check_include_boundary.cmake)
+
+# The synthetic reference cases (data set + point lists) for tools/fortran_reference/run_crp_reference.sh.
+add_executable(crplib_make_dataset make_crp_dataset.cpp)
+target_link_libraries(crplib_make_dataset PRIVATE spodvr_crplib spodvr_warnings spodvr_crplib_fp)

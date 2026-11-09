@@ -1,6 +1,7 @@
 // Unit conversion of the CRP library. Fortran: UnitConversion.f90
 #include "crplib/units.hpp"
 
+#include <array>
 #include <string>
 
 #include "crplib/errors.hpp"
@@ -17,29 +18,31 @@ constexpr double conv_kcal_per_mol = 627.50956;
 constexpr double conv_kj_per_mol = 627.50956 * 4.184;  // a Fortran PARAMETER: rounded once
 constexpr double conv_joule = 4.35974434e-18;
 
-// Factor from Hartree to the unit (1 for Hartree).
-double hartree_to(EnergyUnit unit) {
-  switch (unit) {
-    case EnergyUnit::hartree: return 1.0;
-    case EnergyUnit::ev: return conv_ev;
-    case EnergyUnit::kcal_per_mol: return conv_kcal_per_mol;
-    case EnergyUnit::kj_per_mol: return conv_kj_per_mol;
-    case EnergyUnit::joule: return conv_joule;
-  }
-  return 1.0;
-}
+// Factor from Hartree to each energy unit code, and its reciprocal (the Fortran's 1.0 / CONV_*,
+// folded at compile time there as here). Tables indexed by the code, covering every value of the
+// 3-bit code so that no index can be out of range.
+// A switch with a run-time division here was miscompiled by GCC 15 with LTO at -O2/-O3: the
+// division by the switch table was hoisted above the Hartree check and read the table at index -1
+// (crash in the C4v atom-surface constructor; fine with -fno-tree-switch-conversion).
+constexpr std::array<double, 8> hartree_to = {1.0,        1.0, 1.0, conv_ev, conv_kcal_per_mol, conv_kj_per_mol,
+                                              conv_joule, 1.0};
+constexpr std::array<double, 8> to_hartree = {
+    1.0, 1.0, 1.0, 1.0 / conv_ev, 1.0 / conv_kcal_per_mol, 1.0 / conv_kj_per_mol, 1.0 / conv_joule, 1.0};
+
+int code(EnergyUnit unit) { return static_cast<int>(unit) & 7; }
 
 // The Fortran's Conversion variable: 1 or 1/factor(from), then times factor(to) unless `to` is
 // the internal unit.
 double length_conversion(LengthUnit from, LengthUnit to) {
-  double conversion = from == LengthUnit::bohr ? 1.0 : 1.0 / conv_angstrom;
+  constexpr double angstrom_to_bohr = 1.0 / conv_angstrom;
+  double conversion = from == LengthUnit::bohr ? 1.0 : angstrom_to_bohr;
   if (to == LengthUnit::angstrom) conversion = conversion * conv_angstrom;
   return conversion;
 }
 
 double energy_conversion(EnergyUnit from, EnergyUnit to) {
-  double conversion = from == EnergyUnit::hartree ? 1.0 : 1.0 / hartree_to(from);
-  if (to != EnergyUnit::hartree) conversion = conversion * hartree_to(to);
+  double conversion = to_hartree[code(from)];
+  if (to != EnergyUnit::hartree) conversion = conversion * hartree_to[code(to)];
   return conversion;
 }
 
