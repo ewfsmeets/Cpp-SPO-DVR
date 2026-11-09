@@ -118,6 +118,25 @@ if(ipo_supported)
 endif()
 
 # =============================================================================================
+# spodvr_crplib: the port of the Fortran CRP library (src/crplib/, docs/crp_library.md), a
+# self-contained library (standard library only). It is always built with strict floating point,
+# also in the fast-math build: it is set-up code, and its tests compare with the Fortran bit for bit.
+# =============================================================================================
+set(crplib_fp_flags -ffp-contract=off -fno-fast-math -fno-math-errno -fno-trapping-math)
+if(SPODVR_ARCH)
+  list(APPEND crplib_fp_flags -march=${SPODVR_ARCH})
+endif()
+add_library(spodvr_crplib_fp INTERFACE)
+target_compile_options(spodvr_crplib_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${crplib_fp_flags}>")
+
+add_library(spodvr_crplib
+  src/crplib/list_directed_reader.cpp
+  src/crplib/units.cpp
+)
+target_include_directories(spodvr_crplib PUBLIC src)
+target_link_libraries(spodvr_crplib PRIVATE spodvr_warnings spodvr_crplib_fp)
+
+# =============================================================================================
 # spodvr_core: everything except the program driver and the GPU backend
 # =============================================================================================
 add_library(spodvr_core
@@ -184,7 +203,7 @@ if(SPODVR_POISON_UNINITIALISED)
 endif()
 target_link_libraries(spodvr_core
   PUBLIC nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
-  PRIVATE spodvr_warnings spodvr_fp)
+  PRIVATE spodvr_crplib spodvr_warnings spodvr_fp)
 
 # The FFTs. The real FFTW must come before oneMKL in the link line: oneMKL also defines the
 # fftw_* functions, and the first library that defines a symbol wins.

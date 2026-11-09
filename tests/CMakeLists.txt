@@ -23,3 +23,6 @@ foreach(source IN LISTS test_sources)
   target_compile_definitions(${name} PRIVATE SPODVR_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference")
   gtest_discover_tests(${name} DISCOVERY_TIMEOUT 60)
 endforeach()
+
+# The CRP library's own tests (they link only spodvr_crplib).
+add_subdirectory(crplib)
