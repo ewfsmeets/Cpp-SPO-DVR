@@ -21,7 +21,8 @@ constexpr Units output_units{LengthUnit::bohr, EnergyUnit::ev};
 
 // Fortran: Read_PES_From_Disk: SkewingAngle = pi/3 (C3v, C6v) or pi/2 (C4v) and the transformation
 // matrix [[1, cos], [0, sin]] (cos/sin folded by gfortran: crplib/constants.hpp)
-QdWrapper::QdWrapper(const DataSet& data, EvaluationOptions options) : surface_(data, options) {
+QdWrapper::QdWrapper(const DataSet& data, EvaluationOptions options)
+    : surface_(data, options), value_only_(options.value_only) {
   const bool square = data.symmetry == Symmetry::c4v;
   skewing_angle_ = square ? detail::pi / 2.0 : detail::pi / 3.0;
   cos_skew_ = square ? detail::cos_pi_2 : detail::cos_pi_3;
@@ -55,7 +56,10 @@ double QdWrapper::potential_ev(double u, double v, double z, double r, double th
                my_z - 0.5 * my_r * std::cos(theta)};
   const Vec3 b{my_x + 0.5 * my_r * std::sin(theta) * std::cos(phi), my_y + 0.5 * my_r * std::sin(theta) * std::sin(phi),
                my_z + 0.5 * my_r * std::cos(theta)};
-  const double value = calculate_molecule_surface(surface_, a, b, output_units).v;
+  // The library's V in eV (0 where it gives up silently); S3: without the derivatives
+  const double value =
+      value_only_ ? convert_energy(surface_.value(a, b).value_or(0.00), EnergyUnit::hartree, output_units.energy)
+                  : calculate_molecule_surface(surface_, a, b, output_units).v;
   return value - convert_energy(surface_.h2_asymptote(), EnergyUnit::hartree, EnergyUnit::ev);
 }
 

@@ -37,6 +37,8 @@ class MoleculeSurface {
   // molecule's (r, Z) outside a cut's grid below ZsoMax, or r outside the free-molecule potential
   // above it. Throws EvaluationError where the Fortran stops. Fortran: POT6D
   [[nodiscard]] std::optional<MoleculeSurfaceValue> evaluate(const Vec3& a, const Vec3& b) const;
+  // V alone (Hartree), bitwise equal to evaluate(a, b)->v; skips the derivatives (speed-up S3).
+  [[nodiscard]] std::optional<double> value(const Vec3& a, const Vec3& b) const;
 
   [[nodiscard]] Symmetry symmetry() const { return symmetry_; }
   [[nodiscard]] double lattice_constant() const { return lattice_constant_; }  // bohr
@@ -85,7 +87,8 @@ class MoleculeSurface {
   std::vector<int> group_of_cut_;
   bool share_grid_lookup_;
 
-  [[nodiscard]] bool evaluate_cuts(double r, double z, std::span<detail::BicubicValue> values) const;
+  [[nodiscard]] std::optional<MoleculeSurfaceValue> compute(const Vec3& a, const Vec3& b, detail::Want want) const;
+  [[nodiscard]] bool evaluate_cuts(double r, double z, std::span<detail::BicubicValue> values, detail::Want want) const;
   double r_min_, r_max_, z_min_;
   std::vector<std::string> warnings_;
 };

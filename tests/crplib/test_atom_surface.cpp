@@ -63,6 +63,7 @@ TEST_P(FortranAtomSurface, BitwiseEqual) {
     EXPECT_BITS(v.gradient.x, gradient[0]) << " at (" << p.x << ", " << p.y << ", " << p.z << ")";
     EXPECT_BITS(v.gradient.y, gradient[1]) << " at (" << p.x << ", " << p.y << ", " << p.z << ")";
     EXPECT_BITS(v.gradient.z, gradient[2]) << " at (" << p.x << ", " << p.y << ", " << p.z << ")";
+    EXPECT_BITS(pes->value(p), value.bits) << " V only (S3) at (" << p.x << ", " << p.y << ", " << p.z << ")";
   }
 }
 

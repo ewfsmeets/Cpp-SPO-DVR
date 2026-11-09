@@ -10,6 +10,10 @@
 
 namespace crplib::detail {
 
+// What an evaluation computes (speed-up S3, docs/crp_library.md "Speed"): the value only, or the
+// value and its derivatives. The value comes from the same statements either way (bitwise equal).
+enum class Want { value, value_and_gradient };
+
 // Solves the tridiagonal system with diagonal `diagonal`, sub-diagonal `lower` (lower[i - 1] in
 // row i) and super-diagonal `upper` (upper[i] in row i). `diagonal` and `rhs` are overwritten.
 // Fortran: TRIDIA
@@ -66,6 +70,8 @@ class CubicSpline1D {
   // F(t) and F'(t) with a different formula (bisection; the end cubics continued outside).
   // Fortran: SPLINT(xa, ya, cya, n, x, y, yp)
   [[nodiscard]] ValueAndSlope value_and_slope_splint(double t) const;
+  // Its value alone (the same statements). Fortran: SPLINT y
+  [[nodiscard]] double value_splint(double t) const;
 
   [[nodiscard]] const std::vector<double>& x() const { return x_; }
   [[nodiscard]] const std::vector<double>& y() const { return y_; }
@@ -76,6 +82,9 @@ class CubicSpline1D {
   std::vector<double> x_;
   std::vector<double> y_;
   std::vector<double> m_;  // F''(x_i). Fortran: Coefs
+
+  [[nodiscard]] int splint_interval(double t) const;  // SPLINT's bisection: the lower knot
+  [[nodiscard]] double splint_value(int klo, double t) const;
 };
 
 // The index klo (0-based) of the interval [x_klo, x_klo+1] that contains t, for increasing x;
@@ -115,8 +124,8 @@ class BicubicSpline {
 
   // The cell of (x, y); nullopt outside the grid (Fortran: switch = .TRUE.). Fortran: UBICAR, SPLCOFII
   [[nodiscard]] std::optional<GridCell> locate(double x, double y) const;
-  // Value and derivatives in a located cell. Fortran: SPLINII
-  [[nodiscard]] BicubicValue evaluate_in_cell(const GridCell& cell) const;
+  // Value and derivatives in a located cell (Want::value: the derivatives are 0). Fortran: SPLINII
+  [[nodiscard]] BicubicValue evaluate_in_cell(const GridCell& cell, Want want = Want::value_and_gradient) const;
   // Both steps. Fortran: Evaluate_Spline2D_Alt
   [[nodiscard]] std::optional<BicubicValue> evaluate(double x, double y) const;
 

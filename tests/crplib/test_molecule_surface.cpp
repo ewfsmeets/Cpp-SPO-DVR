@@ -78,6 +78,10 @@ void compare_molecule_points(const std::string& case_name, const std::string& li
     expect_fortran(v.gradient_b.x, f[3], bitwise, where, force_unit);
     expect_fortran(v.gradient_b.y, f[4], bitwise, where, force_unit);
     expect_fortran(v.gradient_b.z, f[5], bitwise, where, force_unit);
+    if (units == internal_units) {  // S3: V alone is bitwise the full evaluation's V (0: silent branch)
+      EXPECT_EQ(std::bit_cast<std::uint64_t>(pes.value(a, b).value_or(0.00)), std::bit_cast<std::uint64_t>(v.v))
+          << " V only " << where;
+    }
   }
 }
 
@@ -546,6 +550,13 @@ TEST(MoleculeSurfaceSharedGrid, CutsWithTheirOwnGrid) {
   EXPECT_EQ(MoleculeSurface(data).cut_grids(), 2);
   const auto [n, outside] = compare_shared_lookup(data);
   EXPECT_GT(outside, 0);
+
+  // One interior Z knot of cut 7 moved: its cells and weights differ from the others' there.
+  DataSet moved = crplib_test::pairwise_data_set(Symmetry::c6v);
+  std::vector<double>& z7 = moved.molecule_cuts[7].z;
+  z7[5] = z7[5] + 0.3 * (z7[6] - z7[5]);
+  EXPECT_EQ(MoleculeSurface(moved).cut_grids(), 2);
+  (void)compare_shared_lookup(moved);
 
   // A Z grid through zero: +0 in every cut, -0 in cut 9 (equal by ==, but not the same bits). An
   // impulse data set (cut 9 = 1; CutsInterpolation = T, atom cuts over z = -10..20).

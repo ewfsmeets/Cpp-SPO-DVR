@@ -5,8 +5,8 @@ import sys
 
 MUTATIONS = [
     ("bridge images swapped", "src/crplib/hexagonal_interaction.cpp",
-     "  s[4] = hexagonal_bridge(bridge, t, phi + pis3);\n  s[5] = hexagonal_bridge(bridge, t, phi - pis3);",
-     "  s[4] = hexagonal_bridge(bridge, t, phi - pis3);\n  s[5] = hexagonal_bridge(bridge, t, phi + pis3);"),
+     "  s[4] = hexagonal_bridge(bridge, t, phi + pis3, want);\n  s[5] = hexagonal_bridge(bridge, t, phi - pis3, want);",
+     "  s[4] = hexagonal_bridge(bridge, t, phi - pis3, want);\n  s[5] = hexagonal_bridge(bridge, t, phi + pis3, want);"),
     ("0.5 instead of the folded cos(pi/3) (QD wrapper skew)", "src/crplib/qd_wrapper.cpp",
      "cos_skew_ = square ? detail::cos_pi_2 : detail::cos_pi_3;",
      "cos_skew_ = square ? detail::cos_pi_2 : 0.5;"),
@@ -31,8 +31,8 @@ MUTATIONS = [
      "return ori >= 0.0 ? static_cast<int>(ori) : static_cast<int>(ori - 1.0);",
      "return static_cast<int>(std::floor(ori));"),
     ("C3v t2h and t2f cuts swapped", "src/crplib/hexagonal_interaction.cpp",
-     "    s[2] = hexagonal_hollow(hollow, t, phi);  // hcp\n    const auto t2h = cuts.subspan(12, 6);",
-     "    s[2] = hexagonal_hollow(hollow, t, phi);  // hcp\n    const auto t2h = cuts.subspan(18, 6);"),
+     "    s[2] = hexagonal_hollow(hollow, t, phi, want);  // hcp\n    const auto t2h = cuts.subspan(12, 6);",
+     "    s[2] = hexagonal_hollow(hollow, t, phi, want);  // hcp\n    const auto t2h = cuts.subspan(18, 6);"),
     ("sign flip in a chain-rule term (dphi/dx of atom a)", "src/crplib/molecule_surface.cpp",
      "d.theta_x * i_theta + d.phi_x * i_phi,",
      "d.theta_x * i_theta - d.phi_x * i_phi,"),
@@ -56,7 +56,7 @@ MUTATIONS = [
      "    if (std::abs(z - atom.z) > z_reach) continue;",
      "    if (std::abs(z - atom.z) > 0.5 * z_reach) continue;"),
     ("S2: no fallback to the full cluster outside the fold cell (C3v, C6v)", "src/crplib/hexagonal_atom_surface.cpp",
-     "  if (!in_fold_cell(x, y)) return repulsive_sum(x, y, z);\n",
+     "  if (!in_fold_cell(x, y)) return repulsive_sum(x, y, z, want);\n",
      ""),
     # ... and the safety margins, each of which alone covers the rounding (SAFETY MARGIN: may survive).
     ("S2: no margins at all [SAFETY MARGIN]", "src/crplib/atom_surface.cpp",
@@ -72,14 +72,23 @@ MUTATIONS = [
      "<= reach_ + 2.0 * cell_margin_)", "< reach_ + 2.0 * cell_margin_)"),
     # Speed-up S4 (one grid lookup per group of cuts with the same grid)
     ("S4: every cut evaluated in the cell of the first group", "src/crplib/molecule_surface.cpp",
-     "values[k] = cuts_[k].evaluate_in_cell(cells[group_of_cut_[k]]);",
-     "values[k] = cuts_[k].evaluate_in_cell(cells[0]);"),
+     "values[k] = cuts_[k].evaluate_in_cell(cells[group_of_cut_[k]], want);",
+     "values[k] = cuts_[k].evaluate_in_cell(cells[0], want);"),
     ("S4: grids compared with != (merges -0 and +0 knots)", "src/crplib/molecule_surface.cpp",
      "if (std::bit_cast<std::uint64_t>(a[i]) != std::bit_cast<std::uint64_t>(b[i])) return false;",
      "if (a[i] != b[i]) return false;"),
     ("S4: only the first group located", "src/crplib/molecule_surface.cpp",
      "for (std::size_t g = 0; g < grid_cut_.size(); ++g) {\n    const std::optional<detail::GridCell> cell",
      "for (std::size_t g = 0; g < 1; ++g) {\n    const std::optional<detail::GridCell> cell"),
+    # Speed-up S3 (V without the derivatives): things the value needs, wrongly skipped
+    ("S3: sin 3 phi of the hollow site skipped for V", "src/crplib/site_interpolation.cpp",
+     "const double sin3phi = std::sin(3.00 * phi), cos6phi = std::cos(6.00 * phi);",
+     "const double sin3phi = want == Want::value ? 0.0 : std::sin(3.00 * phi), cos6phi = std::cos(6.00 * phi);"),
+    ("S3: the C3v sine stars of the atom PES skipped for V", "src/crplib/hexagonal_atom_surface.cpp",
+     "const bool star_sines = c3v || gradient;", "const bool star_sines = gradient;"),
+    ("S3: V-only blend without the gas-phase term", "src/crplib/molecule_surface.cpp",
+     "return MoleculeSurfaceValue{(va + vb + i_v) * sw.f + (1.00 - sw.f) * gp.v, {}, {}};",
+     "return MoleculeSurfaceValue{(va + vb + i_v) * sw.f, {}, {}};"),
 ]
 
 if sys.argv[1] == "list":

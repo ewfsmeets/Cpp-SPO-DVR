@@ -2,7 +2,9 @@
 // transform, the energy shift, the silent V = 0 branch in eV, parameters and the range report.
 #include <gtest/gtest.h>
 
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <numbers>
 #include <vector>
 
@@ -89,4 +91,38 @@ TEST(QdWrapperSilentBranch, ShiftedZeroAndCounted) {
   EXPECT_EQ(wrapper.potential_ev(0.3, 0.4, z, 1.4, 0.7, 0.2), -0.002 * ev_per_hartree);
   const std::vector<double> zs = {1.0, z}, rs = {1.4};
   EXPECT_EQ(wrapper.range_report(zs, rs).zr_uncovered, 1);
+}
+
+// Every combination of the speed-ups (S2 cluster pruning, S3 V only, S4 shared grid lookup) gives
+// bitwise the plain value, at points over the cell, Z from below Zmin to above Zasy, r beyond both
+// ends of the data and the orientations (also where the library gives up silently).
+TEST(QdWrapperSpeedUps, EveryCombinationIsBitwiseThePlainValue) {
+  for (Symmetry symmetry : {Symmetry::c3v, Symmetry::c4v, Symmetry::c6v}) {
+    const DataSet data = crplib_test::pairwise_data_set(symmetry);
+    const double a = data.lattice_constant;
+    const QdWrapper plain(data,
+                          EvaluationOptions{.prune_cluster = false, .share_grid_lookup = false, .value_only = false});
+    std::vector<double> reference;
+    for (int combination = 0; combination < 8; ++combination) {
+      const EvaluationOptions options{.prune_cluster = (combination & 1) != 0,
+                                      .share_grid_lookup = (combination & 2) != 0,
+                                      .value_only = (combination & 4) != 0};
+      const QdWrapper wrapper(data, options);
+      int point = 0;
+      for (int iu = 0; iu < 6; ++iu)
+        for (int iv = 0; iv < 6; ++iv)
+          for (double z = -1.5; z < 11.0; z += 0.6)
+            for (double r : {0.3, 0.9, 1.6, 2.8, 4.5})
+              for (double theta : {0.0, 0.7, std::numbers::pi / 2})
+                for (double phi : {-1.2, 0.5, 2.6}) {
+                  const double u = iu * a / 6.0, v = iv * a / 6.0;
+                  const double value = wrapper.potential_ev(u, v, z, r, theta, phi);
+                  if (combination == 0) reference.push_back(plain.potential_ev(u, v, z, r, theta, phi));
+                  ASSERT_EQ(std::bit_cast<std::uint64_t>(value), std::bit_cast<std::uint64_t>(reference[point]))
+                      << symmetry_name(symmetry) << ", options " << combination << " at u " << u << ", v " << v
+                      << ", Z " << z << ", r " << r << ", theta " << theta << ", phi " << phi;
+                  ++point;
+                }
+    }
+  }
 }

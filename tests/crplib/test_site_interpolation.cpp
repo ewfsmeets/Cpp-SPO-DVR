@@ -4,7 +4,9 @@
 // derivatives that match finite differences. No data set needed.
 #include <gtest/gtest.h>
 
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <numbers>
 #include <string>
@@ -16,7 +18,7 @@ using namespace crplib::detail;
 
 namespace {
 
-using SiteFunction = std::function<SiteValue(std::span<const BicubicValue>, const ThetaTrig&, double)>;
+using SiteFunction = std::function<SiteValue(std::span<const BicubicValue>, const ThetaTrig&, double, Want)>;
 
 struct Orientation {
   double theta, phi;  // degrees
@@ -54,7 +56,7 @@ std::vector<BicubicValue> cut_values(int n) {
 constexpr double degree = std::numbers::pi / 180.0;
 
 SiteValue at(const Case& c, std::span<const BicubicValue> v, double theta, double phi) {
-  return c.f(v, theta_trig(theta), phi);
+  return c.f(v, theta_trig(theta), phi, Want::value_and_gradient);
 }
 
 }  // namespace
@@ -99,6 +101,21 @@ TEST_P(SiteInterpolation, AngularDerivativesMatchFiniteDifferences) {
   }
 }
 
+// Speed-up S3: the value alone is bitwise the full evaluation's value; the derivatives are 0.
+TEST_P(SiteInterpolation, ValueOnlyIsBitwiseTheValue) {
+  const std::vector<BicubicValue> v = cut_values(static_cast<int>(c().cuts.size()));
+  for (double theta : {0.0, 0.3, 1.1, 1.5707963267948966, 2.4})
+    for (double phi : {-2.0, 0.0, 0.4, 1.7, 3.1}) {
+      const SiteValue full = c().f(v, theta_trig(theta), phi, Want::value_and_gradient);
+      const SiteValue value = c().f(v, theta_trig(theta, Want::value), phi, Want::value);
+      EXPECT_EQ(std::bit_cast<std::uint64_t>(value.v), std::bit_cast<std::uint64_t>(full.v)) << c().name;
+      EXPECT_EQ(value.d_z, 0.0);
+      EXPECT_EQ(value.d_r, 0.0);
+      EXPECT_EQ(value.d_phi, 0.0);
+      EXPECT_EQ(value.d_theta, 0.0);
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(Sites, SiteInterpolation, testing::Range(0, 10),
                          [](const testing::TestParamInfo<int>& param) { return cases()[param.param].name; });
 
@@ -106,6 +123,10 @@ INSTANTIATE_TEST_SUITE_P(Sites, SiteInterpolation, testing::Range(0, 10),
 TEST(SiteInterpolationTrig, SameValuesAsPerCall) {
   for (double theta : {0.0, 0.3, 1.5707963267948966, 2.9}) {
     const ThetaTrig t = theta_trig(theta);
+    const ThetaTrig value_only = theta_trig(theta, Want::value);  // S3: sin 4 theta is not needed
+    EXPECT_EQ(value_only.cos2, t.cos2);
+    EXPECT_EQ(value_only.sin2, t.sin2);
+    EXPECT_EQ(value_only.cos4, t.cos4);
     EXPECT_EQ(t.cos2, std::cos(2.00 * theta));
     EXPECT_EQ(t.sin2, std::sin(2.00 * theta));
     EXPECT_EQ(t.cos4, std::cos(4.00 * theta));

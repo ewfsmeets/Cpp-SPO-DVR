@@ -46,26 +46,32 @@ double four_orientations_phi_slope(double dv45, double dv90, double dv135, const
 struct PhiTrig {
   double cos1, sin1, cos2, sin2;  // of phi' and 2 phi'
 };
-PhiTrig phi_trig(double phi_shifted) {
+PhiTrig phi_trig(double phi_shifted, Want want) {
+  if (want == Want::value) return {std::cos(phi_shifted), 0.0, std::cos(2.00 * phi_shifted), 0.0};  // sin: derivatives
   return {std::cos(phi_shifted), std::sin(phi_shifted), std::cos(2.00 * phi_shifted), std::sin(2.00 * phi_shifted)};
 }
 
+// The components of the loop i = 0, 1, 2 over value, d/dZ, d/dr (only the value for Want::value).
+int components(Want want) { return want == Want::value ? 1 : 3; }
+
 }  // namespace
 
-ThetaTrig theta_trig(double theta) {
-  return {std::cos(2.00 * theta), std::sin(2.00 * theta), std::cos(4.00 * theta), std::sin(4.00 * theta)};
+ThetaTrig theta_trig(double theta, Want want) {
+  const double sin4 = want == Want::value ? 0.0 : std::sin(4.00 * theta);  // derivatives only
+  return {std::cos(2.00 * theta), std::sin(2.00 * theta), std::cos(4.00 * theta), sin4};
 }
 
 // Fortran: InterpolateOnTop. Cuts: theta = 0; 90/0; 90/30.
-SiteValue hexagonal_top(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
-  const double cos6phi = std::cos(6.00 * phi), sin6phi = std::sin(6.00 * phi);
+SiteValue hexagonal_top(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
+  const double cos6phi = std::cos(6.00 * phi);
+  const double sin6phi = want == Want::value ? 0.0 : std::sin(6.00 * phi);  // derivative only
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0);
     const double v90 =
         0.500 * ((vint(cuts, i, 1) + vint(cuts, i, 2)) + (vint(cuts, i, 1) - vint(cuts, i, 2)) * cos6phi);
     set(p, i, 0.500 * ((v0 + v90) + (v0 - v90) * t.cos2));
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv90dphi = -3.00 * (vint(cuts, 0, 1) - vint(cuts, 0, 2)) * sin6phi;
       p.d_phi = 0.500 * dv90dphi * (1.00 - t.cos2);
       p.d_theta = -(v0 - v90) * t.sin2;
@@ -75,17 +81,18 @@ SiteValue hexagonal_top(std::span<const BicubicValue> cuts, const ThetaTrig& t, 
 }
 
 // Fortran: InterpolateOnBridge. Cuts: theta = 0; 90/0; 90/60; 90/90.
-SiteValue hexagonal_bridge(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
+SiteValue hexagonal_bridge(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
   constexpr double u3 = 1.00 / 3.00;
-  const double cos2phi = std::cos(2.00 * phi), sin2phi = std::sin(2.00 * phi);
-  const double cos4phi = std::cos(4.00 * phi), sin4phi = std::sin(4.00 * phi);
+  const double cos2phi = std::cos(2.00 * phi), cos4phi = std::cos(4.00 * phi);
+  const double sin2phi = want == Want::value ? 0.0 : std::sin(2.00 * phi);  // derivatives only
+  const double sin4phi = want == Want::value ? 0.0 : std::sin(4.00 * phi);
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2), c3 = vint(cuts, i, 3);
     const double v90 =
         (c1 + 2.00 * c2) * u3 - 0.500 * (c3 - c1) * cos2phi + (0.500 * (c3 - c1) - 2.00 * (c2 - c1) * u3) * cos4phi;
     set(p, i, 0.500 * (v0 * (1.00 + t.cos2) + v90 * (1.00 - t.cos2)));
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv90dphi = (c3 - c1) * sin2phi - (2.00 * (c3 - c1) - 8.00 * (c2 - c1) * u3) * sin4phi;
       p.d_phi = 0.500 * dv90dphi * (1.00 - t.cos2);
       p.d_theta = (v90 - v0) * t.sin2;
@@ -95,18 +102,19 @@ SiteValue hexagonal_bridge(std::span<const BicubicValue> cuts, const ThetaTrig& 
 }
 
 // Fortran: InterpolateOnFCC (C6v), InterpolateOnHCP (C3v). Cuts: theta = 0; 90/0; 90/30; 45/30; 45/210.
-SiteValue hexagonal_hollow(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
-  const double cos3phi = std::cos(3.00 * phi), sin3phi = std::sin(3.00 * phi);
-  const double cos6phi = std::cos(6.00 * phi), sin6phi = std::sin(6.00 * phi);
+SiteValue hexagonal_hollow(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
+  const double sin3phi = std::sin(3.00 * phi), cos6phi = std::cos(6.00 * phi);
+  const double cos3phi = want == Want::value ? 0.0 : std::cos(3.00 * phi);  // derivatives only
+  const double sin6phi = want == Want::value ? 0.0 : std::sin(6.00 * phi);
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2);
     const double c3 = vint(cuts, i, 3), c4 = vint(cuts, i, 4);
     const double v45 = 0.500 * ((c3 + c4) + (c3 - c4) * sin3phi);
     const double v135 = 0.500 * ((c3 + c4) - (c3 - c4) * sin3phi);
     const double v90 = 0.500 * ((c1 + c2) + (c1 - c2) * cos6phi);
     set(p, i, four_orientations(v0, v45, v90, v135, t));
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv45dphi = 1.500 * (c3 - c4) * cos3phi;
       const double dv90dphi = -3.00 * (c1 - c2) * sin6phi;
       p.d_phi = dv90dphi * (0.2500 * (1.00 + t.cos4) - 0.500 * t.cos2) + dv45dphi * t.sin2;
@@ -117,18 +125,18 @@ SiteValue hexagonal_hollow(std::span<const BicubicValue> cuts, const ThetaTrig& 
 }
 
 // Fortran: C6v InterpolateOnT2F (the t2h site of C6v). Cuts: theta = 0; 90/30; 90/120; 45/30; 45/210; 45/120.
-SiteValue c6v_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
+SiteValue c6v_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
   constexpr double pis6 = pi / 6.00;
-  const PhiTrig f = phi_trig(phi - pis6);
+  const PhiTrig f = phi_trig(phi - pis6, want);
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2);
     const double c3 = vint(cuts, i, 3), c4 = vint(cuts, i, 4), c5 = vint(cuts, i, 5);
     const double v45 = 0.2500 * ((c3 + 2.00 * c5 + c4) + (c3 - 2.00 * c5 + c4) * f.cos2) + 0.500 * (c3 - c4) * f.cos1;
     const double v135 = 0.2500 * ((c3 + 2.00 * c5 + c4) + (c3 - 2.00 * c5 + c4) * f.cos2) - 0.500 * (c3 - c4) * f.cos1;
     const double v90 = 0.500 * ((c1 + c2) + (c1 - c2) * f.cos2);
     set(p, i, four_orientations(v0, v45, v90, v135, t));
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv45dphi = -0.500 * ((c3 - c4) * f.sin1 + (c3 - 2.00 * c5 + c4) * f.sin2);
       const double dv135dphi = 0.500 * ((c3 - c4) * f.sin1 - (c3 - 2.00 * c5 + c4) * f.sin2);
       const double dv90dphi = -(c1 - c2) * f.sin2;
@@ -140,18 +148,18 @@ SiteValue c6v_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double
 }
 
 // Fortran: C3v InterpolateOnT2H. Cuts: theta = 0; 90/30; 90/120; 45/30; 45/120; 45/210.
-SiteValue c3v_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
+SiteValue c3v_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
   constexpr double pis6 = pi / 6.00;
-  const PhiTrig f = phi_trig(phi - pis6);
+  const PhiTrig f = phi_trig(phi - pis6, want);
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2);
     const double c3 = vint(cuts, i, 3), c4 = vint(cuts, i, 4), c5 = vint(cuts, i, 5);
     const double v45 = 0.2500 * ((c3 + 2.00 * c4 + c5) + (c3 - 2.00 * c4 + c5) * f.cos2) + 0.500 * (c3 - c5) * f.cos1;
     const double v135 = 0.2500 * ((c3 + 2.00 * c4 + c5) + (c3 - 2.00 * c4 + c5) * f.cos2) - 0.500 * (c3 - c5) * f.cos1;
     const double v90 = 0.500 * ((c1 + c2) + (c1 - c2) * f.cos2);
     set(p, i, four_orientations(v0, v45, v90, v135, t));
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv45dphi = -0.500 * ((c3 - c5) * f.sin1 + (c3 - 2.00 * c4 + c5) * f.sin2);
       const double dv135dphi = 0.500 * ((c3 - c5) * f.sin1 - (c3 - 2.00 * c4 + c5) * f.sin2);
       const double dv90dphi = -(c1 - c2) * f.sin2;
@@ -163,18 +171,18 @@ SiteValue c3v_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double
 }
 
 // Fortran: C3v InterpolateOnT2F. Cuts: theta = 0; 90/240; 90/330; 45/150; 45/240; 45/330.
-SiteValue c3v_t2f(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
+SiteValue c3v_t2f(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
   constexpr double pis6 = pi / 6.00;
-  const PhiTrig f = phi_trig(phi - 11.00 * pis6);
+  const PhiTrig f = phi_trig(phi - 11.00 * pis6, want);
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2);
     const double c3 = vint(cuts, i, 3), c4 = vint(cuts, i, 4), c5 = vint(cuts, i, 5);
     const double v45 = 0.2500 * ((c3 + 2.00 * c4 + c5) + (c3 - 2.00 * c4 + c5) * f.cos2) + 0.500 * (-c3 + c5) * f.cos1;
     const double v135 = 0.2500 * ((c3 + 2.00 * c4 + c5) + (c3 - 2.00 * c4 + c5) * f.cos2) - 0.500 * (-c3 + c5) * f.cos1;
     const double v90 = 0.500 * ((c1 + c2) + (-c1 + c2) * f.cos2);
     set(p, i, four_orientations(v0, v45, v90, v135, t));
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv45dphi = -0.500 * ((-c3 + c5) * f.sin1 + (c3 - 2.00 * c4 + c5) * f.sin2);
       const double dv135dphi = 0.500 * ((-c3 + c5) * f.sin1 - (c3 - 2.00 * c4 + c5) * f.sin2);
       const double dv90dphi = -(-c1 + c2) * f.sin2;
@@ -187,13 +195,13 @@ SiteValue c3v_t2f(std::span<const BicubicValue> cuts, const ThetaTrig& t, double
 
 // Fortran: CRP_C4v_MoleculeSurface.f90 InterpolateOnTop (and InterpolateOnHollow, identical).
 // Cuts: theta = 0; 90/0; 90/45.
-SiteValue square_top(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
+SiteValue square_top(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2);
     const double v90 = 0.5 * (c1 + c2) + 0.5 * (c1 - c2) * std::cos(4.0 * phi);
     set(p, i, 0.5 * (v0 + v90) + 0.5 * (v0 - v90) * t.cos2);
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv0dphi = 0.0;
       const double dv90dphi = -4.0 * 0.5 * (c1 - c2) * std::sin(4.0 * phi);
       p.d_phi = 0.5 * (dv0dphi + dv90dphi) + 0.5 * (dv0dphi - dv90dphi) * t.cos2;
@@ -203,19 +211,19 @@ SiteValue square_top(std::span<const BicubicValue> cuts, const ThetaTrig& t, dou
   return p;
 }
 
-SiteValue square_hollow(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
-  return square_top(cuts, t, phi);
+SiteValue square_hollow(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
+  return square_top(cuts, t, phi, want);
 }
 
 // Fortran: CRP_C4v_MoleculeSurface.f90 InterpolateOnBridge. Cuts: theta = 0; 90/0; 90/45; 90/90.
-SiteValue square_bridge(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
+SiteValue square_bridge(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2), c3 = vint(cuts, i, 3);
     const double v90 = (0.25 * c1 + 0.5 * c2 + 0.25 * c3) + 0.5 * (c1 - c3) * std::cos(2.0 * phi) +
                        (0.25 * c1 - 0.5 * c2 + 0.25 * c3) * std::cos(4.0 * phi);
     set(p, i, 0.5 * (v0 + v90) + 0.5 * (v0 - v90) * t.cos2);
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv0dphi = 0.0;
       const double dv90dphi =
           -2.0 * 0.5 * (c1 - c3) * std::sin(2.0 * phi) - 4.0 * (0.25 * c1 - 0.5 * c2 + 0.25 * c3) * std::sin(4.0 * phi);
@@ -228,11 +236,11 @@ SiteValue square_bridge(std::span<const BicubicValue> cuts, const ThetaTrig& t, 
 
 // Fortran: CRP_C4v_MoleculeSurface.f90 InterpolateOnT2H.
 // Cuts: theta = 0; 45/225; 45/45; 90/45; 90/135; 45/135.
-SiteValue square_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi) {
-  const double phi45 = phi - pi / 4.0;          // Fortran: Phi - CRP_Constants_PI / 4.0
-  const double phi135 = phi + pi - pi / 4.0;    // Fortran: Phi + CRP_Constants_PI - CRP_Constants_PI / 4.0
+SiteValue square_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, double phi, Want want) {
+  const double phi45 = phi - pi / 4.0;  // Fortran: Phi - CRP_Constants_PI / 4.0
+  const double phi135 = phi + pi - pi / 4.0;  // Fortran: Phi + CRP_Constants_PI - CRP_Constants_PI / 4.0
   SiteValue p{};
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < components(want); ++i) {
     const double v0 = vint(cuts, i, 0), c1 = vint(cuts, i, 1), c2 = vint(cuts, i, 2);
     const double c3 = vint(cuts, i, 3), c4 = vint(cuts, i, 4), c5 = vint(cuts, i, 5);
     // V(theta = 45, phi) = a0 + b0 cos(phi - 45) + c0 cos(2 (phi - 45)) through the three 45 cuts
@@ -245,7 +253,7 @@ SiteValue square_t2h(std::span<const BicubicValue> cuts, const ThetaTrig& t, dou
     set(p, i,
         0.25 * (v0 + v45 + v90 + v135) + 0.5 * (v0 - v90) * t.cos2 + 0.5 * (v45 - v135) * t.sin2 +
             0.25 * (v0 + v90 - v45 - v135) * t.cos4);
-    if (i == 0) {
+    if (i == 0 && want == Want::value_and_gradient) {
       const double dv0dphi = 0.0;
       const double dv45dphi = -b0 * std::sin(phi45) - 2.0 * cc0 * std::sin(2.0 * phi45);
       const double dv135dphi = -b0 * std::sin(phi135) - 2.0 * cc0 * std::sin(2.0 * phi135);

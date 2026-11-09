@@ -16,7 +16,7 @@ namespace crplib::detail {
 // Fortran: FOUR6II. Basis in crystal coordinates (2 pi u, 2 pi v); the y derivative is transformed
 // to Cartesian at the end.
 void hexagonal_molecule_basis(double x, double y, double lattice_constant, std::span<double> f, std::span<double> dfdx,
-                              std::span<double> dfdy) {
+                              std::span<double> dfdy, Want want) {
   const double fac = 2.00 * pi / lattice_constant;
   const double bigx = x - y * usq3;
   const double bigy = 2.00 * y * usq3;
@@ -38,6 +38,7 @@ void hexagonal_molecule_basis(double x, double y, double lattice_constant, std::
   f[9] = std::cos(fx - fy);
   f[10] = c2x + c2y + c2xy;
   f[11] = -s2x - s2y + s2xy;
+  if (want == Want::value) return;
 
   // Derivatives with respect to the crystal coordinates
   dfdx[0] = 0.00;
@@ -84,9 +85,11 @@ double component(const SiteValue& s, int i) {
 }
 
 // Fortran: SISII. a(j) = sum over the sites of fouri6D(ksit, j) Psite(i, ksit), then sum over j.
-Interaction fourier_interpolation(const std::array<SiteValue, 12>& sites, double x, double y, double lattice_constant) {
+// Want::value: Vinter(1) only.
+Interaction fourier_interpolation(const std::array<SiteValue, 12>& sites, double x, double y, double lattice_constant,
+                                  Want want) {
   std::array<double, 12> f{}, dfdx{}, dfdy{};
-  hexagonal_molecule_basis(x, y, lattice_constant, f, dfdx, dfdy);
+  hexagonal_molecule_basis(x, y, lattice_constant, f, dfdx, dfdy, want);
   const std::array<double, 144>& table = fourier_table_molecule_hexagonal();
   Interaction v{};
   v[0] = 0.00;
@@ -99,6 +102,7 @@ Interaction fourier_interpolation(const std::array<SiteValue, 12>& sites, double
     v[5] = v[5] + a * dfdx[j];
     v[6] = v[6] + a * dfdy[j];
   }
+  if (want == Want::value) return v;
   // First derivatives with respect to Z, r, phi, theta
   for (int i = 1; i < 5; ++i) {
     v[i] = 0.00;
@@ -116,41 +120,41 @@ Interaction fourier_interpolation(const std::array<SiteValue, 12>& sites, double
 // Fortran: RRINTII, the part between the cut evaluation and SISII. Fourier site k (Psite index
 // k + 1) takes the values of a cut site at an azimuth rotated to that site's frame.
 Interaction hexagonal_interaction(Symmetry symmetry, std::span<const BicubicValue> cuts, double theta, double phi,
-                                  double x, double y, double lattice_constant) {
+                                  double x, double y, double lattice_constant, Want want) {
   constexpr double pis3 = pi / 3.00;
   constexpr double pi2s3 = 2.00 * pis3;
-  const ThetaTrig t = theta_trig(theta);
+  const ThetaTrig t = theta_trig(theta, want);
   std::array<SiteValue, 12> s{};
 
-  s[0] = hexagonal_top(cuts.subspan(0, 3), t, phi);  // top
+  s[0] = hexagonal_top(cuts.subspan(0, 3), t, phi, want);  // top
   const auto bridge = cuts.subspan(3, 4);
-  s[1] = hexagonal_bridge(bridge, t, phi);
-  s[4] = hexagonal_bridge(bridge, t, phi + pis3);
-  s[5] = hexagonal_bridge(bridge, t, phi - pis3);
+  s[1] = hexagonal_bridge(bridge, t, phi, want);
+  s[4] = hexagonal_bridge(bridge, t, phi + pis3, want);
+  s[5] = hexagonal_bridge(bridge, t, phi - pis3, want);
   const auto hollow = cuts.subspan(7, 5);
   if (symmetry == Symmetry::c6v) {
-    s[2] = hexagonal_hollow(hollow, t, phi);
-    s[8] = hexagonal_hollow(hollow, t, phi + pi);
+    s[2] = hexagonal_hollow(hollow, t, phi, want);
+    s[8] = hexagonal_hollow(hollow, t, phi + pi, want);
     const auto t2h = cuts.subspan(12, 6);
-    s[3] = c6v_t2h(t2h, t, phi);
-    s[6] = c6v_t2h(t2h, t, phi - pi2s3);
-    s[7] = c6v_t2h(t2h, t, phi + pi2s3);
-    s[9] = c6v_t2h(t2h, t, phi + pi);
-    s[10] = c6v_t2h(t2h, t, phi + pis3);
-    s[11] = c6v_t2h(t2h, t, phi - pis3);
+    s[3] = c6v_t2h(t2h, t, phi, want);
+    s[6] = c6v_t2h(t2h, t, phi - pi2s3, want);
+    s[7] = c6v_t2h(t2h, t, phi + pi2s3, want);
+    s[9] = c6v_t2h(t2h, t, phi + pi, want);
+    s[10] = c6v_t2h(t2h, t, phi + pis3, want);
+    s[11] = c6v_t2h(t2h, t, phi - pis3, want);
   } else {
-    s[2] = hexagonal_hollow(hollow, t, phi);  // hcp
+    s[2] = hexagonal_hollow(hollow, t, phi, want);  // hcp
     const auto t2h = cuts.subspan(12, 6);
-    s[3] = c3v_t2h(t2h, t, phi);
-    s[6] = c3v_t2h(t2h, t, phi - pi2s3);
-    s[7] = c3v_t2h(t2h, t, phi + pi2s3);
+    s[3] = c3v_t2h(t2h, t, phi, want);
+    s[6] = c3v_t2h(t2h, t, phi - pi2s3, want);
+    s[7] = c3v_t2h(t2h, t, phi + pi2s3, want);
     const auto t2f = cuts.subspan(18, 6);
-    s[10] = c3v_t2f(t2f, t, phi);
-    s[9] = c3v_t2f(t2f, t, phi + pi2s3);
-    s[11] = c3v_t2f(t2f, t, phi - pi2s3);
-    s[8] = hexagonal_hollow(cuts.subspan(24, 5), t, phi);  // fcc
+    s[10] = c3v_t2f(t2f, t, phi, want);
+    s[9] = c3v_t2f(t2f, t, phi + pi2s3, want);
+    s[11] = c3v_t2f(t2f, t, phi - pi2s3, want);
+    s[8] = hexagonal_hollow(cuts.subspan(24, 5), t, phi, want);  // fcc
   }
-  return fourier_interpolation(s, x, y, lattice_constant);
+  return fourier_interpolation(s, x, y, lattice_constant, want);
 }
 
 }  // namespace crplib::detail

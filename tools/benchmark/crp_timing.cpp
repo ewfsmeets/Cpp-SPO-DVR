@@ -50,10 +50,13 @@ int main(int argc, char** argv) {
     const int repetitions = argc == 3 ? std::stoi(argv[2]) : 3;
     std::vector<double> reference;
     using Options = crplib::EvaluationOptions;
-    for (const auto& [name, options] : {std::pair{"plain", Options{.prune_cluster = false, .share_grid_lookup = false}},
-                                        std::pair{"S2", Options{.prune_cluster = true, .share_grid_lookup = false}},
-                                        std::pair{"S4", Options{.prune_cluster = false, .share_grid_lookup = true}},
-                                        std::pair{"default", Options{}}}) {
+    constexpr Options plain{.prune_cluster = false, .share_grid_lookup = false, .value_only = false};
+    for (const auto& [name, options] :
+         {std::pair{"plain", plain},
+          std::pair{"S2", Options{.prune_cluster = true, .share_grid_lookup = false, .value_only = false}},
+          std::pair{"S3", Options{.prune_cluster = false, .share_grid_lookup = false, .value_only = true}},
+          std::pair{"S4", Options{.prune_cluster = false, .share_grid_lookup = true, .value_only = false}},
+          std::pair{"all", Options{}}}) {
       const crplib::QdWrapper wrapper(data, options);
       const std::vector<Point> points = dynamics_points(wrapper.parameters().lattice_constant);
       std::vector<double> v(points.size());

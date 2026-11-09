@@ -29,6 +29,7 @@ struct AtomSurfaceValue {
 struct EvaluationOptions {
   bool prune_cluster = true;      // S2: sum the corrugation function only over atoms within its reach
   bool share_grid_lookup = true;  // S4: locate (r, Z) once per group of molecular cuts with the same grid
+  bool value_only = true;         // S3: the QD wrapper computes V without the derivatives
 };
 
 // The atom cluster of the repulsive sum (Fortran: MURII, MURO) and the atoms of it that can reach a
@@ -44,6 +45,8 @@ class AtomSurface {
   // V and its gradient at an atom position (internal units). Throws EvaluationError where the
   // Fortran stops (z outside the data, an atom too close to a surface atom).
   [[nodiscard]] virtual AtomSurfaceValue evaluate(const Vec3& position) const = 0;
+  // V alone (Hartree), bitwise equal to evaluate(position).v; skips the derivatives (speed-up S3).
+  [[nodiscard]] virtual double value(const Vec3& position) const = 0;
   // Conditions the Fortran accepts but that make the PES questionable (cluster coverage).
   [[nodiscard]] virtual std::vector<std::string> warnings() const = 0;
   [[nodiscard]] virtual ClusterSize cluster_size() const = 0;

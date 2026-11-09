@@ -87,27 +87,32 @@ class HexagonalAtomSurface final : public AtomSurface {
  public:
   explicit HexagonalAtomSurface(const DataSet& data, EvaluationOptions options = {});
   [[nodiscard]] AtomSurfaceValue evaluate(const Vec3& position) const override;
+  [[nodiscard]] double value(const Vec3& position) const override;
   [[nodiscard]] std::vector<std::string> warnings() const override;
   [[nodiscard]] ClusterSize cluster_size() const override;
 
   // The sum of the corrugation function over the surface atoms near (x, y, z): C6v 30 atoms of the
-  // top layer, C3v an 8 x 8 x 4 cluster of four ABC-stacked layers. Fortran: MURII
-  [[nodiscard]] RepulsiveValue repulsive_sum(double x, double y, double z) const;
+  // top layer, C3v an 8 x 8 x 4 cluster of four ABC-stacked layers (Want::value: v only). Fortran: MURII
+  [[nodiscard]] RepulsiveValue repulsive_sum(double x, double y, double z, Want want = Want::value_and_gradient) const;
   // The same sum over the atoms within reach (S2), for (x, y) folded into the unit cell; bitwise
   // equal to repulsive_sum.
-  [[nodiscard]] RepulsiveValue reachable_repulsive_sum(double x, double y, double z) const;
+  [[nodiscard]] RepulsiveValue reachable_repulsive_sum(double x, double y, double z,
+                                                       Want want = Want::value_and_gradient) const;
   [[nodiscard]] const std::vector<ClusterAtom>& cluster() const { return cluster_; }
   [[nodiscard]] const ReachableCluster& reachable_cluster() const { return reachable_; }
-  // The Fourier basis functions and their x, y derivatives at (x, y). Fortran: FOUR3II
-  void fourier_basis(double x, double y, std::span<double> f, std::span<double> dfdx, std::span<double> dfdy) const;
+  // The Fourier basis functions and their x, y derivatives at (x, y) (Want::value: f only).
+  // Fortran: FOUR3II
+  void fourier_basis(double x, double y, std::span<double> f, std::span<double> dfdx, std::span<double> dfdy,
+                     Want want = Want::value_and_gradient) const;
   // Radius around the folded unit cell within which every surface atom is in the cluster.
   [[nodiscard]] double coverage_radius() const;
   [[nodiscard]] double lattice_constant() const { return geometry_.lattice_constant; }
 
  private:
+  [[nodiscard]] AtomSurfaceValue compute(const Vec3& position, Want want) const;
   [[nodiscard]] RepulsiveValue sum_over(std::span<const ClusterAtom> atoms, double x, double y, double z,
-                                        double z_reach) const;
-  void add_atom(double dx, double dy, double dz, int layer, RepulsiveValue& sum) const;
+                                        double z_reach, Want want) const;
+  void add_atom(double dx, double dy, double dz, int layer, RepulsiveValue& sum, Want want) const;
   [[nodiscard]] bool in_fold_cell(double x, double y) const;
 
   Symmetry symmetry_;
@@ -126,23 +131,27 @@ class SquareAtomSurface final : public AtomSurface {
  public:
   explicit SquareAtomSurface(const DataSet& data, EvaluationOptions options = {});
   [[nodiscard]] AtomSurfaceValue evaluate(const Vec3& position) const override;
+  [[nodiscard]] double value(const Vec3& position) const override;
   [[nodiscard]] std::vector<std::string> warnings() const override;
   [[nodiscard]] ClusterSize cluster_size() const override;
 
-  // The sum of the corrugation function over 32 atoms of the first two layers. Fortran: MURO
-  [[nodiscard]] RepulsiveValue repulsive_sum(double x, double y, double z) const;
+  // The sum of the corrugation function over 32 atoms of the first two layers (Want::value: v only).
+  // Fortran: MURO
+  [[nodiscard]] RepulsiveValue repulsive_sum(double x, double y, double z, Want want = Want::value_and_gradient) const;
   // The same sum over the atoms within reach (S2), for (x, y) folded into the triangle of REGION;
   // bitwise equal to repulsive_sum.
-  [[nodiscard]] RepulsiveValue reachable_repulsive_sum(double x, double y, double z) const;
+  [[nodiscard]] RepulsiveValue reachable_repulsive_sum(double x, double y, double z,
+                                                       Want want = Want::value_and_gradient) const;
   [[nodiscard]] const std::vector<ClusterAtom>& cluster() const { return cluster_; }
   [[nodiscard]] const ReachableCluster& reachable_cluster() const { return reachable_; }
   [[nodiscard]] double coverage_radius() const;
   [[nodiscard]] const PeriodicSpline3D& spline() const { return spline_; }
 
  private:
+  [[nodiscard]] AtomSurfaceValue compute(const Vec3& position, Want want) const;
   [[nodiscard]] RepulsiveValue sum_over(std::span<const ClusterAtom> atoms, double x, double y, double z,
-                                        double z_reach) const;
-  void add_atom(double x, double y, double z, const ClusterAtom& atom, RepulsiveValue& sum) const;
+                                        double z_reach, Want want) const;
+  void add_atom(double x, double y, double z, const ClusterAtom& atom, RepulsiveValue& sum, Want want) const;
   [[nodiscard]] bool in_fold_triangle(double x, double y) const;
 
   SlabGeometry geometry_;

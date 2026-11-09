@@ -116,46 +116,50 @@ HexagonalAtomSurface::HexagonalAtomSurface(const DataSet& data, EvaluationOption
 
 // One atom's contribution to MURII (the corrugation function at its distance). layer > 0 marks an
 // atom below the top layer (an atom at distance 0 there is an error).
-void HexagonalAtomSurface::add_atom(double dx, double dy, double dz, int layer, RepulsiveValue& sum) const {
+void HexagonalAtomSurface::add_atom(double dx, double dy, double dz, int layer, RepulsiveValue& sum, Want want) const {
   const double r = std::sqrt(dx * dx + dy * dy + dz * dz);
   double vr = 0.0, dvdr = 0.0;
   if (!(r > corrugation_.x().back())) {
     if (r < corrugation_.x().front()) throw_atom_too_close(r);
-    const auto vs = corrugation_.value_and_slope_splint(r);
-    vr = vs.value;
-    dvdr = vs.slope;
+    if (want == Want::value) {
+      vr = corrugation_.value_splint(r);
+    } else {
+      const auto vs = corrugation_.value_and_slope_splint(r);
+      vr = vs.value;
+      dvdr = vs.slope;
+    }
   }
   sum.v = sum.v + vr;
+  if (!(r > 0.0) && layer != 0) throw_atom_on_subsurface_atom();
+  if (want == Want::value) return;
   if (r > 0.0) {
     const double dvdrsr = dvdr / r;
     sum.dvdx = sum.dvdx + dvdrsr * dx;
     sum.dvdy = sum.dvdy + dvdrsr * dy;
     sum.dvdz = sum.dvdz + dvdrsr * dz;
-  } else if (layer == 0) {
+  } else {  // an atom of the top layer at the surface atom: only the z derivative
     sum.dvdz = sum.dvdz + dvdr;
-  } else {
-    throw_atom_on_subsurface_atom();
   }
 }
 
 // Fortran: MURII (C6v: the 30 atoms of the top layer; C3v: the 8 x 8 x 4 cluster)
-RepulsiveValue HexagonalAtomSurface::repulsive_sum(double x, double y, double z) const {
-  return sum_over(cluster_, x, y, z, std::numeric_limits<double>::infinity());
+RepulsiveValue HexagonalAtomSurface::repulsive_sum(double x, double y, double z, Want want) const {
+  return sum_over(cluster_, x, y, z, std::numeric_limits<double>::infinity(), want);
 }
 
 // S2: the atoms out of reach left out (in the plane once, in z per call); the rest in cluster order.
-RepulsiveValue HexagonalAtomSurface::reachable_repulsive_sum(double x, double y, double z) const {
-  if (!in_fold_cell(x, y)) return repulsive_sum(x, y, z);
-  return sum_over(reachable_.atoms(), x, y, z, reachable_.reach());
+RepulsiveValue HexagonalAtomSurface::reachable_repulsive_sum(double x, double y, double z, Want want) const {
+  if (!in_fold_cell(x, y)) return repulsive_sum(x, y, z, want);
+  return sum_over(reachable_.atoms(), x, y, z, reachable_.reach(), want);
 }
 
 // The sum over `atoms` in their order, skipping those with |z - z_atom| > z_reach (S2).
 RepulsiveValue HexagonalAtomSurface::sum_over(std::span<const ClusterAtom> atoms, double x, double y, double z,
-                                              double z_reach) const {
+                                              double z_reach, Want want) const {
   RepulsiveValue sum{0.0, 0.0, 0.0, 0.0};
   for (const ClusterAtom& atom : atoms) {
     if (std::abs(z - atom.z) > z_reach) continue;
-    add_atom(x - atom.x, y - atom.y, z - atom.z, atom.layer, sum);
+    add_atom(x - atom.x, y - atom.y, z - atom.z, atom.layer, sum, want);
   }
   return sum;
 }
@@ -176,7 +180,7 @@ ClusterSize HexagonalAtomSurface::cluster_size() const {
 // Fortran: FOUR3II. Basis functions of the hexagonal cell (sums over stars of reciprocal lattice
 // vectors) in crystal coordinates; the y derivative is transformed to Cartesian at the end.
 void HexagonalAtomSurface::fourier_basis(double xa, double ya, std::span<double> fxy, std::span<double> dfdx,
-                                         std::span<double> dfdy) const {
+                                         std::span<double> dfdy, Want want) const {
   const bool c3v = symmetry_ == Symmetry::c3v;
   const double fac = 2.00 * pi / geometry_.lattice_constant;
   const double bigx = xa - ya * usq3;
@@ -184,22 +188,30 @@ void HexagonalAtomSurface::fourier_basis(double xa, double ya, std::span<double>
   const double fx = fac * bigx;  // Fortran: fbigx
   const double fy = fac * bigy;  // Fortran: fbigy
 
+  // The sines enter the C3v sine stars (2, 4, 5) and the derivatives; Want::value (S3) skips the
+  // others (then dfdx, dfdy are meaningless).
+  const bool gradient = want == Want::value_and_gradient;
+  const bool star_sines = c3v || gradient;
+  auto sine = [](bool needed, double angle) { return needed ? std::sin(angle) : 0.0; };
   const double c2a = std::cos(fx), c2b = std::cos(fy), c2c = std::cos(fx + fy);
-  const double s2a = std::sin(fx), s2b = std::sin(fy), s2c = std::sin(fx + fy);
+  const double s2a = sine(star_sines, fx), s2b = sine(star_sines, fy), s2c = sine(star_sines, fx + fy);
   const double c3a = std::cos(2.00 * fx + fy), c3b = std::cos(fx + 2.00 * fy), c3c = std::cos(fx - fy);
-  const double s3a = std::sin(2.00 * fx + fy), s3b = std::sin(fx + 2.00 * fy), s3c = std::sin(fx - fy);
+  const double s3a = sine(gradient, 2.00 * fx + fy), s3b = sine(gradient, fx + 2.00 * fy),
+               s3c = sine(gradient, fx - fy);
   const double c4a = std::cos(2.00 * fx), c4b = std::cos(2.00 * fy), c4c = std::cos(2.00 * (fx + fy));
-  const double s4a = std::sin(2.00 * fx), s4b = std::sin(2.00 * fy), s4c = std::sin(2.00 * (fx + fy));
+  const double s4a = sine(star_sines, 2.00 * fx), s4b = sine(star_sines, 2.00 * fy);
+  const double s4c = sine(star_sines, 2.00 * (fx + fy));
   const double c5a = std::cos(3.00 * fx + fy), c5b = std::cos(fx + 3.00 * fy), c5c = std::cos(2.00 * fx + 3.00 * fy);
   const double c5d = std::cos(3.00 * fx + 2.00 * fy), c5e = std::cos(-fx + 2.00 * fy), c5f = std::cos(2.00 * fx - fy);
-  const double s5a = std::sin(3.00 * fx + fy), s5b = std::sin(fx + 3.00 * fy), s5c = std::sin(2.00 * fx + 3.00 * fy);
-  const double s5d = std::sin(3.00 * fx + 2.00 * fy), s5e = std::sin(-fx + 2.00 * fy), s5f = std::sin(2.00 * fx - fy);
+  const double s5a = sine(star_sines, 3.00 * fx + fy), s5b = sine(star_sines, fx + 3.00 * fy);
+  const double s5c = sine(star_sines, 2.00 * fx + 3.00 * fy), s5d = sine(star_sines, 3.00 * fx + 2.00 * fy);
+  const double s5e = sine(star_sines, -fx + 2.00 * fy), s5f = sine(star_sines, 2.00 * fx - fy);
   const double c6a = std::cos(3.00 * fx), c6b = std::cos(3.00 * fy), c6c = std::cos(3.00 * (fx + fy));
-  const double s6a = std::sin(3.00 * fx), s6b = std::sin(3.00 * fy), s6c = std::sin(3.00 * (fx + fy));
+  const double s6a = sine(gradient, 3.00 * fx), s6b = sine(gradient, 3.00 * fy), s6c = sine(gradient, 3.00 * (fx + fy));
   const double c7a = std::cos(2.00 * (2.00 * fx + fy)), c7b = std::cos(2.00 * (fx + 2.00 * fy));
   const double c7c = std::cos(2.00 * (fx - fy));
-  const double s7a = std::sin(2.00 * (2.00 * fx + fy)), s7b = std::sin(2.00 * (fx + 2.00 * fy));
-  const double s7c = std::sin(2.00 * (fx - fy));
+  const double s7a = sine(gradient, 2.00 * (2.00 * fx + fy)), s7b = sine(gradient, 2.00 * (fx + 2.00 * fy));
+  const double s7c = sine(gradient, 2.00 * (fx - fy));
 
   int k = 0;
   auto put = [&](double f, double dx, double dy) {
@@ -224,14 +236,20 @@ void HexagonalAtomSurface::fourier_basis(double xa, double ya, std::span<double>
   put(c7a + c7b + c7c, -2.00 * fac * (2.00 * s7a + s7b + s7c), -2.00 * fac * (s7a + 2.00 * s7b - s7c));
 
   // Derivatives with respect to Cartesian coordinates
+  if (!gradient) return;
   for (int i = 0; i < n_basis_; ++i) dfdy[i] = (-dfdx[i] + 2.00 * dfdy[i]) * usq3;
 }
 
-// Fortran: ATII
-AtomSurfaceValue HexagonalAtomSurface::evaluate(const Vec3& p) const {
+AtomSurfaceValue HexagonalAtomSurface::evaluate(const Vec3& p) const { return compute(p, Want::value_and_gradient); }
+
+double HexagonalAtomSurface::value(const Vec3& p) const { return compute(p, Want::value).v; }
+
+// Fortran: ATII. Want::value: V only (the gradient is meaningless; S3).
+AtomSurfaceValue HexagonalAtomSurface::compute(const Vec3& p, Want want) const {
   // Contribution from the 1D repulsive terms, at the position folded into the unit cell
   const auto [x0c, y0c] = fold_hexagonal(p.x, p.y, geometry_.lattice_constant);
-  const RepulsiveValue rep = prune_cluster_ ? reachable_repulsive_sum(x0c, y0c, p.z) : repulsive_sum(x0c, y0c, p.z);
+  const RepulsiveValue rep =
+      prune_cluster_ ? reachable_repulsive_sum(x0c, y0c, p.z, want) : repulsive_sum(x0c, y0c, p.z, want);
 
   // Interpolation over z for each site (all sites share the z range of the first)
   const std::vector<double>& z = cuts_.front().x();
@@ -242,11 +260,11 @@ AtomSurfaceValue HexagonalAtomSurface::evaluate(const Vec3& p) const {
   std::array<double, 10> vs{}, dvsdz{};
   for (int i = 0; i < n_basis_; ++i) {
     vs[i] = cuts_[i].value_dpl(p.z);
-    dvsdz[i] = cuts_[i].slope_dplp(p.z);
+    if (want == Want::value_and_gradient) dvsdz[i] = cuts_[i].slope_dplp(p.z);
   }
 
   std::array<double, 10> f{}, dfdx{}, dfdy{};
-  fourier_basis(p.x, p.y, f, dfdx, dfdy);
+  fourier_basis(p.x, p.y, f, dfdx, dfdy, want);
 
   // a(j), b(j): Fourier coefficients of the potential and of its z derivative
   double v = 0.00, dvdx = 0.00, dvdy = 0.00, dvdz = 0.00;

@@ -119,7 +119,7 @@ PeriodicSpline3D::PeriodicSpline3D(std::vector<double> x, std::vector<double> y,
 }
 
 // Fortran: SPLINT3D
-PeriodicSpline3D::Value PeriodicSpline3D::evaluate(double x, double y, double z) const {
+PeriodicSpline3D::Value PeriodicSpline3D::evaluate(double x, double y, double z, Want want) const {
   const std::optional<int> ia = locate_interval(x_, x);
   const std::optional<int> ja = locate_interval(y_, y);
   const std::optional<int> ka = locate_interval(z_, z);
@@ -159,6 +159,7 @@ PeriodicSpline3D::Value PeriodicSpline3D::evaluate(double x, double y, double z)
   const Terms base = terms(wx.value, wy.value);  // Fortran: ATERM, BTERM, CTERM, DTERM
   Value result{};
   result.value = combine(wz.value, base);                          // Fortran: F0
+  if (want == Want::value) return result;
   result.d_dx = combine(wz.value, terms(wx.slope, wy.value));      // Fortran: DX (ATERMX ...)
   result.d_dy = combine(wz.value, terms(wx.value, wy.slope));      // Fortran: DY (ATERMY ...)
   result.d_dz = combine(wz.slope, base);                           // Fortran: DZ

@@ -68,16 +68,21 @@ std::array<std::pair<double, double>, 3> square_triangle(double a) {
 
 // One atom of MURO. Fortran: VREP1D (zero beyond the corrugation function; no lower limit: SPLINT
 // extrapolates)
-void SquareAtomSurface::add_atom(double x, double y, double z, const ClusterAtom& atom, RepulsiveValue& sum) const {
+void SquareAtomSurface::add_atom(double x, double y, double z, const ClusterAtom& atom, RepulsiveValue& sum,
+                                 Want want) const {
   const double r = std::sqrt((x - atom.x) * (x - atom.x) + (y - atom.y) * (y - atom.y) + (z - atom.z) * (z - atom.z));
   double vr = 0.0, dvdr = 0.0;
   if (!(r > corrugation_.x().back())) {
-    const auto vs = corrugation_.value_and_slope_splint(r);
-    vr = vs.value;
-    dvdr = vs.slope;
+    if (want == Want::value) {
+      vr = corrugation_.value_splint(r);
+    } else {
+      const auto vs = corrugation_.value_and_slope_splint(r);
+      vr = vs.value;
+      dvdr = vs.slope;
+    }
   }
   sum.v = sum.v + vr;
-  if (r > 0.0) {
+  if (want == Want::value_and_gradient && r > 0.0) {
     sum.dvdx = sum.dvdx + dvdr * (x - atom.x) / r;
     sum.dvdy = sum.dvdy + dvdr * (y - atom.y) / r;
     sum.dvdz = sum.dvdz + dvdr * (z - atom.z) / r;
@@ -85,23 +90,23 @@ void SquareAtomSurface::add_atom(double x, double y, double z, const ClusterAtom
 }
 
 // Fortran: MURO
-RepulsiveValue SquareAtomSurface::repulsive_sum(double x, double y, double z) const {
-  return sum_over(cluster_, x, y, z, std::numeric_limits<double>::infinity());
+RepulsiveValue SquareAtomSurface::repulsive_sum(double x, double y, double z, Want want) const {
+  return sum_over(cluster_, x, y, z, std::numeric_limits<double>::infinity(), want);
 }
 
 // S2: the atoms out of reach left out (in the plane once, in z per call); the rest in MURO order.
-RepulsiveValue SquareAtomSurface::reachable_repulsive_sum(double x, double y, double z) const {
-  if (!in_fold_triangle(x, y)) return repulsive_sum(x, y, z);
-  return sum_over(reachable_.atoms(), x, y, z, reachable_.reach());
+RepulsiveValue SquareAtomSurface::reachable_repulsive_sum(double x, double y, double z, Want want) const {
+  if (!in_fold_triangle(x, y)) return repulsive_sum(x, y, z, want);
+  return sum_over(reachable_.atoms(), x, y, z, reachable_.reach(), want);
 }
 
 // The sum over `atoms` in their order, skipping those with |z - z_atom| > z_reach (S2).
 RepulsiveValue SquareAtomSurface::sum_over(std::span<const ClusterAtom> atoms, double x, double y, double z,
-                                           double z_reach) const {
+                                           double z_reach, Want want) const {
   RepulsiveValue sum{0.0, 0.0, 0.0, 0.0};
   for (const ClusterAtom& atom : atoms) {
     if (std::abs(z - atom.z) > z_reach) continue;
-    add_atom(x, y, z, atom, sum);
+    add_atom(x, y, z, atom, sum, want);
   }
   return sum;
 }
@@ -158,14 +163,20 @@ SquareAtomSurface::SquareAtomSurface(const DataSet& data, EvaluationOptions opti
   spline_ = PeriodicSpline3D(grid, grid, z, f, dfdz_first, dfdz_last);
 }
 
-// Fortran: int_PES6CuHATOMCu100
-AtomSurfaceValue SquareAtomSurface::evaluate(const Vec3& p) const {
+AtomSurfaceValue SquareAtomSurface::evaluate(const Vec3& p) const { return compute(p, Want::value_and_gradient); }
+
+double SquareAtomSurface::value(const Vec3& p) const { return compute(p, Want::value).v; }
+
+// Fortran: int_PES6CuHATOMCu100. Want::value: V only (S3).
+AtomSurfaceValue SquareAtomSurface::compute(const Vec3& p, Want want) const {
   if (p.z >= spline_.z().back()) return {0.0, {0.0, 0.0, 0.0}};
   const double a = geometry_.lattice_constant;
   auto [x0c, y0c] = fold_square(p.x, p.y, a);
   const int region = fold_into_triangle(x0c, y0c, a);
-  const RepulsiveValue rep = prune_cluster_ ? reachable_repulsive_sum(x0c, y0c, p.z) : repulsive_sum(x0c, y0c, p.z);
-  const PeriodicSpline3D::Value s = spline_.evaluate(x0c, y0c, p.z);
+  const RepulsiveValue rep =
+      prune_cluster_ ? reachable_repulsive_sum(x0c, y0c, p.z, want) : repulsive_sum(x0c, y0c, p.z, want);
+  const PeriodicSpline3D::Value s = spline_.evaluate(x0c, y0c, p.z, want);
+  if (want == Want::value) return {s.value + rep.v, {0.0, 0.0, 0.0}};
   double dvdx = s.d_dx + rep.dvdx;
   double dvdy = s.d_dy + rep.dvdy;
   unfold_gradient(region, dvdx, dvdy);

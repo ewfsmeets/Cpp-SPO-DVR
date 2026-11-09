@@ -53,6 +53,7 @@ class QdWrapper {
   MoleculeSurface surface_;
   double skewing_angle_;
   double cos_skew_, sin_skew_;  // as gfortran folded them
+  bool value_only_;  // S3
 };
 
 }  // namespace crplib

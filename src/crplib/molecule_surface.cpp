@@ -234,13 +234,13 @@ bool MoleculeSurface::covers(double r, double z) const {
 // The cuts' values and derivatives at (r, Z); false if (r, Z) is outside a cut's grid (the
 // Fortran's switch, whichever cut it is). S4: the cell is located once per group of cuts with the
 // same grid (the same cell and weights, so the same values).
-bool MoleculeSurface::evaluate_cuts(double r, double z, std::span<BicubicValue> values) const {
+bool MoleculeSurface::evaluate_cuts(double r, double z, std::span<BicubicValue> values, detail::Want want) const {
   const int n = static_cast<int>(values.size());
   if (!share_grid_lookup_) {
     for (int k = 0; k < n; ++k) {
-      const std::optional<BicubicValue> v = cuts_[k].evaluate(r, z);
-      if (!v) return false;
-      values[k] = *v;
+      const std::optional<detail::GridCell> cell = cuts_[k].locate(r, z);
+      if (!cell) return false;
+      values[k] = cuts_[k].evaluate_in_cell(*cell, want);
     }
     return true;
   }
@@ -250,12 +250,23 @@ bool MoleculeSurface::evaluate_cuts(double r, double z, std::span<BicubicValue> 
     if (!cell) return false;
     cells[g] = *cell;
   }
-  for (int k = 0; k < n; ++k) values[k] = cuts_[k].evaluate_in_cell(cells[group_of_cut_[k]]);
+  for (int k = 0; k < n; ++k) values[k] = cuts_[k].evaluate_in_cell(cells[group_of_cut_[k]], want);
   return true;
 }
 
-// Fortran: POT6D -> CAMBCORD -> RRINTII (C3v, C6v) / RRINT (C4v)
 std::optional<MoleculeSurfaceValue> MoleculeSurface::evaluate(const Vec3& a, const Vec3& b) const {
+  return compute(a, b, detail::Want::value_and_gradient);
+}
+
+std::optional<double> MoleculeSurface::value(const Vec3& a, const Vec3& b) const {
+  const std::optional<MoleculeSurfaceValue> v = compute(a, b, detail::Want::value);
+  if (!v) return std::nullopt;
+  return v->v;
+}
+
+// Fortran: POT6D -> CAMBCORD -> RRINTII (C3v, C6v) / RRINT (C4v). Want::value: V only (S3; the
+// value statements are the same, the derivative ones are skipped).
+std::optional<MoleculeSurfaceValue> MoleculeSurface::compute(const Vec3& a, const Vec3& b, detail::Want want) const {
   const detail::MoleculeGeometry g = detail::molecule_geometry(a, b);
 
   if (!(g.z < zso_max_)) {
@@ -273,12 +284,19 @@ std::optional<MoleculeSurfaceValue> MoleculeSurface::evaluate(const Vec3& a, con
   // The cuts at the molecule's (r, Z); outside any cut's grid the Fortran gives up (switch).
   const int n = molecule_cut_count(symmetry_);
   std::array<BicubicValue, 29> values{};
-  if (!evaluate_cuts(g.r, g.z, std::span<BicubicValue>(values).first(n))) return std::nullopt;
+  if (!evaluate_cuts(g.r, g.z, std::span<BicubicValue>(values).first(n), want)) return std::nullopt;
   const std::span<const BicubicValue> cut_values = std::span<const BicubicValue>(values).first(n);
   const bool square = symmetry_ == Symmetry::c4v;
   const detail::Interaction vi =
-      square ? detail::square_interaction(cut_values, g.theta, g.phi, g.x, g.y, lattice_constant_)
-             : detail::hexagonal_interaction(symmetry_, cut_values, g.theta, g.phi, g.x, g.y, lattice_constant_);
+      square ? detail::square_interaction(cut_values, g.theta, g.phi, g.x, g.y, lattice_constant_, want)
+             : detail::hexagonal_interaction(symmetry_, cut_values, g.theta, g.phi, g.x, g.y, lattice_constant_, want);
+  if (want == detail::Want::value) {  // V as below: (Va + Vb + I), blended in the switching region
+    const double va = atom_->value(a), vb = atom_->value(b), i_v = vi[0];
+    if (g.z <= zso_min_) return MoleculeSurfaceValue{va + vb + i_v, {}, {}};
+    const Switch sw = switch_function(g.z);
+    const GasPhaseValue gp = gas_phase(g.z, g.r);
+    return MoleculeSurfaceValue{(va + vb + i_v) * sw.f + (1.00 - sw.f) * gp.v, {}, {}};
+  }
   const GeometryDerivatives d = square ? square_chain_rule(a, b, g.r) : hexagonal_chain_rule(a, b, g.r);
   const AtomSurfaceValue va = atom_->evaluate(a);
   const AtomSurfaceValue vb = atom_->evaluate(b);

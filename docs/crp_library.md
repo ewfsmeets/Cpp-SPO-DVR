@@ -143,6 +143,27 @@ the tests compare with them switched off, `tools/benchmark/crp_timing.cpp` times
   compared bit by bit (not with ==, which would merge −0 and +0 knots). Verified bitwise against
   the per-cut lookup on the synthetic data sets (one grid), with a cut with its own grid (and
   points outside only that one), and with grids that differ only in the sign of a zero knot.
+- **V without the derivatives** (S3). The Fortran computes V and the gradient together and the QD
+  wrapper discards the gradient. `MoleculeSurface::value` and `AtomSurface::value` run the same
+  evaluation with `Want::value`: every statement of V is executed as written, the derivative
+  statements are skipped (the d/dZ, d/dr and angular parts of the site functions and their sines,
+  Vinter 2–7, the Fourier basis derivatives, DPLP, the gradient of the repulsive sum, the chain rule,
+  TRANSF). Which sines a value needs was checked per routine (the hollow site's sin 3φ and the
+  C3v sine stars of the atom PES enter V). Verified: V-only equals the full V bitwise at every
+  Fortran reference point, per site function, and for every combination of S2, S3 and S4 in the QD
+  wrapper on a grid that includes the silent branch.
+- **θ trig once** (S5, built in). cos/sin 2θ and 4θ are computed once per evaluation and passed
+  to the site functions (the Fortran recomputes them in each); the same expressions, so the same
+  values (tested).
+
+One thread, per QD-wrapper evaluation (`spodvr_crp_timing`, synthetic data sets; every V bitwise
+equal):
+
+| Data set | plain | S2 | S3 | S4 | all |
+|---|---|---|---|---|---|
+| C6v | 2.45 µs | 2.35 | 1.97 | 1.97 | 1.49 (1.65×) |
+| C3v | 4.46 µs | 3.03 | 3.53 | 3.67 | 1.78 (2.5×) |
+| C4v | 1.95 µs | 1.76 | 1.49 | 1.53 | 1.02 (1.9×) |
 
 ## Testing without a real data set
 

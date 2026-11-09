@@ -5,6 +5,8 @@
 
 #include <vector>
 
+#include "crplib/spline.hpp"
+
 namespace crplib::detail {
 
 class PeriodicSpline3D {
@@ -22,9 +24,9 @@ class PeriodicSpline3D {
     double d_dy;
     double d_dz;
   };
-  // Value and gradient at (x, y, z) inside the grid; throws EvaluationError outside.
-  // Fortran: Evaluate_Spline3D_Periodic (SPLINT3D, which STOPs outside)
-  [[nodiscard]] Value evaluate(double x, double y, double z) const;
+  // Value and gradient at (x, y, z) inside the grid (Want::value: the gradient is 0); throws
+  // EvaluationError outside. Fortran: Evaluate_Spline3D_Periodic (SPLINT3D, which STOPs outside)
+  [[nodiscard]] Value evaluate(double x, double y, double z, Want want = Want::value_and_gradient) const;
 
   [[nodiscard]] const std::vector<double>& z() const { return z_; }
 

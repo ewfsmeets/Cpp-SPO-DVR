@@ -260,8 +260,8 @@ double CubicSpline1D::slope_dplp(double t) const {
   return (-m_[i - 1] * (3.0 * f * f - e2) + m_[i] * (3.0 * g * g - e2) + 6.0 * (y_[i] - y_[i - 1])) / (6.0 * e);
 }
 
-// Fortran: SPLINT
-CubicSpline1D::ValueAndSlope CubicSpline1D::value_and_slope_splint(double t) const {
+// Fortran: SPLINT (bisection for the interval)
+int CubicSpline1D::splint_interval(double t) const {
   int klo = 0;
   int khi = size() - 1;
   while (khi - klo > 1) {
@@ -272,15 +272,31 @@ CubicSpline1D::ValueAndSlope CubicSpline1D::value_and_slope_splint(double t) con
       klo = k;
     }
   }
+  return klo;
+}
+
+// Fortran: SPLINT y
+double CubicSpline1D::splint_value(int klo, double t) const {
+  const int khi = klo + 1;
   const double h = x_[khi] - x_[klo];
   const double a = (x_[khi] - t) / h;
   const double b = (t - x_[klo]) / h;
-  const double value =
-      a * y_[klo] + b * y_[khi] + ((a * a * a - a) * m_[klo] + (b * b * b - b) * m_[khi]) * (h * h) / 6.0;
+  return a * y_[klo] + b * y_[khi] + ((a * a * a - a) * m_[klo] + (b * b * b - b) * m_[khi]) * (h * h) / 6.0;
+}
+
+// Fortran: SPLINT
+CubicSpline1D::ValueAndSlope CubicSpline1D::value_and_slope_splint(double t) const {
+  const int klo = splint_interval(t);
+  const int khi = klo + 1;
+  const double h = x_[khi] - x_[klo];
+  const double a = (x_[khi] - t) / h;
+  const double b = (t - x_[klo]) / h;
   const double slope =
       (y_[khi] - y_[klo]) / h + h * (m_[khi] * (3.0 * b * b - 1.0) - m_[klo] * (3.0 * a * a - 1.0)) / 6.0;
-  return {value, slope};
+  return {splint_value(klo, t), slope};
 }
+
+double CubicSpline1D::value_splint(double t) const { return splint_value(splint_interval(t), t); }
 
 // Fortran: UBICAR (klo returned 0-based)
 std::optional<int> locate_interval(std::span<const double> x, double t) {
@@ -363,7 +379,7 @@ std::optional<GridCell> BicubicSpline::locate(double x, double y) const {
 }
 
 // Fortran: SPLINII. vint(1) and vint(3) sum over the x weights outside, vint(2) over the y weights.
-BicubicValue BicubicSpline::evaluate_in_cell(const GridCell& cell) const {
+BicubicValue BicubicSpline::evaluate_in_cell(const GridCell& cell, Want want) const {
   const int i = cell.i;
   const int j = cell.j;
   const std::vector<double>& v = f_;
@@ -384,6 +400,7 @@ BicubicValue BicubicSpline::evaluate_in_cell(const GridCell& cell) const {
            wy.c * (wx.a * fyy[i00] + wx.b * fyy[i10] + wx.c * fxxyy[i00] + wx.d * fxxyy[i10]) +
            wy.d * (wx.a * fyy[i01] + wx.b * fyy[i11] + wx.c * fxxyy[i01] + wx.d * fxxyy[i11]);
   };
+  if (want == Want::value) return {x_outer(cell.x, cell.y), 0.0, 0.0};
   return {x_outer(cell.x, cell.y), y_outer(cell.x, cell.y_slope), x_outer(cell.x_slope, cell.y)};
 }
 
