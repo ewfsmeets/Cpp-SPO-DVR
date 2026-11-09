@@ -219,6 +219,19 @@ inline SyntheticGrids default_grids() {
   return g;
 }
 
+// Small grids for the impulse data sets (their response does not depend on the grid); the atom z
+// range is wide so that the (zero) atom PES never stops.
+inline SyntheticGrids impulse_grids() {
+  SyntheticGrids g;
+  g.r = grid(0.6, 3.2, 5);
+  g.z = grid(0.5, 7.0, 5);
+  g.atom_z = grid(-10.0, 20.0, 5);
+  g.corrugation_rho = grid(0.0, 6.0, 5);
+  g.z_dependence_z = grid(4.0, 10.0, 5);
+  g.h2_r = grid(0.4, 8.0, 5);
+  return g;
+}
+
 inline double lattice_constant(Symmetry symmetry) { return symmetry == Symmetry::c6v ? 4.8 : 4.82; }
 inline std::vector<double> spacings(Symmetry symmetry) {
   if (symmetry == Symmetry::c3v) return {3.94, 3.94, 3.94};

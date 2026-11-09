@@ -134,11 +134,17 @@ add_library(spodvr_crplib
   src/crplib/dataset.cpp
   src/crplib/fourier_tables.cpp
   src/crplib/hexagonal_atom_surface.cpp
+  src/crplib/hexagonal_interaction.cpp
   src/crplib/list_directed_reader.cpp
+  src/crplib/molecule_surface.cpp
   src/crplib/periodic_spline_3d.cpp
+  src/crplib/qd_wrapper.cpp
+  src/crplib/site_interpolation.cpp
   src/crplib/spline.cpp
   src/crplib/square_atom_surface.cpp
+  src/crplib/square_interaction.cpp
   src/crplib/units.cpp
+  src/crplib/wrapper.cpp
 )
 target_include_directories(spodvr_crplib PUBLIC src)
 target_link_libraries(spodvr_crplib PRIVATE spodvr_warnings spodvr_crplib_fp)

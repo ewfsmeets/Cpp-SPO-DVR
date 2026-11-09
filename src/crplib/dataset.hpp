@@ -33,17 +33,20 @@ struct Table1D {
 
 // A 1D cut through the atom-surface PES above one site. Fortran: PESCut3D
 struct AtomCut {
-  double x, y;            // site, in units of the lattice constant, Cartesian (CRPData.3D)
+  double x = 0.0;         // site, in units of the lattice constant, Cartesian (CRPData.3D)
+  double y = 0.0;
   std::string file_name;  // in Atom/
-  double slope_first;     // dV/dz at the first and last z (energy/length). Fortran: dz1, dz2
-  double slope_last;
+  double slope_first = 0.0;  // dV/dz at the first and last z (energy/length). Fortran: dz1, dz2
+  double slope_last = 0.0;
   Table1D potential;  // z -> V
 };
 
 // A 2D cut (r, Z) through the molecule-surface PES for one site and orientation. Fortran: PESCut6D
 struct MoleculeCut {
-  double x, y;            // centre of mass, lattice units: skewed (u, v) for C3v/C6v, Cartesian for C4v
-  double theta, phi;      // orientation (degrees); used only when CutsInterpolation is false
+  double x = 0.0;         // centre of mass, lattice units: skewed (u, v) for C3v/C6v, Cartesian for C4v
+  double y = 0.0;
+  double theta = 0.0;     // orientation (degrees); used only when CutsInterpolation is false
+  double phi = 0.0;
   std::string file_name;  // in Molecule/
   std::vector<double> r;  // grid in r (fastest in the file) and in Z
   std::vector<double> z;

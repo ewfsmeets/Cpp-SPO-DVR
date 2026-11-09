@@ -129,4 +129,16 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   `<data set>.dat` file (multi-PES branch, empty in the Fortran), C3v with fewer than 4 layers or
   Disp1 ≠ 0 and C4v with fewer than 2 layers. A folded coordinate beyond ±2·10⁹ lattice constants
   (`INT` overflow) is an EvaluationError. Equal ZsoMin and ZsoMax are accepted (as in the Fortran).
+- Few-ulp difference (decision D4): with CutsInterpolation = F the Fortran subtracts the atom
+  potentials from the cuts using cos θ, cos φ computed by gfortran's vectorised libmvec
+  (`_ZGVbN2v_cos`); the C++ uses `std::cos`. On the synthetic reference sets: |ΔV| ≤ 4.4e-16
+  Hartree, |ΔF| ≤ 2.7e-15 Hartree/bohr at under 12 % of the points (tests compare to
+  4e-15·max(unit, |value|)). A scratch build calling `_ZGVbN2v_cos` was bitwise equal everywhere.
+  CutsInterpolation = T data sets are bitwise equal.
+- Kept on purpose: for a vertical molecule (θ = 0 exactly) RRINTII/RRINT set dθ/dX = dθ/dY = 0,
+  but the sin 2θ terms of the hollow and t2 site functions give V a lateral slope there; the x and
+  y gradient components miss it (z is right). Irrelevant for SPO-DVR (V only; no θ grid point is 0).
+- Molecular cut files whose rows repeat r or Z inconsistently: the Fortran keeps the last row's
+  values for the grid but subtracts the atom potentials (CutsInterpolation = F) at each row's own
+  (r, Z); the C++ uses the final grid values for both. Identical for consistent files.
 - Not ported: the C4v 1D splines of the atom cuts (computed but never evaluated by the Fortran).

@@ -2,6 +2,9 @@
 // (<case_dir>/dataset/) and the point lists the Fortran reference driver evaluates for it
 // (<case_dir>/<mode>[_<length>_<energy>].in, hexadecimal doubles). Used by
 // tools/fortran_reference/run_crp_reference.sh; the tests read the same files.
+//
+// Cases: <symmetry>_pairwise (c6v, c3v, c4v), c6v_pairwise_angstrom (the data set in Angstrom/eV),
+// c4v_negative_spacing, <symmetry>_impulse_<k> (cut k, 1-based, equal to 1, all else 0).
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -9,22 +12,25 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <numbers>
 #include <string>
 #include <vector>
 
 #include "crp_synthetic.hpp"
 #include "crplib/dataset.hpp"
+#include "crplib/units.hpp"
 
 namespace {
 
 using crplib::Symmetry;
+using Point = std::vector<double>;
 
 std::string hex(double x) { return std::format("{:016x}", std::bit_cast<std::uint64_t>(x)); }
 
-void write_points(const std::filesystem::path& file, const std::vector<std::vector<double>>& points) {
+void write_points(const std::filesystem::path& file, const std::vector<Point>& points) {
   std::ofstream out(file);
   out << points.size() << '\n';
-  for (const auto& p : points) {
+  for (const Point& p : points) {
     for (std::size_t i = 0; i < p.size(); ++i) out << (i ? " " : "") << hex(p[i]);
     out << '\n';
   }
@@ -36,27 +42,27 @@ std::pair<double, double> cartesian(Symmetry symmetry, double u, double v, doubl
   return {(u + v / 2.0) * a, v * std::sqrt(3.0) / 2.0 * a};
 }
 
+// A deterministic sparse subset of a product grid: keeps about one in `stride` combinations.
+bool keep(int index, int stride) { return (index * 7919 + 13) % stride == 0; }
+
 // Atom positions: lattice points (incl. negative ones, the ORIGEN quirk), points outside the cell,
 // fold boundaries, and z at the ends and inside the data range (first/last interval: end slopes).
-std::vector<std::vector<double>> atom_points(Symmetry symmetry, const crplib::DataSet& d) {
-  const std::vector<double>& z = d.atom_cuts.front().potential.x;
+std::vector<Point> atom_points(Symmetry symmetry, double a, const std::vector<double>& z) {
   const double z_first = z.front(), z_last = z.back();
   const std::vector<double> heights = {z_first, z_first + 0.05, 0.37, 1.9, 4.4, z_last - 0.05, z_last};
-  std::vector<double> coordinates = {-2.0, -1.0, -0.37, 0.0, 0.21, 0.25, 0.5, 0.75, 0.9, 1.0, 1.73};
-  std::vector<std::vector<double>> points;
+  const std::vector<double> coordinates = {-2.0, -1.0, -0.37, 0.0, 0.21, 0.25, 0.5, 0.75, 0.9, 1.0, 1.73};
+  std::vector<Point> points;
   for (double u : coordinates) {
     for (double v : coordinates) {
       for (double h : heights) {
-        // a sparse but deterministic subset of the product grid
         const int key = static_cast<int>(std::lround(100 * u + 37 * v + 11 * h));
         if ((key % 3 + 3) % 3 != 0 && !(u == v)) continue;
-        const auto [x, y] = cartesian(symmetry, u, v, d.lattice_constant);
+        const auto [x, y] = cartesian(symmetry, u, v, a);
         points.push_back({x, y, h});
       }
     }
   }
   if (symmetry == Symmetry::c4v) {  // REGION boundaries: x = y, x = a/2, y = a/2, x + y = a
-    const double a = d.lattice_constant;
     for (const auto& [x, y] : {std::pair{0.3 * a, 0.3 * a},
                                {0.5 * a, 0.2 * a},
                                {0.2 * a, 0.5 * a},
@@ -71,18 +77,81 @@ std::vector<std::vector<double>> atom_points(Symmetry symmetry, const crplib::Da
   return points;
 }
 
-crplib::DataSet case_data_set(const std::string& name) {
-  using namespace crplib_test;
-  if (name == "c6v_pairwise") return pairwise_data_set(Symmetry::c6v);
-  if (name == "c3v_pairwise") return pairwise_data_set(Symmetry::c3v);
-  if (name == "c4v_pairwise") return pairwise_data_set(Symmetry::c4v);
-  if (name == "c6v_pairwise_angstrom") return in_angstrom_and_ev(pairwise_data_set(Symmetry::c6v));
-  if (name == "c4v_negative_spacing") {
-    crplib::DataSet d = pairwise_data_set(Symmetry::c4v);
-    d.interlayer_spacings = {-0.98};  // relative: z of the second layer = 0.98 a / sqrt(2)
-    return d;
+// The two atoms (driver order Za Xa Ya Zb Xb Yb) of a molecule with centre (x, y, z), bond length r
+// and orientation (theta, phi), as the Fortran wrapper builds them.
+Point molecule(double x, double y, double z, double r, double theta, double phi) {
+  const double cz = 0.5 * r * std::cos(theta), cx = 0.5 * r * std::sin(theta) * std::cos(phi),
+               cy = 0.5 * r * std::sin(theta) * std::sin(phi);
+  return {z - cz, x - cx, y - cy, z + cz, x + cx, y + cy};
+}
+
+// Molecules in every branch: below ZsoMin, in the switching region, at and above ZsoMax, beyond
+// Zasy; r and Z at and outside the cut grids (the silent V = 0 branch); theta = 0 (rho = 0);
+// centres inside, outside and on the edges of the cell. Every atom of an evaluated near-surface
+// point stays inside the atom z range (no Fortran STOP).
+std::vector<Point> molecule_points(Symmetry symmetry, double a) {
+  const std::vector<std::pair<double, double>> centres = {{0, 0},       {0.13, 0.29}, {0.5, 0},   {0.41, 0.07},
+                                                          {0.71, 0.66}, {-0.37, 1.2}, {1.0, 1.0}, {2.3, -0.6}};
+  const std::vector<double> heights = {0.4, 0.5, 0.8, 1.7, 3.1, 4.9, 5.0, 5.6, 6.4, 6.5, 6.9, 8.5, 11.0};
+  const std::vector<double> bonds = {0.3, 0.55, 0.6, 0.95, 1.4, 2.2, 3.1, 3.2, 3.4};
+  const std::vector<double> thetas = {0.0, 0.31, 0.9, std::numbers::pi / 2, 2.3};
+  const std::vector<double> phis = {0.0, 0.7, 2.9, -1.3};
+  std::vector<Point> points;
+  int index = 0;
+  for (const auto& [u, v] : centres) {
+    const auto [x, y] = cartesian(symmetry, u, v, a);
+    for (double z : heights)
+      for (double r : bonds)
+        for (double theta : thetas)
+          for (double phi : phis)
+            if (keep(index++, 23)) points.push_back(molecule(x, y, z, r, theta, phi));
   }
-  throw std::runtime_error("unknown case " + name);
+  return points;
+}
+
+// The QD wrapper's arguments u, v (bohr along the lattice vectors), Z, r, theta, phi, including
+// points that are clamped in r (both ends) and Z (below Zmin).
+std::vector<Point> wrapper_points(double a) {
+  const std::vector<std::pair<double, double>> centres = {{0, 0}, {0.13, 0.29}, {0.5, 0.5}, {0.83, 0.41}, {1.7, -0.4}};
+  const std::vector<double> heights = {-2.0, 0.5, 2.0, 5.5, 6.7, 9.0, 12.0};
+  const std::vector<double> bonds = {0.3, 0.8, 1.4, 2.6, 4.0, 9.0};
+  const std::vector<double> thetas = {0.05, 0.8, std::numbers::pi / 2};
+  const std::vector<double> phis = {0.0, 1.1, 3.0};
+  std::vector<Point> points;
+  int index = 0;
+  for (const auto& [u, v] : centres)
+    for (double z : heights)
+      for (double r : bonds)
+        for (double theta : thetas)
+          for (double phi : phis)
+            if (keep(index++, 7)) points.push_back({u * a, v * a, z, r, theta, phi});
+  return points;
+}
+
+// (Zcc, r) of the gas-phase routines (Zcc >= ZsoMin: below it the Fortran stops).
+std::vector<Point> gas_phase_points() {
+  std::vector<Point> points;
+  for (double z : {5.0, 5.3, 6.0, 6.5, 8.0, 10.0, 12.0})
+    for (double r : {0.5, 1.4, 3.0, 7.0}) points.push_back({z, r});
+  return points;
+}
+
+// Atom pairs for CAMBCORD: general, vertical (dx = dy = 0), antiparallel.
+std::vector<Point> cambcord_points() {
+  return {{1.0, 0.3, 0.2, 2.1, 1.1, -0.4}, {1.0, 0.5, 0.5, 2.4, 0.5, 0.5}, {3.0, 2.0, 1.0, 1.0, 2.0, 1.0},
+          {0.7, -1.2, 3.3, 0.9, 0.4, 2.2}, {2.5, 0.0, 0.0, 2.5, 1.4, 0.0}, {5.1, 7.3, -2.2, 4.4, 6.9, -2.9}};
+}
+
+std::vector<Point> scaled(std::vector<Point> points, double factor) {
+  for (Point& p : points)
+    for (double& x : p) x *= factor;
+  return points;
+}
+
+Symmetry symmetry_of(const std::string& name) {
+  if (name.starts_with("c3v")) return Symmetry::c3v;
+  if (name.starts_with("c4v")) return Symmetry::c4v;
+  return Symmetry::c6v;
 }
 
 }  // namespace
@@ -93,22 +162,73 @@ int main(int argc, char** argv) {
     return 1;
   }
   try {
+    using namespace crplib_test;
     const std::string name = argv[1];
     const std::filesystem::path dir = argv[2];
-    const crplib::DataSet d = case_data_set(name);
-    std::filesystem::remove_all(dir / "dataset");
-    crplib::write_data_set(d, dir / "dataset");
-    const crplib::DataSet internal = crplib::read_data_set(dir / "dataset");  // the values as read
-    // Points in bohr: convert the data set's lengths for the Angstrom case.
-    crplib::DataSet in_bohr = internal;
-    if (internal.units.length == crplib::LengthUnit::angstrom) {
-      in_bohr.lattice_constant =
-          crplib::convert_length(internal.lattice_constant, crplib::LengthUnit::angstrom, crplib::LengthUnit::bohr);
-      for (auto& cut : in_bohr.atom_cuts)
-        for (double& z : cut.potential.x)
-          z = crplib::convert_length(z, crplib::LengthUnit::angstrom, crplib::LengthUnit::bohr);
+    const Symmetry symmetry = symmetry_of(name);
+    const double a = lattice_constant(symmetry);  // bohr
+    crplib::DataSet d;
+    const bool impulse = name.find("_impulse_") != std::string::npos;
+    if (impulse) {
+      d = impulse_data_set(symmetry, std::stoi(name.substr(name.rfind('_') + 1)) - 1, impulse_grids());
+    } else if (name == "c6v_pairwise_angstrom") {
+      d = in_angstrom_and_ev(pairwise_data_set(symmetry));
+    } else if (name == "c4v_negative_spacing") {
+      d = pairwise_data_set(symmetry);
+      d.interlayer_spacings = {-0.98};  // relative: z of the second layer = 0.98 a / sqrt(2)
+    } else if (name.ends_with("_pairwise")) {
+      d = pairwise_data_set(symmetry);
+    } else {
+      throw std::runtime_error("unknown case " + name);
     }
-    write_points(dir / "atom_0_2.in", atom_points(d.symmetry, in_bohr));
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    crplib::write_data_set(d, dir / "dataset");
+
+    if (impulse) {  // pure interpolation: molecules below ZsoMin, any orientation
+      std::vector<Point> points;
+      for (const auto& [u, v] : {std::pair{0.0, 0.0},
+                                 {0.5, 0.0},
+                                 {1.0 / 3, 1.0 / 3},
+                                 {1.0 / 6, 1.0 / 6},
+                                 {0.5, 0.5},
+                                 {0.0, 0.5},
+                                 {2.0 / 3, 1.0 / 6},
+                                 {1.0 / 6, 2.0 / 3},
+                                 {2.0 / 3, 2.0 / 3},
+                                 {5.0 / 6, 5.0 / 6},
+                                 {1.0 / 3, 5.0 / 6},
+                                 {5.0 / 6, 1.0 / 3},
+                                 {0.25, 0.25},
+                                 {0.75, 0.25},
+                                 {0.75, 0.75},
+                                 {0.25, 0.75},
+                                 {0.37, 0.61}}) {
+        const auto [x, y] = cartesian(symmetry, u, v, a);
+        for (double theta : {0.0, 0.4, 1.2, std::numbers::pi / 2})
+          for (double phi : {0.0, 0.6, 2.2, -1.9}) points.push_back(molecule(x, y, 2.0, 1.4, theta, phi));
+      }
+      write_points(dir / "molecule_0_2.in", points);
+    } else {
+      // The atom z range as the library reads it (in the Angstrom case the unit round trip moves
+      // the ends by an ulp; a point just outside would stop the Fortran).
+      const crplib::DataSet read_back = crplib::read_data_set(dir / "dataset");
+      std::vector<double> atom_z;
+      for (double z : read_back.atom_cuts.front().potential.x)
+        atom_z.push_back(crplib::convert_length(z, read_back.units.length, crplib::LengthUnit::bohr));
+      write_points(dir / "atom_0_2.in", atom_points(symmetry, a, atom_z));
+      write_points(dir / "molecule_0_2.in", molecule_points(symmetry, a));
+      write_points(dir / "wrapper.in", wrapper_points(a));
+      write_points(dir / "cambcord.in", cambcord_points());
+      if (name == "c6v_pairwise_angstrom") {
+        constexpr double bohr = 0.529177249;  // the same points, given in Angstrom
+        write_points(dir / "molecule_1_3.in", scaled(molecule_points(symmetry, a), bohr));
+        write_points(dir / "atom_1_3.in", scaled(atom_points(symmetry, a, atom_z), bohr));
+      } else {
+        write_points(dir / "gasphase.in",
+                     gas_phase_points());  // Zcc = ZsoMin exactly would stop after unit round trips
+      }
+    }
     std::cout << "wrote " << dir.string() << "\n";
   } catch (const std::exception& e) {
     std::cerr << "error: " << e.what() << "\n";
