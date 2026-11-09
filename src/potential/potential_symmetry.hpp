@@ -29,13 +29,15 @@ struct SymmetryCheck {
   [[nodiscard]] bool passed() const { return max_deviation <= tolerance; }
 };
 
-// Samples: (x, y, theta, phi) from a fixed low-discrepancy sequence over the cell and the sphere,
-// Z and r at grid points of the interaction region (so grid-based PESs get valid iz, ir).
+// Samples: (x, y, phi) from a fixed low-discrepancy sequence over the cell and the circle; theta,
+// Z and r at grid points (theta is invariant under every surface operation, and a PES may only be
+// defined where the grid reaches, e.g. the atom range of a CRP data set; Z and r so that grid-based
+// PESs get valid iz, ir).
 // VMin/VMax are applied to both values (the stored potential is clipped); the switching to the
 // gas phase can only reduce a difference and is ignored.
 [[nodiscard]] SymmetryCheck check_potential_symmetry(const Potential& potential, const GridSymmetry& symmetry,
                                                      const Config& config, const SpatialGrids& grids,
-                                                     int n_samples = 1000);
+                                                     const AngularGrid& angular, int n_samples = 1000);
 
 // Throws InputError (parameter "SymmetryTolerance") naming SystemID, point group, the worst
 // configuration and operation if the check failed.

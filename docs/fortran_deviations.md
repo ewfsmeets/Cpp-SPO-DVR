@@ -24,7 +24,7 @@ differences are in [validation.md](validation.md).
   C4v (complete but never validated code) and has no code for C3v/C3; C++ supports all five
   (gates for those: C++ with vs without symmetry). nX or nY = 1 with UseSymmetry and a trivial
   usable group are errors (Fortran: warn and continue). Representatives differ from the Fortran
-  regions (triangle A / 1, rectangle A): equal values up to PES rounding. The PES self-check
+  regions (triangle A / 1, rectangle A): equal values up to PES rounding. The PES self-check (θ, Z and r at grid points, x, y, φ anywhere; until 2026-11-09 θ was sampled anywhere too, which could reach geometries the grid never uses)
   (`SymmetryTolerance`, default 1e-5 eV) is not in the Fortran. Native checkpoint format 2 adds
   the number of φ points to the restart parameters.
 - Diffraction order: derived from the reciprocal lattice (nearest-neighbour step distance,

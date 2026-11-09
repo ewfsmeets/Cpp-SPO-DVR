@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
 
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
-  PotentialGrid potential = compute_potential_grid(*make_potential(p.system_id), config, grids, angular);
+  PotentialGrid potential = compute_potential_grid(*make_potential(p), config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
 

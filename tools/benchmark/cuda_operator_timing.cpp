@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
   PotentialGrid potential =
-      compute_potential_grid(*make_potential(p.system_id), config, grids, angular, make_grid_symmetry(config, angular));
+      compute_potential_grid(*make_potential(p), config, grids, angular, make_grid_symmetry(config, angular));
   const FftwFft fft;
   const RotationalBasis basis(angular, p.j_in, p.mj_in);
   const PropagationTables tables = make_propagation_tables(config, grids, basis, potential.asymptotic);

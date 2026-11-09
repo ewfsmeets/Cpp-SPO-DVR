@@ -250,7 +250,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (device == Device::Cuda && propagates) out << "  " << prepare_device(device) << '\n';
     print_input_summary(out, style, config);
 
-    const auto potential = make_potential(config.input.system_id);
+    const auto potential = make_potential(config.input);
     const AngularGrid angular = make_angular_grid(config);
     const SpatialGrids grids = make_spatial_grids(config);
     print_grids(out, style, config, grids, angular);
@@ -265,7 +265,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       // Surface symmetry (UseSymmetry): check the PES before the reduced potential is computed.
       GridSymmetry symmetry = make_grid_symmetry(config, angular);
       if (config.input.use_symmetry) {
-        const SymmetryCheck check = check_potential_symmetry(*potential, symmetry, config, grids);
+        const SymmetryCheck check = check_potential_symmetry(*potential, symmetry, config, grids, angular);
         print_surface_symmetry(out, style, symmetry, check);
         require_symmetric_potential(check, config, symmetry);
       }

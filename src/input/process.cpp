@@ -118,7 +118,7 @@ Config build_config(const InputParameters& input) {
   DerivedParameters& d = config.derived;
 
   // Fortran: InputNew.f90 SetupInput
-  d.system = make_potential(input.system_id)->system_parameters();
+  d.system = make_potential(input)->system_parameters();
   d.z_asymptotic_unswitched = d.system.z_asymptotic;
   d.z_asymptotic = input.use_switching ? input.z_max_switch : d.system.z_asymptotic;
 

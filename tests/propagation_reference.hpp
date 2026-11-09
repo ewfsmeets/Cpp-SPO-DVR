@@ -139,7 +139,7 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   const Config config = build_config(parse_input(nlohmann::json::parse(file)));
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
-  PotentialGrid potential = compute_potential_grid(*make_potential(config.input.system_id), config, grids, angular);
+  PotentialGrid potential = compute_potential_grid(*make_potential(config.input), config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend);

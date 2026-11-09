@@ -70,7 +70,7 @@ struct FineRun {
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)),
         gas(compute_gas_phase(config, grids, angular,
-                              compute_asymptotic_potential(*make_potential(config.input.system_id), config, grids), fft,
+                              compute_asymptotic_potential(*make_potential(config.input), config, grids), fft,
                               LapackEigensolver())),
         setup(config, angular, gas) {}
 

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -27,6 +28,13 @@ using namespace spodvr;
 using Json = nlohmann::json;
 
 namespace {
+
+// The input of a data-free PES, selected by its SystemID.
+InputParameters input_with_id(const std::string& id) {
+  InputParameters p;
+  p.system_id = id;
+  return p;
+}
 Json reference_json() {
   std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/hardwall_small/input.json");
   return Json::parse(file);
@@ -59,13 +67,13 @@ TEST(HardWall, Branches) {
 }
 
 TEST(HardWall, SystemParameters) {
-  const auto p = make_potential("hardwallpes");
+  const auto p = make_potential(input_with_id("hardwallpes"));
   EXPECT_EQ(p->system_parameters().z_asymptotic, 7.0);
   EXPECT_EQ(p->system_parameters().lattice_constant_x, 6.23966);
   EXPECT_EQ(p->system_parameters().lattice_constant_y, 5.23966);
   EXPECT_EQ(p->system_parameters().skewing_angle, Constants::pi / 2.0);
   EXPECT_EQ(p->system_parameters().point_group, "C2v");
-  EXPECT_THROW((void)make_potential("H2Pt111"), InputError);
+  EXPECT_THROW((void)make_potential(input_with_id("H2Pt111")), InputError);
 }
 
 TEST(PotentialGrid, LayoutAndValues) {
@@ -178,7 +186,7 @@ double relative(double a, double b) { return std::abs(a - b) / std::max({std::ab
 }  // namespace
 
 TEST(Cu111Potentials, SystemParametersAndFactory) {
-  const auto dai = make_potential(" h2cu111dailight ");
+  const auto dai = make_potential(input_with_id(" h2cu111dailight "));
   EXPECT_EQ(dai->name(), "H2Cu111DaiLight");
   EXPECT_EQ(dai->system_parameters().lattice_constant_x, 4.84);
   EXPECT_EQ(dai->system_parameters().lattice_constant_y, 4.84);
@@ -186,7 +194,7 @@ TEST(Cu111Potentials, SystemParametersAndFactory) {
   EXPECT_EQ(dai->system_parameters().skewing_angle, pi / 3.0);
   EXPECT_EQ(dai->system_parameters().point_group, "C6v");
 
-  const auto persson = make_potential("H2CU111PERSSON");
+  const auto persson = make_potential(input_with_id("H2CU111PERSSON"));
   EXPECT_EQ(persson->name(), "H2Cu111Persson");
   EXPECT_EQ(persson->system_parameters().lattice_constant_x, 2.5173 / 0.529177);  // cc / cboan
   EXPECT_EQ(persson->system_parameters().lattice_constant_y, 2.5173 / 0.529177);

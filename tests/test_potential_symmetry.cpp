@@ -34,6 +34,13 @@ using cplx = std::complex<double>;
 
 namespace {
 
+// The input of a data-free PES, selected by its SystemID.
+InputParameters input_with_id(const std::string& id) {
+  InputParameters p;
+  p.system_id = id;
+  return p;
+}
+
 Json case_json(const std::string& name) {
   std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/" + name + "/input.json");
   return Json::parse(file);
@@ -121,7 +128,7 @@ TEST(SymmetryCheck, DaiLightPasses) {
   const RunSetup& s = dai_light_symmetric();
   const DaiLightCu111Potential pes;
   const GridSymmetry symmetry = make_grid_symmetry(s.config, s.angular);
-  const SymmetryCheck check = check_potential_symmetry(pes, symmetry, s.config, s.grids);
+  const SymmetryCheck check = check_potential_symmetry(pes, symmetry, s.config, s.grids, s.angular);
   EXPECT_EQ(check.n_samples, 1000);
   EXPECT_EQ(check.n_comparisons, 11000);
   EXPECT_LT(check.max_deviation, 1e-8);  // rounding only, at the steep wall
@@ -132,7 +139,7 @@ TEST(SymmetryCheck, DaiLightPasses) {
 TEST(SymmetryCheck, NonSymmetricPotentialFails) {
   const RunSetup& s = dai_light_symmetric();
   const GridSymmetry symmetry = make_grid_symmetry(s.config, s.angular);
-  const SymmetryCheck check = check_potential_symmetry(TiltedPotential(), symmetry, s.config, s.grids);
+  const SymmetryCheck check = check_potential_symmetry(TiltedPotential(), symmetry, s.config, s.grids, s.angular);
   EXPECT_GT(check.max_deviation, 1e-4);
   EXPECT_FALSE(check.passed());
   try {
@@ -153,9 +160,9 @@ TEST(SymmetryCheck, PerssonFailsBecauseOfItsPeriod) {
   json["UseSymmetry"] = true;
   json["nPhisOptimal"] = true;
   const RunSetup s(json);
-  const auto pes = make_potential("H2Cu111Persson");
+  const auto pes = make_potential(input_with_id("H2Cu111Persson"));
   const GridSymmetry symmetry = make_grid_symmetry(s.config, s.angular);
-  const SymmetryCheck check = check_potential_symmetry(*pes, symmetry, s.config, s.grids);
+  const SymmetryCheck check = check_potential_symmetry(*pes, symmetry, s.config, s.grids, s.angular);
   EXPECT_GT(check.max_deviation, 1.0);
   EXPECT_FALSE(check.passed());
   EXPECT_THROW((void)compute_potential_grid(*pes, s.config, s.grids, s.angular), InputError);
@@ -163,7 +170,8 @@ TEST(SymmetryCheck, PerssonFailsBecauseOfItsPeriod) {
   json["ImposeVMax"] = true;
   json["VMax"] = 10.0;
   const RunSetup capped(json);
-  const SymmetryCheck capped_check = check_potential_symmetry(*pes, symmetry, capped.config, capped.grids);
+  const SymmetryCheck capped_check =
+      check_potential_symmetry(*pes, symmetry, capped.config, capped.grids, capped.angular);
   EXPECT_GT(capped_check.max_deviation, 1e-4);
   EXPECT_LT(capped_check.max_deviation, 1e-2);
 
@@ -180,7 +188,7 @@ TEST(SymmetricPotentialGrid, HardWallIsBitwiseTheFullGrid) {
   const RunSetup plain(json);
   json["UseSymmetry"] = true;
   const RunSetup sym(json);
-  const auto pes = make_potential("HardWallPES");
+  const auto pes = make_potential(input_with_id("HardWallPES"));
   const PotentialGrid full = compute_potential_grid(*pes, plain.config, plain.grids, plain.angular);
   const PotentialGrid reduced = compute_potential_grid(*pes, sym.config, sym.grids, sym.angular);
   EXPECT_EQ(reduced.values.size() * 16, full.values.size() * 9);

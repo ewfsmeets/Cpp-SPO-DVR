@@ -63,7 +63,7 @@ const Calculation& calculation(const std::string& name) {
     Config config = build_config(parse_input(nlohmann::json::parse(file)));
     SpatialGrids grids = make_spatial_grids(config);
     AngularGrid angular = make_angular_grid(config);
-    const std::unique_ptr<Potential> pes = make_potential(config.input.system_id);
+    const std::unique_ptr<Potential> pes = make_potential(config.input);
     PotentialGrid potential = compute_potential_grid(*pes, config, grids, angular);
     GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, FftwFft(), LapackEigensolver());
     entry = std::make_unique<Calculation>(

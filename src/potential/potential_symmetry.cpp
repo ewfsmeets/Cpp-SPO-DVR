@@ -54,12 +54,13 @@ GridSymmetry make_grid_symmetry(const Config& config, const AngularGrid& angular
 }
 
 SymmetryCheck check_potential_symmetry(const Potential& potential, const GridSymmetry& symmetry, const Config& config,
-                                       const SpatialGrids& grids, int n_samples) {
+                                       const SpatialGrids& grids, const AngularGrid& angular, int n_samples) {
   const SurfaceLattice lattice(config.derived.system);
   const double a = lattice.lattice_constant_x();
   const double b = lattice.lattice_constant_y();
   const int nz = grids.nz_potential;
   const int nr = grids.r.size();
+  const int n_theta = angular.n_theta();
 
   SymmetryCheck check;
   check.n_samples = n_samples;
@@ -67,7 +68,8 @@ SymmetryCheck check_potential_symmetry(const Potential& potential, const GridSym
   for (int k = 0; k < n_samples; ++k) {
     const double x = a * sequence(k, alpha_x);
     const double y = b * sequence(k, alpha_y);
-    const double theta = std::acos(1.0 - 2.0 * sequence(k, alpha_cos_theta));
+    const int itheta = std::min(n_theta - 1, static_cast<int>(n_theta * sequence(k, alpha_cos_theta)));
+    const double theta = angular.thetas()[itheta];
     const double phi = Constants::two_pi * sequence(k, alpha_phi);
     const int iz = std::min(nz - 1, static_cast<int>(nz * sequence(k, alpha_z)));
     const int ir = std::min(nr - 1, static_cast<int>(nr * sequence(k, alpha_r)));

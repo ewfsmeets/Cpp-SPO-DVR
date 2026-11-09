@@ -87,7 +87,7 @@ TEST(MemoryEstimate, MatchesAllocations) {
   const RunGrids setup(reference_json("hardwall_short"));
   const MemoryEstimate e = setup.estimate(1);
   PotentialGrid potential =
-      compute_potential_grid(*make_potential(setup.config.input.system_id), setup.config, setup.grids, setup.angular);
+      compute_potential_grid(*make_potential(setup.config.input), setup.config, setup.grids, setup.angular);
   EXPECT_EQ(e.items[0].values, potential.values.size());
 
   const FftwFft fft;
@@ -134,10 +134,10 @@ TEST(MemoryEstimate, FineAnalysisByHandAndAllocations) {
   json["RestartDir"] = "unused";
   const RunGrids setup(json);
   const FftwFft fft;
-  const GasPhase gas = compute_gas_phase(
-      setup.config, setup.grids, setup.angular,
-      compute_asymptotic_potential(*make_potential(setup.config.input.system_id), setup.config, setup.grids), fft,
-      LapackEigensolver());
+  const GasPhase gas =
+      compute_gas_phase(setup.config, setup.grids, setup.angular,
+                        compute_asymptotic_potential(*make_potential(setup.config.input), setup.config, setup.grids),
+                        fft, LapackEigensolver());
   const AnalysisSetup analysis(setup.config, setup.angular, gas);
   const FineAnalysisGrid grid = make_fine_analysis_grid(setup.config, 1400);
   const MemoryEstimate e = estimate_fine_analysis_memory(grid, analysis.basis);

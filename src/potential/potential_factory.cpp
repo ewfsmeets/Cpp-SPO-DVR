@@ -24,7 +24,8 @@ bool potential_is_implemented(std::string_view system_id) {
   return false;
 }
 
-std::unique_ptr<Potential> make_potential(std::string_view system_id) {
+std::unique_ptr<Potential> make_potential(const InputParameters& input) {
+  const std::string_view system_id = input.system_id;
   if (fortran_compare::seq(system_id, hard_wall_id)) return std::make_unique<HardWallPotential>();
   if (fortran_compare::seq(system_id, dai_light_id)) return std::make_unique<DaiLightCu111Potential>();
   if (fortran_compare::seq(system_id, persson_id)) return std::make_unique<PerssonCu111Potential>();

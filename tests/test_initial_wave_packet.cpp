@@ -41,7 +41,7 @@ struct GasPhaseSetup {
       : config(build_config(parse_input(json))),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)),
-        potential(compute_potential_grid(*make_potential(config.input.system_id), config, grids, angular)),
+        potential(compute_potential_grid(*make_potential(config.input), config, grids, angular)),
         gas(compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver())) {}
 };
 

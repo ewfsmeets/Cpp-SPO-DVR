@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
   const fs::path out_dir = argv[2];
   fs::create_directories(out_dir);
   const Config config = build_config(read_input_file(argv[1]));
-  const auto pes = make_potential(config.input.system_id);
+  const auto pes = make_potential(config.input);
   const AngularGrid angular = make_angular_grid(config);
   const SpatialGrids grids = make_spatial_grids(config);
   write_grids(out_dir / "grids.txt", grids, angular);

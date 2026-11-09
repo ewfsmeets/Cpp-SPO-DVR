@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   fs::create_directories(out_dir);
 
   const Config config = build_config(read_input_file(argv[1]));
-  const auto pes = make_potential(config.input.system_id);
+  const auto pes = make_potential(config.input);
   const AngularGrid angular = make_angular_grid(config);
   const SpatialGrids grids = make_spatial_grids(config);
   // V_asy as a propagation run obtains it (app/run.cpp: from the potential grid), not via
