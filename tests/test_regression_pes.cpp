@@ -53,7 +53,12 @@ struct Calculation {
   GasPhase gas;
 };
 
-fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / name; }
+// A case is a directory name, optionally with "+UseSymmetry": the same input with UseSymmetry
+// (the C++ potential on the symmetry-reduced grid, compared with the full Fortran potential).
+std::string directory_of(const std::string& name) { return name.substr(0, name.find('+')); }
+bool with_symmetry(const std::string& name) { return name.ends_with("+UseSymmetry"); }
+
+fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / directory_of(name); }
 fs::path repository_root() { return fs::path(SPODVR_REFERENCE_DIR).parent_path().parent_path(); }
 
 const Calculation& calculation(const std::string& name) {
@@ -64,6 +69,7 @@ const Calculation& calculation(const std::string& name) {
     InputParameters input = parse_input(nlohmann::json::parse(file));
     // CRP cases: the data set path in input.json is relative to the repository root.
     if (!input.crp_dataset.empty()) input.crp_dataset = (repository_root() / input.crp_dataset).string();
+    if (with_symmetry(name)) input.use_symmetry = true;
     Config config = build_config(input);
     SpatialGrids grids = make_spatial_grids(config);
     AngularGrid angular = make_angular_grid(config);
@@ -182,3 +188,10 @@ INSTANTIATE_TEST_SUITE_P(Cu111, RegressionPes,
 INSTANTIATE_TEST_SUITE_P(Crp, RegressionPes,
                          ::testing::Values("crp_c6v_synthetic_small", "crp_c3v_synthetic_small",
                                            "crp_c4v_synthetic_small"));
+
+// Speed-up S1 for CRP: the C++ potential on the symmetry-reduced grid (the subgroup usable with
+// nphi = 10: C2v for C6v and C4v, the mirror for C3v) against the full Fortran potential (which the
+// Fortran computes without symmetry for C3v and C4v).
+INSTANTIATE_TEST_SUITE_P(CrpSymmetric, RegressionPes,
+                         ::testing::Values("crp_c6v_synthetic_small+UseSymmetry", "crp_c3v_synthetic_small+UseSymmetry",
+                                           "crp_c4v_synthetic_small+UseSymmetry"));

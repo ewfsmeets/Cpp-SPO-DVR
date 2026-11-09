@@ -167,6 +167,31 @@ switch to GCC 15 (2026-11-06); not re-measured since.
     stored effective `ZOptFactor` differs by 1 ulp and the reader compares exactly (README "Build variants").
 - Earlier measurement with 16 threads (hyperthreads, includes test overhead): Fortran 637 s, C++ 816 s.
 
+## CRP library (SystemID `CRPlibrary`, 2026-11-09)
+Setting up the potential of a CRP data set costs microseconds per point, and it dominates the
+set-up. Measurements on the synthetic data sets of the library tests: the gate cases
+`tests/reference/crp_*_synthetic_small` with nX = nY = 12 and JMax = MJMax = 8 (nθ = 5, nφ = 18;
+C4v with `nPhisOptimal` nφ = 20). That is 80 × 32 × 144 × 90 = 3.3·10⁷ PES evaluations, in
+potential-only runs with 8 threads on an otherwise idle machine (GCC 15 / gfortran 15). The Fortran
+time is the wall time of the whole run; the C++ time is the "6D potential computed in" line.
+
+| Data set | Fortran | C++ | C++ with `UseSymmetry` + `nPhisOptimal` (points computed) | C++, one thread, per evaluation |
+|---|---|---|---|---|
+| C6v | 22.5 s | 17.4 s | 2.2 s (19 of 144 (x, y)) | 2.9 µs |
+| C3v | 44.7 s | 26.7 s | 6.2 s (31 of 144) | 4.6 µs |
+| C4v | 13.4 s | 12.0 s | 2.6 s (28 of 144) | 1.9 µs |
+
+- Per evaluation: `build/tools/spodvr_crp_timing <data set>` (the QD wrapper at 98496 points
+  spread over the cell, Z = −1..8, r = 0.6..4.1 and the orientations; best of 3).
+- `UseSymmetry` (the Fortran switches it off for C3v and C4v) evaluates the PES only at the
+  symmetry-unique (x, y) points; the potential differs from the full one by rounding only (self-check
+  ≤ 6e-13 eV; [crp_library.md](crp_library.md)). Recommended for production runs.
+- Profile (perf, one thread, `-O2` without LTO): the MURII cluster sum of the atom-surface PES takes
+  45 % (C3v: 256 atoms per atom, most beyond the cut-off of the corrugation function), 11 % (C6v)
+  and 13 % (C4v); the grid lookup of the molecular cuts (`locate_interval`, one per cut although
+  the cuts share their grid) 9–15 %; libm (cos/sin of the site functions, acos/atan2) 12–22 %; the
+  rest is spread over the interpolation and the derivatives (which the QD wrapper discards).
+
 ## What was optimised (and how it relates to the Fortran code)
 | Change | Results |
 |---|---|

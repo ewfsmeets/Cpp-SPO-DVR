@@ -8,6 +8,7 @@
 #include <omp.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -32,6 +33,7 @@
 #include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "report/crp_report.hpp"
+#include "symmetry/grid_symmetry.hpp"
 #include "temporary_directory.hpp"
 
 using namespace spodvr;
@@ -168,6 +170,39 @@ TEST_P(CrpPotentialTest, SymmetryCheckPasses) {
   EXPECT_LT(check.max_deviation, 1e-11) << "eV";
   std::cout << "  max |V(q) - V(g q)| = " << check.max_deviation << " eV\n";
   EXPECT_TRUE(check.passed());
+}
+
+// Speed-up S1 (docs/crp_library.md): with UseSymmetry the PES is evaluated at the (x, y)
+// representatives only. Gathered through the symmetry maps, the reduced grid equals the full grid
+// bitwise at the representatives and to the PES's asymmetry (rounding) at their images.
+TEST_P(CrpPotentialTest, SymmetricGridGathersTheFullGrid) {
+  Json json = gate_case_json(GetParam());
+  json["UseSymmetry"] = true;
+  json["nPhisOptimal"] = true;
+  const RunSetup s(json);
+  const std::unique_ptr<Potential> pes = make_potential(s.config.input);
+  const PotentialGrid reduced = compute_potential_grid(*pes, s.config, s.grids, s.angular);
+  const PotentialGrid full = compute_potential_grid(
+      *pes, s.config, s.grids, s.angular, GridSymmetry(s.config.input.nx, s.config.input.ny, s.angular.n_phi()));
+  const GridSymmetry& g = reduced.symmetry;
+  std::cout << "  (x, y) points computed: " << g.n_representatives() << " of " << g.n_xy() << '\n';
+  EXPECT_LE(g.n_representatives() * 3, g.n_xy());
+  EXPECT_EQ(reduced.asymptotic, full.asymptotic);
+  const double one_ev = 1.0 / 27.2114;
+  double worst = 0.0;
+  for (std::size_t izr = 0; izr < full.index.n2; ++izr)
+    for (int ixy = 0; ixy < g.n_xy(); ++ixy) {
+      const bool representative = g.representative_xy(g.representative_of(ixy)) == ixy;
+      for (std::size_t itp = 0; itp < full.index.n0; ++itp) {
+        const double v = reduced(itp, ixy, izr), v_full = full(itp, ixy, izr);
+        if (representative) {
+          ASSERT_EQ(v, v_full) << ixy;
+        }
+        worst = std::max(worst, std::abs(v - v_full) / std::max(std::abs(v_full), one_ev));
+      }
+    }
+  EXPECT_LT(worst, 5e-13);  // rounding: the images run through other fold and Fourier arithmetic
+  std::cout << "  max scaled difference reduced vs full: " << worst << '\n';
 }
 
 INSTANTIATE_TEST_SUITE_P(Symmetries, CrpPotentialTest, testing::Values(Symmetry::c3v, Symmetry::c4v, Symmetry::c6v),

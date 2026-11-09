@@ -65,6 +65,8 @@ derived from exactly the same parameters.
    `crp_c6v_synthetic_small`, `crp_c3v_synthetic_small` (6 × 6) and `crp_c4v_synthetic_small`
    (8 × 8), with r and Z partly outside the data (clamped) and switching 6..8: all pass, vasy
    bitwise, 6D ≤ 3.0e-14 of max(|V|, 1 eV) (the grids' quad-precision ulps, as above).
+   With `UseSymmetry` (C++ only for C3v and C4v; the subgroup usable with nφ = 10) the same cases
+   against the full Fortran potential: 6D ≤ 5.7e-14.
 4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
    Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
    values) to half a unit in the last printed digit (values below 1e-20 are noise and compared

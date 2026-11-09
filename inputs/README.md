@@ -206,3 +206,17 @@ it bounds the error in 1 − Σ R.
 2. Run to t ≈ 500 a.u.: the total norm drops by ≲ 1e-7 (DZ: 1 − 4.7e-8; with dZ 0.15 it was
    1 − 3.3e-6), and no "fixed at" message appears before the packet reaches `Zana`.
 3. At the end: the norm left on the grids (section 8).
+
+## 11. CRP data sets (`SystemID` `CRPlibrary`)
+The data set ([docs/crp_library.md](../docs/crp_library.md)) limits the grids:
+- r outside [Rmin, Rmax] and Z below Zmin (the ranges covered by all molecular cuts) are evaluated
+  at the nearest end, as in the Fortran: V is constant there. Keep the r range where the dynamics
+  happens inside [Rmin, Rmax]; beyond Rmax the r absorber has to do the rest. The `CRP DATA SET`
+  block of the setup output shows the ranges and counts the clamped grid points.
+- "(Z, r) points without data" must be 0: there the Fortran library silently returns V = 0.
+- `zasymp` is the last Z of the data set's Z dependence (`Molecule/extrapol.dat`), unless
+  `UseSwitching` lowers it (`ZmaxSwitch`).
+- An atom outside the atom-surface data stops the set-up with an error naming `CRPlibDataSet` and
+  the grid point: the data set does not cover the grid.
+- Use `UseSymmetry` with `nPhisOptimal`: 4 to 8 times fewer PES evaluations (the set-up of a CRP
+  potential costs microseconds per point; docs/performance.md "CRP library").

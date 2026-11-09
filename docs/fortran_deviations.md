@@ -142,7 +142,9 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   (exit status 0 in the Fortran) and data-set errors are input errors naming `CRPlibDataSet`
   (exit status 2); an evaluation error names the grid point. The setup output reports the clamped
   r and Z grid points and the (Z, r) points where the library silently returns V = 0 (shifted to
-  −VH2(r_last) by the wrapper; reproduced, decision D2).
+  −VH2(r_last) by the wrapper; reproduced, decision D2). With `UseSymmetry` the potential of C3v and C4v data sets
+  is computed on the symmetry-reduced grid (the Fortran switches the symmetry off for them); it
+  differs from the full potential by rounding (docs/crp_library.md "Speed").
 - Kept on purpose: for a vertical molecule (θ = 0 exactly) RRINTII/RRINT set dθ/dX = dθ/dY = 0,
   but the sin 2θ terms of the hollow and t2 site functions give V a lateral slope there; the x and
   y gradient components miss it (z is right). Irrelevant for SPO-DVR (V only; no θ grid point is 0).

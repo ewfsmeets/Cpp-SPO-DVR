@@ -105,6 +105,19 @@ and jumps where the point is folded into the cell: the library warns.
 So the atom-surface cuts must cover z from Zmin − Rmax/2 to ZsoMax + Rmax/2 (for a molecule at
 any orientation), and the molecular cuts should cover the r and Z grid of the dynamics.
 
+## Speed
+
+On the dynamics grid the PES is evaluated tens of millions of times (microseconds each; timings in
+[performance.md](performance.md) "CRP library").
+- Use `UseSymmetry` (with `nPhisOptimal`): the PES is then evaluated only at the symmetry-unique
+  (x, y) points, 4 to 8 times fewer on a 12 × 12 grid. The Fortran switches the symmetry off for
+  C3v and C4v. The interpolation is symmetric to rounding (the symmetric images run through
+  different fold and Fourier arithmetic): on the synthetic data sets the gathered potential equals
+  the full one bitwise at the representatives and to ≤ 1.6e-13 of max(|V|, 1 eV) elsewhere, and
+  the self-check finds ≤ 6e-13 eV. Leave it off only for bitwise comparisons with the Fortran.
+- Gate 1 also runs with `UseSymmetry` against the full Fortran potential
+  (`CrpSymmetric/RegressionPes`, [validation.md](validation.md)).
+
 ## Testing without a real data set
 
 No real data set is in the repository. The tests (`tests/crplib/`, see its README) use:
@@ -128,7 +141,7 @@ tests; each must make a test fail. Result (2026-11-09, 204 tests):
 
 | Mutation | Caught by (number of failing tests) |
 |---|---|
-| bridge images swapped | impulse responses, Fortran comparisons (10) |
+| bridge images swapped | impulse responses, Fortran comparisons (12) |
 | 0.5 instead of the folded cos(π/3) in the QD wrapper's skew transform | QD wrapper on the impulse sets, bitwise (10) |
 | 0.5 instead of the folded cos(π/3) in the C3v MURII | C3v atom-surface PES vs the Fortran (1) |
 | SPLINT slope without its curvature term | spline tests, Fortran comparisons (37) |
@@ -136,7 +149,7 @@ tests; each must make a test fail. Result (2026-11-09, 204 tests):
 | x / c instead of x · (1/c) (Å → bohr) | Å/eV cases vs the Fortran (6) |
 | (x · (1/a)) · b instead of x · ((1/a) · b) (energy units) | unit tests (1) |
 | `floor` instead of the ORIGEN truncation | fold tests, Fortran comparisons (7) |
-| C3v t2h and t2f cuts swapped | impulse responses, representable model (7) |
+| C3v t2h and t2f cuts swapped | impulse responses, representable model (9) |
 | sign flip in a chain-rule term | Fortran comparisons, finite differences (22) |
 | TRANSF regions 4 and 5 swapped | C4v atom-surface PES vs the Fortran (4) |
 | dFso term dropped from the gradient | Fortran comparisons, finite differences (9) |

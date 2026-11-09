@@ -289,8 +289,11 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
       const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
       const ScatteringShape shape{basis.size(), config.input.nx, config.input.ny, config.input.nr, config.input.nz};
+      const auto potential_start = std::chrono::steady_clock::now();
       potential_grid =
           compute_potential_grid(*potential, config, grids, angular, std::move(symmetry), xy_group_points(shape));
+      const std::chrono::duration<double> potential_time = std::chrono::steady_clock::now() - potential_start;
+      out << "\n  6D potential computed in " << fixed(potential_time.count(), 2) << " s\n";
       asymptotic = potential_grid->asymptotic;
     }
     print_asymptotic_potential(out, style, config, grids, asymptotic);
