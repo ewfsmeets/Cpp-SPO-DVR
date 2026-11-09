@@ -7,11 +7,14 @@
 # The patterns match the code as it was when a mutation was added: update them when that code
 # changes (a pattern that no longer matches is reported as "not applied").
 #
-# Usage: tools/crp_mutation_check/run.sh [scratch_dir]   (default: a new mktemp -d directory)
+# Usage: tools/crp_mutation_check/run.sh [scratch_dir [index ...]]
+#   scratch_dir  default: a new mktemp -d directory;  index: only these mutations (default: all)
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "${here}/../.." && pwd)"
 scratch="${1:-$(mktemp -d)}"
+shift $(($# > 0 ? 1 : 0))
+selected=("$@")
 wt="${scratch}/worktree"
 mkdir -p "${scratch}"
 [[ -d "${wt}" ]] || git -C "${repo}" worktree add --detach "${wt}" HEAD > /dev/null
@@ -31,7 +34,9 @@ build || { echo "  build failed: ${scratch}/build.log"; exit 1; }
 run && echo "  all pass" || { echo "  baseline fails: ${scratch}/ctest.log"; exit 1; }
 survived=0
 n=$(python3 -I "${here}/mutations.py" list)
-for ((i = 0; i < n; ++i)); do
+indices=("${selected[@]}")
+[[ ${#indices[@]} -gt 0 ]] || indices=($(seq 0 $((n - 1))))
+for i in "${indices[@]}"; do
   git -C "${wt}" checkout -q -- src
   name=$(python3 -I "${here}/mutations.py" "${wt}" "${i}") || { echo "${i}: ${name} (not applied)"; continue; }
   if ! build; then echo "${i} ${name}: BUILD FAILED"; continue; fi

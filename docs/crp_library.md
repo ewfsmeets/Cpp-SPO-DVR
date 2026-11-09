@@ -136,6 +136,13 @@ the tests compare with them switched off, `tools/benchmark/crp_timing.cpp` times
   variant; points at the cut-off distance of an atom, to the last ulp, with a corrugation function
   that does not vanish there; the PES up to 10⁸ lattice constants from the origin; the QD wrapper
   on a dynamics grid; 4·10⁷ random points (`SPODVR_LONG_TESTS`); and the mutation check below.
+- **Shared grid lookup** (S4). Every molecular cut is a bicubic spline on its own (r, Z) grid, and
+  the Fortran locates (r, Z) in each of them (interval search and cell weights). Cuts with bitwise
+  identical grids (usually all of them) share one lookup per evaluation; only the cell values
+  differ. A point outside any grid still gives the silent V = 0, whichever cut it is. Grids are
+  compared bit by bit (not with ==, which would merge −0 and +0 knots). Verified bitwise against
+  the per-cut lookup on the synthetic data sets (one grid), with a cut with its own grid (and
+  points outside only that one), and with grids that differ only in the sign of a zero knot.
 
 ## Testing without a real data set
 

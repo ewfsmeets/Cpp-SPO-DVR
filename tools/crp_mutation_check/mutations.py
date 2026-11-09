@@ -70,6 +70,16 @@ MUTATIONS = [
      "cell_margin_(1.0e-8 * lattice_constant)", "cell_margin_(0.0 * lattice_constant)"),
     ("S2: < instead of <= in the in-plane selection [SAFETY MARGIN]", "src/crplib/atom_surface.cpp",
      "<= reach_ + 2.0 * cell_margin_)", "< reach_ + 2.0 * cell_margin_)"),
+    # Speed-up S4 (one grid lookup per group of cuts with the same grid)
+    ("S4: every cut evaluated in the cell of the first group", "src/crplib/molecule_surface.cpp",
+     "values[k] = cuts_[k].evaluate_in_cell(cells[group_of_cut_[k]]);",
+     "values[k] = cuts_[k].evaluate_in_cell(cells[0]);"),
+    ("S4: grids compared with != (merges -0 and +0 knots)", "src/crplib/molecule_surface.cpp",
+     "if (std::bit_cast<std::uint64_t>(a[i]) != std::bit_cast<std::uint64_t>(b[i])) return false;",
+     "if (a[i] != b[i]) return false;"),
+    ("S4: only the first group located", "src/crplib/molecule_surface.cpp",
+     "for (std::size_t g = 0; g < grid_cut_.size(); ++g) {\n    const std::optional<detail::GridCell> cell",
+     "for (std::size_t g = 0; g < 1; ++g) {\n    const std::optional<detail::GridCell> cell"),
 ]
 
 if sys.argv[1] == "list":

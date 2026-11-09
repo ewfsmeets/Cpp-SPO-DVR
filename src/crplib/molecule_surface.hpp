@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -67,6 +68,8 @@ class MoleculeSurface {
   [[nodiscard]] double zso_max() const { return zso_max_; }
   // Whether the molecule at (r, Zcc) would be evaluated (not the silent V = 0 branch).
   [[nodiscard]] bool covers(double r, double z) const;
+  // The number of different (r, Z) grids among the molecular cuts used (S4: one lookup each).
+  [[nodiscard]] int cut_grids() const { return static_cast<int>(grid_cut_.size()); }
 
  private:
   Symmetry symmetry_;
@@ -76,6 +79,13 @@ class MoleculeSurface {
   detail::CubicSpline1D z_dependence_;  // Fortran: GasPhase%Zdep
   detail::CubicSpline1D h2_;            // Fortran: GasPhase%Rdep
   std::vector<detail::BicubicSpline> cuts_;
+  // S4: the used cuts grouped by bitwise identical (r, Z) grids. grid_cut_[g]: the first cut of
+  // group g; group_of_cut_[k]: the group of cut k.
+  std::vector<int> grid_cut_;
+  std::vector<int> group_of_cut_;
+  bool share_grid_lookup_;
+
+  [[nodiscard]] bool evaluate_cuts(double r, double z, std::span<detail::BicubicValue> values) const;
   double r_min_, r_max_, z_min_;
   std::vector<std::string> warnings_;
 };

@@ -16,7 +16,9 @@
 #include <cmath>
 #include <cstdint>
 #include <numbers>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "crp_synthetic.hpp"
@@ -479,4 +481,81 @@ TEST(MoleculeSurfaceRepresentable, ReproducedOffTheGrid) {
       EXPECT_NEAR(pes.evaluate(atom_a, atom_b)->v, expected, 1e-13) << symmetry_name(s) << " at " << u << ", " << v;
     }
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Speed-up S4: one grid lookup per group of molecular cuts with the same (r, Z) grid
+// ---------------------------------------------------------------------------------------------
+
+namespace {
+
+bool same_bits(double a, double b) { return std::bit_cast<std::uint64_t>(a) == std::bit_cast<std::uint64_t>(b); }
+
+bool same_bits(const std::optional<MoleculeSurfaceValue>& a, const std::optional<MoleculeSurfaceValue>& b) {
+  if (a.has_value() != b.has_value()) return false;
+  if (!a) return true;
+  for (auto [p, q] : {std::pair{a->gradient_a, b->gradient_a}, std::pair{a->gradient_b, b->gradient_b}})
+    if (!same_bits(p.x, q.x) || !same_bits(p.y, q.y) || !same_bits(p.z, q.z)) return false;
+  return same_bits(a->v, b->v);
+}
+
+// The molecule-surface PES with and without the shared lookup at points over the cell, Z from
+// below Zmin to above ZsoMax and r beyond both ends of the cut grids (V and gradients, bitwise;
+// outside a grid both give nullopt). Returns the number of points and of nullopt results.
+std::pair<int, int> compare_shared_lookup(const DataSet& data) {
+  const MoleculeSurface shared(data);
+  const MoleculeSurface per_cut(data, EvaluationOptions{.share_grid_lookup = false});
+  const double a = data.lattice_constant;
+  int n = 0, outside = 0;
+  for (double u : {0.0, 0.31, 0.5, 0.77})
+    for (double v : {0.0, 0.18, 0.5, 0.93})
+      for (double z = 0.2; z < 7.0; z += 0.23)
+        for (double r : {0.5, 0.6, 0.83, 1.4, 2.2, 3.2, 3.4})
+          for (const auto& [theta, phi] : {std::pair{0.0, 0.0}, {0.6, 1.9}, {1.5, -0.7}}) {
+            const auto [atom_a, atom_b] = crplib_test::atom_pair((u + 0.5 * v) * a, 0.866 * v * a, z, r, theta, phi);
+            const Vec3 pa{atom_a.x, atom_a.y, atom_a.z}, pb{atom_b.x, atom_b.y, atom_b.z};
+            const std::optional<MoleculeSurfaceValue> s = shared.evaluate(pa, pb), p = per_cut.evaluate(pa, pb);
+            EXPECT_TRUE(same_bits(s, p)) << symmetry_name(data.symmetry) << " at Z " << z << ", r " << r;
+            ++n;
+            if (!s) ++outside;
+          }
+  return {n, outside};
+}
+
+}  // namespace
+
+// The synthetic data sets: all cuts share one grid.
+TEST(MoleculeSurfaceSharedGrid, BitwiseAsPerCut) {
+  for (Symmetry s : {Symmetry::c3v, Symmetry::c4v, Symmetry::c6v}) {
+    const DataSet data = crplib_test::pairwise_data_set(s);
+    EXPECT_EQ(MoleculeSurface(data).cut_grids(), 1);
+    const auto [n, outside] = compare_shared_lookup(data);
+    EXPECT_GT(outside, 0);  // r and Z outside the grids are part of the test
+    EXPECT_GT(n - outside, 1000);
+  }
+}
+
+// One cut with its own grid (Z ending below ZsoMax: points between give nullopt through that cut
+// only), and one whose grid differs from the others only in the sign of a zero knot.
+TEST(MoleculeSurfaceSharedGrid, CutsWithTheirOwnGrid) {
+  DataSet data = crplib_test::pairwise_data_set(Symmetry::c6v);
+  MoleculeCut& short_cut = data.molecule_cuts[5];
+  short_cut.z.resize(short_cut.z.size() - 2);
+  short_cut.v.resize(short_cut.r.size() * short_cut.z.size());
+  ASSERT_LT(short_cut.z.back(), data.zso_max);
+  EXPECT_EQ(MoleculeSurface(data).cut_grids(), 2);
+  const auto [n, outside] = compare_shared_lookup(data);
+  EXPECT_GT(outside, 0);
+
+  // A Z grid through zero: +0 in every cut, -0 in cut 9 (equal by ==, but not the same bits). An
+  // impulse data set (cut 9 = 1; CutsInterpolation = T, atom cuts over z = -10..20).
+  DataSet zero = crplib_test::impulse_data_set(Symmetry::c6v, 9, crplib_test::impulse_grids());
+  for (MoleculeCut& cut : zero.molecule_cuts) {
+    const double shift = cut.z[1];
+    for (double& z : cut.z) z -= shift;  // the second knot at exactly +0
+  }
+  zero.molecule_cuts[9].z[1] = -0.0;
+  EXPECT_EQ(MoleculeSurface(zero).cut_grids(), 2);
+  (void)compare_shared_lookup(zero);
+  (void)n;
 }

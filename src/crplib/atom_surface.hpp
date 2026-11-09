@@ -27,7 +27,8 @@ struct AtomSurfaceValue {
 // Speed-ups that leave every result bitwise unchanged (docs/crp_library.md "Speed"). The tests switch
 // them off to compare with the plain algorithm of the Fortran.
 struct EvaluationOptions {
-  bool prune_cluster = true;  // S2: sum the corrugation function only over atoms within its reach
+  bool prune_cluster = true;      // S2: sum the corrugation function only over atoms within its reach
+  bool share_grid_lookup = true;  // S4: locate (r, Z) once per group of molecular cuts with the same grid
 };
 
 // The atom cluster of the repulsive sum (Fortran: MURII, MURO) and the atoms of it that can reach a

@@ -272,6 +272,22 @@ TEST(ClusterPruning, BitwiseWithTheCutoffAtAnAtomDistance) {
   }
 }
 
+// Points outside the fold cell (which the folds produce only through rounding far from the
+// origin) fall back to the full cluster: the pruned sum equals the full one there too.
+TEST(ClusterPruning, BitwiseOutsideTheFoldCell) {
+  for (Variant v : {Variant::c6v, Variant::c3v, Variant::c4v}) {
+    const DataSet base = variant_data_set(v);
+    const double a = base.lattice_constant;
+    const Sums s = make_sums(with_cutoff(base, 0.8 * a));
+    int n = 0;
+    for (double d : {1e-9, 1e-6, 0.01, 0.3})
+      for (const auto& [x, y] : s.cell_corners)
+        for (const auto& [dx, dy] : {std::pair{-1.0, 0.0}, {0.0, -1.0}, {1.0, 1.0}, {-0.6, 0.8}})
+          for (double z : {-4.0, 0.0, 1.3}) n += compare_at(s, x + d * a * dx, y + d * a * dy, z, name(v) + " outside");
+    EXPECT_GT(n, 100);
+  }
+}
+
 // The PES with and without pruning, also far from the origin, where the fold's rounding can push a
 // point out of the cell (then the full cluster is used).
 TEST(ClusterPruning, AtomSurfaceBitwiseNearAndFarFromTheOrigin) {

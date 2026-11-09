@@ -7,7 +7,9 @@
 #include "crplib/molecule_surface.hpp"
 
 #include <array>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <string>
 
 #include "crplib/constants.hpp"
@@ -106,12 +108,21 @@ std::pair<double, double> cut_site(Symmetry symmetry, const MoleculeCut& cut, do
   return {ucm + vcm / 2.0, std::sqrt(3.0) * vcm / 2.0};
 }
 
+// Bitwise equal grids (S4: equal comparisons alone would merge -0 and +0 knots).
+bool same_grid(const std::vector<double>& a, const std::vector<double>& b) {
+  if (a.size() != b.size()) return false;
+  for (std::size_t i = 0; i < a.size(); ++i)
+    if (std::bit_cast<std::uint64_t>(a[i]) != std::bit_cast<std::uint64_t>(b[i])) return false;
+  return true;
+}
+
 }  // namespace
 
 // Fortran: Initialize_CRP_*_MoleculeSurface_PES and Read_MoleculeSurface_Data
 MoleculeSurface::MoleculeSurface(const DataSet& data, EvaluationOptions options)
     : symmetry_(data.symmetry),
-      lattice_constant_(convert_length(data.lattice_constant, data.units.length, LengthUnit::bohr)) {
+      lattice_constant_(convert_length(data.lattice_constant, data.units.length, LengthUnit::bohr)),
+      share_grid_lookup_(options.share_grid_lookup) {
   validate_data_set(data);
   atom_ = make_atom_surface(data, options);
   const Units& in = data.units;
@@ -165,6 +176,19 @@ MoleculeSurface::MoleculeSurface(const DataSet& data, EvaluationOptions options)
   r_min_ = r_min;
   r_max_ = r_max;
   z_min_ = z_min;
+  // S4: group the used cuts by their grid.
+  for (int k = 0; k < molecule_cut_count(symmetry_); ++k) {
+    int group = -1;
+    for (std::size_t g = 0; g < grid_cut_.size() && group < 0; ++g) {
+      const detail::BicubicSpline& first = cuts_[grid_cut_[g]];
+      if (same_grid(first.x(), cuts_[k].x()) && same_grid(first.y(), cuts_[k].y())) group = static_cast<int>(g);
+    }
+    if (group < 0) {
+      group = static_cast<int>(grid_cut_.size());
+      grid_cut_.push_back(k);
+    }
+    group_of_cut_.push_back(group);
+  }
   warnings_ = data_set_warnings(data);
   for (const std::string& w : atom_->warnings()) warnings_.push_back(w);
 }
@@ -207,6 +231,29 @@ bool MoleculeSurface::covers(double r, double z) const {
   return true;
 }
 
+// The cuts' values and derivatives at (r, Z); false if (r, Z) is outside a cut's grid (the
+// Fortran's switch, whichever cut it is). S4: the cell is located once per group of cuts with the
+// same grid (the same cell and weights, so the same values).
+bool MoleculeSurface::evaluate_cuts(double r, double z, std::span<BicubicValue> values) const {
+  const int n = static_cast<int>(values.size());
+  if (!share_grid_lookup_) {
+    for (int k = 0; k < n; ++k) {
+      const std::optional<BicubicValue> v = cuts_[k].evaluate(r, z);
+      if (!v) return false;
+      values[k] = *v;
+    }
+    return true;
+  }
+  std::array<detail::GridCell, 29> cells{};
+  for (std::size_t g = 0; g < grid_cut_.size(); ++g) {
+    const std::optional<detail::GridCell> cell = cuts_[grid_cut_[g]].locate(r, z);
+    if (!cell) return false;
+    cells[g] = *cell;
+  }
+  for (int k = 0; k < n; ++k) values[k] = cuts_[k].evaluate_in_cell(cells[group_of_cut_[k]]);
+  return true;
+}
+
 // Fortran: POT6D -> CAMBCORD -> RRINTII (C3v, C6v) / RRINT (C4v)
 std::optional<MoleculeSurfaceValue> MoleculeSurface::evaluate(const Vec3& a, const Vec3& b) const {
   const detail::MoleculeGeometry g = detail::molecule_geometry(a, b);
@@ -226,11 +273,7 @@ std::optional<MoleculeSurfaceValue> MoleculeSurface::evaluate(const Vec3& a, con
   // The cuts at the molecule's (r, Z); outside any cut's grid the Fortran gives up (switch).
   const int n = molecule_cut_count(symmetry_);
   std::array<BicubicValue, 29> values{};
-  for (int k = 0; k < n; ++k) {
-    const std::optional<BicubicValue> v = cuts_[k].evaluate(g.r, g.z);
-    if (!v) return std::nullopt;
-    values[k] = *v;
-  }
+  if (!evaluate_cuts(g.r, g.z, std::span<BicubicValue>(values).first(n))) return std::nullopt;
   const std::span<const BicubicValue> cut_values = std::span<const BicubicValue>(values).first(n);
   const bool square = symmetry_ == Symmetry::c4v;
   const detail::Interaction vi =

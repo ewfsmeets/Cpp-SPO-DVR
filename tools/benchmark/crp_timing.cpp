@@ -49,8 +49,11 @@ int main(int argc, char** argv) {
     const crplib::DataSet data = crplib::read_data_set(argv[1]);
     const int repetitions = argc == 3 ? std::stoi(argv[2]) : 3;
     std::vector<double> reference;
-    for (const auto& [name, options] : {std::pair{"plain", crplib::EvaluationOptions{.prune_cluster = false}},
-                                        std::pair{"default", crplib::EvaluationOptions{}}}) {
+    using Options = crplib::EvaluationOptions;
+    for (const auto& [name, options] : {std::pair{"plain", Options{.prune_cluster = false, .share_grid_lookup = false}},
+                                        std::pair{"S2", Options{.prune_cluster = true, .share_grid_lookup = false}},
+                                        std::pair{"S4", Options{.prune_cluster = false, .share_grid_lookup = true}},
+                                        std::pair{"default", Options{}}}) {
       const crplib::QdWrapper wrapper(data, options);
       const std::vector<Point> points = dynamics_points(wrapper.parameters().lattice_constant);
       std::vector<double> v(points.size());
