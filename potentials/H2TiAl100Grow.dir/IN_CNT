@@ -1,0 +1,29 @@
+System is H2  + TiAl(100)  (example of CNT file for gas/surface reactions)
+Enter the time step, # of steps, # of steps between prints, # of trajectories
+0.005d0,   500000,    200,  5000
+Enter the energy of frag a, energy of frag b, trans energy of the molecule (in au)
+0.01d0,0.0d0,0.009129d0
+Enter the allowed relative error in the energy conservation of traj.
+1.d-3
+dissociation parameter (rcut) + rub, uniform sampling over primary unit cell 
+5.0d0,5.398402D0
+Enter 1 or 2 for one or two part weight function
+2
+Enter the weight powers q and p
+2, 12 
+Enter the weight cutoffs for the inner and outer neighbour lists
+1.d-6   1.d-4
+Enter the # of time steps for updates of the outer and inner neighbour lists
+20  2 
+Enter the fraction of trajectory points output
+0.d0
+Enter the number of new data points chosen per iteration
+1
+Enter the maximum acceptable energy from POT, and expected minimum energy
+2.0d0 -0.03d0
+Do we stop trajectories with low energy? 0=no, 1=yes
+0
+Enter how many neighbours are used to define the confidence lengths
+40
+Enter the energy error tolerance which defines the confidence lengths
+2.d-4

@@ -1,0 +1,27 @@
+3.4 ZCM SWITCH OFF MINIMO en Angstroms)
+4   ZCM SWITCH OFF MAXIMO en Angstroms)
+3.6 ZSO0 (en Angstroms) -|
+-81.4412 ALFA (en eV)    | Primera opcion de extrapolacion
+0.052    BETA (en eV)    |
+0.9	 GAMA (en eV)   -|
+	20  NZSO                   ---|
+            3.40       -81.45046      | Segunda opcion de extrapolacion
+            3.45       -81.448178     |
+            3.50       -81.445867     V
+            3.60       -81.4412
+            3.70       -81.436533
+            3.80       -81.43194
+            3.90       -81.427492
+            4.00       -81.423249
+            4.05       -81.421221
+            4.10       -81.419
+            4.15       -81.4165
+            4.20       -81.414075
+            4.30       -81.408856
+            4.40       -81.40404
+            4.50       -81.399744
+            4.60       -81.396075
+            4.70       -81.393124
+            4.80       -81.390962
+            4.90       -81.389643
+            5.00       -81.3892

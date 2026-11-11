@@ -1,0 +1,24 @@
+an IN_SYSTEM file for H2 on Ru0001 
+enter the number of atoms
+6
+enter the chemical symbols for the atoms, separated by commas
+ff,ff,ff,ff,H,H
+enter the atomic masses in amu
+15.9994 15.9994 15.9994 101.07 1.00794 1.00794
+enter the bond lengths, in order, which give the cutoff for a 
+real bond to exist between atoms i and j. Use units chosen in CNT.
+6.d0
+6.d0
+6.d0
+15.d0
+15.d0
+6.d0
+6.d0
+15.d0
+15.d0
+6.d0
+15.d0
+15.d0
+15.d0
+15.d0
+5.d0

@@ -1,0 +1,27 @@
+ This is an atomic permutation input file for ff ff ff H H           
+ enter the order of the group
+ 4
+ enter each atomic perm old..new, separated by a comment line
+ 1 1
+ 2 2
+ 3 3
+ 4 4
+ 5 5
+  ******* 
+ 1 1 
+ 2 3
+ 3 2
+ 4 4
+ 5 5
+  ******* 
+ 1 1 
+ 2 2
+ 3 3
+ 4 5
+ 5 4
+  ******* 
+ 1 1
+ 2 3
+ 3 2
+ 4 5
+ 5 4
