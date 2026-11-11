@@ -135,10 +135,13 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   with a warning. The real SRP48 data set (`potentials/H2Cu111SRP_C3v.dir`) lists two such cuts.
 - Few-ulp difference (decision D4): with CutsInterpolation = F the Fortran subtracts the atom
   potentials from the cuts using cos θ, cos φ computed by gfortran's vectorised libmvec
-  (`_ZGVbN2v_cos`); the C++ uses `std::cos`. On the synthetic reference sets: |ΔV| ≤ 4.4e-16
-  Hartree, |ΔF| ≤ 2.7e-15 Hartree/bohr at under 12 % of the points (tests compare to
-  4e-15·max(unit, |value|)). A scratch build calling `_ZGVbN2v_cos` was bitwise equal everywhere.
-  CutsInterpolation = T data sets are bitwise equal.
+  (`_ZGVbN2v_cos`); the C++ uses `std::cos`. That is a few ulp of the data values, carried into
+  every result. On the synthetic reference sets: |ΔV| ≤ 4.4e-16 Hartree, |ΔF| ≤ 2.7e-15
+  Hartree/bohr at under 12 % of the points; on the real SRP48 data set (data up to 72 Hartree)
+  up to 1.9e-14 at a few points. The tests compare to 4e-15·max(unit·S, |value|), S the largest
+  |data| in Hartree (at least 1). A scratch build calling `_ZGVbN2v_cos` was bitwise equal
+  everywhere, also on the real data set (2026-11-11). CutsInterpolation = T data sets are bitwise
+  equal.
 - In the program (SystemID `CRPlibrary`, `src/potential/crp_potential.*`): `CRPlibDataSet` is
   required and is an error with another SystemID (the Fortran reads and ignores it). Data-set
   paths longer than 50 characters work: the Fortran opens `CRPData` with the full path but every

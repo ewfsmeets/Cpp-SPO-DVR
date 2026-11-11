@@ -89,6 +89,13 @@ MUTATIONS = [
     ("S3: V-only blend without the gas-phase term", "src/crplib/molecule_surface.cpp",
      "return MoleculeSurfaceValue{(va + vb + i_v) * sw.f + (1.00 - sw.f) * gp.v, {}, {}};",
      "return MoleculeSurfaceValue{(va + vb + i_v) * sw.f, {}, {}};"),
+    # Real data set: missing files of unused extra cuts are skipped (as the Fortran), of used cuts not
+    ("a missing file of an unused extra cut rejected", "src/crplib/dataset.cpp",
+     '      if (static_cast<int>(k) < used) fail(file, "molecule-surface cut file not found");',
+     '      fail(file, "molecule-surface cut file not found");'),
+    ("validation accepts a used cut without a file", "src/crplib/dataset.cpp",
+     '      if (static_cast<int>(k) < required_molecule_cuts) throw DataError(what + ": molecule-surface cut file not found");\n',
+     ""),
 ]
 
 if sys.argv[1] == "list":

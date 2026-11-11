@@ -18,6 +18,7 @@
 
 #include "crp_synthetic.hpp"
 #include "crplib/dataset.hpp"
+#include "crplib/molecule_surface.hpp"
 #include "crplib/units.hpp"
 
 namespace {
@@ -151,17 +152,94 @@ std::vector<Point> scaled(std::vector<Point> points, double factor) {
   return points;
 }
 
+// Molecules for a real data set, placed by its own ranges (bohr): below Zmin, in the cut grids,
+// at ZsoMin, in the switching region, at ZsoMax, beyond Zasy; r below Rmin, inside, beyond Rmax.
+// An evaluated molecule has Zmin <= Zcc <= ZsoMax and Rmin <= r <= Rmax, so its atoms stay within
+// the atom cuts when those cover [Zmin - Rmax/2, ZsoMax + Rmax/2] (no Fortran STOP).
+std::vector<Point> real_molecule_points(Symmetry symmetry, double a, const crplib::MoleculeSurface& pes) {
+  const double z_min = pes.z_min(), zso_min = pes.zso_min(), zso_max = pes.zso_max(), zasy = pes.z_asymptotic();
+  const double r_min = pes.r_min(), r_max = pes.r_max();
+  const std::vector<std::pair<double, double>> centres = {{0, 0},       {0.13, 0.29}, {0.5, 0},   {0.41, 0.07},
+                                                          {0.71, 0.66}, {-0.37, 1.2}, {1.0, 1.0}, {2.3, -0.6}};
+  const std::vector<double> heights = {z_min - 0.2,
+                                       z_min + 0.1,
+                                       z_min + 0.6,
+                                       0.5 * (z_min + zso_min),
+                                       zso_min - 0.1,
+                                       zso_min,
+                                       0.5 * (zso_min + zso_max),
+                                       zso_max,
+                                       zso_max + 0.5,
+                                       zasy,
+                                       zasy + 2.0};
+  const std::vector<double> bonds = {r_min - 0.1, r_min + 0.05, 1.4, 0.5 * (r_min + r_max), r_max - 0.1, r_max + 0.2};
+  const std::vector<double> thetas = {0.0, 0.31, 0.9, std::numbers::pi / 2, 2.3};
+  const std::vector<double> phis = {0.0, 0.7, 2.9, -1.3};
+  std::vector<Point> points;
+  int index = 0;
+  for (const auto& [u, v] : centres) {
+    const auto [x, y] = cartesian(symmetry, u, v, a);
+    for (double z : heights)
+      for (double r : bonds)
+        for (double theta : thetas)
+          for (double phi : phis)
+            if (keep(index++, 19)) points.push_back(molecule(x, y, z, r, theta, phi));
+  }
+  return points;
+}
+
+// (Zcc, r) of the gas-phase routines for a real data set: Zcc >= ZsoMin (below it the Fortran
+// stops), r inside the free-molecule table (bohr).
+std::vector<Point> real_gas_phase_points(const crplib::MoleculeSurface& pes, double r_first, double r_last) {
+  std::vector<Point> points;
+  const double zso_min = pes.zso_min(), zso_max = pes.zso_max(), zasy = pes.z_asymptotic();
+  for (double z : {zso_min + 0.05, zso_min + 0.3, 0.5 * (zso_min + zso_max), zso_max, zasy - 0.5, zasy, zasy + 2.0})
+    for (double r : {r_first + 0.1, 1.4, 3.0, r_last - 0.1}) points.push_back({z, r});
+  return points;
+}
+
+// The point lists of a reference case on a real data set (which stays where it is): atoms over the
+// atom z range, molecules and gas-phase points by the data set's ranges, the QD wrapper, CAMBCORD,
+// and the atom and molecule points again in Angstrom (the data set's own length unit).
+void write_real_case(const std::filesystem::path& dir, const std::filesystem::path& data_set_dir) {
+  const crplib::DataSet d = crplib::read_data_set(data_set_dir);
+  const crplib::MoleculeSurface pes(d);
+  const crplib::LengthUnit unit = d.units.length;
+  const double a = crplib::convert_length(d.lattice_constant, unit, crplib::LengthUnit::bohr);
+  std::vector<double> atom_z;
+  for (double z : d.atom_cuts.front().potential.x)
+    atom_z.push_back(crplib::convert_length(z, unit, crplib::LengthUnit::bohr));
+  const double r_first = crplib::convert_length(d.h2_potential.x.front(), unit, crplib::LengthUnit::bohr);
+  const double r_last = crplib::convert_length(d.h2_potential.x.back(), unit, crplib::LengthUnit::bohr);
+  std::filesystem::remove_all(dir);
+  std::filesystem::create_directories(dir);
+  write_points(dir / "atom_0_2.in", atom_points(d.symmetry, a, atom_z));
+  write_points(dir / "molecule_0_2.in", real_molecule_points(d.symmetry, a, pes));
+  write_points(dir / "wrapper.in", wrapper_points(a));
+  write_points(dir / "cambcord.in", cambcord_points());
+  write_points(dir / "gasphase.in", real_gas_phase_points(pes, r_first, r_last));
+  constexpr double bohr = 0.529177249;  // the same atom and molecule points, given in Angstrom
+  write_points(dir / "molecule_1_3.in", scaled(real_molecule_points(d.symmetry, a, pes), bohr));
+  write_points(dir / "atom_1_3.in", scaled(atom_points(d.symmetry, a, atom_z), bohr));
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc != 3) {
-    std::cerr << "usage: crplib_make_dataset <case> <case_dir>\n";
+  if (argc != 3 && argc != 4) {
+    std::cerr << "usage: crplib_make_dataset <case> <case_dir> [<real data set>]\n"
+                 "  with a real data set: only the point lists (the data set stays where it is)\n";
     return 1;
   }
   try {
     using namespace crplib_test;
     const std::string name = argv[1];
     const std::filesystem::path dir = argv[2];
+    if (argc == 4) {
+      write_real_case(dir, argv[3]);
+      std::cout << "wrote " << dir.string() << "\n";
+      return 0;
+    }
     const Symmetry symmetry = case_symmetry(name);
     const double a = lattice_constant(symmetry);  // bohr
     const crplib::DataSet d = case_data_set(name);

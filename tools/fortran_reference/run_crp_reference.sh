@@ -7,7 +7,9 @@
 #             written with the driver output to tests/crplib/reference/kernels/
 #   <case>    a synthetic data set (tests/crplib/reference/<case>/, see tests/crplib/README.md):
 #             the data set is regenerated with build/tests/crplib/crplib_make_dataset, then the
-#             driver evaluates the point lists *.in of the case (written by the same tool)
+#             driver evaluates the point lists *.in of the case (written by the same tool).
+#             cu111_srp48: the real data set potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v (point
+#             lists only; the data set is not copied into the case)
 #
 # Usage: tools/fortran_reference/run_crp_reference.sh kernels|<case> [scratch_dir]
 # Every driver run must end with CRP_DRIVER_DONE (a Fortran STOP inside the library exits with
@@ -51,10 +53,19 @@ fi
 case_dir="${reference_dir}/${target}"
 generator="${repo_dir}/build/tests/crplib/crplib_make_dataset"
 [[ -x "${generator}" ]] || { echo "error: ${generator} not built (cmake --build build)" >&2; exit 1; }
-"${generator}" "${target}" "${case_dir}"
+# Cases on a real data set of the repository: the generator writes only the point lists; the data
+# set stays where it is (not copied into the case).
+declare -A real_data_sets=([cu111_srp48]="potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v")
+data_set="${case_dir}/dataset"
+if [[ -n "${real_data_sets[${target}]:-}" ]]; then
+  data_set="${repo_dir}/${real_data_sets[${target}]}"
+  "${generator}" "${target}" "${case_dir}" "${data_set}"
+else
+  "${generator}" "${target}" "${case_dir}"
+fi
 # The Fortran opens the data set with a path of at most 50 characters: run with a short relative one.
 work="${scratch_dir}/run"
-rm -rf "${work}" && mkdir -p "${work}" && cp -r "${case_dir}/dataset" "${work}/dataset"
+rm -rf "${work}" && mkdir -p "${work}" && cp -r "${data_set}" "${work}/dataset"
 for input in "${case_dir}"/*.in; do
   name="$(basename "${input}" .in)"   # <mode>[_<length code>_<energy code>][_<tag>]
   IFS=_ read -r mode length energy _ <<< "${name}"

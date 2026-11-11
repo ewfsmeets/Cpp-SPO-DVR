@@ -37,8 +37,19 @@ using crplib_test::reference_file;
 
 namespace {
 
-// Bitwise, or within the D4 tolerance for CutsInterpolation = F data sets; `unit` is the atomic
-// unit of the quantity in the units it is given in.
+// The largest |V| of the cut data in Hartree, at least 1. With CutsInterpolation = F the data are
+// reduced by the atom-surface PES with cos theta, cos phi from libmvec in the Fortran (decision D4):
+// a few ulp of the data values, which the interpolation carries into every result.
+double data_scale(const DataSet& data) {
+  double largest = 1.0;
+  for (const MoleculeCut& cut : data.molecule_cuts)
+    for (double v : cut.v)
+      largest = std::max(largest, std::abs(convert_energy(v, data.units.energy, EnergyUnit::hartree)));
+  return largest;
+}
+
+// Bitwise, or within the D4 tolerance for CutsInterpolation = F data sets: 4e-15 of the larger of
+// the value and `unit` (the atomic unit of the quantity in its units, times the data_scale).
 void expect_fortran(double cpp, std::uint64_t fortran_bits, bool bitwise, const std::string& where, double unit = 1.0) {
   if (bitwise) {
     EXPECT_BITS(cpp, fortran_bits) << where;
@@ -59,6 +70,7 @@ void compare_molecule_points(const std::string& case_name, const std::string& li
   if (!std::filesystem::exists(output_file)) GTEST_SKIP() << output_file << " missing";
   const DataSet data = read_data_set(reference_data_set(case_name));
   const bool bitwise = data.cuts_interpolation;
+  const double scale = data_scale(data);
   const MoleculeSurface pes(data);
   DriverInput in(reference_file(case_name + "/" + list + ".in"));
   DriverOutput out(output_file);
@@ -70,8 +82,8 @@ void compare_molecule_points(const std::string& case_name, const std::string& li
     const auto value = out.next("V");
     const auto f = out.next_bits("F", 6);  // Fortran F = (dXa, dYa, dZa, dXb, dYb, dZb)
     const std::string where = at_text(a, b);
-    const double energy_unit = convert_energy(1.0, EnergyUnit::hartree, units.energy);
-    const double force_unit = convert_force(1.0, internal_units, units);
+    const double energy_unit = convert_energy(1.0, EnergyUnit::hartree, units.energy) * scale;
+    const double force_unit = convert_force(1.0, internal_units, units) * scale;
     expect_fortran(v.v, value.bits, bitwise, where, energy_unit);
     expect_fortran(v.gradient_a.x, f[0], bitwise, where, force_unit);
     expect_fortran(v.gradient_a.y, f[1], bitwise, where, force_unit);
@@ -110,7 +122,7 @@ void compare_qd_wrapper_points(const std::string& case_name) {
                    " u, v, Z, r, theta, phi = " + std::to_string(u) + ", " + std::to_string(v) + ", " +
                        std::to_string(z) + ", " + std::to_string(r) + ", " + std::to_string(theta) + ", " +
                        std::to_string(phi),
-                   convert_energy(1.0, EnergyUnit::hartree, EnergyUnit::ev));
+                   convert_energy(1.0, EnergyUnit::hartree, EnergyUnit::ev) * data_scale(data));
   }
 }
 
@@ -173,15 +185,17 @@ TEST_P(FortranMoleculeSurface, Cambcord) {
 
 INSTANTIATE_TEST_SUITE_P(Cases, FortranMoleculeSurface,
                          testing::Values("c6v_pairwise", "c3v_pairwise", "c4v_pairwise", "c6v_pairwise_angstrom",
-                                         "c4v_negative_spacing", "c3v_missing_extra_cut"));
+                                         "c4v_negative_spacing", "c3v_missing_extra_cut", "cu111_srp48"));
 
 // The data set in Angstrom/eV, evaluated in Angstrom/eV (the unit conversions of the wrapper).
 TEST(FortranMoleculeSurfaceUnits, AngstromAndEv) {
   compare_molecule_points("c6v_pairwise_angstrom", "molecule_1_3", Units{LengthUnit::angstrom, EnergyUnit::ev});
 }
 
-TEST(FortranMoleculeSurfaceUnits, AtomSurfaceInAngstromAndEv) {
-  const std::string case_name = "c6v_pairwise_angstrom";
+namespace {
+
+// The atom-surface PES of a case in Angstrom and eV (the unit conversions of the wrapper).
+void compare_atom_points_in_angstrom_and_ev(const std::string& case_name) {
   const auto output_file = reference_file(case_name + "/atom_1_3.out");
   REQUIRE_CRP_REFERENCE(output_file);
   const auto pes = make_atom_surface(read_data_set(reference_data_set(case_name)));
@@ -198,6 +212,21 @@ TEST(FortranMoleculeSurfaceUnits, AtomSurfaceInAngstromAndEv) {
     EXPECT_BITS(v.gradient.y, f[1]);
     EXPECT_BITS(v.gradient.z, f[2]);
   }
+}
+
+}  // namespace
+
+TEST(FortranMoleculeSurfaceUnits, AtomSurfaceInAngstromAndEv) {
+  compare_atom_points_in_angstrom_and_ev("c6v_pairwise_angstrom");
+}
+
+// The real data set (cu111_srp48) is itself in Angstrom and eV.
+TEST(FortranMoleculeSurfaceUnits, RealDataSetInAngstromAndEv) {
+  compare_molecule_points("cu111_srp48", "molecule_1_3", Units{LengthUnit::angstrom, EnergyUnit::ev});
+}
+
+TEST(FortranMoleculeSurfaceUnits, RealDataSetAtomSurfaceInAngstromAndEv) {
+  compare_atom_points_in_angstrom_and_ev("cu111_srp48");
 }
 
 // Impulse data sets (one cut 1, all else 0): bitwise V and gradient at the Fourier sites and their

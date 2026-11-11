@@ -70,7 +70,7 @@ TEST_P(FortranAtomSurface, BitwiseEqual) {
 
 INSTANTIATE_TEST_SUITE_P(Cases, FortranAtomSurface,
                          testing::Values("c6v_pairwise", "c3v_pairwise", "c4v_pairwise", "c6v_pairwise_angstrom",
-                                         "c4v_negative_spacing"));
+                                         "c4v_negative_spacing", "cu111_srp48"));
 
 // ---------------------------------------------------------------------------------------------
 // Properties
