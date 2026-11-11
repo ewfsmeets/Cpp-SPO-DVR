@@ -1,0 +1,35 @@
+{
+  "Title": "CRP library, real data set H2/Cu(111) SRP48 (C3v), small grid",
+  "SystemID": "CRPlibrary",
+  "CRPlibDataSet": "potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v",
+  "NewCalc": true,
+
+  "ZDoF": true, "RDoF": true, "XDoF": true, "YDoF": true, "ThetaDoF": true, "PhiDoF": true,
+
+  "Mass1": 1.0078, "Mass2": 1.0078, "HomoNuc": true,
+
+  "ZStart": -1.0, "dZ": 0.15, "nZ": 120, "nZSpecular": 210,
+  "RStart": 0.4, "dR": 0.2, "nR": 48,
+  "nX": 6, "nY": 6,
+  "JMax": 4, "MJMax": 4,
+  "ProjOp": 2,
+
+  "tStart": 0.0, "tEnd": 45000.0, "dtStep": 2.5, "nStep": 18000,
+
+  "dtAna": 50.0, "dtAve": 500.0, "DynamZSpAna": true, "Zana": 12.05, "NrOfEs": 11,
+
+  "EMinWP": 0.5, "EMaxWP": 0.9, "Z0": 17.0,
+  "VIn": 0, "JIn": 0, "MJIn": 0,
+  "EParallel": 0.0, "PhiParallel": 0.0,
+
+  "ImposeVMax": true, "VMax": 10.0,
+
+  "ZOptStart": 12.2, "ZOptEnd": 16.85, "ZOptEnergy": 0.3,
+  "ZSpOptStart": 21.65, "ZSpOptEnd": 30.35, "ZSpOptEnergy": 0.3,
+  "ROptStart": 4.2, "ROptEnd": 9.8, "ROptEnergy": 0.1,
+
+  "TolSp": 5.0e-9,
+
+  "writeSMatrix": false, "writeProbs": true, "writeRDProbs": true,
+  "UseSwitching": true, "ZminSwitch": 11.3, "ZmaxSwitch": 11.9
+}

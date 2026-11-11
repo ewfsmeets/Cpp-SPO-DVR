@@ -1,0 +1,98 @@
+# Small CRP-library regression case (gates 1 and 2) on the real data set H2/Cu(111) SRP48 (C3v;
+# potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v; Mondal et al., J. Phys. Chem. A 117, 8770 (2013)).
+# Derived from upstream input.dir/v0j0_WPC_H2Cu111SRP_C3v_01.inp on coarser grids (nX = nY = 6,
+# JMax = MJMax = 4, nR 48, nZ 120; inputs/README.md recipe for dZ, Zana, Z0 and the absorbers).
+# The data set has Zasy = 6.5 Angstrom; the potential is switched to the gas phase between
+# ZminSwitch = 11.3 and ZmaxSwitch = 11.9 bohr (zasymp becomes 11.9), as upstream.
+# tools/fortran_reference/run_setup_reference.sh copies the data set into the scratch directory as
+# "dataset" (the Fortran library fails for paths longer than 50 characters). Every field carries an
+# explicit type ("Name : TYPE : value;").
+# The C++ equivalent of this file is input.json in this directory; keep both in sync.
+
+Title       : STRING  : "CRP library, real data set H2/Cu(111) SRP48 (C3v), small grid";
+SystemID    : STRING  : "CRPlibrary";
+CRPlibDataSet : STRING : "dataset";
+NewCalc     : LOGICAL : TRUE;
+
+ZDoF        : LOGICAL : TRUE;
+RDoF        : LOGICAL : TRUE;
+XDoF        : LOGICAL : TRUE;
+YDoF        : LOGICAL : TRUE;
+ThetaDoF    : LOGICAL : TRUE;
+PhiDoF      : LOGICAL : TRUE;
+
+# H2
+Mass1       : REAL    : 1.0078;
+Mass2       : REAL    : 1.0078;
+HomoNuc     : LOGICAL : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : REAL    : -1.0;
+dZ          : REAL    : 0.15;
+nZ          : INTEGER : 120;
+nZSpecular  : INTEGER : 210;
+
+# Grid in r
+RStart      : REAL    : 0.4;
+dR          : REAL    : 0.2;
+nR          : INTEGER : 48;
+
+# Grid in x, y (C3v: nX = nY; u = k/6 includes the top, bridge, hcp, fcc, t2h and t2f sites)
+nX          : INTEGER : 6;
+nY          : INTEGER : 6;
+
+# Rotational basis (reduced). MJMax is set explicitly equal to JMax.
+JMax        : INTEGER : 4;
+MJMax       : INTEGER : 4;
+
+ProjOp      : INTEGER : 2;
+
+# Propagation
+tStart      : REAL    : 0.0;
+tEnd        : REAL    : 45000.0;
+dtStep      : REAL    : 2.5;
+nStep       : INTEGER : 18000;
+
+# Analysis
+dtAna       : REAL    : 50.0;
+dtAve       : REAL    : 500.0;
+DynamZSpAna : LOGICAL : TRUE;
+Zana        : REAL    : 12.05;
+NrOfEs      : INTEGER : 11;
+
+# Initial wave packet and state
+EMinWP      : REAL    : 0.5;
+EMaxWP      : REAL    : 0.9;
+Z0          : REAL    : 17.0;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : REAL    : 0.0;
+PhiParallel : REAL    : 0.0;
+
+# Potential maximum (as upstream)
+ImposeVMax  : LOGICAL : TRUE;
+VMax        : REAL    : 10.0;
+
+# Complex absorbing potentials
+ZOptStart   : REAL    : 12.2;
+ZOptEnd     : REAL    : 16.85;
+ZOptEnergy  : REAL    : 0.3;
+ZSpOptStart : REAL    : 21.65;
+ZSpOptEnd   : REAL    : 30.35;
+ZSpOptEnergy: REAL    : 0.3;
+ROptStart   : REAL    : 4.2;
+ROptEnd     : REAL    : 9.8;
+ROptEnergy  : REAL    : 0.1;
+
+# No default exists in the Fortran code for TolSp; must be given.
+TolSp       : REAL    : 5.0E-09;
+
+writeSMatrix: LOGICAL : FALSE;
+writeProbs  : LOGICAL : TRUE;
+writeRDProbs: LOGICAL : TRUE;
+
+# Switching to the gas phase (Potential.f90 switchPotentialToGasPhase), as upstream
+UseSwitching: LOGICAL : TRUE;
+ZminSwitch  : REAL    : 11.3;
+ZmaxSwitch  : REAL    : 11.9;

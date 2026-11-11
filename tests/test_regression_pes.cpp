@@ -58,6 +58,14 @@ struct Calculation {
 std::string directory_of(const std::string& name) { return name.substr(0, name.find('+')); }
 bool with_symmetry(const std::string& name) { return name.ends_with("+UseSymmetry"); }
 
+// The 6D tolerance of a case. The real CRP data set (crp_cu111_srp48_small) holds total energies
+// up to 72 Hartree (CutsInterpolation = F): decision D4 (scalar cos where gfortran uses libmvec in
+// the reduction of the cuts) gives up to 1.5e-13 there; with libmvec's cos it is 1.5e-14
+// (2026-11-11), the level of the other cases. docs/fortran_deviations.md "CRP library".
+double potential_tolerance_of(const std::string& name) {
+  return directory_of(name) == "crp_cu111_srp48_small" ? 3e-13 : potential_tolerance;
+}
+
 fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / directory_of(name); }
 fs::path repository_root() { return fs::path(SPODVR_REFERENCE_DIR).parent_path().parent_path(); }
 
@@ -138,20 +146,31 @@ TEST_P(RegressionPes, Gate1FullPotentialAndAngularGrid) {
   }
   ASSERT_GT(ref.points.size(), 10000U);
   const double one_ev = units::legacy.ev_to_hartree(1.0);
+  // The Fortran writes the .pes file before it imposes VMin / VMax (Potential.f90 setupThePES);
+  // its potential in memory, like the C++ grid, is the reference clipped as below.
+  const InputParameters& input = c.config.input;
+  auto with_limits = [&](double v) {
+    if (input.impose_v_min && v < c.config.derived.v_min) v = c.config.derived.v_min;
+    if (input.impose_v_max && v > c.config.derived.v_max) v = c.config.derived.v_max;
+    return v;
+  };
+  int clipped = 0;
   double max_difference = 0.0;
   for (const test::PesReference::Point& p : ref.points) {
     const std::size_t itp = p.iphi + ref.nphi * p.itheta;
     const std::size_t ixy = p.iy + ref.ny * p.ix;
     const std::size_t izr = p.ir + ref.nr * p.iz;
     const double v = c.potential(itp, ixy, izr);
-    const double difference = scaled_difference(v, p.v, one_ev);
+    const double expected = with_limits(p.v);
+    if (expected != p.v) ++clipped;
+    const double difference = scaled_difference(v, expected, one_ev);
     max_difference = std::max(max_difference, difference);
-    EXPECT_LE(difference, potential_tolerance)
+    EXPECT_LE(difference, potential_tolerance_of(GetParam()))
         << "itheta " << p.itheta << " iphi " << p.iphi << " ix " << p.ix << " iy " << p.iy << " iz " << p.iz << " ir "
-        << p.ir << ": " << v << " vs " << p.v;
+        << p.ir << ": " << v << " vs " << expected;
   }
-  std::cout << "  " << GetParam() << ": " << ref.points.size() << " points, max scaled difference " << max_difference
-            << '\n';
+  std::cout << "  " << GetParam() << ": " << ref.points.size() << " points (" << clipped
+            << " clipped to VMin/VMax), max scaled difference " << max_difference << '\n';
 }
 
 // Gate 2: rovibrational energies and eigenvectors vs debug_asyp.dat.
@@ -189,9 +208,13 @@ INSTANTIATE_TEST_SUITE_P(Crp, RegressionPes,
                          ::testing::Values("crp_c6v_synthetic_small", "crp_c3v_synthetic_small",
                                            "crp_c4v_synthetic_small"));
 
+// The real data set (H2/Cu(111) SRP48, C3v, potentials/H2Cu111SRP_C3v.dir): the upstream input on
+// coarse grids, VMax imposed, r mostly beyond Rmax (clamped).
+INSTANTIATE_TEST_SUITE_P(CrpReal, RegressionPes, ::testing::Values("crp_cu111_srp48_small"));
+
 // Speed-up S1 for CRP: the C++ potential on the symmetry-reduced grid (the subgroup usable with
 // nphi = 10: C2v for C6v and C4v, the mirror for C3v) against the full Fortran potential (which the
 // Fortran computes without symmetry for C3v and C4v).
 INSTANTIATE_TEST_SUITE_P(CrpSymmetric, RegressionPes,
                          ::testing::Values("crp_c6v_synthetic_small+UseSymmetry", "crp_c3v_synthetic_small+UseSymmetry",
-                                           "crp_c4v_synthetic_small+UseSymmetry"));
+                                           "crp_c4v_synthetic_small+UseSymmetry", "crp_cu111_srp48_small+UseSymmetry"));
