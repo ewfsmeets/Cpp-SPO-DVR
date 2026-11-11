@@ -19,7 +19,7 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 case_name="${1:-hardwall_short}"
 case_dir="${repo_dir}/tests/reference/${case_name}"
 scratch_dir="${2:-$(mktemp -d)}"
-fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
+fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
 
 [[ -f "${case_dir}/DVR.inp" ]] || { echo "error: ${case_dir}/DVR.inp not found" >&2; exit 1; }
 [[ -x "${fortran_exe}" ]] || { echo "error: Fortran executable ${fortran_exe} not found" >&2; exit 1; }

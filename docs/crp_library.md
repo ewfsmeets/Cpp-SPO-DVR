@@ -170,7 +170,10 @@ here, 2.5 s with `UseSymmetry` ([performance.md](performance.md) "CRP library").
 
 ## Testing without a real data set
 
-No real data set is in the repository. The tests (`tests/crplib/`, see its README) use:
+The tests need no real data set. One real data set is in the repository,
+`potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v` (H₂/Cu(111) SRP48, C3v; Mondal et al., J. Phys.
+Chem. A 117, 8770 (2013)), but it is not yet validated or used by the tests. The tests
+(`tests/crplib/`, see its README) use:
 - Properties that need no data: splines reproduce cubics, the Fourier tables invert their site
   bases, every site function returns its cut values at the cut orientations, homonuclear and
   surface symmetry, periodicity, gradients against finite differences.

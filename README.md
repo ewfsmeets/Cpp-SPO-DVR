@@ -48,9 +48,10 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   Dai–Light propagation and analysis are checked against the Fortran code as well.
 - CRP potentials from a data set (SystemID `CRPlibrary`, input key `CRPlibDataSet`): the Fortran
   CRP library of M. Wijzenbroek (C3v, C4v and C6v surfaces), ported as the self-contained library
-  `src/crplib/` (V and analytic gradients). No real data set is in the repository: the library is
-  checked bitwise against the Fortran library on synthetic data sets, and the program against the
-  Fortran potential on the grid.
+  `src/crplib/` (V and analytic gradients). The library is checked bitwise against the Fortran
+  library on synthetic data sets, and the program against the Fortran potential on the grid. A
+  real data set, H₂/Cu(111) SRP48 (C3v, `potentials/H2Cu111SRP_C3v.dir/`), is in the repository
+  but not yet validated.
 - Surface symmetry (`UseSymmetry`): the potential is computed and stored only for symmetry-unique
   (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
   potential really has that symmetry.
@@ -58,8 +59,11 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 - Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).
-- Not yet implemented: the flux analysis and the Fortran potentials that need data files not
-  included in the Fortran code.
+- Not yet implemented: the flux analysis and the other Fortran potentials (their data files are in
+  `potentials/`).
+- Fortran version: the port follows SPO-DVR 5.19 (2023), and every comparison uses it. The changes
+  of the later upstream versions (up to 5.24, 2025) are not ported yet; see
+  [docs/fortran_deviations.md](docs/fortran_deviations.md).
 
 ## Dependencies
 
@@ -364,6 +368,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 | `tools/` | Fortran reference scripts, benchmark and comparison tools |
 | `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
+| `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |
 
 ## License
 This program is free software, licensed under the GNU General Public License, version 3. See

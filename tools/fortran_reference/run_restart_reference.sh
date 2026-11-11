@@ -14,7 +14,7 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 case_dir="${repo_dir}/tests/reference/hardwall_small"
 scratch_dir="${1:-$(mktemp -d)}"
-fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
+fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
 [[ -x "${fortran_exe}" ]] || { echo "error: Fortran executable ${fortran_exe} not found" >&2; exit 1; }
 
 # set_field <file> <name> <value>: replaces the value of "name : TYPE : value;".

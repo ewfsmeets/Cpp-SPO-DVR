@@ -9,6 +9,8 @@ The fine analysis (Fortran `nread = 2`, input `onlyAnalysis` / `alsoAnalysis`) h
 The interpolation in the Fortran code (`Analyzor.f90 smatrix_calc`, nread = 2 branch without NAG,
 lines 732–790) has two bugs, and its sign handling causes a third class of errors. The C++ code
 fixes all three. The probabilities are not affected; the S-matrix elements and phases are.
+Line numbers refer to version 5.19. Upstream fixed bug 1 on 2026-11-09 (svn r1713, after version
+5.24). Bugs 2 and 3 are still present there.
 
 ## The Fortran code
 ```fortran

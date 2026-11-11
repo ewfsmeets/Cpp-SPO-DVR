@@ -559,6 +559,10 @@ cd runs/thesis_fig5_3_dz_fortran && OMP_NUM_THREADS=8 ~/work/SPO-DVR/EXECUTABLE.
 OMP_NUM_THREADS=8 build-cuda/spodvr inputs/thesis_fig5_3_dz/input.json --device cuda --threads 8 --output-dir runs/thesis_fig5_3_dz_cuda
 ```
 
+The Fortran 5.19 tree has moved since these runs. Its executable is now
+`~/work/SPO-DVR_v5.19/EXECUTABLE.DIR/` (same file). The paths above and in the provenance table
+are as recorded.
+
 The report: `scripts/make_all.sh` regenerates `results.json`, all tables and figures from the
 extracts in [data/](data/) (no run files needed); `--extract` re-reads the run directories and logs;
 `--strict` redoes the strict GPU run's replays and comparison (`strict_gpu.py`); `--angular`

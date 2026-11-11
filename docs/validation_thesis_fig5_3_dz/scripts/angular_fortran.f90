@@ -1,7 +1,7 @@
 ! Validation driver (angular matrices, docs/validation_thesis_fig5_3_dz): the Fortran angular grid
 ! and DVR<->FBR transform of the thesis grid (JMax = MjMax = 28, homonuclear, JIn = MjIn = 0, nphi a
 ! multiple of 6), set up as setupdvr.f90 SetupDVRProj does it. Linked against the object files of
-! the reference executable (~/work/SPO-DVR/procfiles.dir/OBJS.dir, read only); see angular_matrices.py.
+! the reference executable (~/work/SPO-DVR_v5.19/procfiles.dir/OBJS.dir, read only); see angular_matrices.py.
 ! Writes into the current directory, in the layout of angular_check.cpp:
 !   thetas.bin, weights.bin, matrix.bin (FBRToDVRMatrices), basis.txt, roundtrip.bin
 PROGRAM AngularFortran

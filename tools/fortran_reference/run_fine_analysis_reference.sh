@@ -29,7 +29,7 @@ shift || true
 variants=("$@")
 [[ ${#variants[@]} -gt 0 ]] || variants=(full truncated nen95 small empty)
 case_dir="${repo_dir}/tests/reference/${case_name}"
-fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
+fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
 
 [[ -f "${case_dir}/DVR.inp" ]] || { echo "error: ${case_dir}/DVR.inp not found" >&2; exit 1; }
 [[ -f "${case_dir}/fortran_fort21.bin" ]] || {

@@ -1,7 +1,7 @@
 # `src/crplib/`: the CRP library
 
 A self-contained C++ port of the Fortran CRP library of M. Wijzenbroek
-(`SPO-DVR/procfiles.dir/SOURCES.dir/CRPlibrary.dir/`): CRP potential energy surfaces of a diatomic
+(`CRPlibrary.dir/` of SPO-DVR 5.19; unchanged up to 5.24 except for one added SCM accessor): CRP potential energy surfaces of a diatomic
 molecule at a C3v, C4v or C6v surface, with analytic gradients. CMake target `spodvr_crplib`,
 namespace `crplib`, standard library only, strict floating-point flags in every build. It keeps
 the Fortran library's own constants and unit factors. SPO-DVR uses it only through

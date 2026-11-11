@@ -1,7 +1,7 @@
 # Validation against the Fortran code
 
-The C++ program is checked against the original Fortran program (`~/work/SPO-DVR`, version 5.19,
-gfortran build) by five acceptance gates. Each gate is a regression test in `tests/` that compares
+The C++ program is checked against the original Fortran program (version 5.19, upstream svn r1572,
+in `~/work/SPO-DVR_v5.19`; gfortran build) by five acceptance gates. Each gate is a regression test in `tests/` that compares
 the C++ results with Fortran output stored in `tests/reference/<case>/`; see the README section
 "Testing" for how to run them, and `tools/fortran_reference/` for regenerating the Fortran data.
 

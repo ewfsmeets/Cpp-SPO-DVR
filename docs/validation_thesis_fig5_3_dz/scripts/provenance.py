@@ -15,7 +15,7 @@ from pathlib import Path
 from common import RAW_LOGS, REPO, RUN_DIRS, INPUT_DIR, clean_log_lines, save_item
 
 BUILDS = {"cpu": REPO / "build-fast", "gpu": REPO / "build-cuda-fast"}
-FORTRAN_EXE = Path.home() / "work/SPO-DVR/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x"
+FORTRAN_EXE = Path.home() / "work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x"
 CACHE_KEYS = ["CMAKE_BUILD_TYPE", "CMAKE_CXX_COMPILER", "CMAKE_CUDA_COMPILER", "SPODVR_FAST_MATH", "SPODVR_ARCH",
               "SPODVR_USE_CUDA", "SPODVR_USE_MKL", "SPODVR_FFT_LIBRARY", "SPODVR_PGO", "MKL_INCLUDE"]
 

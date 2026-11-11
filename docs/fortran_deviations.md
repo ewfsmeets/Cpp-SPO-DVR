@@ -1,7 +1,7 @@
 # Deviations from the Fortran code
 
-Every known difference between the C++ program and the Fortran reference (`~/work/SPO-DVR`,
-version 5.19): Fortran bugs that the C++ fixes, Fortran quirks that it reproduces on purpose,
+Every known difference between the C++ program and the Fortran reference (version 5.19, upstream
+svn r1572, in `~/work/SPO-DVR_v5.19`): Fortran bugs that the C++ fixes, Fortran quirks that it reproduces on purpose,
 features that were not ported, and places where the Fortran computes in quad precision while the
 C++ uses double. Add every new deviation here. The fine-analysis bugs are described in detail in
 [fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md); the gates that bound the numerical
@@ -78,7 +78,8 @@ differences are in [validation.md](validation.md).
   interpolates Im S with `s2_imag - s1_real` (should be `s1_imag`), uses ATAN instead of ATAN2,
   and takes the signs of Re/Im S separately from the linear interpolation. Only S and phases at
   the analysis energies are affected (probabilities: P interpolated linearly, unaffected). C++:
-  P linear, phase = arg of the linearly interpolated S. Fortran nen95 = 1 reads out of bounds
+  P linear, phase = arg of the linearly interpolated S. Upstream fixed the `s1_real` typo on
+  2026-11-09 (svn r1713, after 5.24); the ATAN and sign handling are unchanged there. Fortran nen95 = 1 reads out of bounds
   (C++: no interpolation for nen95 < 2); ndatol < 2 gives an FFT length 1 (C++: error).
 - Fine analysis, kept: truncation to ndused = largest FFT length <= records (trapezoid, end
   weight 1/2, so not equal to the on-the-fly rectangle sum); open channel if kz^2 >= 0 (on the
@@ -152,3 +153,42 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   values for the grid but subtracts the atom potentials (CutsInterpolation = F) at each row's own
   (r, Z); the C++ uses the final grid values for both. Identical for consistent files.
 - Not ported: the C4v 1D splines of the atom cuts (computed but never evaluated by the Fortran).
+
+## Upstream changes after 5.19 (not ported)
+
+The Fortran code continued upstream, to version 5.24 (2025) and a fix on 2026-11-09 (svn r1713).
+`git diff -w 601d833 master -- sources.dir/SOURCES.dir` in the upstream repository lists them
+(601d833 = svn r1572 = 5.19, identical to the reference sources). The C++ follows 5.19 throughout.
+The changes below come from reading that diff; the 5.24 code has not been built or run here.
+
+**Changes for inputs that use only 5.19 features.** The operators, absorber formulas, FFT paths
+of the build, input defaults and the formats of the averages, probability and BK files are
+unchanged. What differs:
+- Build: the GNU make file (`GNU.mk`, formerly `GFORTRAN.mk`) uses
+  `O3FLAGS = -Ofast -mtune=native -march=native` instead of `-O3`, i.e. fast-math and FMA. Results
+  of a default 5.24 build are therefore not comparable at gate level and depend on the CPU. Build
+  with `O3FLAGS = -O3` to compare.
+- `InputNew.f90`: `RStart <= 0` is rejected (5.19: `< 0`). The C++ keeps the 5.19 check.
+- `Averages.f90`: the norm, ⟨Z⟩ and ⟨r⟩ reductions got `SCHEDULE(STATIC,1)`, so their partial
+  sums are split differently (last-digit changes in `averages.out`). The C++ uses a fixed order.
+- `Analyzor.f90`: the `s1_real` typo of the fine analysis is fixed (r1713). The C++ already fixed
+  it, see above.
+- OpenMP `DYNAMIC` scheduling replaced by `STATIC,1` everywhere: no effect on independent loops.
+
+**New features.**
+- Optical potentials at the low end of the Z grid, scattering and specular:
+  - Keys: `ZOptLowStart`, `ZOptLowEnd`, `ZOptLowEnergy` or `ZOptLowFactor`, and `ZSpOptLow…` for
+    the specular grid. They are off by default.
+  - The value overwrites any high-end absorber at the same Z.
+- PES morphing (`Potential.f90 MorphPotential`). It has no input key and runs when
+  `pesmorphparameters.dat` is in the run directory. It scales or shifts FBR coefficients with
+  Gaussians in Z and r and needs MjMax = JMax. From reading the code: it runs before the `.pes`
+  cache is written, the cache name does not record it, and its loops assume the full (x, y) grid
+  (`UseSymmetry`).
+- Distorted-surface (SCM) CRP potential, SystemID `CRPDistrtSurface`. Keys:
+  `DistortedPESMode`, `SCMParFilepath`, `PosFilepath`, `PosFileSlabNum`, `EnableSurfExpan`,
+  `SCMCutoff`. In the CRP library this adds only an accessor for the interlayer spacings
+  (`CRP_QD_Wrapper.f90`).
+- PES `H2W110` and `HW110` (vdW CRP, W(110)). PES4Cu100 and every NAG dependency were removed.
+- FFTs through oneMKL (Intel compiler only). In-place r2c/c2r and the real-to-real FFTs of
+  `fftw_2_scs.f90` now stop with an error (unused in 5.19 runs).

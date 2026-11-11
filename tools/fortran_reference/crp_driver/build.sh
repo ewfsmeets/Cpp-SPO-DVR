@@ -9,7 +9,7 @@
 set -euo pipefail
 
 source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-objects_dir="${SPODVR_FORTRAN_OBJS:-${HOME}/work/SPO-DVR/procfiles.dir/OBJS.dir}"
+objects_dir="${SPODVR_FORTRAN_OBJS:-${HOME}/work/SPO-DVR_v5.19/procfiles.dir/OBJS.dir}"
 build_dir="${1:-$(mktemp -d)}"
 expected_gfortran="15.2.0"
 
