@@ -121,8 +121,8 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
     unit-converted as a length like every spacing.
   - The cos/sin(π/3) and cos(π/2) that gfortran folded at compile time are hexadecimal literals
     (`crplib/constants.hpp`); they equal the run-time values on this machine (tested).
-- Errors (DataError) where the Fortran misbehaves silently or crashes: a missing molecular cut
-  file (the Fortran skips it and later evaluates an unallocated spline), wrong numbers of cuts
+- Errors (DataError) where the Fortran misbehaves silently or crashes: a missing file of a used
+  molecular cut (the Fortran skips it and later evaluates an unallocated spline), wrong numbers of cuts
   (atom: exactly 7/10 for C6v/C3v, else uninitialised or out-of-bounds sums), spline tables with
   fewer than 4 points (`DSPLIN` writes `cm(0)`) or more than 999 (`SPLIN2D` stops), grids that are
   not strictly increasing, an unknown symmetry string (the atom PES continues with garbage),
@@ -130,6 +130,9 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   `<data set>.dat` file (multi-PES branch, empty in the Fortran), C3v with fewer than 4 layers or
   Disp1 ≠ 0 and C4v with fewer than 2 layers. A folded coordinate beyond ±2·10⁹ lattice constants
   (`INT` overflow) is an EvaluationError. Equal ZsoMin and ZsoMax are accepted (as in the Fortran).
+- Kept on purpose: a listed extra cut (beyond the ones the interpolation uses) may lack its file.
+  The Fortran skips it (`INQUIRE EXIST`): no data, no limit on Rmin, Rmax, Zmin; so does the C++,
+  with a warning. The real SRP48 data set (`potentials/H2Cu111SRP_C3v.dir`) lists two such cuts.
 - Few-ulp difference (decision D4): with CutsInterpolation = F the Fortran subtracts the atom
   potentials from the cuts using cos θ, cos φ computed by gfortran's vectorised libmvec
   (`_ZGVbN2v_cos`); the C++ uses `std::cos`. On the synthetic reference sets: |ΔV| ≤ 4.4e-16

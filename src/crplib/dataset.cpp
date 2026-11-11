@@ -180,13 +180,20 @@ void read_molecule_surface(const std::filesystem::path& directory, DataSet& d) {
   ListDirectedReader h2(h2_file);
   d.h2_potential = read_table(h2, h2.read(1).integer(0), h2_file);
 
-  for (MoleculeCut& cut : d.molecule_cuts) {
+  const int used = molecule_cut_count(d.symmetry);
+  for (std::size_t k = 0; k < d.molecule_cuts.size(); ++k) {
+    MoleculeCut& cut = d.molecule_cuts[k];
     if (cut.file_name.size() > max_file_name_length) {
       fail(list_file, "cut file name '" + cut.file_name + "' longer than 50 characters (the Fortran truncates it)");
     }
     const std::filesystem::path file = directory / "Molecule" / cut.file_name;
-    // The Fortran skips a missing file (INQUIRE) and later evaluates an unallocated spline.
-    if (!std::filesystem::exists(file)) fail(file, "molecule-surface cut file not found");
+    // The Fortran skips a missing file (INQUIRE EXIST). For an extra cut that the interpolation does
+    // not use this is harmless, and reproduced; a used cut would be evaluated unallocated.
+    if (!std::filesystem::exists(file)) {
+      if (static_cast<int>(k) < used) fail(file, "molecule-surface cut file not found");
+      cut.present = false;
+      continue;
+    }
     ListDirectedReader in(file);
     const int nr = in.read(1).integer(0);
     const int nz = in.read(1).integer(0);
@@ -257,8 +264,13 @@ void validate_data_set(const DataSet& d) {
     throw DataError("CRPData.6D: " + std::string(name) + " needs at least " + std::to_string(required_molecule_cuts) +
                     " molecule-surface cuts, the data set has " + std::to_string(d.molecule_cuts.size()));
   }
-  for (const MoleculeCut& cut : d.molecule_cuts) {
+  for (std::size_t k = 0; k < d.molecule_cuts.size(); ++k) {
+    const MoleculeCut& cut = d.molecule_cuts[k];
     const std::string what = "Molecule/" + cut.file_name;
+    if (!cut.present) {
+      if (static_cast<int>(k) < required_molecule_cuts) throw DataError(what + ": molecule-surface cut file not found");
+      continue;  // an unused extra cut without a file (skipped, as in the Fortran)
+    }
     check_spline_grid(cut.r, what + " (r)");
     check_spline_grid(cut.z, what + " (Z)");
     if (cut.r.size() > 999 || cut.z.size() > 999)
@@ -271,8 +283,16 @@ std::vector<std::string> data_set_warnings(const DataSet& d) {
   std::vector<std::string> warnings;
   const int required = molecule_cut_count(d.symmetry);
   if (static_cast<int>(d.molecule_cuts.size()) > required) {
+    std::string missing;
+    for (std::size_t k = required; k < d.molecule_cuts.size(); ++k)
+      if (!d.molecule_cuts[k].present) missing += (missing.empty() ? "" : ", ") + d.molecule_cuts[k].file_name;
     warnings.push_back("CRPData.6D has " + std::to_string(d.molecule_cuts.size()) + " cuts; only the first " +
-                       std::to_string(required) + " are used (the others still limit Rmin, Rmax and Zmin)");
+                       std::to_string(required) + " are used (the others still limit Rmin, Rmax and Zmin" +
+                       (missing.empty() ? ")" : ", except those without a file)"));
+    if (!missing.empty()) {
+      warnings.push_back("Molecule/: no file for the unused cuts " + missing +
+                         "; they are skipped, as in the Fortran (they do not limit Rmin, Rmax and Zmin)");
+    }
   }
   if (!d.z_dependence.x.empty() && d.z_dependence.x.back() < d.zso_max) {
     warnings.push_back("Molecule/extrapol.dat: the last Z (Zasy, the asymptotic Z of the PES) is below ZsoMax");
@@ -370,6 +390,7 @@ void write_data_set(const DataSet& d, const std::filesystem::path& directory) {
     write_table(out, d.h2_potential);
   }
   for (const MoleculeCut& cut : d.molecule_cuts) {
+    if (!cut.present) continue;  // an unused extra cut without a file stays without one
     std::ofstream out = open_for_writing(directory / "Molecule" / cut.file_name);
     out << cut.r.size() << '\n' << cut.z.size() << '\n';
     for (std::size_t j = 0; j < cut.z.size(); ++j)

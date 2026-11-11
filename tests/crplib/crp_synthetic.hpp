@@ -368,8 +368,32 @@ inline Symmetry case_symmetry(const std::string& name) {
   return Symmetry::c6v;
 }
 
+// The C3v pairwise data set with two extra cuts after the 29 used ones: a copy of cut 1 on a shorter
+// r grid (it narrows Rmax) and one without a file (skipped, as in the Fortran).
+inline DataSet with_missing_extra_cut() {
+  DataSet d = pairwise_data_set(Symmetry::c3v);
+  crplib::MoleculeCut narrow = d.molecule_cuts[0];
+  narrow.file_name = "cut30.dat";
+  const std::size_t nr = narrow.r.size(), kept = nr - 4;
+  std::vector<double> v;
+  for (std::size_t j = 0; j < narrow.z.size(); ++j)
+    for (std::size_t i = 0; i < kept; ++i) v.push_back(narrow.v[i + nr * j]);
+  narrow.r.resize(kept);
+  narrow.v = v;
+  crplib::MoleculeCut absent = d.molecule_cuts[1];
+  absent.file_name = "cut31.dat";
+  absent.present = false;
+  absent.r.clear();
+  absent.z.clear();
+  absent.v.clear();
+  d.molecule_cuts.push_back(narrow);
+  d.molecule_cuts.push_back(absent);
+  return d;
+}
+
 // The data set of a reference case: <sym>_impulse_<k> (cut k = 1), <sym>_pairwise,
-// c6v_pairwise_angstrom and c4v_negative_spacing. Throws std::invalid_argument for other names.
+// c6v_pairwise_angstrom, c4v_negative_spacing and c3v_missing_extra_cut. Throws
+// std::invalid_argument for other names.
 inline DataSet case_data_set(const std::string& name) {
   const Symmetry symmetry = case_symmetry(name);
   if (name.find("_impulse_") != std::string::npos)
@@ -381,6 +405,7 @@ inline DataSet case_data_set(const std::string& name) {
     return d;
   }
   if (name.ends_with("_pairwise")) return pairwise_data_set(symmetry);
+  if (name == "c3v_missing_extra_cut") return with_missing_extra_cut();
   throw std::invalid_argument("unknown reference case " + name);
 }
 

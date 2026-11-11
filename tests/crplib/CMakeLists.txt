@@ -8,7 +8,8 @@ foreach(source IN LISTS crplib_test_sources)
   add_executable(${target} ${source})
   target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})  # shared test headers
   target_link_libraries(${target} PRIVATE spodvr_crplib GTest::gtest_main spodvr_warnings spodvr_crplib_fp)
-  target_compile_definitions(${target} PRIVATE CRPLIB_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference")
+  target_compile_definitions(${target} PRIVATE CRPLIB_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference"
+                             CRPLIB_REAL_DATA_SET="${PROJECT_SOURCE_DIR}/potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v")
   gtest_discover_tests(${target} TEST_PREFIX "CrpLib." DISCOVERY_TIMEOUT 60)
 endforeach()
 

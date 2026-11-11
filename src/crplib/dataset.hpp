@@ -51,6 +51,9 @@ struct MoleculeCut {
   std::vector<double> r;  // grid in r (fastest in the file) and in Z
   std::vector<double> z;
   std::vector<double> v;  // v[ir + r.size() * iz]
+  // False if the file is missing: allowed only for the extra cuts the interpolation does not use.
+  // The Fortran skips such a cut entirely (no data, no limit on Rmin, Rmax, Zmin; INQUIRE EXIST).
+  bool present = true;
 };
 
 // Optional description of the data set (CRPData.info, three lines).

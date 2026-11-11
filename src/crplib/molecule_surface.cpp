@@ -140,6 +140,9 @@ MoleculeSurface::MoleculeSurface(const DataSet& data, EvaluationOptions options)
   // locals Rmin = 0, Rmax = 100, Zmin = -100.
   double r_min = 0.0, r_max = 100.0, z_min = -100.0;
   for (const MoleculeCut& cut : data.molecule_cuts) {
+    // An unused extra cut without a file: skipped (no spline, no limit on the ranges), as in the
+    // Fortran. Only cuts after the used ones can be absent, so the indices of the used ones hold.
+    if (!cut.present) continue;
     const std::vector<double> r = converted_lengths(cut.r, in);
     const std::vector<double> z = converted_lengths(cut.z, in);
     std::vector<double> v = converted_energies(cut.v, in);

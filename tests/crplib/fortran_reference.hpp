@@ -21,6 +21,13 @@ inline std::filesystem::path reference_file(const std::string& name) {
   return std::filesystem::path(CRPLIB_REFERENCE_DIR) / name;
 }
 
+// The data set of a reference case: <case>/dataset for the synthetic cases; the case cu111_srp48
+// uses the real data set of the repository (potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v).
+inline std::filesystem::path reference_data_set(const std::string& case_name) {
+  if (case_name == "cu111_srp48") return CRPLIB_REAL_DATA_SET;
+  return reference_file(case_name + "/dataset");
+}
+
 #define REQUIRE_CRP_REFERENCE(path)   \
   if (!std::filesystem::exists(path)) \
   GTEST_SKIP() << "reference file " << (path) << " missing; run tools/fortran_reference/run_crp_reference.sh"

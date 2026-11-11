@@ -32,6 +32,7 @@
 using namespace crplib;
 using crplib_test::DriverInput;
 using crplib_test::DriverOutput;
+using crplib_test::reference_data_set;
 using crplib_test::reference_file;
 
 namespace {
@@ -56,7 +57,7 @@ std::string at_text(const Vec3& a, const Vec3& b) {
 void compare_molecule_points(const std::string& case_name, const std::string& list, Units units) {
   const auto output_file = reference_file(case_name + "/" + list + ".out");
   if (!std::filesystem::exists(output_file)) GTEST_SKIP() << output_file << " missing";
-  const DataSet data = read_data_set(reference_file(case_name + "/dataset"));
+  const DataSet data = read_data_set(reference_data_set(case_name));
   const bool bitwise = data.cuts_interpolation;
   const MoleculeSurface pes(data);
   DriverInput in(reference_file(case_name + "/" + list + ".in"));
@@ -90,7 +91,7 @@ void compare_molecule_points(const std::string& case_name, const std::string& li
 void compare_qd_wrapper_points(const std::string& case_name) {
   const auto output_file = reference_file(case_name + "/wrapper.out");
   REQUIRE_CRP_REFERENCE(output_file);
-  const DataSet data = read_data_set(reference_file(case_name + "/dataset"));
+  const DataSet data = read_data_set(reference_data_set(case_name));
   const QdWrapper wrapper(data);
   DriverOutput out(output_file);
   const auto records = crplib_test::read_driver_output(output_file);
@@ -130,7 +131,7 @@ TEST_P(FortranMoleculeSurface, QdWrapper) { compare_qd_wrapper_points(GetParam()
 TEST_P(FortranMoleculeSurface, GasPhase) {
   const auto output_file = reference_file(GetParam() + "/gasphase.out");
   REQUIRE_CRP_REFERENCE(output_file);
-  const MoleculeSurface pes(read_data_set(reference_file(GetParam() + "/dataset")));
+  const MoleculeSurface pes(read_data_set(reference_data_set(GetParam())));
   DriverOutput out(output_file);
   const auto zso = out.next_bits("zso", 2);
   EXPECT_BITS(pes.zso_min(), zso[0]);
@@ -172,7 +173,7 @@ TEST_P(FortranMoleculeSurface, Cambcord) {
 
 INSTANTIATE_TEST_SUITE_P(Cases, FortranMoleculeSurface,
                          testing::Values("c6v_pairwise", "c3v_pairwise", "c4v_pairwise", "c6v_pairwise_angstrom",
-                                         "c4v_negative_spacing"));
+                                         "c4v_negative_spacing", "c3v_missing_extra_cut"));
 
 // The data set in Angstrom/eV, evaluated in Angstrom/eV (the unit conversions of the wrapper).
 TEST(FortranMoleculeSurfaceUnits, AngstromAndEv) {
@@ -183,7 +184,7 @@ TEST(FortranMoleculeSurfaceUnits, AtomSurfaceInAngstromAndEv) {
   const std::string case_name = "c6v_pairwise_angstrom";
   const auto output_file = reference_file(case_name + "/atom_1_3.out");
   REQUIRE_CRP_REFERENCE(output_file);
-  const auto pes = make_atom_surface(read_data_set(reference_file(case_name + "/dataset")));
+  const auto pes = make_atom_surface(read_data_set(reference_data_set(case_name)));
   DriverInput in(reference_file(case_name + "/atom_1_3.in"));
   DriverOutput out(output_file);
   const int n = in.integer();
@@ -569,4 +570,18 @@ TEST(MoleculeSurfaceSharedGrid, CutsWithTheirOwnGrid) {
   EXPECT_EQ(MoleculeSurface(zero).cut_grids(), 2);
   (void)compare_shared_lookup(zero);
   (void)n;
+}
+
+// An extra cut limits the ranges (Rmin, Rmax, Zmin) unless its file is missing: then it is
+// skipped, as in the Fortran (Read_MoleculeSurface_Data, INQUIRE EXIST).
+TEST(MoleculeSurfaceRanges, ExtraCutsAndMissingFiles) {
+  const MoleculeSurface plain(crplib_test::pairwise_data_set(Symmetry::c3v));
+  DataSet d = crplib_test::case_data_set("c3v_missing_extra_cut");
+  const MoleculeSurface narrowed(d);
+  EXPECT_EQ(narrowed.r_max(), d.molecule_cuts[29].r.back());  // the present extra cut (bohr data)
+  EXPECT_LT(narrowed.r_max(), plain.r_max());
+  EXPECT_EQ(narrowed.r_min(), plain.r_min());
+  EXPECT_EQ(narrowed.z_min(), plain.z_min());
+  d.molecule_cuts[29].present = false;  // both extra cuts without a file
+  EXPECT_EQ(MoleculeSurface(d).r_max(), plain.r_max());
 }

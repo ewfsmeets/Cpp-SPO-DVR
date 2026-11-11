@@ -57,6 +57,7 @@ void expect_equal(const DataSet& a, const DataSet& b) {
   ASSERT_EQ(a.molecule_cuts.size(), b.molecule_cuts.size());
   for (std::size_t k = 0; k < a.molecule_cuts.size(); ++k) {
     const MoleculeCut &p = a.molecule_cuts[k], &q = b.molecule_cuts[k];
+    EXPECT_EQ(p.present, q.present) << k;
     EXPECT_EQ(p.x, q.x);
     EXPECT_EQ(p.y, q.y);
     EXPECT_EQ(p.theta, q.theta);
@@ -215,6 +216,30 @@ TEST(DataSet, EqualSwitchingLimitsAreValid) {
   EXPECT_NO_THROW((void)read_data_set(dir.path() / "set"));
 }
 
+// An unused extra cut may lack its file: it is skipped, as in the Fortran. A used cut may not.
+TEST(DataSet, MissingFileOfAnUnusedExtraCut) {
+  TemporaryDirectory dir("dataset");
+  const DataSet d = crplib_test::case_data_set("c3v_missing_extra_cut");
+  write_data_set(d, dir.path() / "set");
+  EXPECT_TRUE(std::filesystem::exists(dir.path() / "set/Molecule/cut30.dat"));
+  EXPECT_FALSE(std::filesystem::exists(dir.path() / "set/Molecule/cut31.dat"));
+  const DataSet back = read_data_set(dir.path() / "set");
+  ASSERT_EQ(back.molecule_cuts.size(), 31u);
+  EXPECT_TRUE(back.molecule_cuts[29].present);
+  EXPECT_FALSE(back.molecule_cuts[30].present);
+  expect_equal(back, d);
+  const auto warnings = data_set_warnings(back);
+  ASSERT_EQ(warnings.size(), 2u);
+  EXPECT_NE(warnings[0].find("only the first 29"), std::string::npos);
+  EXPECT_NE(warnings[1].find("no file for the unused cuts cut31.dat"), std::string::npos);
+
+  DataSet used = d;  // a used cut without a file, also in a data set built in memory
+  used.molecule_cuts[3].present = false;
+  EXPECT_THROW(validate_data_set(used), DataError);
+  std::filesystem::remove(dir.path() / "set/Molecule/cut04.dat");
+  expect_data_error(dir.path() / "set", "molecule-surface cut file not found");
+}
+
 TEST(DataSet, Warnings) {
   DataSet d = crplib_test::pairwise_data_set(Symmetry::c6v);
   EXPECT_TRUE(data_set_warnings(d).empty());
@@ -262,5 +287,5 @@ TEST(ReferenceDataSets, MatchTheGenerator) {
       EXPECT_EQ(file_content(committed / file), file_content(dir.path() / file)) << name << ": " << file.string();
     ++cases;
   }
-  EXPECT_EQ(cases, 19);
+  EXPECT_EQ(cases, 20);
 }

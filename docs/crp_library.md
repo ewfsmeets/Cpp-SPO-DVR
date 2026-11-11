@@ -67,7 +67,8 @@ Hartree with its own factor 27.2114, as the Fortran does.
 The data must satisfy these conditions; `read_data_set` checks them and names the file:
 - Atom-surface cuts: exactly 7 (C6v) or 10 (C3v), at least 6 (C4v; all with the same z grid).
 - Molecule-surface cuts: at least 18 (C6v), 29 (C3v) or 16 (C4v). Further cuts are not used, but
-  their grids still limit the covered range (a warning).
+  their grids still limit the covered range (a warning). A further cut may lack its file: it is
+  then skipped and does not limit the range, as in the Fortran (a warning).
 - Every table has at least 4 strictly increasing points; cut file names have at most 50
   characters; ZsoMin ≤ ZsoMax; C3v needs N ≥ 4 layers and Disp1 = 0, C4v N ≥ 2.
 - A molecule-surface cut file repeats r and Z in every line; the last line with a given index wins.

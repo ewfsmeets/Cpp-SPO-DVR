@@ -19,6 +19,7 @@ using namespace crplib;
 using namespace crplib::detail;
 using crplib_test::DriverInput;
 using crplib_test::DriverOutput;
+using crplib_test::reference_data_set;
 using crplib_test::reference_file;
 
 namespace {
@@ -49,7 +50,7 @@ class FortranAtomSurface : public testing::TestWithParam<std::string> {};
 TEST_P(FortranAtomSurface, BitwiseEqual) {
   const auto output_file = reference_file(GetParam() + "/atom_0_2.out");
   REQUIRE_CRP_REFERENCE(output_file);
-  const DataSet data = read_data_set(reference_file(GetParam() + "/dataset"));
+  const DataSet data = read_data_set(reference_data_set(GetParam()));
   const auto pes = make_atom_surface(data);
   DriverInput in(reference_file(GetParam() + "/atom_0_2.in"));
   DriverOutput out(output_file);
