@@ -16,6 +16,7 @@ runs/
 fil10*
 fil21*
 fort.*
-# reference data is tracked
+# reference and PES data are tracked
 !tests/reference/**
 !tests/crplib/reference/**
+!potentials/**
