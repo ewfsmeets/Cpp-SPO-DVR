@@ -9,6 +9,7 @@
 #
 # Usage: tools/crp_mutation_check/run.sh [scratch_dir [index ...]]
 #   scratch_dir  default: a new mktemp -d directory;  index: only these mutations (default: all)
+# OMP_NUM_THREADS sets the build jobs and the test threads (default 8).
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "${here}/../.." && pwd)"
@@ -26,8 +27,9 @@ if [[ ! -f "${wt}/build/build.ninja" ]]; then
     > "${scratch}/configure.log" 2>&1 || { echo "configure failed: ${scratch}/configure.log"; exit 1; }
 fi
 targets=$(cd "${wt}/tests/crplib" && ls test_*.cpp | sed 's/\.cpp$//; s/^/crplib_/')
-build() { cmake --build "${wt}/build" -j 8 --target ${targets} > "${scratch}/build.log" 2>&1; }
-run() { OMP_NUM_THREADS=8 ctest --test-dir "${wt}/build" -R CrpLib > "${scratch}/ctest.log" 2>&1; }
+threads="${OMP_NUM_THREADS:-8}"  # build jobs and OpenMP threads (at most 8 on this machine)
+build() { cmake --build "${wt}/build" -j "${threads}" --target ${targets} > "${scratch}/build.log" 2>&1; }
+run() { OMP_NUM_THREADS="${threads}" ctest --test-dir "${wt}/build" -R CrpLib > "${scratch}/ctest.log" 2>&1; }
 
 echo "baseline:"
 build || { echo "  build failed: ${scratch}/build.log"; exit 1; }

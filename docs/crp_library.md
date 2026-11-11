@@ -171,10 +171,8 @@ here, 2.5 s with `UseSymmetry` ([performance.md](performance.md) "CRP library").
 
 ## Testing without a real data set
 
-The tests need no real data set. One real data set is in the repository,
-`potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v` (H₂/Cu(111) SRP48, C3v; Mondal et al., J. Phys.
-Chem. A 117, 8770 (2013)), but it is not yet validated or used by the tests. The tests
-(`tests/crplib/`, see its README) use:
+The library tests need no real data set (the one in the repository is checked separately, see
+"The real data set" below). The tests (`tests/crplib/`, see its README) use:
 - Properties that need no data: splines reproduce cubics, the Fourier tables invert their site
   bases, every site function returns its cut values at the cut orientations, homonuclear and
   surface symmetry, periodicity, gradients against finite differences.
@@ -192,32 +190,34 @@ Chem. A 117, 8770 (2013)), but it is not yet validated or used by the tests. The
 
 `tools/crp_mutation_check/run.sh` applies deliberate bugs to a git worktree and runs the library
 tests; each must make a test fail, except the removal of a redundant safety margin (marked in
-`mutations.py`). Result (2026-11-09, 226 library tests; the numbers are the failing tests):
+`mutations.py`). Result (2026-11-11, 245 library tests; the numbers are the failing tests):
 
 | Mutation | Caught by (number of failing tests) |
 |---|---|
-| bridge images swapped | impulse responses, Fortran comparisons (12) |
+| bridge images swapped | impulse responses, Fortran comparisons (18) |
 | 0.5 instead of the folded cos(π/3) in the QD wrapper's skew transform | QD wrapper on the impulse sets, bitwise (10) |
-| 0.5 instead of the folded cos(π/3) in the C3v MURII | C3v atom-surface PES vs the Fortran (1) |
-| SPLINT slope without its curvature term | spline tests, Fortran comparisons (37) |
-| SPLINT instead of DPL for the atom-surface cuts | Fortran comparisons (8) |
-| x / c instead of x · (1/c) (Å → bohr) | Å/eV cases vs the Fortran (6) |
+| 0.5 instead of the folded cos(π/3) in the C3v MURII | C3v atom-surface PES vs the Fortran (3) |
+| SPLINT slope without its curvature term | spline tests, Fortran comparisons (47) |
+| SPLINT instead of DPL for the atom-surface cuts | Fortran comparisons (6) |
+| x / c instead of x · (1/c) (Å → bohr) | Å/eV cases vs the Fortran (10) |
 | (x · (1/a)) · b instead of x · ((1/a) · b) (energy units) | unit tests (1) |
-| `floor` instead of the ORIGEN truncation | fold tests, Fortran comparisons (7) |
-| C3v t2h and t2f cuts swapped | impulse responses, representable model (9) |
-| sign flip in a chain-rule term | Fortran comparisons, finite differences (22) |
+| `floor` instead of the ORIGEN truncation | fold tests, Fortran comparisons (9) |
+| C3v t2h and t2f cuts swapped | impulse responses, real data set vs the Fortran (15) |
+| sign flip in a chain-rule term | Fortran comparisons, finite differences (26) |
 | TRANSF regions 4 and 5 swapped | C4v atom-surface PES vs the Fortran (4) |
-| dFso term dropped from the gradient | Fortran comparisons, finite differences (9) |
-| S2: the reachable atoms in reverse order | Fortran comparisons, pruning tests (14) |
-| S2: in-plane selection with half the reach | pruning tests, representable model (31) |
-| S2: per-call z test with half the reach | pruning tests, representable model (20) |
+| dFso term dropped from the gradient | Fortran comparisons, finite differences (13) |
+| S2: the reachable atoms in reverse order | Fortran comparisons, pruning tests (17) |
+| S2: in-plane selection with half the reach | pruning tests, representable model (40) |
+| S2: per-call z test with half the reach | pruning tests, representable model (28) |
 | S2: no fallback to the full cluster outside the fold cell | pruning test outside the cell (1) |
 | S4: every cut evaluated in the cell of the first group | cut with a moved knot (1) |
 | S4: grids compared with == (merges −0 and +0 knots) | grids differing in a zero knot (1) |
 | S4: only the first group located | cuts with their own grid (2) |
-| S3: sin 3φ of the hollow site skipped for V | Fortran comparisons (10) |
-| S3: the C3v sine stars of the atom PES skipped for V | C3v atom-surface PES vs the Fortran (5) |
-| S3: V-only blend without the gas-phase term | Fortran comparisons (11) |
+| S3: sin 3φ of the hollow site skipped for V | Fortran comparisons (15) |
+| S3: the C3v sine stars of the atom PES skipped for V | C3v atom-surface PES vs the Fortran (11) |
+| S3: V-only blend without the gas-phase term | Fortran comparisons (16) |
+| a missing file of an unused extra cut rejected | the real data set, the missing-cut tests (16) |
+| validation accepts a used cut without a file | data-set test (1) |
 | S2 safety margins removed: both; the relative one; the cell enlargement; `<` for `≤` | survive, as expected |
 
 Three mutations first survived and led to new tests. The skew constant: the pairwise data sets
@@ -229,6 +229,30 @@ with its own grid differed only at the end of its grid, so a cut with a moved in
 added. The S2 margins are redundant by construction: the z test needs none (the computed distance
 is never below the computed height difference), and in the plane either margin alone covers the
 rounding; no test case can tell them apart.
+
+## The real data set (H₂/Cu(111) SRP48)
+
+`potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v`, a copy of upstream `potential.dir` (A. Mondal et
+al., J. Phys. Chem. A 117, 8770 (2013); upstream input `input.dir/v0j0_WPC_H2Cu111SRP_C3v_01.inp`):
+C3v, Å and eV, a = 2.6015 Å, 4 layers, 10 atom cuts, CutsInterpolation = F (the cuts hold V, up to
+1950 eV at the wall). `CRPData.6D` lists 31 molecular cuts, 29 used; the two extra ones have no file
+and are skipped, as in the Fortran (two warnings). Checked 2026-11-11 against Fortran 5.19:
+- **Reading** (`tests/crplib/test_real_data_set.cpp`): every file as gfortran reads it, including the
+  trailing comments after the items (`<-- …`, `# …`, `3.4d0  ZCM …`).
+- **The library on it**: V equals the data at 3132 cut knots (cut site and orientation, Z below
+  ZsoMin) to 6.2e-15 relative; C3v symmetry and atom exchange to 2.3e-14; the gradient matches
+  finite differences; S2, S3, S4 bitwise; 118 of the 256 cluster atoms in reach.
+- **Against the Fortran library** (reference case `cu111_srp48`, driver on the 5.19 objects; the
+  point lists follow the data set's ranges): atom PES bitwise in bohr/Hartree and Å/eV; molecule
+  PES, QD wrapper, gas phase and CAMBCORD within D4 (≤ 1.9e-14 Hartree); with libmvec's cos the
+  molecule PES is bitwise equal too.
+- **Against the Fortran program** (gates 1/2, `tests/reference/crp_cu111_srp48_small`, the upstream
+  input on coarse grids with VMax imposed): V_asy 7.7e-16, 6D 1.5e-13 of max(|V|, 1 eV) with and
+  without `UseSymmetry` (D4; 1.5e-14 with libmvec's cos), rovibrational states pass.
+- **On the upstream production grid** (C++, potential only, `UseSymmetry` + `nPhisOptimal`;
+  nX = nY = 20, JMax 18, MJMax 12): 77 of 400 (x, y) points computed, self-check 9.2e-14 eV,
+  40 of 64 r points beyond Rmax = 2.3 Å (clamped), no (Z, r) point without data; 82 s on 4
+  threads and 1 GB (indicative: measured while another job ran).
 
 ## Checking a new data set
 

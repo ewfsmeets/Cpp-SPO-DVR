@@ -67,6 +67,11 @@ derived from exactly the same parameters.
    bitwise, 6D ≤ 3.0e-14 of max(|V|, 1 eV) (the grids' quad-precision ulps, as above).
    With `UseSymmetry` (C++ only for C3v and C4v; the subgroup usable with nφ = 10) the same cases
    against the full Fortran potential: 6D ≤ 5.7e-14.
+   On the real CRP data set (H₂/Cu(111) SRP48, `potentials/H2Cu111SRP_C3v.dir`):
+   `crp_cu111_srp48_small` (the upstream input on coarse grids, VMax imposed): vasy 7.7e-16, 6D
+   1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: decision D4
+   on data up to 72 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
+   clips the reference at VMin/VMax: the Fortran writes its .pes file before it imposes them.
 4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
    Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
    values) to half a unit in the last printed digit (values below 1e-20 are noise and compared

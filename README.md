@@ -48,10 +48,9 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   Dai–Light propagation and analysis are checked against the Fortran code as well.
 - CRP potentials from a data set (SystemID `CRPlibrary`, input key `CRPlibDataSet`): the Fortran
   CRP library of M. Wijzenbroek (C3v, C4v and C6v surfaces), ported as the self-contained library
-  `src/crplib/` (V and analytic gradients). The library is checked bitwise against the Fortran
-  library on synthetic data sets, and the program against the Fortran potential on the grid. A
-  real data set, H₂/Cu(111) SRP48 (C3v, `potentials/H2Cu111SRP_C3v.dir/`), is in the repository
-  but not yet validated.
+  `src/crplib/` (V and analytic gradients). The library is checked against the Fortran library on
+  synthetic data sets (bitwise) and on the real H₂/Cu(111) SRP48 data set in `potentials/`, and the
+  program against the Fortran potential on the grid for both.
 - Surface symmetry (`UseSymmetry`): the potential is computed and stored only for symmetry-unique
   (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
   potential really has that symmetry.
