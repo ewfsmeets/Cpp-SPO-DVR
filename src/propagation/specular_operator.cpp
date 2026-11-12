@@ -20,13 +20,11 @@ std::vector<cplx> specular_gas_phase_factors(int nr, int initial_channel, const 
 
 // Fortran: KineticOp.f90 SetupFFTs (nproj > 0)
 SpecularOperator::SpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel,
-                                   const IndexRange& z_absorber, const IndexRange& r_absorber,
-                                   const PropagationTables& tables, const Fft& fft)
+                                   const IndexRange& r_absorber, const PropagationTables& tables, const Fft& fft)
     : nr_(nr),
       nz_(nz_specular),
       nz_potential_(nz_potential),
       initial_channel_(initial_channel),
-      z_absorber_(z_absorber),
       r_absorber_(r_absorber),
       tables_(tables),
       gas_phase_step_(specular_gas_phase_factors(nr, initial_channel, tables)) {
@@ -62,9 +60,10 @@ void SpecularOperator::apply_gas_phase(SpecularWave& psi) const {
     for (int ir = 0; ir < nr_; ++ir) psi(ir, iz) = gas_phase_step_[ir] * psi(ir, iz);
 }
 
-// Fortran: Absorption.f90 PerformEXPOpticalOpSpec (nproj = 2)
+// The Z factors at every Z point (exactly 1 outside the high- and low-end absorbers), as 5.24
+// does. Fortran: Absorption.f90 PerformEXPOpticalOpSpec (nproj = 2)
 void SpecularOperator::apply_absorbers(SpecularWave& psi) const {
-  for (int iz = z_absorber_.first; iz <= z_absorber_.last; ++iz)
+  for (int iz = 0; iz < nz_; ++iz)
     for (int ir = 0; ir < nr_; ++ir) psi(ir, iz) = tables_.z_specular_optical[iz] * psi(ir, iz);
   if (nr_ == 1) return;
   for (int iz = 0; iz < nz_; ++iz)

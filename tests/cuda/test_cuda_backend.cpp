@@ -2,6 +2,7 @@
 // propagate one analysis step; the wave packets must agree to rounding (cuFFT and the
 // CPU FFT library differ in the last bits). Also: copies between host and GPU are exact, the BK
 // plane and the densities equal the CPU's, and two GPU runs are bitwise identical.
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -296,4 +297,61 @@ TEST(CudaBackend, MemoryEstimateMatchesTheAllocations) {
   const std::size_t slack = std::size_t(64) << 20;  // allocation granularity, cuFFT plans
   EXPECT_GE(used + slack, exact);
   EXPECT_LE(used, e.peak_bytes + slack);
+}
+
+namespace {
+
+// Both low-Z absorbers of upstream 5.24 on, from ZStart to Zana (scattering) and to Z = 6
+// (specular): on random data every point inside them is absorbed.
+const nlohmann::json low_z_absorbers = {{"ZOptLowStart", -2.0},   {"ZOptLowEnd", 8.0},   {"ZOptLowEnergy", 0.3},
+                                        {"ZSpOptLowStart", -2.0}, {"ZSpOptLowEnd", 6.0}, {"ZSpOptLowFactor", 0.01}};
+
+// The specular step (kinetic part, gas phase, absorbers) of the CPU and the GPU twin on one
+// random specular wave.
+std::vector<cplx> cpu_specular_step(const BackendSetup& s, const std::vector<cplx>& initial) {
+  const SpecularOperator op(s.config.input.nr, s.grids.z_specular.size(), s.grids.nz_potential, s.basis.initial_index(),
+                            s.grids.r_optical, s.tables, s.fft);
+  SpecularWave psi(s.config.input.nr, s.grids.z_specular.size());
+  std::copy(initial.begin(), initial.end(), psi.values.begin());
+  op.apply(psi, TimeStep::Full, false);
+  return {psi.values.begin(), psi.values.end()};
+}
+
+std::vector<cplx> gpu_specular_step(const BackendSetup& s, const std::vector<cplx>& initial) {
+  const int nr = s.config.input.nr;
+  const int nz = s.grids.z_specular.size();
+  cuda::DeviceSpecularOperator op(nr, nz, s.grids.nz_potential, s.basis.initial_index(), s.grids.r_optical, s.tables,
+                                  std::size_t(512) << 20);
+  std::size_t work_bytes = 1;
+  for (const cuda::DeviceFftPlan* plan : op.fft_plans()) work_bytes = std::max(work_bytes, plan->work_size());
+  cuda::DeviceBuffer<std::byte> work(work_bytes);
+  for (cuda::DeviceFftPlan* plan : op.fft_plans()) plan->set_work_area(work.data());
+  cuda::DeviceWavePacket psi(cuda::DeviceLayout{1, 1, 1}, nr, nz);
+  psi.specular.upload(cuda::as_device_complex(std::span<const cplx>(initial)));
+  op.apply(psi, TimeStep::Full, false);
+  std::vector<cplx> result(initial.size());
+  psi.specular.download(cuda::as_device_complex(std::span<cplx>(result)));
+  return result;
+}
+
+}  // namespace
+
+// The specular step applies the Z factors at every Z point on the GPU as on the CPU, so a low-Z
+// absorber on the specular grid acts on both (the two differ only by the FFT libraries' rounding).
+// Without the absorber the result differs by far more than that, so the comparison sees it.
+TEST(CudaBackend, SpecularStepMatchesTheCpuWithALowZAbsorber) {
+  SPODVR_REQUIRE_GPU();
+  const BackendSetup with("hardwall_short", low_z_absorbers);
+  const BackendSetup without("hardwall_short");
+  std::vector<cplx> initial(std::size_t(with.config.input.nr) * with.grids.z_specular.size());
+  fill_pseudo_random(initial, 11);
+  const std::vector<cplx> cpu = cpu_specular_step(with, initial);
+  EXPECT_LT(relative_difference(cpu, gpu_specular_step(with, initial)), 1e-13);
+  EXPECT_GT(relative_difference(cpu, cpu_specular_step(without, initial)), 1e-3);
+}
+
+// One analysis step of the whole backend with both low-Z absorbers on.
+TEST(CudaBackend, AnalysisStepMatchesTheCpuWithLowZAbsorbers) {
+  SPODVR_REQUIRE_GPU();
+  expect_same_step(BackendSetup("hardwall_short", low_z_absorbers), 1e-13);
 }

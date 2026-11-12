@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
   }
   DeviceKineticOperator kinetic(shape, tables, fft_work_limit);
   DeviceSpecularOperator specular(p.nr, grids.z_specular.size(), grids.nz_potential, basis.initial_index(),
-                                  *grids.z_specular_optical, grids.r_optical, tables, fft_work_limit);
+                                  grids.r_optical, tables, fft_work_limit);
   const AngularTransform transform(angular, basis, fft);
   DevicePotentialOperator potential_op(shape, grids.nz_potential, basis.initial_index(), tables, transform,
                                        potential.values, potential.symmetry, fft_work_limit);

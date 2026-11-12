@@ -35,6 +35,7 @@ struct PropagationTables {
   double parallel_energy = 0.0;             // kinetic energy parallel to the surface. Fortran: edifin
 
   // --- absorption: exp(-V_opt dt), real (Fortran: EXPOptZ, EXPOptR, EXPOptZSpec) -------------
+  // Exactly 1 outside the absorbers; the low-Z absorbers (if on) are in the Z tables too.
   std::vector<double> z_optical;            // nz
   std::vector<double> r_optical;            // nr
   std::vector<double> z_specular_optical;   // nzsp

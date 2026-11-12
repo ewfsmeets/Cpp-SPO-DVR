@@ -24,6 +24,43 @@ IndexRange optical_range(const UniformGrid& grid, double start, double end) {
   return {first, last};
 }
 
+// gfortran's REAL(16): `dfloat(…)` and `…d0` are quad precision under -fdefault-real-8.
+// __float128 is a GCC/Clang extension on x86-64 (not in aarch64 GCC); host code only, so it stays
+// in this file rather than in a header that device code could include.
+__extension__ typedef __float128 Quad;
+
+// Grid point i as the Fortran computes it: `start + dfloat(i-1)*delta` in quad precision, rounded
+// once to double (1 ulp from this program's point at some i). Fortran: Setup.f90 zgrid, rgrid
+double fortran_grid_point(const UniformGrid& grid, int i) {
+  const Quad offset = static_cast<Quad>(i) * static_cast<Quad>(grid.spacing());
+  return static_cast<double>(static_cast<Quad>(grid.start()) + offset);
+}
+
+// Adds the grid points that this program and the Fortran put on different sides of an absorber's
+// strongest end (key = value). The inside tests are those of Fortran: Absorption.f90
+// SetupAbsorpPot (plain <=, >=).
+void add_split_points(std::vector<SplitGridPoint>& split, const UniformGrid& grid, const std::string& key,
+                      double strongest_end, AbsorberSide side) {
+  auto inside = [&](double q) { return side == AbsorberSide::High ? q <= strongest_end : q >= strongest_end; };
+  for (int i = 0; i < grid.size(); ++i) {
+    const double fortran_point = fortran_grid_point(grid, i);
+    if (inside(grid[i]) != inside(fortran_point))
+      split.push_back({key, strongest_end, i, grid[i], fortran_point, inside(grid[i])});
+  }
+}
+
+// The split grid points of every absorber that is on.
+std::vector<SplitGridPoint> absorber_split_points(const InputParameters& p, const SpatialGrids& g) {
+  std::vector<SplitGridPoint> split;
+  add_split_points(split, g.z_scattering, "ZOptEnd", p.z_opt_end, AbsorberSide::High);
+  if (p.nr > 1) add_split_points(split, g.r, "ROptEnd", p.r_opt_end, AbsorberSide::High);
+  if (g.z_specular_optical) add_split_points(split, g.z_specular, "ZSpOptEnd", p.zsp_opt_end, AbsorberSide::High);
+  if (g.z_optical_low) add_split_points(split, g.z_scattering, "ZOptLowStart", *p.z_opt_low.start, AbsorberSide::Low);
+  if (g.z_specular_optical_low)
+    add_split_points(split, g.z_specular, "ZSpOptLowStart", *p.zsp_opt_low.start, AbsorberSide::Low);
+  return split;
+}
+
 }  // namespace
 
 SpatialGrids make_spatial_grids(const Config& config) {
@@ -49,7 +86,10 @@ SpatialGrids make_spatial_grids(const Config& config) {
                  {0, 0},
                  std::nullopt,
                  {0, 0},
-                 std::nullopt};
+                 std::nullopt,
+                 std::nullopt,
+                 std::nullopt,
+                 {}};
 
   // Analysis point: first Z grid point >= ZAna; ZAna is moved onto that point.
   int iz = 0;
@@ -78,6 +118,11 @@ SpatialGrids make_spatial_grids(const Config& config) {
   g.z_optical = optical_range(g.z_scattering, p.z_opt_start, p.z_opt_end);
   if (p.projection_operator == 2) g.z_specular_optical = optical_range(g.z_specular, p.zsp_opt_start, p.zsp_opt_end);
   g.r_optical = p.nr == 1 ? IndexRange{0, 0} : optical_range(g.r, p.r_opt_start, p.r_opt_end);
+  // Points inside, also ZStart itself (the Fortran's index loop starts at the second point).
+  if (p.z_opt_low.enabled()) g.z_optical_low = optical_range(g.z_scattering, *p.z_opt_low.start, *p.z_opt_low.end);
+  if (p.projection_operator == 2 && p.zsp_opt_low.enabled())
+    g.z_specular_optical_low = optical_range(g.z_specular, *p.zsp_opt_low.start, *p.zsp_opt_low.end);
+  g.split_points = absorber_split_points(p, g);
   return g;
 }
 

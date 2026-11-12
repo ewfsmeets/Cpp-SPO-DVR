@@ -1,6 +1,7 @@
 // Tests: precomputed propagation factors (kinetic, rotational, absorbing, shift, projection).
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <fstream>
@@ -8,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "core/fortran_math.hpp"
 #include "grids/angular_grid.hpp"
 #include "grids/rotational_basis.hpp"
 #include "grids/spatial_grids.hpp"
@@ -108,6 +110,110 @@ TEST(PropagationTables, RotationalEnergies) {
       EXPECT_NEAR(s.tables.rotational_energies[irot + nrot * ir],
                   j * (j + 1) / (2.0 * s.config.derived.reduced_mass * r * r), 1e-16);
     }
+}
+
+namespace {
+
+// exp(-V_opt dt) of one absorber (power 2) at q, evaluated directly in double with the operation
+// order of Absorption.f90: ((strength * 0.5) * (n + 1)) * x^n, x^n by __powidf2. Low end: the mirror image.
+double formula_factor(double q, double start, double end, double strength, AbsorberSide side, double dt) {
+  const double x = side == AbsorberSide::High ? (q - start) / (end - start) : (end - q) / (end - start);
+  const double v_opt = ((strength * 0.5) * (2 + 1)) * fortran_integer_power(x, 2);
+  return std::exp(-(v_opt * dt));
+}
+
+nlohmann::json with_changes(const nlohmann::json& changes) {
+  nlohmann::json json = reference_json();
+  json.update(changes);
+  return json;
+}
+
+}  // namespace
+
+// The low-Z table on the scattering grid equals the formula bitwise: exactly 1 outside both
+// absorbers and at End (Z = 6.0 is a grid point), strongest at Start = ZStart; the high-end
+// values are bitwise those of the run without the low-Z absorber.
+TEST(PropagationTables, LowZAbsorberProfileIsTheMirroredFormula) {
+  const TablesSetup without(reference_json());
+  const TablesSetup s(with_changes({{"ZOptLowStart", -2.0}, {"ZOptLowEnd", 6.0}, {"ZOptLowEnergy", 0.3}}));
+  const InputParameters& p = s.config.input;
+  const DerivedParameters& d = s.config.derived;
+  ASSERT_GT(d.z_opt_low_factor, 0.0);
+  const std::vector<double>& f = s.tables.z_optical;
+  for (int iz = 0; iz < s.grids.z_scattering.size(); ++iz) {
+    const double z = s.grids.z_scattering[iz];
+    if (z >= -2.0 && z <= 6.0)
+      EXPECT_EQ(f[iz], formula_factor(z, -2.0, 6.0, d.z_opt_low_factor, AbsorberSide::Low, p.time_step)) << iz;
+    else
+      EXPECT_EQ(f[iz], without.tables.z_optical[iz]) << iz;  // 1 or the high-end value
+  }
+  ASSERT_EQ(s.grids.z_scattering[100], 6.0);
+  EXPECT_EQ(f[100], 1.0);
+  EXPECT_EQ(f[101], 1.0);
+  EXPECT_EQ(f[0], std::exp(-(d.z_opt_low_factor * 0.5 * 3 * 1.0 * p.time_step)));
+  EXPECT_EQ(*std::min_element(f.begin(), f.begin() + 101), f[0]);
+  EXPECT_LT(f[0], f[1]);
+  EXPECT_EQ(s.tables.z_specular_optical, without.tables.z_specular_optical);  // only the scattering grid changed
+}
+
+// Both ends at Z = Zana (the low end's End, the high end's Start): both potentials are 0 there,
+// so the factor is exactly 1 at that shared point.
+TEST(PropagationTables, LowAndHighEndShareThePointZana) {
+  const TablesSetup s(
+      with_changes({{"ZOptStart", 8.0}, {"ZOptLowStart", -2.0}, {"ZOptLowEnd", 8.0}, {"ZOptLowFactor", 0.02}}));
+  ASSERT_EQ(s.grids.z_scattering[125], 8.0);
+  EXPECT_EQ(s.grids.iz_analysis, 125);
+  EXPECT_EQ(s.tables.z_optical[125], 1.0);
+  EXPECT_LT(s.tables.z_optical[124], 1.0);  // inside the low end
+  EXPECT_LT(s.tables.z_optical[126], 1.0);  // inside the high end
+}
+
+// On the specular grid the high end starts at ZSpOptStart >= ZAsymptotic, so with Zana above it
+// the two absorbers overlap. The Fortran assigns the low end after the high end: in the overlap
+// [7.36, 8.0] the table holds the low-end value alone.
+TEST(PropagationTables, LowZAbsorberOverwritesTheHighEndWhereTheyOverlap) {
+  const TablesSetup s(with_changes({{"Z0", 7.2},
+                                    {"ZSpOptStart", 7.36},
+                                    {"ZSpOptLowStart", -2.0},
+                                    {"ZSpOptLowEnd", 8.0},
+                                    {"ZSpOptLowFactor", 0.01}}));
+  const InputParameters& p = s.config.input;
+  const DerivedParameters& d = s.config.derived;
+  int overlap = 0;
+  for (int iz = 0; iz < s.grids.z_specular.size(); ++iz) {
+    const double z = s.grids.z_specular[iz];
+    const double f = s.tables.z_specular_optical[iz];
+    if (z >= -2.0 && z <= 8.0) {
+      EXPECT_EQ(f, formula_factor(z, -2.0, 8.0, 0.01, AbsorberSide::Low, p.time_step)) << iz;
+      if (z >= 7.36) ++overlap;
+    } else if (z >= 7.36 && z <= p.zsp_opt_end) {
+      EXPECT_EQ(f, formula_factor(z, 7.36, p.zsp_opt_end, d.zsp_opt_factor, AbsorberSide::High, p.time_step)) << iz;
+    } else {
+      EXPECT_EQ(f, 1.0) << iz;
+    }
+  }
+  EXPECT_EQ(overlap, 8);  // Z = 7.44 .. 8.0 (7.36 itself is 7.359999999999999 on the grid)
+}
+
+// absorber D1: an absorber energy of 0 means no absorption, for the high-end absorbers (the
+// Fortran would keep its default strength) and the low-Z ones (the Fortran's default is 0):
+// every factor is exactly 1.
+TEST(PropagationTables, AbsorberD1EnergyZeroGivesNoAbsorption) {
+  const TablesSetup s(with_changes({{"ZOptEnergy", 0.0},
+                                    {"ROptEnergy", 0.0},
+                                    {"ZSpOptEnergy", 0.0},
+                                    {"ZOptLowStart", -2.0},
+                                    {"ZOptLowEnd", 8.0},
+                                    {"ZOptLowEnergy", 0.0},
+                                    {"ZSpOptLowStart", -2.0},
+                                    {"ZSpOptLowEnd", 8.0},
+                                    {"ZSpOptLowEnergy", 0.0}}));
+  const std::vector<double> ones_z(s.tables.z_optical.size(), 1.0);
+  const std::vector<double> ones_r(s.tables.r_optical.size(), 1.0);
+  const std::vector<double> ones_z_specular(s.tables.z_specular_optical.size(), 1.0);
+  EXPECT_EQ(s.tables.z_optical, ones_z);
+  EXPECT_EQ(s.tables.r_optical, ones_r);
+  EXPECT_EQ(s.tables.z_specular_optical, ones_z_specular);
 }
 
 TEST(PropagationTables, AbsorbingPotentialProfile) {

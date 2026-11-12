@@ -214,8 +214,8 @@ TEST(SplitOperator, AnalysisStepKeepsTheNormAndDoesNotDependOnThreads) {
   const int ichn = s.basis.initial_index();
   const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);
   const PotentialOperator potential_op(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential);
-  const SpecularOperator specular(s.shape.nr, s.grids.z_specular.size(), s.grids.nz_potential, ichn,
-                                  *s.grids.z_specular_optical, s.grids.r_optical, s.tables, s.fft);
+  const SpecularOperator specular(s.shape.nr, s.grids.z_specular.size(), s.grids.nz_potential, ichn, s.grids.r_optical,
+                                  s.tables, s.fft);
   const SplitOperatorPropagator propagator(s.config.derived.steps_per_analysis, kinetic, potential_op, specular);
   const InitialWavePacket initial = make_initial_wave_packet(s.config, s.grids, s.gas, s.fft);
 
@@ -294,8 +294,8 @@ TEST(SplitOperator, FusedPerPointStageEqualsStageByStage) {
   const int ichn = s.basis.initial_index();
   const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);
   const PotentialOperator potential_op(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential);
-  const SpecularOperator specular(s.shape.nr, s.grids.z_specular.size(), s.grids.nz_potential, ichn,
-                                  *s.grids.z_specular_optical, s.grids.r_optical, s.tables, s.fft);
+  const SpecularOperator specular(s.shape.nr, s.grids.z_specular.size(), s.grids.nz_potential, ichn, s.grids.r_optical,
+                                  s.tables, s.fft);
   const SplitOperatorPropagator propagator(1, kinetic, potential_op, specular);  // T/2 V T/2
 
   WavePacket fused{s.empty_wave(), SpecularWave(s.shape.nr, s.grids.z_specular.size())};
@@ -315,4 +315,40 @@ TEST(SplitOperator, FusedPerPointStageEqualsStageByStage) {
 
   EXPECT_EQ(fused.scattering.values, staged.scattering.values);
   EXPECT_EQ(fused.specular.values, staged.specular.values);
+}
+
+// After its kinetic part, the specular step multiplies each point (ir, iz) by the gas-phase
+// factor beyond the interaction region, by the Z factor at every iz (5.24 loops over all Z
+// points; this covers the low-Z absorber) and by the r factor inside the r absorber. Bitwise,
+// with a low-Z absorber on the specular grid.
+TEST(SpecularOperator, AppliesTheZFactorsAtEveryZPoint) {
+  nlohmann::json json = reference_json();
+  json["ZSpOptLowStart"] = -2.0;
+  json["ZSpOptLowEnd"] = 6.0;
+  json["ZSpOptLowFactor"] = 0.01;
+  const OperatorSetup s(json);
+  ASSERT_LT(s.tables.z_specular_optical[0], 1.0);
+  const int nr = s.shape.nr;
+  const int nz = s.grids.z_specular.size();
+  const int nzpot = s.grids.nz_potential;
+  const int ichn = s.basis.initial_index();
+  const SpecularOperator specular(nr, nz, nzpot, ichn, s.grids.r_optical, s.tables, s.fft);
+
+  SpecularWave stepped(nr, nz);
+  fill_pseudo_random(stepped.values);
+  SpecularWave expected = stepped;
+  specular.apply(stepped, TimeStep::Full, false);
+  specular.apply(expected, TimeStep::Full, true);  // the kinetic part alone
+  const std::vector<cplx> gas_phase = specular_gas_phase_factors(nr, ichn, s.tables);
+  const IndexRange& r_absorber = s.grids.r_optical;
+  for (int iz = 0; iz < nz; ++iz) {
+    for (int ir = 0; ir < nr; ++ir) {
+      cplx v = expected(ir, iz);
+      if (iz >= nzpot) v = gas_phase[ir] * v;
+      v = s.tables.z_specular_optical[iz] * v;
+      if (ir >= r_absorber.first && ir <= r_absorber.last) v = s.tables.r_optical[ir] * v;
+      expected(ir, iz) = v;
+    }
+  }
+  EXPECT_EQ(stepped.values, expected.values);
 }

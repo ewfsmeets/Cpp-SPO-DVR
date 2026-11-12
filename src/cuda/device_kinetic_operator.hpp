@@ -48,8 +48,8 @@ class DeviceKineticOperator {
 // CPU twin: SpecularOperator. Fortran: SplitOperator.f90 SpecularChannelOps
 class DeviceSpecularOperator {
  public:
-  DeviceSpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel, const IndexRange& z_absorber,
-                         const IndexRange& r_absorber, const PropagationTables& tables, std::size_t max_fft_work);
+  DeviceSpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel, const IndexRange& r_absorber,
+                         const PropagationTables& tables, std::size_t max_fft_work);
 
   void apply(DeviceWavePacket& psi, TimeStep step, bool kinetic_only) const;
   [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();
@@ -58,7 +58,6 @@ class DeviceSpecularOperator {
   int nr_;
   int nz_;
   int nz_potential_;
-  IndexRange z_absorber_;
   IndexRange r_absorber_;
   DeviceBuffer<Complex> kinetic_full_, kinetic_half_;
   FftScales scales_;

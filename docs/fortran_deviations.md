@@ -50,6 +50,34 @@ differences are in [validation.md](validation.md).
   terms are still ~1e-4..1e-3 eV at 14.99).
 - Giving both `ZOptEnergy` and `ZOptFactor` (same for R/ZSp) is an error (Fortran silently ignores
   the factor).
+- absorber D1: an absorber energy of 0 (`ZOptEnergy`, `ROptEnergy`, `ZSpOptEnergy`) means no
+  absorption (strength 0). The Fortran computes the strength only for an energy > 0 and otherwise
+  keeps the factor's default (`globaldata.f90 SetupGlobalDataModule`, e.g. 4.38e-3 hartree for
+  ZOpt), so it absorbs without saying so. The low-Z absorbers' default strength is 0, so there both
+  codes agree. Details: [fortran_input_bugs.md](fortran_input_bugs.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength).
+- The low-Z absorbers of upstream 5.24 (keys `ZOptLow…`, `ZSpOptLow…`; `InputNew.f90 ReadInput`,
+  `Absorption.f90 SetupAbsorpPot`). The Fortran's silent cases are errors here; details and
+  demonstrations: [fortran_input_bugs.md](fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524).
+  - low-Z D1: Start > End is an error (the Fortran leaves the absorber off without a message).
+  - low-Z D2: Start = End is an error (the Fortran switches on a zero-length absorber: a grid point
+    equal to Start gets 0·(0/0) = NaN, and the wave function becomes NaN).
+  - low-Z D3: an incomplete set of keys (only one of Start and End, or the energy or factor
+    without them) is an error (the Fortran leaves the absorber off without a message).
+  - low-Z D4: the set-up output shows the absorbers' own values. The Fortran's printout
+    (`InputNew.f90 PrintInput`) chooses between energy and coefficient by the high-end
+    `ZOptEnergy`, and its specular block prints the scattering grid's values. The index ranges
+    printed here are the points inside (the Fortran's `Setup.f90` prints the last point below
+    Start, and its index loop never tests the first grid point).
+  - Kept (not deviations): Start ≥ ZStart and End ≤ Zana are compared exactly, with the Fortran's
+    plain `<` and `>`; the energy check is tolerant (`.RLT.`), as in the Fortran. Where the
+    specular low-end and high-end absorbers overlap, the low-end value replaces the high-end one
+    (the Fortran's assignment order). The specular Z factors are applied at every Z point, as 5.24
+    does (`Absorption.f90 PerformEXPOpticalOpSpec`); outside the absorbers the factor is exactly 1.
+  - C++ only: the set-up warns when a grid point lies on different sides of an absorber's
+    strongest end in the two codes (low end: Start; high end: End). The grid points differ by an
+    ulp (the quad-precision entry below), so there one code multiplies by exp(−1.5·A·dt) and the
+    other by 1. The set-up recomputes the Fortran's point in quad precision (`fortran_grid_point`,
+    `src/grids/spatial_grids.cpp`, with `__float128`).
 - The check `ZSpOptStart < ZAsymptotic` is unreachable (implied by the Z0 checks); kept for parity.
 - `-fdefault-real-8` also promotes `DOUBLE PRECISION`, `DFLOAT`, `DBLE` and `…d0` literals to
   REAL(16) (quad precision). Expressions such as `rmin + dfloat(i-1)*delr` (Setup.f90 grids) are
@@ -70,8 +98,8 @@ differences are in [validation.md](validation.md).
   Real`**`integer is libgcc `__powidf2` (repeated squaring): use `fortran_integer_power`, not
   `std::pow`.
 - More quad-precision sites (same policy, plain double in C++): `erot = dfloat(j(j+1))/(...)`
-  (GridEnergies.f90; in practice bitwise equal), the CAP profiles `vimag/vimar/vimas`
-  (complex × `dfloat(nabpow+1)` → complex(16), Absorption.f90), `scalFacX/Y = sqrt(delx/dfloat(nx))`
+  (GridEnergies.f90; in practice bitwise equal), the CAP profiles `vimag/vimar/vimas` and their
+  low-end counterparts (complex × `dfloat(nabpow+1)` → complex(16), Absorption.f90), `scalFacX/Y = sqrt(delx/dfloat(nx))`
   (KineticOp.f90), `kinx(nx/2+1)` (GridEnergies.f90) and `conx/conxy` in TwoGrids.f90
   (MomentumShifting.f90 computes the same phase with integer `(ix-1)`, i.e. in double).
 - Analysis quad-precision sites (plain double in C++): `the_time = tottym + dfloat(propStep -

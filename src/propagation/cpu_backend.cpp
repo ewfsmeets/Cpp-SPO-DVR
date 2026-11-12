@@ -28,7 +28,7 @@ CpuBackend::CpuBackend(const BackendInput& in, PotentialGrid potential, Specular
       potential_(scattering_shape(in.config, in.basis), in.grids.nz_potential, in.basis.initial_index(), in.tables,
                  transform_, premultiplied_potential_, potential.symmetry),
       specular_(in.config.input.nr, in.grids.z_specular.size(), in.grids.nz_potential, in.basis.initial_index(),
-                *in.grids.z_specular_optical, in.grids.r_optical, in.tables, in.fft),
+                in.grids.r_optical, in.tables, in.fft),
       propagator_(in.config.derived.steps_per_analysis, kinetic_, potential_, specular_),
       // The initial wave packet lives on the specular grid; the scattering grid starts empty.
       // Zeroed per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).

@@ -4,6 +4,7 @@
 #include "propagation/propagation_tables.hpp"
 
 #include <cmath>
+#include <optional>
 #include <stdexcept>
 
 #include "core/constants.hpp"
@@ -46,20 +47,47 @@ std::vector<double> parallel_momenta(int n, double k0, double dk) {
   return k;
 }
 
-// exp(-V_opt dt) for the quadratic (power nabpow) absorbing potential
-// V_opt = vabs (n+1)/2 ((q - start) / (end - start))^n on [start, end], 0 elsewhere.
+// One quadratic (power nabpow) absorbing potential on [start, end] (bohr) at one end of a grid.
+struct OpticalPotential {
+  double start;
+  double end;
+  double strength;  // hartree. Fortran: vabszb, vabsrb, vabssb, vabszblow, vabssblow
+  AbsorberSide side;
+};
+
+// The low-Z absorber of the input, if it is on.
+std::optional<OpticalPotential> low_z_absorber(const LowZAbsorberInput& absorber, double strength) {
+  if (!absorber.enabled()) return std::nullopt;
+  return OpticalPotential{*absorber.start, *absorber.end, strength, AbsorberSide::Low};
+}
+
+// f = exp(-V_opt dt) at the grid points in [start, end], V_opt = vabs (n+1)/2 x^n with
+// x = (q - start) / (end - start) at the high end of a grid and the mirror image
+// x = (end - q) / (end - start) at the low end. Points outside keep their value: the Fortran
+// assigns, so an absorber set later overwrites an earlier one where they overlap. Double
+// precision; the Fortran evaluates V_opt in quad (an accepted quad-precision site).
 // Fortran: Absorption.f90 SetupAbsorpPot (vimag, vimar, vimas and EXPOpt*)
-std::vector<double> optical_factors(const UniformGrid& grid, double start, double end, double strength, int power,
-                                    double dt) {
-  const double length = end - start;
-  std::vector<double> f;
+void set_optical_factors(std::vector<double>& f, const UniformGrid& grid, const OpticalPotential& v, int power,
+                         double dt) {
+  const double length = v.end - v.start;
   for (int i = 0; i < grid.size(); ++i) {
     const double q = grid[i];
-    double v_opt = 0.0;
-    if (q >= start && q <= end)
-      v_opt = strength * 0.5 * (power + 1) * fortran_integer_power((q - start) / length, power);
-    f.push_back(std::exp(-(v_opt * dt)));
+    if (!(q >= v.start && q <= v.end)) continue;
+    const double x = v.side == AbsorberSide::High ? (q - v.start) / length : (v.end - q) / length;
+    // The Fortran's left-to-right order, vabs * 0.5 * dfloat(nabpow+1) * x**nabpow; must not change
+    // because the tables of inputs without low-Z absorbers must stay bitwise as they were.
+    const double v_opt = ((v.strength * 0.5) * (power + 1)) * fortran_integer_power(x, power);
+    f[i] = std::exp(-(v_opt * dt));
   }
+}
+
+// exp(-V_opt dt) on a grid: exactly 1 outside the absorbers; the low-end absorber, if any, is set
+// after the high-end one (the Fortran's order).
+std::vector<double> optical_factors(const UniformGrid& grid, const OpticalPotential& high,
+                                    const std::optional<OpticalPotential>& low, int power, double dt) {
+  std::vector<double> f(grid.size(), 1.0);
+  set_optical_factors(f, grid, high, power, dt);
+  if (low) set_optical_factors(f, grid, *low, power, dt);
   return f;
 }
 
@@ -143,9 +171,13 @@ PropagationTables make_propagation_tables(const Config& config, const SpatialGri
 
   // Absorbing potentials. Fortran: SetupAbsorpPot
   const int power = d.optical_potential_power;
-  t.z_optical = optical_factors(grids.z_scattering, p.z_opt_start, p.z_opt_end, d.z_opt_factor, power, dt);
-  t.r_optical = optical_factors(grids.r, p.r_opt_start, p.r_opt_end, d.r_opt_factor, power, dt);
-  t.z_specular_optical = optical_factors(grids.z_specular, p.zsp_opt_start, p.zsp_opt_end, d.zsp_opt_factor, power, dt);
+  const OpticalPotential z_high{p.z_opt_start, p.z_opt_end, d.z_opt_factor, AbsorberSide::High};
+  const OpticalPotential r_high{p.r_opt_start, p.r_opt_end, d.r_opt_factor, AbsorberSide::High};
+  const OpticalPotential zsp_high{p.zsp_opt_start, p.zsp_opt_end, d.zsp_opt_factor, AbsorberSide::High};
+  t.z_optical = optical_factors(grids.z_scattering, z_high, low_z_absorber(p.z_opt_low, d.z_opt_low_factor), power, dt);
+  t.r_optical = optical_factors(grids.r, r_high, std::nullopt, power, dt);
+  t.z_specular_optical =
+      optical_factors(grids.z_specular, zsp_high, low_z_absorber(p.zsp_opt_low, d.zsp_opt_low_factor), power, dt);
 
   for (const double v : asymptotic_potential) t.gas_phase.push_back(exp_minus_i(v * dt));
 

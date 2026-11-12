@@ -55,6 +55,9 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
   potential really has that symmetry.
 - Implemented: checkpoint/restart (native files and Fortran-compatible files).
+- Absorbing potentials at the low end of the Z grids (keys `ZOptLow…`, `ZSpOptLow…`, added in
+  upstream 5.24) on the CPU and the GPU; not yet compared with the Fortran code in a regression
+  gate ([docs/upstream_sync.md](docs/upstream_sync.md)).
 - Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).

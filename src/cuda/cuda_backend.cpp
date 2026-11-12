@@ -92,7 +92,7 @@ CudaBackend::CudaBackend(const BackendInput& in, PotentialGrid potential, Specul
       psi_(device_layout(shape_), in.config.input.nr, in.grids.z_specular.size()),
       kinetic_(shape_, in.tables, fft_work_limit),
       specular_(in.config.input.nr, in.grids.z_specular.size(), in.grids.nz_potential, in.basis.initial_index(),
-                *in.grids.z_specular_optical, in.grids.r_optical, in.tables, fft_work_limit),
+                in.grids.r_optical, in.tables, fft_work_limit),
       potential_(make_potential_operator(in, potential)),
       host_specular_(std::move(initial)),
       plane_(std::size_t(shape_.n_rot) * shape_.nx * shape_.ny * shape_.nr),

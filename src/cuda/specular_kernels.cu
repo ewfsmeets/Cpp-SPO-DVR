@@ -16,7 +16,7 @@ __global__ void specular_gas_phase_and_absorbers_kernel(SpecularStepArgs args, C
   const int iz = static_cast<int>(point / args.nr);
   Complex v = spec[point];
   if (iz >= args.nz_potential) v = args.gas_phase_step[ir] * v;
-  if (iz >= args.z_absorber_first && iz <= args.z_absorber_last) v = args.z_optical[iz] * v;
+  v = args.z_optical[iz] * v;
   if (args.nr > 1 && ir >= args.r_absorber_first && ir <= args.r_absorber_last) v = args.r_optical[ir] * v;
   spec[point] = v;
 }

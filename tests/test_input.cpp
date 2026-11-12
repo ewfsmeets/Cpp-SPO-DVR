@@ -232,6 +232,51 @@ TEST(Input, RStartJustAboveZeroIsValid) {
   EXPECT_EQ(config.input.r_start, 2.0e-12);
 }
 
+// Low-Z absorbers on both grids from exactly ZStart to exactly Zana are valid: the Fortran checks
+// Start < ZStart and End > Zana with plain comparisons (1e-13 beyond them is in the violation table).
+TEST(Input, LowZAbsorbersAtTheirBoundsAreValid) {
+  Json json = reference_json();
+  json["ZOptLowStart"] = -2.0;
+  json["ZOptLowEnd"] = 8.0;
+  json["ZOptLowEnergy"] = 0.3;
+  json["ZSpOptLowStart"] = -2.0;
+  json["ZSpOptLowEnd"] = 8.0;
+  json["ZSpOptLowFactor"] = 0.01;
+  const Config config = build(json);
+  EXPECT_NO_THROW((void)make_spatial_grids(config));
+  EXPECT_TRUE(config.input.z_opt_low.enabled());
+  EXPECT_TRUE(config.input.zsp_opt_low.enabled());
+}
+
+// Strength of a low-Z absorber: from the energy over End - Start (as the high-end absorbers),
+// else the factor; an energy of 0 gives 0, and so does one within the 1e-12 tolerance below 0
+// (accepted by the Fortran's .RLT. check). Without low-Z keys both absorbers are off.
+TEST(Input, LowZAbsorberStrengths) {
+  const Config off = build(reference_json());
+  EXPECT_FALSE(off.input.z_opt_low.enabled());
+  EXPECT_FALSE(off.input.zsp_opt_low.enabled());
+  EXPECT_EQ(off.derived.z_opt_low_factor, 0.0);
+  EXPECT_EQ(off.derived.zsp_opt_low_factor, 0.0);
+
+  Json json = reference_json();
+  json["ZOptLowStart"] = -1.0;
+  json["ZOptLowEnd"] = 4.0;
+  json["ZOptLowEnergy"] = 0.3;
+  json["ZSpOptLowStart"] = -2.0;
+  json["ZSpOptLowEnd"] = 6.0;
+  json["ZSpOptLowFactor"] = 0.0125;
+  Config config = build(json);
+  const double ekin = units::legacy.ev_to_hartree(0.3);
+  EXPECT_EQ(config.derived.z_opt_low_factor, optical_potential_strength(ekin, 4.0 - (-1.0), config.derived.total_mass));
+  EXPECT_EQ(config.derived.zsp_opt_low_factor, 0.0125);
+
+  for (const double energy : {0.0, -1.0e-13}) {
+    json["ZOptLowEnergy"] = energy;
+    config = build(json);
+    EXPECT_EQ(config.derived.z_opt_low_factor, 0.0) << energy;
+  }
+}
+
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
   const char* name;
@@ -337,7 +382,25 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"PhiParallelBig", [](Json& j) { j["PhiParallel"] = 361.0; }, "PhiParallel"},
         Violation{"ZAnaSpDynamic", [](Json& j) { j["ZAnaSp"] = 12.0; }, "ZAnaSp"},
         Violation{"ZAnaSpGtOpt", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 17.0; }, "ZAnaSp"},
-        Violation{"ZAnaSpLtZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.0; }, "ZAnaSp"}),
+        Violation{"ZAnaSpLtZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.0; }, "ZAnaSp"},
+        // Low-Z absorbers. low-Z D3: an incomplete set of keys (the Fortran ignores it).
+        Violation{"LowZD3OnlyStart", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd"},
+        Violation{"LowZD3OnlyEnd", [](Json& j) { j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
+        Violation{"LowZD3OnlyStrength", [](Json& j) { j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowStart"},
+        // low-Z D1 (Start > End, ignored by the Fortran) and low-Z D2 (Start = End, NaN there).
+        Violation{"LowZD1StartAboveEnd", [](Json& j) { j["ZOptLowStart"] = 4.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
+        Violation{"LowZD1SpecularStartAboveEnd", [](Json& j) { j["ZSpOptLowStart"] = 4.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart"},
+        Violation{"LowZD2StartEqualsEnd", [](Json& j) { j["ZOptLowStart"] = 3.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
+        Violation{"LowZD2SpecularStartEqualsEnd", [](Json& j) { j["ZSpOptLowStart"] = 3.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart"},
+        // The Fortran's plain < and >: 1e-13 beyond ZStart or Zana is rejected (.RLT. would accept it).
+        Violation{"LowZStartBelowZStart", [](Json& j) { j["ZOptLowStart"] = -2.0 - 1.0e-13; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
+        Violation{"LowZEndAboveZana", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0 + 1.0e-13; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd"},
+        Violation{"LowZSpecularStartBelowZStart", [](Json& j) { j["ZSpOptLowStart"] = -2.0 - 1.0e-13; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart"},
+        Violation{"LowZSpecularEndAboveZana", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0 + 1.0e-13; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowEnd"},
+        Violation{"LowZNoEnergyOrFactor", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; }, "ZOptLowEnergy"},
+        Violation{"LowZEnergyAndFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowEnergy"},
+        Violation{"LowZEnergyNegative", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = -0.1; }, "ZOptLowEnergy"},
+        Violation{"LowZSpecularEnergyNegative", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -0.1; }, "ZSpOptLowEnergy"}),
     [](const ::testing::TestParamInfo<Violation>& param_info) { return std::string(param_info.param.name); });
 
 TEST(Input, DerivedQuantities) {

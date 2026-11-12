@@ -44,8 +44,7 @@ struct SpecularStepArgs {
   int nz;               // specular Z points
   int nz_potential;     // Z < zasymp
   const Complex* gas_phase_step;  // per ir: rot(dt/2) exp(-i vasy dt) rot(dt/2)
-  int z_absorber_first, z_absorber_last;
-  const double* z_optical;        // per iz
+  const double* z_optical;        // per iz, applied at every iz (1 outside the absorbers)
   int r_absorber_first, r_absorber_last;
   const double* r_optical;        // per ir (not applied for nr = 1)
 };

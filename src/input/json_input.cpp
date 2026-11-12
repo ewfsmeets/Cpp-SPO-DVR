@@ -2,6 +2,7 @@
 // reader does while reading. Fortran: InputNew.f90 ReadInput
 #include "input/json_input.hpp"
 
+#include <format>
 #include <fstream>
 #include <limits>
 #include <set>
@@ -158,6 +159,24 @@ void read_required_keys(JsonReader& in, InputParameters& p) {
   in.read("TolSp", p.tol_specular, required);
 }
 
+// The input keys of one low-Z absorber (upstream 5.24); all optional, absent = off.
+struct LowZAbsorberKeys {
+  std::string start;
+  std::string end;
+  std::string energy;
+  std::string factor;
+};
+const LowZAbsorberKeys scattering_low_z_keys{"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy", "ZOptLowFactor"};
+const LowZAbsorberKeys specular_low_z_keys{"ZSpOptLowStart", "ZSpOptLowEnd", "ZSpOptLowEnergy", "ZSpOptLowFactor"};
+
+// Reads the keys of one low-Z absorber; an absent key leaves its value empty.
+void read_low_z_absorber(JsonReader& in, const LowZAbsorberKeys& keys, LowZAbsorberInput& absorber) {
+  in.read(keys.start, absorber.start);
+  in.read(keys.end, absorber.end);
+  in.read(keys.energy, absorber.energy);
+  in.read(keys.factor, absorber.factor);
+}
+
 // Optional keys; absent keys keep the Fortran defaults of InputParameters.
 void read_optional_keys(JsonReader& in, InputParameters& p) {
   constexpr auto optional = Presence::Optional;
@@ -199,6 +218,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("ROptFactor", p.r_opt_factor);
   in.read("ZSpOptEnergy", p.zsp_opt_energy);
   in.read("ZSpOptFactor", p.zsp_opt_factor);
+  read_low_z_absorber(in, scattering_low_z_keys, p.z_opt_low);
+  read_low_z_absorber(in, specular_low_z_keys, p.zsp_opt_low);
 
   in.read("RestartDir", p.restart_dir, optional);
   in.read("RestartFormat", p.restart_format, optional);
@@ -214,6 +235,48 @@ void reject_unsupported_keys(JsonReader& in) {
   for (const char* key :
        {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES", "PESMixingAlfa"})
     in.reject_if_present(key);
+}
+
+// Every optical potential needs its energy or its factor. Fortran reads the factor only when
+// the energy is absent; giving both is ambiguous and rejected here.
+void require_energy_or_factor(const JsonReader& in, const std::string& energy, const std::string& factor) {
+  const bool has_energy = in.contains(energy);
+  const bool has_factor = in.contains(factor);
+  if (!has_energy && !has_factor) throw InputError(energy, factor + " or " + energy + " should be present.");
+  if (has_energy && has_factor) throw InputError(energy, "give either " + energy + " or " + factor + ", not both");
+}
+
+// A low-Z absorber (upstream 5.24). The Fortran switches it on only if Start and End are both
+// given with Start <= End, and then compares with plain < and > (not the tolerant .RLT./.RGT.),
+// so the comparisons here are exact. Errors here, ignored or accepted by the Fortran: an
+// incomplete set of keys (low-Z D3), Start > End (low-Z D1), Start = End (low-Z D2).
+// Fortran: InputNew.f90 ReadInput
+void require_low_z_absorber(const JsonReader& in, const InputParameters& p, const LowZAbsorberKeys& keys,
+                            const LowZAbsorberInput& absorber) {
+  const std::string& start_key = keys.start;
+  const std::string& end_key = keys.end;
+  if (!absorber.start && !absorber.end && !absorber.energy && !absorber.factor) return;  // off
+  if (!absorber.start || !absorber.end) {
+    const std::string& missing = absorber.start ? end_key : start_key;
+    throw InputError(missing, missing + " is missing: a low-Z absorber needs " + start_key + " and " + end_key +
+                                  "; give Start, End and one of Energy/Factor, or none of them");
+  }
+  const double start = *absorber.start;
+  const double end = *absorber.end;
+  if (start > end)
+    throw InputError(start_key, std::format("{} > {} ({} > {} bohr): the absorber would be empty; use {} < {}",
+                                            start_key, end_key, start, end, start_key, end_key));
+  if (start == end)
+    throw InputError(start_key, std::format("{} = {} ({} bohr): the absorber needs a positive length; use {} < {}",
+                                            start_key, end_key, start, start_key, end_key));
+  if (start < p.z_start)
+    throw InputError(start_key,
+                     std::format("{} was set smaller than ZStart ({} < {} bohr)", start_key, start, p.z_start));
+  if (end > p.z_analysis)
+    throw InputError(end_key, std::format("{} was set higher than Zana ({} > {} bohr)", end_key, end, p.z_analysis));
+  require_energy_or_factor(in, keys.energy, keys.factor);
+  if (absorber.energy && fortran_compare::rlt(*absorber.energy, 0.0))
+    throw InputError(keys.energy, std::format("{} < 0 ({} eV)", keys.energy, *absorber.energy));
 }
 
 // The ERROR calls of the Fortran reader. Fortran: InputNew.f90 ReadInput
@@ -238,19 +301,14 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
       if (!in.contains(key)) throw InputError(key, std::string(key) + " must be present");
   }
 
-  // Every optical potential needs its energy or its factor. Fortran reads the factor only when
-  // the energy is absent; giving both is ambiguous and rejected here.
   const std::pair<std::string, std::string> cap_keys[] = {
       {"ZOptEnergy", "ZOptFactor"}, {"ROptEnergy", "ROptFactor"}, {"ZSpOptEnergy", "ZSpOptFactor"}};
-  for (const auto& [energy, factor] : cap_keys) {
-    const bool has_energy = in.contains(energy);
-    const bool has_factor = in.contains(factor);
-    if (!has_energy && !has_factor) throw InputError(energy, factor + " or " + energy + " should be present.");
-    if (has_energy && has_factor) throw InputError(energy, "give either " + energy + " or " + factor + ", not both");
-  }
+  for (const auto& [energy, factor] : cap_keys) require_energy_or_factor(in, energy, factor);
   if (p.z_opt_energy && rlt(*p.z_opt_energy, 0.0)) throw InputError("ZOptEnergy", "ZOptEnergy < 0.");
   if (p.r_opt_energy && rlt(*p.r_opt_energy, 0.0)) throw InputError("ROptEnergy", "ROptEnergy < 0.");
   if (p.zsp_opt_energy && rlt(*p.zsp_opt_energy, 0.0)) throw InputError("ZSpOptEnergy", "ZSpOptEnergy < 0.");
+  require_low_z_absorber(in, p, scattering_low_z_keys, p.z_opt_low);
+  require_low_z_absorber(in, p, specular_low_z_keys, p.zsp_opt_low);
 
   if (p.z_analysis_specular) {
     const double z_ana_sp = *p.z_analysis_specular;

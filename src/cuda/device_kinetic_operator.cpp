@@ -82,12 +82,11 @@ void DeviceKineticOperator::apply(DeviceWavePacket& psi, TimeStep step) const {
 }
 
 DeviceSpecularOperator::DeviceSpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel,
-                                               const IndexRange& z_absorber, const IndexRange& r_absorber,
-                                               const PropagationTables& tables, std::size_t max_fft_work)
+                                               const IndexRange& r_absorber, const PropagationTables& tables,
+                                               std::size_t max_fft_work)
     : nr_(nr),
       nz_(nz_specular),
       nz_potential_(nz_potential),
-      z_absorber_(z_absorber),
       r_absorber_(r_absorber),
       gas_phase_step_(upload_complex(specular_gas_phase_factors(nr, initial_channel, tables))),
       z_optical_(std::span<const double>(tables.z_specular_optical)),
@@ -118,8 +117,6 @@ void DeviceSpecularOperator::apply(DeviceWavePacket& psi, TimeStep step, bool ki
                               nz_,
                               nz_potential_,
                               gas_phase_step_.data(),
-                              z_absorber_.first,
-                              z_absorber_.last,
                               z_optical_.data(),
                               r_absorber_.first,
                               r_absorber_.last,

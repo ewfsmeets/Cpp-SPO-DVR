@@ -1,9 +1,11 @@
 // Printed sections and full-precision data files of the setup results.
 #include "report/sections.hpp"
 
+#include <format>
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 #include "core/unit_conversion.hpp"
 
@@ -28,6 +30,33 @@ std::ofstream open_output(const std::filesystem::path& path) {
   std::ofstream file(path);
   if (!file) throw std::runtime_error("cannot open output file '" + path.string() + "'");
   return file;
+}
+
+// A low-Z absorber's range and strength, if it is on (the Fortran prints wrong values: low-Z D4).
+void add_low_z_absorber(KeyValueList& list, const std::string& label, const LowZAbsorberInput& absorber,
+                        double strength) {
+  if (!absorber.enabled()) return;
+  std::string text = fixed(*absorber.start, 6) + " .. " + fixed(*absorber.end, 6) + " bohr, strength " +
+                     scientific(strength, 8) + " hartree";
+  if (absorber.energy) text += " (energy " + fixed(*absorber.energy, 6) + " eV)";
+  list.add(label, text);
+}
+
+// The warning for a grid point on different sides of an absorber's strongest end in the two programs.
+std::string split_point_warning(const SplitGridPoint& s) {
+  const std::string_view here = s.inside_here ? "inside" : "outside";
+  const std::string_view fortran = s.inside_here ? "outside" : "inside";
+  return std::format(
+      "{} = {} bohr: grid point {} is {:.17g} here and {:.17g} in the Fortran (quad precision), so "
+      "it is {} the absorber here and {} it in the Fortran; move {} by about 1e-13 bohr to put the "
+      "point on the same side in both (inputs/README.md)",
+      s.key, s.end, s.index, s.point, s.fortran_point, here, fortran, s.key);
+}
+
+// "first .. last", or "none" for an empty range (no grid point inside the absorber).
+std::string index_range_text(const IndexRange& range) {
+  if (range.size() <= 0) return "none";
+  return std::to_string(range.first) + " .. " + std::to_string(range.last);
 }
 
 }  // namespace
@@ -63,6 +92,8 @@ void print_input_summary(std::ostream& out, const Style& style, const Config& co
       "CAP strengths (Z, r, Zsp)",
       scientific(d.z_opt_factor, 8) + ", " + scientific(d.r_opt_factor, 8) + ", " + scientific(d.zsp_opt_factor, 8),
       "hartree");
+  add_low_z_absorber(list, "Low-Z CAP in Z (scattering)", p.z_opt_low, d.z_opt_low_factor);
+  add_low_z_absorber(list, "Low-Z CAP in Z (specular)", p.zsp_opt_low, d.zsp_opt_low_factor);
   list.print(out, style);
 }
 
@@ -95,6 +126,9 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
              std::to_string(g.z_specular_optical->first) + " .. " + std::to_string(g.z_specular_optical->last));
   list.add("Optical potential r (indices)",
            std::to_string(g.r_optical.first) + " .. " + std::to_string(g.r_optical.last));
+  if (g.z_optical_low) list.add("Low-Z optical potential Z (indices)", index_range_text(*g.z_optical_low));
+  if (g.z_specular_optical_low)
+    list.add("Low-Z optical potential Z specular (indices)", index_range_text(*g.z_specular_optical_low));
   list.add("Theta points", std::to_string(angular.n_theta()));
   list.add("Phi points", std::to_string(angular.n_phi()));
   list.add("J range (step)", std::to_string(angular.j_min()) + " .. " + std::to_string(angular.j_max()) + " (" +
@@ -102,6 +136,9 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
   list.add("MJMax (basis)", std::to_string(angular.mj_max()));
   list.print(out, style);
   out << "\n  Indices are 0-based.\n\n";
+  for (const SplitGridPoint& s : g.split_points)
+    out << "  " << style.warning("WARNING: " + split_point_warning(s)) << '\n';
+  if (!g.split_points.empty()) out << '\n';
 
   Table table({"itheta", "theta (rad)", "weight"});
   for (int t = 0; t < angular.n_theta(); ++t)

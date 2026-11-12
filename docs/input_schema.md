@@ -40,7 +40,8 @@ Fortran default.
 
 For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROptEnergy` / `ROptFactor`,
 `ZSpOptEnergy` / `ZSpOptFactor`) is required.
-The energy is in eV, and the factor is the strength in hartree.
+The energy is in eV, and the factor is the strength in hartree. An energy of 0 means no
+absorption (absorber D1: the Fortran silently keeps a default strength instead).
 
 ## Optional keys (Fortran defaults)
 
@@ -62,6 +63,9 @@ The energy is in eV, and the factor is the strength in hartree.
 | `nPhisOptimal` | bool | false | with `UseSymmetry`: nφ becomes a multiple of what the whole group needs (C2v 2, C4v 4, C6v and C3v 6, C3 3) |
 | `CRPlibDataSet` | string | — | directory of the CRP data set (format: [crp_library.md](crp_library.md)), relative to the working directory; required with `SystemID` `CRPlibrary`, an error with any other PES. The data set is read and checked at start-up; the setup output shows its ranges and the grid points outside them |
 | `SymmetryTolerance` | real | 1e-5 eV | C++ only. With `UseSymmetry` the PES is first compared with its symmetry images at 1000 sample points (x, y, φ anywhere in the cell; θ, Z, r at grid points; images wrapped into the unit cell, VMin/VMax applied); a larger max \|ΔV\| is an error, and so is a non-finite V at a sample point or image (parameter `SystemID`, naming the point) |
+| `ZOptLowStart` `ZOptLowEnd` | real | none: off | zsplmilow, zsplmalow (keys of upstream 5.24). An absorbing potential at the low end of the scattering Z grid: the high-end profile mirrored, strongest at Start, 0 at End. On only if both are given, with ZStart ≤ Start < End ≤ Zana. These two bounds are compared exactly, as the Fortran does (plain `<`, `>`). Start > End, Start = End and an incomplete set of the four keys are errors (low-Z D1–D3, [fortran_input_bugs.md](fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524)). It may share the point Z = Zana with the high-end absorber (both are 0 there). The set-up warns when a grid point lies on different sides of Start here and in the Fortran ([inputs/README.md](../inputs/README.md#low-z-absorbers-and-the-grid-point-trap)) |
+| `ZOptLowEnergy` `ZOptLowFactor` | real | none (exactly one when the absorber is on) | ZOptLowEnergy (eV, ≥ 0 within 1e-12; 0 means no absorption), vabszblow (strength in hartree) |
+| `ZSpOptLowStart` `ZSpOptLowEnd` `ZSpOptLowEnergy` `ZSpOptLowFactor` | real | none: off | ssplmilow, ssplmalow, ZSpOptLowEnergy, vabssblow: the same on the specular grid, also with End ≤ Zana. Where it overlaps the high-end specular absorber (possible when Zana > ZSpOptStart), the low-end value replaces the high-end one, as in the Fortran |
 | `DoDump` `FullSMatrix` | bool | false | |
 
 ## Checkpoint / restart keys (C++ only)
@@ -78,7 +82,10 @@ fort.22). Its records must lie every dtAna from t = 0.
 A restart must use the same input as the earlier run except `NewCalc`, `tStart`, `tEnd`, `nStep`
 (and output switches); the program checks the grids, masses, time steps, wave packet and
 absorbers against the checkpoint and names any parameter that differs. This includes the number
-of φ points, which `nPhisOptimal` with `UseSymmetry` can change.
+of φ points, which `nPhisOptimal` with `UseSymmetry` can change, and the low-Z absorbers: a
+checkpoint or BK file written with a low-Z absorber that the input does not have (or the other way
+round) is refused with a message naming that absorber. Files written without low-Z absorbers have
+the same contents as before these keys existed.
 The checkpoint records the `SystemID` but not the CRP data set: a restart with SystemID
 `CRPlibrary` must use the same `CRPlibDataSet` (not checked).
 
@@ -92,6 +99,8 @@ All checks of `InputNew.f90` ReadInput/ValidateInput are reproduced, with the sa
 comparisons (absolute tolerance 1e-12). So are the grid checks of `Setup.f90` and `setupdvr.f90`
 and the nφ checks of `transform.f90` (which are hard errors here). Every check has a unit test in
 `tests/test_input.cpp`. Deviations are listed in [fortran_deviations.md](fortran_deviations.md).
-Two Fortran flux analysis checks are wrong and are fixed here (flux Q1, flux Q2):
+Two Fortran flux analysis checks are wrong and are fixed here (flux Q1, flux Q2), and so are
+the silent cases of the low-Z absorber keys (low-Z D1–D3) and the default strength the Fortran
+keeps for an absorber energy of 0 (absorber D1):
 [fortran_input_bugs.md](fortran_input_bugs.md) describes them, with demonstration runs of the
 Fortran program.

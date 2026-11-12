@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
   const PotentialOperator potential_op(shape, grids.nz_potential, basis.initial_index(), tables, transform,
                                        potential.values, potential.symmetry);
   const SpecularOperator specular(p.nr, grids.z_specular.size(), grids.nz_potential, basis.initial_index(),
-                                  *grids.z_specular_optical, grids.r_optical, tables, fft);
+                                  grids.r_optical, tables, fft);
   const SplitOperatorPropagator propagator(config.derived.steps_per_analysis, kinetic, potential_op, specular);
 
   WavePacket psi{ScatteringWave(shape.n_rot, p.nx * p.ny, p.nr * p.nz),

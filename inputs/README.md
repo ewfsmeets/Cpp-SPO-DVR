@@ -175,6 +175,23 @@ waves, a high one reflects slow ones.
 - `tools/wave_packet_check.py` computes R and T (1D transfer matrix through the exact −iV_opt) and
   L/λ for all three.
 
+### Low-Z absorbers and the grid-point trap
+- **Low-Z absorbers** (`ZOptLow…` on the scattering grid, `ZSpOptLow…` on the specular grid; keys
+  of upstream 5.24, [input_schema.md](../docs/input_schema.md)): the mirror image at the start of a
+  Z grid, V_opt = A·(3/2)·((end − q)/L)², strongest at Start, with ZStart ≤ Start < End ≤ `Zana`.
+- **The trap:** an absorber's strongest end (Start of a low-Z absorber, End of the others) lying
+  exactly on a grid point. The grid points here are `ZStart + i·dZ` in double precision; the
+  Fortran rounds the same expression from quad precision, so some points differ by one ulp
+  ([fortran_deviations.md](../docs/fortran_deviations.md)). A point on the strongest end can then be
+  inside the absorber in one program and outside in the other: one multiplies it by exp(−1.5·A·dt)
+  every step, the other by 1. Example: with ZStart −2 and dZ 0.08, point 30 is 0.3999999999999999
+  here and 0.4 in the Fortran, so a low-Z absorber from Start = 0.4 contains it only in the Fortran.
+- **What to do:** start a low-Z absorber at ZStart (point 0 is exact in both programs) or between
+  grid points. The set-up checks every absorber and prints a WARNING naming the point when the two
+  programs disagree; moving that end by about 1e-13 bohr (within the 1e-12 tolerance of the
+  grid-end checks) removes the disagreement. The rule "end on the last grid point" (step 9) is
+  checked in the same way.
+
 ## 8. Total time and energy grid
 The reaction probability is 1 − Σ(reflection probabilities): flux that has not crossed `Zana` by
 `tEnd` is counted as reaction. So `tEnd` sets the lowest outgoing normal energy E_n,min that is

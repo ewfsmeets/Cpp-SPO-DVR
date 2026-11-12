@@ -2,6 +2,7 @@
 // Fortran: WaveFunction.f90 SaveWaveFunc / ReadWaveFunc, AsympInfo.f90 ReadOrWriteAsympInfo
 #include "io/checkpoint.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -23,8 +24,14 @@ constexpr Magic bk_magic = {'S', 'P', 'O', 'D', 'V', 'R', '-', 'B', 'K', 'C', 'O
 constexpr std::uint32_t format_version = 2;  // 2: number of phi points in the parameter list
 constexpr std::uint64_t end_marker = 0x454e44'4f46'4350ULL;  // marks a completely written checkpoint
 
-// Input parameters that a restart must not change, with their JSON key names.
-std::vector<std::pair<std::string, double>> restart_parameters(const Config& config) {
+// (name, value) pairs of the restart parameters, in file order.
+using ParameterList = std::vector<std::pair<std::string, double>>;
+
+// A sanity bound on the stored count of a corrupt file (the lists below have at most 41 entries).
+constexpr std::uint64_t max_stored_parameters = 1000;
+
+// The parameters every file has (format version 2).
+ParameterList fixed_restart_parameters(const Config& config) {
   const InputParameters& p = config.input;
   const DerivedParameters& d = config.derived;
   return {
@@ -65,6 +72,56 @@ std::vector<std::pair<std::string, double>> restart_parameters(const Config& con
       {"ZSpOptFactor (effective)", d.zsp_opt_factor}};
 }
 
+// The entries of a low-Z absorber, only when it is on: files written without low-Z absorbers keep
+// the list (and the bytes) they had before the low-Z absorbers existed.
+void add_low_z_absorber(ParameterList& list, const std::string& prefix, const LowZAbsorberInput& absorber,
+                        double strength) {
+  if (!absorber.enabled()) return;
+  list.emplace_back(prefix + "Start", *absorber.start);
+  list.emplace_back(prefix + "End", *absorber.end);
+  list.emplace_back(prefix + "Factor (effective)", strength);
+}
+
+// Input parameters that a restart must not change, with their JSON key names.
+ParameterList restart_parameters(const Config& config) {
+  ParameterList list = fixed_restart_parameters(config);
+  add_low_z_absorber(list, "ZOptLow", config.input.z_opt_low, config.derived.z_opt_low_factor);
+  add_low_z_absorber(list, "ZSpOptLow", config.input.zsp_opt_low, config.derived.zsp_opt_low_factor);
+  return list;
+}
+
+// True if the list has an entry with this name.
+bool has_name(const ParameterList& list, const std::string& name) {
+  return std::any_of(list.begin(), list.end(), [&](const auto& entry) { return entry.first == name; });
+}
+
+// Why the parameter names of a file differ from the input's: a low-Z absorber that is on in only
+// one of them, or else a list of another program version.
+std::string parameter_list_mismatch(const ParameterList& input, const ParameterList& stored) {
+  const std::pair<std::string, std::string> low_z[] = {{"ZOptLow", "scattering"}, {"ZSpOptLow", "specular"}};
+  for (const auto& [prefix, grid] : low_z) {
+    const bool in_input = has_name(input, prefix + "Start");
+    const bool in_file = has_name(stored, prefix + "Start");
+    if (in_input != in_file)
+      return "the low-Z absorber on the " + grid + " grid (" + prefix + "Start, " + prefix + "End) is " +
+             (in_input ? "on" : "off") + " in the input but " + (in_file ? "on" : "off");
+  }
+  return "unexpected parameter list";
+}
+
+// The stored (name, value) list of a file header; where names the file for the error message.
+ParameterList read_parameter_list(BinaryReader& file, const std::string& where) {
+  const auto count = file.read<std::uint64_t>();
+  if (count > max_stored_parameters) throw CheckpointError("unexpected parameter list" + where);
+  ParameterList stored;
+  for (std::uint64_t k = 0; k < count; ++k) {
+    std::string name = file.read_string();
+    const double value = file.read<double>();
+    stored.emplace_back(std::move(name), value);
+  }
+  return stored;
+}
+
 void write_header(BinaryWriter& file, const Magic& magic, const Config& config) {
   file.write(magic);
   file.write(format_version);
@@ -86,15 +143,17 @@ void read_header(BinaryReader& file, const Magic& magic, const std::string& kind
   if (const std::string id = file.read_string(); id != config.input.system_id)
     throw CheckpointError("SystemID is '" + config.input.system_id + "' in the input but '" + id + "'" + where);
 
-  const auto expected = restart_parameters(config);
-  if (file.read<std::uint64_t>() != expected.size()) throw CheckpointError("unexpected parameter list" + where);
-  for (const auto& [name, value] : expected) {
-    const std::string stored_name = file.read_string();
-    const double stored = file.read<double>();
-    if (stored_name != name) throw CheckpointError("unexpected parameter list" + where);
-    if (stored != value)
-      throw CheckpointError(name + " is " + full_precision(value) + " in the input but " + full_precision(stored) +
-                            where + "; a restart must use the same parameters");
+  const ParameterList expected = restart_parameters(config);
+  const ParameterList stored = read_parameter_list(file, where);
+  const auto same_name = [](const auto& a, const auto& b) { return a.first == b.first; };
+  if (!std::equal(expected.begin(), expected.end(), stored.begin(), stored.end(), same_name))
+    throw CheckpointError(parameter_list_mismatch(expected, stored) + where +
+                          "; a restart must use the same parameters");
+  for (std::size_t k = 0; k < expected.size(); ++k) {
+    const auto& [name, value] = expected[k];
+    if (stored[k].second != value)  // also true for a NaN
+      throw CheckpointError(name + " is " + full_precision(value) + " in the input but " +
+                            full_precision(stored[k].second) + where + "; a restart must use the same parameters");
   }
 }
 

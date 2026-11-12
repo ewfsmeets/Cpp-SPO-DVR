@@ -15,6 +15,17 @@ namespace spodvr {
 
 namespace {
 
+// Strength of a low-Z absorber (hartree): from the energy if it is > 0, else the factor; 0 when
+// the absorber is off or its energy is 0 (as in the Fortran, whose default strength is 0 here).
+// Fortran: InputNew.f90 ProcessInput (vabszblow, vabssblow)
+double low_z_absorber_strength(const LowZAbsorberInput& absorber, double total_mass) {
+  if (!absorber.enabled()) return 0.0;
+  if (absorber.energy && *absorber.energy > 0.0)
+    return optical_potential_strength(units::legacy.ev_to_hartree(*absorber.energy), *absorber.end - *absorber.start,
+                                      total_mass);
+  return absorber.factor.value_or(0.0);
+}
+
 // Fortran: InputNew.f90 ProcessInput
 void process_input(const InputParameters& p, DerivedParameters& d) {
   const auto& units = units::legacy;
@@ -33,6 +44,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
   const double reduced_mass = units.amu_to_me((p.mass1 * p.mass2) / (p.mass1 + p.mass2));
 
   d.optical_potential_power = 2;
+  // An energy of 0 leaves the strength 0, i.e. no absorption (absorber D1: the Fortran keeps the
+  // factor's default strength instead).
   d.z_opt_factor = p.z_opt_factor.value_or(0.0);
   d.r_opt_factor = p.r_opt_factor.value_or(0.0);
   d.zsp_opt_factor = p.zsp_opt_factor.value_or(0.0);
@@ -45,6 +58,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
   if (p.zsp_opt_energy && *p.zsp_opt_energy > 0.0)
     d.zsp_opt_factor =
         optical_potential_strength(units.ev_to_hartree(*p.zsp_opt_energy), p.zsp_opt_end - p.zsp_opt_start, total_mass);
+  d.z_opt_low_factor = low_z_absorber_strength(p.z_opt_low, total_mass);
+  d.zsp_opt_low_factor = low_z_absorber_strength(p.zsp_opt_low, total_mass);
 
   d.rotational_constant = units.wavenumber_to_hartree(59.304);
 

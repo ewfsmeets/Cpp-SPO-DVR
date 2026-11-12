@@ -7,6 +7,18 @@
 
 namespace spodvr {
 
+// An optical potential at the low end of a Z grid (upstream 5.24): strongest at start, zero at
+// end. Off unless start and end are given (the reader rejects incomplete sets, low-Z D3).
+// Fortran: InputNew.f90 ReadInput (zsplmilow, zsplmalow, ZOptLowEnergy, vabszblow; ssplmilow, …)
+struct LowZAbsorberInput {
+  std::optional<double> start;   // …LowStart (bohr). Fortran: zsplmilow / ssplmilow
+  std::optional<double> end;     // …LowEnd (bohr). Fortran: zsplmalow / ssplmalow
+  std::optional<double> energy;  // …LowEnergy (eV). Fortran: ZOptLowEnergy / ZSpOptLowEnergy
+  std::optional<double> factor;  // …LowFactor (hartree). Fortran: vabszblow / vabssblow
+
+  [[nodiscard]] bool enabled() const { return start.has_value() && end.has_value(); }
+};
+
 // The input parameters as read from the JSON input file, in input units (bohr, eV, amu, a.u. of
 // time, degrees). Defaults are those of the Fortran code (globaldata.f90 SetupGlobalDataModule);
 // keys that the Fortran code requires have no meaningful default here and must be present.
@@ -107,6 +119,8 @@ struct InputParameters {
   double zsp_opt_end = 18.0;            // ZSpOptEnd / ssplma
   std::optional<double> zsp_opt_energy;  // ZSpOptEnergy (eV)
   std::optional<double> zsp_opt_factor;  // ZSpOptFactor / vabssb (hartree)
+  LowZAbsorberInput z_opt_low;          // ZOptLowStart, ZOptLowEnd, ZOptLowEnergy | ZOptLowFactor
+  LowZAbsorberInput zsp_opt_low;        // ZSpOptLow…: the same on the specular grid
 
   // --- output -----------------------------------------------------------------------------
   bool write_s_matrix = false;          // writeSMatrix / lwrit3
@@ -147,6 +161,8 @@ struct DerivedParameters {
   double z_opt_factor;              // Fortran: vabszb
   double r_opt_factor;              // Fortran: vabsrb
   double zsp_opt_factor;            // Fortran: vabssb
+  double z_opt_low_factor;          // 0 without a low-Z absorber. Fortran: vabszblow
+  double zsp_opt_low_factor;        // 0 without a low-Z absorber. Fortran: vabssblow
   int optical_potential_power;      // Fortran: nabpow
 
   double dx;                        // Fortran: delx

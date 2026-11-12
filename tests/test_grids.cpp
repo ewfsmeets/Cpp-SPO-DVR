@@ -2,8 +2,11 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <numeric>
+#include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -142,4 +145,86 @@ TEST(SpatialGrids, ReferenceCase) {
   EXPECT_EQ(g.r_optical.first, 25);     // r = 4.55
   EXPECT_EQ(g.r_optical.last, 55);
   EXPECT_EQ(g.x.spacing(), 6.239660 / 4.0);
+  EXPECT_FALSE(g.z_optical_low.has_value());
+  EXPECT_FALSE(g.z_specular_optical_low.has_value());
+  EXPECT_TRUE(g.split_points.empty());
+}
+
+namespace {
+// The reference case with changed keys.
+SpatialGrids grids_with(const nlohmann::json& changes) {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/hardwall_small/input.json");
+  nlohmann::json json = nlohmann::json::parse(file);
+  json.update(changes);
+  return make_spatial_grids(build_config(parse_input(json)));
+}
+}  // namespace
+
+// The points inside the low-Z absorbers, including ZStart itself (the first grid point).
+TEST(SpatialGrids, LowZAbsorberRanges) {
+  const SpatialGrids g = grids_with({{"ZOptLowStart", -2.0},
+                                     {"ZOptLowEnd", 8.0},
+                                     {"ZOptLowEnergy", 0.3},
+                                     {"ZSpOptLowStart", 0.44},
+                                     {"ZSpOptLowEnd", 6.0},
+                                     {"ZSpOptLowFactor", 0.01}});
+  ASSERT_TRUE(g.z_optical_low.has_value());
+  EXPECT_EQ(g.z_optical_low->first, 0);
+  EXPECT_EQ(g.z_optical_low->last, 125);  // Z = 8.0 = Zana
+  ASSERT_TRUE(g.z_specular_optical_low.has_value());
+  EXPECT_EQ(g.z_specular_optical_low->first, 31);  // Z = 0.48, the first point above 0.44
+  EXPECT_EQ(g.z_specular_optical_low->last, 100);  // Z = 6.0
+  EXPECT_TRUE(g.split_points.empty());
+}
+
+// The grid-point trap: point 30 of the Z grid (-2 + 30 * 0.08) is 0.39999999999999991 here and
+// 0.40000000000000002 in the Fortran (quad precision, rounded once), so a low-Z absorber from
+// Start = 0.4 contains it only in the Fortran. Point 220 is 15.600000000000001 here and 15.6 in
+// the Fortran: a high-end absorber ending at 15.6 contains it only in the Fortran. ZStart itself
+// and a Start between grid points give no split point.
+TEST(SpatialGrids, FindsTheGridPointsThatAnAbsorbersStrongestEndSplits) {
+  const SpatialGrids low = grids_with({{"ZOptLowStart", 0.4}, {"ZOptLowEnd", 8.0}, {"ZOptLowEnergy", 0.3}});
+  ASSERT_EQ(low.split_points.size(), 1u);
+  const SplitGridPoint& l = low.split_points[0];
+  EXPECT_EQ(l.key, "ZOptLowStart");
+  EXPECT_EQ(l.end, 0.4);
+  EXPECT_EQ(l.index, 30);
+  EXPECT_EQ(l.point, -2.0 + 30 * 0.08);
+  EXPECT_EQ(l.point, 0.39999999999999991);
+  EXPECT_EQ(l.fortran_point, 0.40000000000000002);
+  EXPECT_FALSE(l.inside_here);
+
+  const SpatialGrids high = grids_with({{"ZSpOptStart", 13.0}, {"ZSpOptEnd", 15.6}});
+  ASSERT_EQ(high.split_points.size(), 1u);
+  const SplitGridPoint& h = high.split_points[0];
+  EXPECT_EQ(h.key, "ZSpOptEnd");
+  EXPECT_EQ(h.index, 220);
+  EXPECT_EQ(h.point, 15.600000000000001);
+  EXPECT_EQ(h.fortran_point, 15.6);
+  EXPECT_FALSE(h.inside_here);
+
+  for (const double start : {-2.0, 0.44}) {
+    const SpatialGrids none = grids_with({{"ZSpOptLowStart", start}, {"ZSpOptLowEnd", 8.0}, {"ZSpOptLowEnergy", 0.3}});
+    EXPECT_TRUE(none.split_points.empty()) << start;
+  }
+}
+
+// No input in this repository (tests/reference/*, inputs/*) has a grid point that the two
+// programs put on different sides of an absorber's strongest end, so none gets that warning.
+TEST(SpatialGrids, RepositoryInputsHaveNoGridPointWarnings) {
+  const std::filesystem::path reference = SPODVR_REFERENCE_DIR;
+  const std::filesystem::path root = reference.parent_path().parent_path();
+  std::vector<std::filesystem::path> inputs;
+  for (const std::filesystem::path& dir : {reference, root / "inputs"})
+    for (const auto& entry : std::filesystem::directory_iterator(dir))
+      if (std::filesystem::exists(entry.path() / "input.json")) inputs.push_back(entry.path() / "input.json");
+  EXPECT_GE(inputs.size(), 13u);  // 10 reference cases and 3 example inputs (2026-11-12)
+  for (const std::filesystem::path& input : inputs) {
+    std::ifstream file(input);
+    nlohmann::json json = nlohmann::json::parse(file, nullptr, true, /*ignore_comments=*/true);
+    if (json.contains("CRPlibDataSet"))  // relative to the repository root
+      json["CRPlibDataSet"] = (root / json["CRPlibDataSet"].get<std::string>()).string();
+    const SpatialGrids g = make_spatial_grids(build_config(parse_input(json)));
+    EXPECT_TRUE(g.split_points.empty()) << input << ": " << (g.split_points.empty() ? "" : g.split_points[0].key);
+  }
 }

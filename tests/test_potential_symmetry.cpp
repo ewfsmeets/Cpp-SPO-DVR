@@ -390,8 +390,8 @@ TEST(SymmetricPropagation, AgreesWithTheFullPotential) {
   const int nzpot = s.grids.nz_potential;
   const int ichn = c.basis.initial_index();
   const ScatteringKineticOperator kinetic(c.shape, c.tables, c.fft);
-  const SpecularOperator specular(c.shape.nr, s.grids.z_specular.size(), nzpot, ichn, *s.grids.z_specular_optical,
-                                  s.grids.r_optical, c.tables, c.fft);
+  const SpecularOperator specular(c.shape.nr, s.grids.z_specular.size(), nzpot, ichn, s.grids.r_optical, c.tables,
+                                  c.fft);
   const InitialWavePacket initial = make_initial_wave_packet(s.config, s.grids, c.gas, c.fft);
 
   auto propagate = [&](const PotentialOperator& potential) {

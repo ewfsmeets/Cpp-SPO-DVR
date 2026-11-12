@@ -24,8 +24,8 @@ namespace spodvr {
 // PerformEXPGasPhaseOnSpecGrid; Absorption.f90 PerformEXPOpticalOpSpec
 class SpecularOperator {
  public:
-  SpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel, const IndexRange& z_absorber,
-                   const IndexRange& r_absorber, const PropagationTables& tables, const Fft& fft);
+  SpecularOperator(int nr, int nz_specular, int nz_potential, int initial_channel, const IndexRange& r_absorber,
+                   const PropagationTables& tables, const Fft& fft);
 
   void apply(SpecularWave& psi, TimeStep step, bool kinetic_only) const;
 
@@ -38,7 +38,6 @@ class SpecularOperator {
   int nz_;
   int nz_potential_;
   int initial_channel_;
-  IndexRange z_absorber_;  // Fortran: nschsp .. nschmx
   IndexRange r_absorber_;  // Fortran: nrchsp .. nrchmx
   const PropagationTables& tables_;
   std::vector<std::complex<double>> gas_phase_step_;  // per ir: rot(dt/2) exp(-i vasy dt) rot(dt/2)

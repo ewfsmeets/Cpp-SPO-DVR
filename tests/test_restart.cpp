@@ -2,6 +2,7 @@
 // the unsplit run; damaged or mismatching checkpoints are clear errors.
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -17,6 +18,7 @@
 
 #include "app/cli.hpp"
 #include "app/run.hpp"
+#include "io/binary_file.hpp"
 #include "io/fortran_unformatted.hpp"
 
 using namespace spodvr;
@@ -296,6 +298,144 @@ TEST(Restart, RestartFromFortranFilesIsBitwiseIdenticalToTheUnsplitRun) {
   ASSERT_EQ(r.code_second_fortran, 0) << r.err;
   for (const char* name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "fort.9", "fort.21"})
     EXPECT_EQ(read_file(r.root / "full" / name), read_file(r.root / "second_fortran" / name)) << name;
+}
+
+namespace {
+
+// Both low-Z absorbers on: the scattering one in the energy form, the specular one as a factor.
+nlohmann::json with_low_z(nlohmann::json json) {
+  json["ZOptLowStart"] = -2.0;
+  json["ZOptLowEnd"] = 8.0;
+  json["ZOptLowEnergy"] = 0.3;
+  json["ZSpOptLowStart"] = -2.0;
+  json["ZSpOptLowEnd"] = 6.0;
+  json["ZSpOptLowFactor"] = 0.01;
+  return json;
+}
+
+// With low-Z absorbers: the unsplit run (0 .. 120) and the split run (0 .. 60, 60 .. 120).
+struct LowZRuns {
+  fs::path root = fs::temp_directory_path() / ("spodvr_restart_low_z_" + std::to_string(::getpid()));
+  int code_full;
+  int code_first;
+  int code_second;
+  std::string err;
+
+  LowZRuns() {
+    fs::remove_all(root);
+    const nlohmann::json json = with_low_z(short_json());
+    code_full = run(with_times(json, 0.0, 120.0, 60), root / "full", err);
+    code_first = run(with_times(json, 0.0, 60.0, 30), root / "first", err);
+    code_second = run(restart_from(with_times(json, 60.0, 120.0, 30), root / "first"), root / "second", err);
+  }
+  ~LowZRuns() { fs::remove_all(root); }
+};
+
+const LowZRuns& low_z_runs() {
+  static const LowZRuns r;
+  return r;
+}
+
+}  // namespace
+
+TEST(Restart, SplitRunWithLowZAbsorbersIsBitwiseIdenticalToTheUnsplitRun) {
+  const LowZRuns& r = low_z_runs();
+  ASSERT_EQ(r.code_full, 0) << r.err;
+  ASSERT_EQ(r.code_first, 0) << r.err;
+  ASSERT_EQ(r.code_second, 0) << r.err;
+  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "probabilities_rovib.tsv"})
+    EXPECT_EQ(read_file(r.root / "full" / name), read_file(r.root / "second" / name)) << name;
+}
+
+// A restart or an analysis-only run must have the low-Z absorbers of the run that wrote the file:
+// one switched on or off only in the input is named, and so is a changed low-Z parameter.
+TEST(Restart, LowZAbsorberMismatchIsAnError) {
+  const LowZRuns& r = low_z_runs();
+  ASSERT_EQ(r.code_first, 0) << r.err;
+  std::string err;
+  const nlohmann::json second = with_times(short_json(), 60.0, 120.0, 30);
+  EXPECT_EQ(run(restart_from(second, r.root / "first"), r.root / "without", err), 4);
+  EXPECT_NE(err.find("the low-Z absorber on the scattering grid (ZOptLowStart, ZOptLowEnd) is off in the input but on "
+                     "in checkpoint"),
+            std::string::npos)
+      << err;
+
+  const FirstRun& plain = first_run();
+  ASSERT_EQ(plain.code, 0) << plain.err;
+  EXPECT_EQ(run(restart_from(with_low_z(second), plain.root / "first"), r.root / "with", err), 4);
+  EXPECT_NE(err.find("is on in the input but off in checkpoint"), std::string::npos) << err;
+
+  nlohmann::json changed = restart_from(with_low_z(second), r.root / "first");
+  changed["ZSpOptLowEnd"] = 5.92;
+  EXPECT_EQ(run(changed, r.root / "changed_end", err), 4);
+  EXPECT_NE(err.find("ZSpOptLowEnd is"), std::string::npos) << err;
+  changed = restart_from(with_low_z(second), r.root / "first");
+  changed["ZOptLowEnergy"] = 0.25;
+  EXPECT_EQ(run(changed, r.root / "changed_energy", err), 4);
+  EXPECT_NE(err.find("ZOptLowFactor (effective) is"), std::string::npos) << err;
+
+  // Mode 2 (onlyAnalysis) reads the same list from the BK file.
+  nlohmann::json only = with_times(short_json(), 0.0, 120.0, 60);
+  only["onlyAnalysis"] = true;
+  only["RestartDir"] = (r.root / "full").string();
+  EXPECT_EQ(run(only, r.root / "only_without", err), 4);
+  EXPECT_NE(err.find("the low-Z absorber on the scattering grid (ZOptLowStart, ZOptLowEnd) is off in the input but on "
+                     "in BK coefficient file"),
+            std::string::npos)
+      << err;
+}
+
+// Files written without low-Z absorbers keep the parameter list of format version 2 (35 entries,
+// no low-Z names), so checkpoints and BK files of earlier versions of the program stay readable.
+TEST(Restart, CheckpointWithoutLowZAbsorbersKeepsItsParameterList) {
+  const FirstRun& r = first_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const std::vector<std::string> format_2 = {"ZStart",
+                                             "dZ",
+                                             "nZ",
+                                             "nZSpecular",
+                                             "RStart",
+                                             "dR",
+                                             "nR",
+                                             "nX",
+                                             "nY",
+                                             "JMax",
+                                             "MJMax",
+                                             "number of phi points (MJMax, nPhisOptimal)",
+                                             "Mass1",
+                                             "Mass2",
+                                             "HomoNuc",
+                                             "dtStep",
+                                             "dtAna",
+                                             "Zana",
+                                             "Z0",
+                                             "EMinWP",
+                                             "EMaxWP",
+                                             "EParallel",
+                                             "PhiParallel",
+                                             "VIn",
+                                             "JIn",
+                                             "MJIn",
+                                             "ZOptStart",
+                                             "ZOptEnd",
+                                             "ROptStart",
+                                             "ROptEnd",
+                                             "ZSpOptStart",
+                                             "ZSpOptEnd",
+                                             "ZOptFactor (effective)",
+                                             "ROptFactor (effective)",
+                                             "ZSpOptFactor (effective)"};
+  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin"}) {
+    BinaryReader file(r.root / "first" / name);
+    (void)file.read<std::array<char, 16>>();  // magic
+    EXPECT_EQ(file.read<std::uint32_t>(), 2u) << name;
+    EXPECT_EQ(file.read_string(), "HardWallPES") << name;
+    ASSERT_EQ(file.read<std::uint64_t>(), format_2.size()) << name;
+    for (const std::string& expected : format_2) {
+      EXPECT_EQ(file.read_string(), expected) << name;
+      (void)file.read<double>();
+    }
+  }
 }
 
 // A file written by gfortran with -fmax-subrecord-length=16 (tests/reference/fortran_unformatted).
