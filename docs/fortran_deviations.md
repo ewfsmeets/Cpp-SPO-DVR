@@ -17,6 +17,24 @@ differences are in [validation.md](validation.md).
 - flux Q2: the Fortran rejects only `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passes and
   `FluxAnalyzor.f90 setupFluxAnalyzor` divides by it (a garbage energy count, no flux results).
   C++: error if DeltaEFluxAna ≤ 0 (tolerant). Details: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
+- flux Q3, kept: the number of flux energies is `INT((EMaxFluxAna − EMinFluxAna)/DeltaEFluxAna) + 1`
+  with the energies in hartree (`FluxAnalyzor.f90 setupFluxAnalyzor`), so EMaxFluxAna is dropped for
+  most inputs, by rounding even when DeltaEFluxAna divides the range: 0.2–0.6 eV in steps of 0.1 gives
+  4 energies (0.2–0.5 eV), 0.40–0.95 eV in steps of 0.025 gives 22 (the last 0.925 eV). C++: the same
+  count (`flux_energy_count`); `make_flux_energies` adds a warning when the last energy lies below
+  EMaxFluxAna (`src/analysis/flux_analysis.cpp`; test `FluxEnergies.CountDropsTheEndPointAsTheFortran`).
+- flux Q5, kept: `FluxAnalyzor.f90` converts its energies, and the wave packet's EMinWP and EMaxWP
+  for b(k), with `Constants_eV2Ha` = 0.036749308286 (`units::precise`); the initial wave packet and
+  every other energy use chaev = 27.2114 (`units::legacy`). The two differ by 1.27e-7 relative, and
+  |b(k)|² differs from the momentum distribution of the C++ initial packet by 2.9e-7 of its peak
+  (hardwall_small). C++: the same factors (tests `FluxEnergies.FollowTheFortranExpressions` and
+  `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket`).
+- flux Q9, kept: b(k) (`MyFunctions.f90 getBkCoeffWavePacket`) has the phase e^(+i·δk·z0), δk = k0 − k,
+  the initial wave packet's momentum amplitude e^(−i·δk·z0): b is its complex conjugate. P(E) does not
+  depend on it (a phase per energy cancels in conj(φ)·φ′), but the energy-resolved φ and the Fortran's
+  flux restart files do. C++: the same phase (`wave_packet_momentum_amplitude`; test
+  `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket` checks b = conj of the
+  packet's Fourier transform).
 - Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
   propagating run (new or restart) with exit code 3 once the input checks have passed;
   analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
@@ -94,7 +112,8 @@ differences are in [validation.md](validation.md).
   few ulp from the scalar functions): `angulargrid.f90` acos (θ grid), `legendre.f90`
   AssociatedLegendre exp, and the cos/sin of exp(−iV·dt) in `Potential.f90`
   PerformEXPInteractionOp, and the cos/exp of `PESForCu111Persson.f90` (Dai-Light and the hard
-  wall are scalar). C++ uses the scalar functions, so these agree only to a few ulp.
+  wall are scalar; so are b(k) and the r-derivative table of the flux analysis: `pow`, `cexp` and
+  `tan` in the 5.24 objects, where `(-1.0)**distance` is a parity select, ±1 as with `__powidf2`). C++ uses the scalar functions, so these agree only to a few ulp.
   Real`**`integer is libgcc `__powidf2` (repeated squaring): use `fortran_integer_power`, not
   `std::pow`.
 - More quad-precision sites (same policy, plain double in C++): `erot = dfloat(j(j+1))/(...)`

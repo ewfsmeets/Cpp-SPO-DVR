@@ -186,6 +186,7 @@ add_library(spodvr_core
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
   src/analysis/fine_analysis.cpp
+  src/analysis/flux_analysis.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp
   src/io/fortran_unformatted.cpp
