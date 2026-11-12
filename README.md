@@ -231,6 +231,12 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   code. The fast-math builds (`build-fast`, `build-cuda-fast`) are expected to fail a few unit tests
   by one ulp, and with GCC 15 also the hard-wall V<sub>asy</sub> table of gate 1 (1.6e-14 against 1e-14);
   their other gates pass.
+- **Docs consistency:** `python3 -I -B tools/check_docs.py [--spodvr build/spodvr]` (under 1 s)
+  checks the docs against the code: input keys, output files, links and anchors, decision IDs,
+  local paths, command-line options (with `--spodvr`), gates and environment variables; it also
+  lists numbers repeated across docs (report-only). ctest runs it as `Docs.Consistency`
+  (`ctest --test-dir build -R Docs`). Accepted findings, each with a reason, are in
+  `tools/check_docs_allowlist.tsv`; a row that no longer suppresses anything fails the check.
 - **Numerically neutral changes** (refactors) must leave the results bitwise unchanged:
   `tools/check_bitwise_refactor.sh [base-ref]` (default `HEAD`). It builds both trees in a scratch
   directory; to configure without network access, set `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` to
@@ -367,7 +373,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 |---|---|
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
-| `tools/` | Fortran reference scripts, benchmark and comparison tools |
+| `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker |
 | `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |

@@ -30,3 +30,19 @@ add_subdirectory(crplib)
 # The CRP adapter test writes synthetic data sets with the CRP library's test helpers.
 target_include_directories(test_crp_potential PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/crplib)
 target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)
+
+# The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
+# command-line options, and two negative tests that show the checker fails on a planted fault.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(check_docs ${PROJECT_SOURCE_DIR}/tools/check_docs.py)
+add_test(NAME Docs.Consistency
+         COMMAND ${Python3_EXECUTABLE} -I -B ${check_docs} --root ${PROJECT_SOURCE_DIR} --spodvr $<TARGET_FILE:spodvr>)
+set(check_docs_negative ${CMAKE_COMMAND} -DPYTHON=${Python3_EXECUTABLE} -DCHECKER=${check_docs}
+    -DROOT=${PROJECT_SOURCE_DIR})
+set(check_docs_negative_script ${PROJECT_SOURCE_DIR}/tools/check_docs_negative_test.cmake)
+add_test(NAME Docs.UndocumentedKeyFails
+         COMMAND ${check_docs_negative} -DCASE=undocumented-key
+                 -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/undocumented-key -P ${check_docs_negative_script})
+add_test(NAME Docs.StaleAllowlistRowFails
+         COMMAND ${check_docs_negative} -DCASE=stale-allowlist
+                 -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/stale-allowlist -P ${check_docs_negative_script})

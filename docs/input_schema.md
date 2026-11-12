@@ -38,7 +38,8 @@ Fortran default.
 | `writeSMatrix` `writeProbs` `writeRDProbs` | bool | lwrit3, lwri25, lwdiro | output switches: `writeProbs` writes probabilities_rovib.tsv, `writeRDProbs` probabilities_diffraction.tsv; `writeSMatrix` writes fine_analysis/spectrum/s_matrix.tsv, the S-matrix of every state on the fine-analysis grid (Fortran: unit 3). The on-the-fly s_matrix.tsv is always written |
 | `TolSp` | real | tolsp | specular-grid tolerance; also the maximum initial norm outside [ZAna, start of the specular absorber] (hard error) |
 
-For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROpt…`, `ZSpOpt…`) is required.
+For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROptEnergy` / `ROptFactor`,
+`ZSpOptEnergy` / `ZSpOptFactor`) is required.
 The energy is in eV, and the factor is the strength in hartree.
 
 ## Optional keys (Fortran defaults)

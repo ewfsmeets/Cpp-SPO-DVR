@@ -1,0 +1,13 @@
+# Accepted findings of tools/check_docs.py (README.md "Testing").
+# Columns (tab-separated): check, file (as printed in the finding), match (a literal substring of
+# the finding line or of the offending source line), reason. Rows sorted by check, file, match.
+# A row that is the only match of no finding fails the check: delete rows that are no longer needed.
+check	file	match	reason
+decision-ids	docs/crp_library.md	decision D4	older wording of the CRP decision on few-ulp differences (scalar cos vs gfortran libmvec); to be renamed "CRP D4" and defined in docs/fortran_deviations.md
+decision-ids	docs/fortran_deviations.md	decision D2	older wording of the CRP decision to reproduce V = -VH2(r_last) outside the data; to be renamed "CRP D2" and defined in this file
+decision-ids	docs/fortran_deviations.md	decision D4	older wording of the CRP decision on few-ulp differences (scalar cos vs gfortran libmvec); to be renamed "CRP D4" and defined in this file
+decision-ids	docs/validation.md	decision D4	older wording of the CRP decision on few-ulp differences (scalar cos vs gfortran libmvec); to be renamed "CRP D4"
+decision-ids	tests/crplib/test_molecule_surface.cpp	decision D4	older wording of the CRP decision on few-ulp differences in test comments; to be renamed "CRP D4"
+decision-ids	tests/test_regression_pes.cpp	decision D4	older wording of the CRP decision on few-ulp differences in a test comment; to be renamed "CRP D4"
+links	docs/validation_thesis_fig5_3_dz/scripts/tables/verdict.md	(stages.md#item-	generated table that the record's scripts paste into its README.md, where stages.md resolves; the record changes only through its scripts
+local-paths	docs/performance.md	~/work/loop_scheduling_optimization.md	pointer to the local plan for the open loop-scheduling questions; to be dropped when its results are written into this doc

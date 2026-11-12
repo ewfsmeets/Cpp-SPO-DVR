@@ -181,7 +181,8 @@ The library tests need no real data set (the one in the repository is checked se
   else 0), whose response is known analytically.
 - Bitwise references from the Fortran library: a driver
   (`tools/fortran_reference/crp_driver/`) linked against the objects of the Fortran reference
-  build evaluates point lists on the synthetic data sets
+  build (directory `SPODVR_FORTRAN_OBJS`, default `~/work/SPO-DVR_v5.19/procfiles.dir/OBJS.dir`)
+  evaluates point lists on the synthetic data sets
   (`tools/fortran_reference/run_crp_reference.sh`).
 - Gates 1 and 2 of the program on the same data sets (`tests/reference/crp_*_synthetic_small`,
   [validation.md](validation.md)).
