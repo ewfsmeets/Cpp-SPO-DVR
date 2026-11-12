@@ -85,8 +85,13 @@ SymmetryCheck check_potential_symmetry(const Potential& potential, const GridSym
       const bool first = check.n_comparisons == 0;
       check.n_comparisons = check.n_comparisons + 1;
       const double deviation = std::abs(v - gv);
-      if (first || deviation > check.max_deviation) {
+      // A non-finite V gives an infinite or NaN deviation. `deviation > max` skips NaN, so the first
+      // NaN is taken explicitly and then kept: the check fails there instead of passing.
+      const bool first_nan = std::isnan(deviation) && !std::isnan(check.max_deviation);
+      if (first || first_nan || deviation > check.max_deviation) {
         check.max_deviation = deviation;
+        check.value = v;
+        check.image_value = gv;
         check.x = x;
         check.y = y;
         check.z = z;
@@ -104,6 +109,15 @@ void require_symmetric_potential(const SymmetryCheck& check, const Config& confi
   if (check.passed()) return;
   std::ostringstream message;
   message.precision(6);
+  if (!std::isfinite(check.value) || !std::isfinite(check.image_value)) {
+    message << "the potential " << config.input.system_id << " is not finite at a sample point of the symmetry "
+            << "self-check: V(q) = " << check.value << " eV, V(g q) = " << check.image_value
+            << " eV (after VMin/VMax) for g = " << describe(check.operation) << ", q at x = " << check.x
+            << ", y = " << check.y << ", Z = " << check.z << ", r = " << check.r
+            << " bohr, theta = " << rad_to_deg(check.theta) << ", phi = " << rad_to_deg(check.phi)
+            << " deg. Check the potential (its parameters or data set) there.";
+    throw InputError("SystemID", message.str());
+  }
   message << "the potential " << config.input.system_id << " is not symmetric under point group "
           << symmetry.point_group() << " to within SymmetryTolerance = " << check.tolerance
           << " eV: |V(q) - V(g q)| = " << check.max_deviation << " eV for g = " << describe(check.operation)

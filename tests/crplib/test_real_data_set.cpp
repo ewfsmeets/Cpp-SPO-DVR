@@ -18,12 +18,14 @@
 #include <utility>
 #include <vector>
 
+#include "comparison.hpp"
 #include "crplib/dataset.hpp"
 #include "crplib/molecule_surface.hpp"
 #include "crplib/qd_wrapper.hpp"
 #include "crplib/units.hpp"
 
 using namespace crplib;
+using spodvr::testing::nan_aware_max;
 
 namespace {
 
@@ -144,7 +146,7 @@ TEST(RealDataSet, ReproducesTheDataAtTheCutKnots) {
         ASSERT_TRUE(value.has_value()) << cut.file_name << " at Z " << cut.z[j] << ", r " << cut.r[i];
         const double v = value->v;
         const double difference = std::abs(v - data) / std::max(std::abs(data), hartree(1.0));
-        worst = std::max(worst, difference);
+        worst = nan_aware_max(worst, difference);
         EXPECT_LT(difference, 1e-11) << cut.file_name << " at Z " << cut.z[j] << ", r " << cut.r[i] << ": " << v
                                      << " vs " << data;
         ++n;
@@ -179,7 +181,7 @@ TEST(RealDataSet, SymmetricToRounding) {
                                                          {mirror(rotate(rotate(a0))), mirror(rotate(rotate(b0)))}};
             for (const auto& [a1, b1] : images) {
               const double difference = std::abs(pes.evaluate(a1, b1)->v - v0->v) / std::max(std::abs(v0->v), 1e-3);
-              worst = std::max(worst, difference);
+              worst = nan_aware_max(worst, difference);
             }
           }
   EXPECT_LT(worst, 1e-11);

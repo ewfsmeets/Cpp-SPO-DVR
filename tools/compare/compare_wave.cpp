@@ -1,6 +1,7 @@
 // Compares two wave packets written by spodvr_dump_wave: bitwise identical, and the largest
 // difference relative to the largest amplitude. Exit code 0 if the difference is within the
-// tolerance (default 0: bitwise identical).
+// tolerance (default 0: bitwise identical), else 1; a NaN or inf in either file always fails,
+// naming the first such element.
 // Usage: spodvr_compare_wave <a> <b> [tolerance]
 #include <cmath>
 #include <cstdio>
@@ -18,6 +19,13 @@ std::vector<double> read_values(const char* path) {
   return values;
 }
 
+// The first element index at which a or b is not finite, or a.size() if there is none.
+std::size_t first_non_finite(const std::vector<double>& a, const std::vector<double>& b) {
+  std::size_t i = 0;
+  while (i < a.size() && std::isfinite(a[i]) && std::isfinite(b[i])) ++i;
+  return i;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -30,6 +38,13 @@ int main(int argc, char** argv) {
   const std::vector<double> b = read_values(argv[2]);
   if (a.empty() || a.size() != b.size()) {
     std::printf("DIFFERENT: sizes %zu and %zu\n", a.size(), b.size());
+    return 1;
+  }
+  // A NaN or inf fails whatever the tolerance (the std::max reductions below would drop a NaN).
+  if (const std::size_t i = first_non_finite(a, b); i < a.size()) {
+    const bool in_a = !std::isfinite(a[i]);
+    std::printf("DIFFERENT: non-finite value %g in %s at element %zu (complex value %zu, %s part)\n",
+                in_a ? a[i] : b[i], in_a ? argv[1] : argv[2], i, i / 2, i % 2 == 0 ? "real" : "imaginary");
     return 1;
   }
 

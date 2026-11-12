@@ -112,7 +112,8 @@ header line.
 - The final wave packet of two builds, or of the CPU and the GPU (built in `build*/tools/`):
   `spodvr_dump_wave <input.json> <file> [--device cpu|cuda]` (threads: `OMP_NUM_THREADS`; `cuda`
   only in a CUDA build), then `spodvr_compare_wave <a> <b> [tolerance]` (largest difference
-  relative to the largest amplitude; tolerance default 0, i.e. bitwise identical).
+  relative to the largest amplitude; tolerance default 0, i.e. bitwise identical; a NaN or inf in
+  either file fails, naming the first such element).
 
 ## Measurements (AMD Ryzen 7 5800X, 16 threads, WSL2; propagation time only)
 | Case | Baseline (faithful port) | Optimised, oneMKL FFT | Optimised, FFTW | Optimised + PGO (oneMKL) |

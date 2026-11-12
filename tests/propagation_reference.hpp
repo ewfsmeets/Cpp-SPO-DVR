@@ -19,6 +19,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -179,7 +180,7 @@ inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropaga
     EXPECT_PRINTED_EQ(c.rest_norm, f.rest_norm) << "t = " << f.time;
     for (const auto& [a, b] :
          {std::pair{c.norm, f.norm}, {c.z_mean, f.z_mean}, {c.r_mean, f.r_mean}, {c.rest_norm, f.rest_norm}})
-      worst = std::max(worst, std::abs(a - b) / printed_half_unit(b));
+      worst = nan_aware_max(worst, std::abs(a - b) / printed_half_unit(b));
   }
   std::cout << "  largest deviation from the Fortran averages: " << worst << " x (half printed unit)\n";
 }

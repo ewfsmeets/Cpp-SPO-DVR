@@ -9,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -21,6 +22,7 @@
 #include "propagation/propagation.hpp"
 
 using namespace spodvr;
+using spodvr::testing::nan_aware_max;
 using cplx = std::complex<double>;
 
 namespace {
@@ -79,7 +81,7 @@ void fill_pseudo_random(std::span<cplx> v) {
 
 double max_difference(std::span<const cplx> a, std::span<const cplx> b) {
   double d = 0.0;
-  for (std::size_t i = 0; i < a.size(); ++i) d = std::max(d, std::abs(a[i] - b[i]));
+  for (std::size_t i = 0; i < a.size(); ++i) d = nan_aware_max(d, std::abs(a[i] - b[i]));
   return d;
 }
 
@@ -128,7 +130,7 @@ TEST(ScatteringKinetic, FreeGaussianSpreadsAnalyticallyInZ) {
   double worst = 0.0;
   for (int izr = 0; izr < psi.n_blocks(); izr += 37)
     for (const cplx& c : psi.block(izr))
-      worst = std::max(worst, std::abs(c - gaussian(s.grids.z_scattering[izr / s.shape.nr], t)));
+      worst = nan_aware_max(worst, std::abs(c - gaussian(s.grids.z_scattering[izr / s.shape.nr], t)));
   EXPECT_LT(worst, 1e-12);
 }
 
@@ -156,7 +158,7 @@ TEST(ScatteringKinetic, ParallelPlaneWaveGetsItsKineticPhase) {
   const cplx expected_factor = s.tables.xy_kinetic.full[(s.shape.ny + m) + s.shape.ny * n];
   double worst = 0.0;
   for (std::size_t i = 0; i < psi.values.size(); i += 7)
-    worst = std::max(worst, std::abs(psi.values[i] - expected_factor * initial.values[i]));
+    worst = nan_aware_max(worst, std::abs(psi.values[i] - expected_factor * initial.values[i]));
   EXPECT_LT(worst, 1e-13);
 }
 

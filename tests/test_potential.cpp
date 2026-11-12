@@ -9,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "core/constants.hpp"
 #include "core/error.hpp"
 #include "core/unit_conversion.hpp"
@@ -25,6 +26,7 @@
 #include <omp.h>
 
 using namespace spodvr;
+using spodvr::testing::nan_aware_max;
 using Json = nlohmann::json;
 
 namespace {
@@ -257,8 +259,10 @@ TEST(Cu111Potentials, PerssonPeriodIsNotTheGridLattice) {
   double max_lattice = 0.0;
   for (const Configuration& q : sample_configurations()) {
     const double v0 = value_at(persson, q);
-    max_period = std::max(max_period, relative(v0, value_at(persson, {q.x + period, q.y, q.z, q.r, q.theta, q.phi})));
-    max_lattice = std::max(max_lattice, relative(v0, value_at(persson, {q.x + alat, q.y, q.z, q.r, q.theta, q.phi})));
+    max_period =
+        nan_aware_max(max_period, relative(v0, value_at(persson, {q.x + period, q.y, q.z, q.r, q.theta, q.phi})));
+    max_lattice =
+        nan_aware_max(max_lattice, relative(v0, value_at(persson, {q.x + alat, q.y, q.z, q.r, q.theta, q.phi})));
   }
   EXPECT_LE(max_period, 1e-12);
   EXPECT_GT(max_lattice, 1e-9);

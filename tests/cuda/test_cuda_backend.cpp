@@ -2,9 +2,11 @@
 // propagate one analysis step; the wave packets must agree to rounding (cuFFT and the
 // CPU FFT library differ in the last bits). Also: copies between host and GPU are exact, the BK
 // plane and the densities equal the CPU's, and two GPU runs are bitwise identical.
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -133,6 +135,17 @@ void expect_same_kinetic_stage(const BackendSetup& s, double tolerance) {
 }
 
 }  // namespace
+
+// The CPU-GPU difference of these tests is NaN when a value on either side is NaN, so the
+// EXPECT_LT and EXPECT_EQ on it fail (std::max would drop the NaN difference). Host only.
+TEST(CudaTestSetup, RelativeDifferenceIsNaNWithANaNValue) {
+  const std::vector<cplx> a = {{1.0, 0.5}, {-0.25, 2.0}};
+  std::vector<cplx> b = a;
+  EXPECT_EQ(relative_difference(a, b), 0.0);
+  b[1] = {std::numeric_limits<double>::quiet_NaN(), 2.0};
+  EXPECT_TRUE(std::isnan(relative_difference(a, b)));
+  EXPECT_TRUE(std::isnan(relative_difference(b, a)));
+}
 
 // exp(i A) applied by the load callback of the inverse phi FFT gives the result of the kernel
 // multiply_by_exp_potential: one potential stage on a random wave packet, with surface symmetry

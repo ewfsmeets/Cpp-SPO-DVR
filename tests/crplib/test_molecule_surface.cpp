@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "comparison.hpp"
 #include "crp_synthetic.hpp"
 #include "crplib/errors.hpp"
 #include "crplib/molecule_surface.hpp"
@@ -34,6 +35,7 @@ using crplib_test::DriverInput;
 using crplib_test::DriverOutput;
 using crplib_test::reference_data_set;
 using crplib_test::reference_file;
+using spodvr::testing::nan_aware_max;
 
 namespace {
 
@@ -44,7 +46,7 @@ double data_scale(const DataSet& data) {
   double largest = 1.0;
   for (const MoleculeCut& cut : data.molecule_cuts)
     for (double v : cut.v)
-      largest = std::max(largest, std::abs(convert_energy(v, data.units.energy, EnergyUnit::hartree)));
+      largest = nan_aware_max(largest, std::abs(convert_energy(v, data.units.energy, EnergyUnit::hartree)));
   return largest;
 }
 

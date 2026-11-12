@@ -61,7 +61,7 @@ The energy is in eV, and the factor is the strength in hartree.
 | `UseSymmetry` | bool | false (usePotSymmetry) | compute V only at one (x, y) point per orbit of the PES's surface point group (C2v, C4v, C6v, C3v, C3) and map it to the others; operations that do not fit the grid (nφ, nX ≠ nY) are dropped and reported. Error if none is usable. The Fortran uses this for C6v only |
 | `nPhisOptimal` | bool | false | with `UseSymmetry`: nφ becomes a multiple of what the whole group needs (C2v 2, C4v 4, C6v and C3v 6, C3 3) |
 | `CRPlibDataSet` | string | — | directory of the CRP data set (format: [crp_library.md](crp_library.md)), relative to the working directory; required with `SystemID` `CRPlibrary`, an error with any other PES. The data set is read and checked at start-up; the setup output shows its ranges and the grid points outside them |
-| `SymmetryTolerance` | real | 1e-5 eV | C++ only. With `UseSymmetry` the PES is first compared with its symmetry images at 1000 sample points (x, y, φ anywhere in the cell; θ, Z, r at grid points; images wrapped into the unit cell, VMin/VMax applied); a larger max \|ΔV\| is an error |
+| `SymmetryTolerance` | real | 1e-5 eV | C++ only. With `UseSymmetry` the PES is first compared with its symmetry images at 1000 sample points (x, y, φ anywhere in the cell; θ, Z, r at grid points; images wrapped into the unit cell, VMin/VMax applied); a larger max \|ΔV\| is an error, and so is a non-finite V at a sample point or image (parameter `SystemID`, naming the point) |
 | `DoDump` `FullSMatrix` | bool | false | |
 
 ## Checkpoint / restart keys (C++ only)

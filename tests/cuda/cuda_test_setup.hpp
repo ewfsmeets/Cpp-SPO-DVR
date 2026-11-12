@@ -12,6 +12,8 @@
 
 #include <cuda_runtime_api.h>
 
+#include "comparison.hpp"
+
 namespace spodvr::testing {
 
 // Skips the current test when the machine has no CUDA-capable GPU.
@@ -35,13 +37,13 @@ inline void fill_pseudo_random(std::span<std::complex<double>> v, std::uint64_t 
   }
 }
 
-// max |a - b| / max |a|
+// max |a - b| / max |a|; NaN if a value of a or b is NaN.
 inline double relative_difference(std::span<const std::complex<double>> a, std::span<const std::complex<double>> b) {
   double diff = 0.0;
   double scale = 0.0;
   for (std::size_t i = 0; i < a.size(); ++i) {
-    diff = std::max(diff, std::abs(a[i] - b[i]));
-    scale = std::max(scale, std::abs(a[i]));
+    diff = nan_aware_max(diff, std::abs(a[i] - b[i]));
+    scale = nan_aware_max(scale, std::abs(a[i]));
   }
   return scale > 0.0 ? diff / scale : diff;
 }

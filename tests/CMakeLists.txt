@@ -92,6 +92,18 @@ add_refdata_test(FineLineWithoutBkInputFails fine-without-fort22)
 add_refdata_test(OverlappingRowsRefused multi-match)
 add_refdata_test(BadExpectedFileRefused refusals)
 
+# spodvr_compare_wave (tools/compare/test_compare_wave.py): finite files compare as before, a NaN or
+# inf in either file always fails.
+if(SPODVR_BUILD_TOOLS)
+  set(compare_wave_test ${PROJECT_SOURCE_DIR}/tools/compare/test_compare_wave.py)
+  add_test(NAME CompareWave.FiniteFiles
+           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> finite
+                   ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/finite)
+  add_test(NAME CompareWave.NonFiniteValueFails
+           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> non-finite
+                   ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/non-finite)
+endif()
+
 # Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
 # missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).
 set(reference_manifest_check ${PROJECT_SOURCE_DIR}/tools/fortran_reference/ReferenceManifest.cmake)

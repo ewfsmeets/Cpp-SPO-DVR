@@ -5,14 +5,18 @@
 #include <omp.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <fstream>
+#include <limits>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "core/error.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -29,6 +33,7 @@
 #include "propagation/propagation.hpp"
 
 using namespace spodvr;
+using spodvr::testing::nan_aware_max;
 using Json = nlohmann::json;
 using cplx = std::complex<double>;
 
@@ -75,6 +80,29 @@ class TiltedPotential final : public Potential {
 
  private:
   DaiLightCu111Potential base_;
+};
+
+// The Dai-Light potential, but NaN at one configuration (x, y, Z, r, theta, phi); it records every
+// configuration it is evaluated at, in call order.
+class DaiLightWithNaN final : public Potential {
+ public:
+  using Configuration = std::array<double, 6>;
+  explicit DaiLightWithNaN(std::optional<Configuration> nan_at) : nan_at_(nan_at) {}
+  [[nodiscard]] double value(double x, double y, double z, double r, double theta, double phi, int iz,
+                             int ir) const override {
+    const Configuration q = {x, y, z, r, theta, phi};
+    calls_.push_back(q);
+    if (q == nan_at_) return std::numeric_limits<double>::quiet_NaN();
+    return base_.value(x, y, z, r, theta, phi, iz, ir);
+  }
+  [[nodiscard]] const SystemParameters& system_parameters() const override { return base_.system_parameters(); }
+  [[nodiscard]] std::string name() const override { return "DaiLightWithNaN"; }
+  [[nodiscard]] const std::vector<Configuration>& calls() const { return calls_; }
+
+ private:
+  DaiLightCu111Potential base_;
+  std::optional<Configuration> nan_at_;
+  mutable std::vector<Configuration> calls_;
 };
 
 double scaled_difference(double a, double b) { return std::abs(a - b) / std::max({std::abs(a), std::abs(b), 1.0}); }
@@ -151,6 +179,33 @@ TEST(SymmetryCheck, NonSymmetricPotentialFails) {
   }
 }
 
+// One NaN of the PES, far from the first comparison, fails the check at that configuration: a
+// maximum taken with `deviation > max` alone skipped it and passed. The error names the value.
+TEST(SymmetryCheck, NonFinitePotentialFailsAtItsConfiguration) {
+  const RunSetup& s = dai_light_symmetric();
+  const GridSymmetry symmetry = make_grid_symmetry(s.config, s.angular);
+  // The check evaluates V(q) and then V(g q) for the operations g != identity: the configuration
+  // q of sample 500 is call 500 * (number of operations).
+  const DaiLightWithNaN finite(std::nullopt);
+  ASSERT_TRUE(check_potential_symmetry(finite, symmetry, s.config, s.grids, s.angular).passed());
+  const DaiLightWithNaN::Configuration q = finite.calls().at(500 * symmetry.operations().size());
+
+  const SymmetryCheck check = check_potential_symmetry(DaiLightWithNaN(q), symmetry, s.config, s.grids, s.angular);
+  EXPECT_FALSE(check.passed());
+  EXPECT_TRUE(std::isnan(check.max_deviation));
+  EXPECT_TRUE(std::isnan(check.value));
+  EXPECT_TRUE(std::isfinite(check.image_value));
+  EXPECT_EQ((DaiLightWithNaN::Configuration{check.x, check.y, check.z, check.r, check.theta, check.phi}), q);
+  try {
+    require_symmetric_potential(check, s.config, symmetry);
+    FAIL() << "no InputError";
+  } catch (const InputError& e) {
+    EXPECT_EQ(e.parameter(), "SystemID");
+    EXPECT_NE(std::string(e.what()).find("is not finite"), std::string::npos) << e.what();
+    EXPECT_NE(std::string(e.what()).find("V(q) = nan eV"), std::string::npos) << e.what();
+  }
+}
+
 // The Persson PES is symmetric about the origin (C6v about the top site) but its period is
 // cc/0.529167 instead of the grid's alat = cc/0.529177 (Fortran quirk): the self-check wraps the
 // images into the cell, as the potential grid uses them, and so detects it. Deep in the repulsive
@@ -212,7 +267,7 @@ TEST(SymmetricPotentialGrid, DaiLightGathersTheFullGrid) {
   for (std::size_t izr = 0; izr < full.index.n2; ++izr)
     for (std::size_t ixy = 0; ixy < full.index.n1; ++ixy)
       for (std::size_t itp = 0; itp < full.index.n0; ++itp)
-        worst = std::max(worst, scaled_difference(reduced(itp, ixy, izr), full(itp, ixy, izr)));
+        worst = nan_aware_max(worst, scaled_difference(reduced(itp, ixy, izr), full(itp, ixy, izr)));
   EXPECT_LT(worst, 1e-12);
   std::cout << "  max scaled difference reduced vs full: " << worst << '\n';
 }
@@ -355,12 +410,12 @@ TEST(SymmetricPropagation, AgreesWithTheFullPotential) {
   double worst = 0.0;
   double largest = 0.0;
   for (std::size_t i = 0; i < full.scattering.values.size(); ++i) {
-    worst = std::max(worst, std::abs(symmetric.scattering.values[i] - full.scattering.values[i]));
-    largest = std::max(largest, std::abs(full.scattering.values[i]));
+    worst = nan_aware_max(worst, std::abs(symmetric.scattering.values[i] - full.scattering.values[i]));
+    largest = nan_aware_max(largest, std::abs(full.scattering.values[i]));
   }
   for (std::size_t i = 0; i < full.specular.values.size(); ++i) {
-    worst = std::max(worst, std::abs(symmetric.specular.values[i] - full.specular.values[i]));
-    largest = std::max(largest, std::abs(full.specular.values[i]));
+    worst = nan_aware_max(worst, std::abs(symmetric.specular.values[i] - full.specular.values[i]));
+    largest = nan_aware_max(largest, std::abs(full.specular.values[i]));
   }
   EXPECT_GT(largest, 0.01);
   EXPECT_LT(worst, 1e-13 * largest);

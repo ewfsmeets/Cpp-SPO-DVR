@@ -6,7 +6,8 @@ foreach(source IN LISTS crplib_test_sources)
   get_filename_component(name ${source} NAME_WE)
   set(target crplib_${name})
   add_executable(${target} ${source})
-  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})  # shared test headers
+  # Shared test headers: those of tests/crplib, and tests/comparison.hpp.
+  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
   target_link_libraries(${target} PRIVATE spodvr_crplib GTest::gtest_main spodvr_warnings spodvr_crplib_fp)
   target_compile_definitions(${target} PRIVATE CRPLIB_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference"
                              CRPLIB_REAL_DATA_SET="${PROJECT_SOURCE_DIR}/potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v")

@@ -16,6 +16,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -31,6 +32,7 @@
 using namespace spodvr;
 using spodvr::test::parse_fortran_real;
 using spodvr::test::relative_difference;
+using spodvr::testing::nan_aware_max;
 namespace fs = std::filesystem;
 
 namespace {
@@ -84,7 +86,7 @@ TEST(RegressionHardWall, Gate1AsymptoticPotentialTable) {
     const auto [r_ref, v_ref] = table[ir];
     EXPECT_LE(relative_difference(c.grids.r[ir], r_ref), grid_tolerance) << "ir = " << ir;
     const double v = u.hartree_to_ev(c.potential.asymptotic[ir]);
-    max_rel = std::max(max_rel, relative_difference(v, v_ref));
+    max_rel = nan_aware_max(max_rel, relative_difference(v, v_ref));
     EXPECT_LE(relative_difference(v, v_ref), 1e-14) << "ir = " << ir << ": " << v << " vs " << v_ref;
   }
   RecordProperty("max_relative_difference", std::to_string(max_rel));
@@ -127,7 +129,7 @@ TEST(RegressionHardWall, Gate1FullPotentialAndAngularGrid) {
     const double v_ref = parse_fortran_real(v_text);
     for (std::size_t k = 0; k < block; ++k) {
       const double v = c.potential.values[izr * block + k];
-      max_rel = std::max(max_rel, relative_difference(v, v_ref));
+      max_rel = nan_aware_max(max_rel, relative_difference(v, v_ref));
     }
   }
   RecordProperty("max_relative_difference", std::to_string(max_rel));
@@ -152,11 +154,12 @@ TEST(RegressionHardWall, Gate2RovibrationalStates) {
     const auto psi = states.wave_function(v, j);
     ASSERT_EQ(ref.psi.size(), psi.size());
     double max_abs_psi = 0.0;
-    for (std::size_t i = 0; i < psi.size(); ++i) max_abs_psi = std::max(max_abs_psi, std::abs(psi[i] - ref.psi[i]));
-    max_rel_energy_all = std::max(max_rel_energy_all, relative_difference(e, ref.energy));
+    for (std::size_t i = 0; i < psi.size(); ++i)
+      max_abs_psi = nan_aware_max(max_abs_psi, std::abs(psi[i] - ref.psi[i]));
+    max_rel_energy_all = nan_aware_max(max_rel_energy_all, relative_difference(e, ref.energy));
     if (v < c.gas.n_v_analysis) {
-      max_rel_energy_open = std::max(max_rel_energy_open, relative_difference(e, ref.energy));
-      max_abs_psi_open = std::max(max_abs_psi_open, max_abs_psi);
+      max_rel_energy_open = nan_aware_max(max_rel_energy_open, relative_difference(e, ref.energy));
+      max_abs_psi_open = nan_aware_max(max_abs_psi_open, max_abs_psi);
       EXPECT_LE(relative_difference(e, ref.energy), 1e-12) << "v = " << v << ", j = " << j;
       EXPECT_LE(max_abs_psi, 1e-10) << "v = " << v << ", j = " << j;
     }

@@ -5,12 +5,14 @@
 // The Fortran interpolated S-matrix elements (fort.25) are compared with an emulation of the
 // Fortran interpolation including its bugs (docs/fortran_fine_analysis_bugs.md); everything
 // else with the C++ results directly.
+#include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 
@@ -18,6 +20,7 @@
 
 #include "analysis/fine_analysis.hpp"
 #include "app/fine_analysis_run.hpp"
+#include "comparison.hpp"
 #include "core/constants.hpp"
 #include "core/real_compare.hpp"
 #include "fft/fftw_fft.hpp"
@@ -111,7 +114,7 @@ struct Comparison {
     const double tolerance = printed_text_tolerance(text, floor);
     const double deviation = std::abs(value - parse_fortran_real(text)) / tolerance;
     EXPECT_LE(deviation, 1.0) << what << ": C++ " << value << ", Fortran " << text;
-    worst = std::max(worst, deviation);
+    worst = nan_aware_max(worst, deviation);
     n = n + 1;
   }
   // Phases: modulo 2 pi.
@@ -247,7 +250,7 @@ void run_gate(const std::string& case_name, const std::string& variant) {
   ASSERT_EQ(fort25.size(), r.interpolated.energies.size());
   double s_max = 0.0;
   for (const EnergyResult& e : r.spectrum.energies)
-    for (const cplx s : e.s_matrix) s_max = std::max(s_max, std::abs(s));
+    for (const cplx s : e.s_matrix) s_max = nan_aware_max(s_max, std::abs(s));
   Comparison p25;
   Comparison s25;
   int n_undecidable = 0;
@@ -311,3 +314,14 @@ TEST(RegressionFineAnalysis, Gate5Small) { run_gate("hardwall_small", "small"); 
 TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("hardwall_small", "empty"); }
 // The corrugated C6v case (60 deg cell): on the BK file of the full Dai-Light Fortran run.
 TEST(RegressionFineAnalysis, Gate5DaiLight) { run_gate("cu111_dailight_small", "full"); }
+
+// A NaN on either side of a printed value fails its check, and the reported largest deviation is NaN.
+TEST(RegressionFineAnalysis, PrintedValueCheckFailsOnNaN) {
+  const double not_a_number = std::numeric_limits<double>::quiet_NaN();
+  Comparison cpp_nan;
+  EXPECT_NONFATAL_FAILURE(cpp_nan.check(not_a_number, "0.1234567E+00", "C++ value"), "C++ value");
+  EXPECT_TRUE(std::isnan(cpp_nan.worst));
+  Comparison fortran_nan;
+  EXPECT_NONFATAL_FAILURE(fortran_nan.check(0.1234567, "NaN", "Fortran value"), "Fortran value");
+  EXPECT_TRUE(std::isnan(fortran_nan.worst));
+}

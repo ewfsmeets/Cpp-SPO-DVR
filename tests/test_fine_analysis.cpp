@@ -16,6 +16,7 @@
 
 #include "analysis/fine_analysis.hpp"
 #include "app/fine_analysis_run.hpp"
+#include "comparison.hpp"
 #include "core/constants.hpp"
 #include "core/error.hpp"
 #include "core/real_compare.hpp"
@@ -32,6 +33,7 @@
 
 namespace fs = std::filesystem;
 using namespace spodvr;
+using spodvr::testing::nan_aware_max;
 using cplx = std::complex<double>;
 
 namespace {
@@ -130,7 +132,7 @@ std::vector<cplx> direct_amplitudes(const BkSeries& series, const FineAnalysisGr
 
 double max_abs(const std::vector<cplx>& v) {
   double m = 0.0;
-  for (const cplx x : v) m = std::max(m, std::abs(x));
+  for (const cplx x : v) m = nan_aware_max(m, std::abs(x));
   return m;
 }
 
@@ -308,7 +310,7 @@ void compare_with_on_the_fly(const RunSetup& s) {
     EXPECT_NEAR(a.total_energy, b.total_energy, 1e-12);
     EXPECT_NEAR(a.collision_energy, b.collision_energy, 1e-12);
     double scale = 0.0;
-    for (const cplx x : b.s_matrix) scale = std::max(scale, std::abs(x));
+    for (const cplx x : b.s_matrix) scale = nan_aware_max(scale, std::abs(x));
     for (std::size_t k = 0; k < a.s_matrix.size(); ++k) {
       if (!a.open[k] || !b.open[k]) continue;
       EXPECT_LE(std::abs(a.s_matrix[k] - b.s_matrix[k]), 1e-10 * scale) << "energy " << i << " state " << k;
@@ -444,7 +446,7 @@ TEST(FortranInterpolationBugs, OnlyPredictedPointsDifferAndFixIsAccurate) {
 
   double s_max = 0.0;
   for (const EnergyResult& e : r.spectrum.energies)
-    for (const cplx x : e.s_matrix) s_max = std::max(s_max, std::abs(x));
+    for (const cplx x : e.s_matrix) s_max = nan_aware_max(s_max, std::abs(x));
   const double populated = 1e-3 * s_max;
 
   int n_pairs = 0, n_differ = 0, n_atan = 0, n_sign = 0, n_typo = 0;
@@ -461,10 +463,10 @@ TEST(FortranInterpolationBugs, OnlyPredictedPointsDifferAndFixIsAccurate) {
       const cplx fixed = r.interpolated.energies[ie].s_matrix[k];
       const cplx fortran = fortran519_interpolation_with_bugs(s1, s2, f);
       const cplx intended = intended_interpolation(s1, s2, f);
-      err_fixed = std::max(err_fixed, std::abs(fixed - s_exact) / std::abs(s_exact));
-      err_fortran = std::max(err_fortran, std::abs(fortran - s_exact) / std::abs(s_exact));
-      err_fixed_p = std::max(err_fixed_p, std::abs(std::norm(fixed) - std::norm(s_exact)) / std::norm(s_exact));
-      err_fortran_phase = std::max(err_fortran_phase, std::abs(std::arg(fortran / s_exact)));
+      err_fixed = nan_aware_max(err_fixed, std::abs(fixed - s_exact) / std::abs(s_exact));
+      err_fortran = nan_aware_max(err_fortran, std::abs(fortran - s_exact) / std::abs(s_exact));
+      err_fixed_p = nan_aware_max(err_fixed_p, std::abs(std::norm(fixed) - std::norm(s_exact)) / std::norm(s_exact));
+      err_fortran_phase = nan_aware_max(err_fortran_phase, std::abs(std::arg(fortran / s_exact)));
 
       const bool atan_case = s1.real() * s2.real() < 0.0;
       const bool sign_case = s1.imag() * s2.imag() < 0.0;
@@ -510,7 +512,7 @@ TEST(FortranInterpolationBugs, SyntheticFastPhase) {
       const cplx fixed = interpolate_s_matrix(s1, s2, f);
       const cplx fortran = fortran519_interpolation_with_bugs(s1, s2, f);
       const cplx intended = intended_interpolation(s1, s2, f);
-      err_fixed = std::max(err_fixed, std::abs(fixed - s) / std::abs(s));
+      err_fixed = nan_aware_max(err_fixed, std::abs(fixed - s) / std::abs(s));
       const bool atan_case = s1.real() * s2.real() < 0.0;
       const bool sign_case = s1.imag() * s2.imag() < 0.0;
       const bool typo_case =

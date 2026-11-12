@@ -21,11 +21,14 @@ namespace spodvr {
 struct SymmetryCheck {
   int n_samples = 0;             // configurations q
   int n_comparisons = 0;         // (q, g) pairs, g != identity
-  double max_deviation = 0.0;    // max |V(q) - V(g q)| (eV), after VMin/VMax
+  double max_deviation = 0.0;    // max |V(q) - V(g q)| (eV), after VMin/VMax; NaN from the first NaN on
   double tolerance = 0.0;        // SymmetryTolerance (eV)
-  // The worst configuration (skewed x, y; Z, r, theta, phi) and operation.
+  // The worst configuration (skewed x, y; Z, r, theta, phi), operation, and V(q), V(g q) there
+  // (eV, after VMin/VMax). A non-finite V is always the worst.
   double x = 0.0, y = 0.0, z = 0.0, r = 0.0, theta = 0.0, phi = 0.0;
   SurfaceOperation operation;
+  double value = 0.0, image_value = 0.0;
+  // False also when a value is not finite (the deviation is then inf or NaN).
   [[nodiscard]] bool passed() const { return max_deviation <= tolerance; }
 };
 
@@ -40,7 +43,8 @@ struct SymmetryCheck {
                                                      const AngularGrid& angular, int n_samples = 1000);
 
 // Throws InputError (parameter "SymmetryTolerance") naming SystemID, point group, the worst
-// configuration and operation if the check failed.
+// configuration and operation if the check failed; if V was not finite there, InputError
+// (parameter "SystemID") naming both values, the configuration and the operation.
 void require_symmetric_potential(const SymmetryCheck& check, const Config& config, const GridSymmetry& symmetry);
 
 }  // namespace spodvr

@@ -16,6 +16,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -30,6 +31,7 @@
 
 using namespace spodvr;
 using spodvr::test::relative_difference;
+using spodvr::testing::nan_aware_max;
 namespace fs = std::filesystem;
 
 namespace {
@@ -115,7 +117,7 @@ TEST_P(RegressionPes, Gate1AsymptoticPotentialTable) {
     EXPECT_LE(relative_difference(c.grids.r[ir], r_ref), grid_tolerance) << "ir = " << ir;
     const double v = units::legacy.hartree_to_ev(c.potential.asymptotic[ir]);
     const double difference = scaled_difference(v, v_ref, 1.0);
-    max_difference = std::max(max_difference, difference);
+    max_difference = nan_aware_max(max_difference, difference);
     EXPECT_LE(difference, vasy_tolerance) << "ir = " << ir << ": " << v << " vs " << v_ref;
   }
   std::cout << "  " << GetParam() << ": vasy max scaled difference " << max_difference << '\n';
@@ -164,7 +166,7 @@ TEST_P(RegressionPes, Gate1FullPotentialAndAngularGrid) {
     const double expected = with_limits(p.v);
     if (expected != p.v) ++clipped;
     const double difference = scaled_difference(v, expected, one_ev);
-    max_difference = std::max(max_difference, difference);
+    max_difference = nan_aware_max(max_difference, difference);
     EXPECT_LE(difference, potential_tolerance_of(GetParam()))
         << "itheta " << p.itheta << " iphi " << p.iphi << " ix " << p.ix << " iy " << p.iy << " iz " << p.iz << " ir "
         << p.ir << ": " << v << " vs " << expected;
@@ -186,7 +188,8 @@ TEST_P(RegressionPes, Gate2RovibrationalStates) {
     const auto psi = states.wave_function(v, j);
     ASSERT_EQ(ref.psi.size(), psi.size());
     double max_abs_psi = 0.0;
-    for (std::size_t i = 0; i < psi.size(); ++i) max_abs_psi = std::max(max_abs_psi, std::abs(psi[i] - ref.psi[i]));
+    for (std::size_t i = 0; i < psi.size(); ++i)
+      max_abs_psi = nan_aware_max(max_abs_psi, std::abs(psi[i] - ref.psi[i]));
     if (v < c.gas.n_v_analysis) {
       EXPECT_LE(relative_difference(e, ref.energy), 1e-12) << "v = " << v << ", j = " << j;
       EXPECT_LE(max_abs_psi, 1e-10) << "v = " << v << ", j = " << j;

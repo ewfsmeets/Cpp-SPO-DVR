@@ -11,6 +11,11 @@ compared to half a unit in the last printed digit, not with a fixed relative tol
 (e.g. `averages.out`): the stdout contains other tables in the same format. Where a tolerance is
 max(half a printed unit, floor), raising the floor changes nothing while the printed unit binds.
 
+**NaN.** A NaN on either side (C++ or Fortran) fails every gate. The largest deviations and the
+reference scales are reduced with a maximum that keeps NaN (`nan_aware_max` in
+`tests/comparison.hpp`; `std::max(x, NaN)` returns x), and each check on them fails for NaN
+(`NaN ≤ tolerance` is false). Negative tests: `tests/test_comparison_helpers.cpp`.
+
 Known differences between the two programs (Fortran bugs fixed in C++, quirks kept on purpose,
 quad-precision sites) are listed in [fortran_deviations.md](fortran_deviations.md).
 

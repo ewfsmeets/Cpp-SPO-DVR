@@ -14,6 +14,7 @@
 #include <tuple>
 #include <vector>
 
+#include "comparison.hpp"
 #include "io/fortran_unformatted.hpp"
 #include "propagation_reference.hpp"
 
@@ -98,7 +99,7 @@ inline void compare_probabilities_with_fortran(const PropagationRun& cpp, const 
     const double tolerance = std::max(printed_text_tolerance(text), absolute_floor);
     const double deviation = std::abs(value - parse_fortran_real(text)) / tolerance;
     EXPECT_LE(deviation, 1.0) << what << ": C++ " << value << ", Fortran " << text;
-    worst = std::max(worst, deviation);
+    worst = nan_aware_max(worst, deviation);
     n_compared = n_compared + 1;
   };
   const int n_rot = static_cast<int>(cpp.rotation_labels.size());
@@ -160,18 +161,19 @@ inline std::vector<std::vector<std::complex<double>>> read_fortran_bk_records(co
 // coefficient of the run. The coefficients are amplitudes of at most ~1; before the wave packet
 // reaches the analysis line they are rounding noise (hardwall_short: all below 2e-15), so the
 // reference scale is at least 1e-4, i.e. noise is compared absolutely at tolerance * 1e-4.
+// A NaN coefficient on either side makes `worst` (in the reference also the scale) NaN: it fails.
 inline void compare_bk_with_fortran(const PropagationRun& cpp,
                                     const std::vector<std::vector<std::complex<double>>>& ref, double tolerance) {
   ASSERT_EQ(cpp.bk.size(), ref.size());
   double largest = 0.0;
   for (const auto& record : ref)
-    for (const auto& c : record) largest = std::max(largest, std::abs(c));
-  const double scale = std::max(largest, 1e-4);
+    for (const auto& c : record) largest = nan_aware_max(largest, std::abs(c));
+  const double scale = nan_aware_max(largest, 1e-4);
   double worst = 0.0;
   for (std::size_t step = 0; step < ref.size(); ++step) {
     ASSERT_EQ(cpp.bk[step].size(), ref[step].size());
     for (std::size_t k = 0; k < ref[step].size(); ++k)
-      worst = std::max(worst, std::abs(cpp.bk[step][k] - ref[step][k]));
+      worst = nan_aware_max(worst, std::abs(cpp.bk[step][k] - ref[step][k]));
   }
   EXPECT_LE(worst, tolerance * scale);
   std::cout << "  " << ref.size() << " BK records compared; max|c| = " << largest

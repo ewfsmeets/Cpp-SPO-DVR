@@ -8,11 +8,13 @@
 #include <string>
 #include <vector>
 
+#include "comparison.hpp"
 #include "crplib/fourier_tables.hpp"
 #include "fortran_reference.hpp"
 #include "reference_basis.hpp"
 
 using namespace crplib::detail;
+using spodvr::testing::nan_aware_max;
 
 namespace {
 
@@ -29,7 +31,7 @@ double inverse_error(const std::array<double, N * N>& table, const std::vector<s
     for (std::size_t ksit = 0; ksit < N; ++ksit) {
       double sum = 0.0;
       for (std::size_t j = 0; j < N; ++j) sum += basis[k][j] * table[ksit + N * j];
-      error = std::max(error, std::abs(sum - (k == ksit ? 1.0 : 0.0)));
+      error = nan_aware_max(error, std::abs(sum - (k == ksit ? 1.0 : 0.0)));
     }
   }
   return error;

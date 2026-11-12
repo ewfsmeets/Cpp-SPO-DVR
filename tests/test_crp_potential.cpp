@@ -19,6 +19,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "comparison.hpp"
 #include "core/constants.hpp"
 #include "core/error.hpp"
 #include "crp_synthetic.hpp"
@@ -39,6 +40,7 @@
 using namespace spodvr;
 using crplib::Symmetry;
 using crplib_test::TemporaryDirectory;
+using spodvr::testing::nan_aware_max;
 using Json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -125,7 +127,7 @@ std::string error_message(const std::function<void()>& f) {
 
 }  // namespace
 
-class CrpPotentialTest : public testing::TestWithParam<Symmetry> {};
+class CrpPotentialTest : public ::testing::TestWithParam<Symmetry> {};
 
 TEST_P(CrpPotentialTest, FactoryAndSystemParameters) {
   const Symmetry symmetry = GetParam();
@@ -198,15 +200,15 @@ TEST_P(CrpPotentialTest, SymmetricGridGathersTheFullGrid) {
         if (representative) {
           ASSERT_EQ(v, v_full) << ixy;
         }
-        worst = std::max(worst, std::abs(v - v_full) / std::max(std::abs(v_full), one_ev));
+        worst = nan_aware_max(worst, std::abs(v - v_full) / std::max(std::abs(v_full), one_ev));
       }
     }
   EXPECT_LT(worst, 5e-13);  // rounding: the images run through other fold and Fourier arithmetic
   std::cout << "  max scaled difference reduced vs full: " << worst << '\n';
 }
 
-INSTANTIATE_TEST_SUITE_P(Symmetries, CrpPotentialTest, testing::Values(Symmetry::c3v, Symmetry::c4v, Symmetry::c6v),
-                         [](const testing::TestParamInfo<Symmetry>& param) { return lower_name(param.param); });
+INSTANTIATE_TEST_SUITE_P(Symmetries, CrpPotentialTest, ::testing::Values(Symmetry::c3v, Symmetry::c4v, Symmetry::c6v),
+                         [](const ::testing::TestParamInfo<Symmetry>& param) { return lower_name(param.param); });
 
 TEST(CrpPotential, ImplementedCaseInsensitive) {
   EXPECT_TRUE(potential_is_implemented("CRPlibrary"));
