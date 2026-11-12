@@ -57,7 +57,8 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(!is_valid_fft_size(p.nz_specular), "nZSpecular", "nZSpecular is not a valid FFT size.");
 
   // --- grid in r --------------------------------------------------------------------------
-  check(rlt(p.r_start, 0.0), "RStart", "RStart < 0.");
+  // The 5.24 rule (5.19 rejected only RStart < 0): the r grid must start above 0.
+  check(rle(p.r_start, 0.0), "RStart", "RStart <= 0.");
   check(p.nr < 1, "nR", "nR < 1.");
   check(!is_valid_fft_size(p.nr), "nR", "nR is not a valid FFT size.");
   check(rle(p.dr, 0.0), "dR", "dR <= 0.");

@@ -173,7 +173,8 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
 
 The Fortran code continued upstream, to version 5.24 (2025) and a fix on 2026-11-09 (svn r1713).
 `git diff -w 601d833 master -- sources.dir/SOURCES.dir` in the upstream repository lists them
-(601d833 = svn r1572 = 5.19, identical to the reference sources). The C++ follows 5.19 throughout.
+(601d833 = svn r1572 = 5.19, identical to the reference sources). The C++ follows 5.19 throughout,
+except the `RStart` check, which follows 5.24 (below).
 The changes below come from reading that diff. A 5.24 build (with `O3FLAGS = -O3`) appears in
 these docs only in the demonstration runs of [fortran_input_bugs.md](fortran_input_bugs.md).
 
@@ -184,7 +185,8 @@ unchanged. What differs:
   `O3FLAGS = -Ofast -mtune=native -march=native` instead of `-O3`, i.e. fast-math and FMA. Results
   of a default 5.24 build are therefore not comparable at gate level and depend on the CPU. Build
   with `O3FLAGS = -O3` to compare.
-- `InputNew.f90`: `RStart <= 0` is rejected (5.19: `< 0`). The C++ keeps the 5.19 check.
+- `InputNew.f90 ValidateInput`: `RStart <= 0` is rejected (5.19: `< 0`). The C++ follows 5.24:
+  it rejects RStart ≤ 0 with the 1e-12 tolerance of `.RLE.` (`src/input/validate.cpp`).
 - `Averages.f90`: the norm, ⟨Z⟩ and ⟨r⟩ reductions got `SCHEDULE(STATIC,1)`, so their partial
   sums are split differently (last-digit changes in `averages.out`). The C++ uses a fixed order.
 - `Analyzor.f90`: the `s1_real` typo of the fine analysis is fixed (r1713). The C++ already fixed

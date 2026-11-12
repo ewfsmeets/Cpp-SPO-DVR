@@ -221,6 +221,17 @@ TEST(Input, FluxEnergyRangeInsideTheWavePacketIsValid) {
   }
 }
 
+// RStart <= 0 is rejected with the 1e-12 absolute tolerance of .RLE. (5.24 InputNew.f90
+// ValidateInput), so a start 2e-12 above 0 is valid; 0 and 1e-13 are in the violation table.
+TEST(Input, RStartJustAboveZeroIsValid) {
+  Json json = reference_json();
+  json["RStart"] = 2.0e-12;
+  json["ROptEnd"] = 8.25;  // the last r point is now 2e-12 + 55 * 0.15
+  const Config config = build(json);
+  EXPECT_NO_THROW((void)make_spatial_grids(config));
+  EXPECT_EQ(config.input.r_start, 2.0e-12);
+}
+
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
   const char* name;
@@ -253,6 +264,9 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"nZSpecularFft", [](Json& j) { j["nZSpecular"] = 281; }, "nZSpecular"},
         Violation{"nZSpecularSmall", [](Json& j) { j["nZSpecular"] = 160; j["ZSpOptStart"] = 8.0; j["ZSpOptEnd"] = 10.0; j["Z0"] = 7.5; }, "nZSpecular"},
         Violation{"RStart", [](Json& j) { j["RStart"] = -0.1; }, "RStart"},
+        // RStart <= 0 within 1e-12; ROptEnd moves onto the shifted r grid, so only RStart is violated.
+        Violation{"RStartZero", [](Json& j) { j["RStart"] = 0.0; j["ROptEnd"] = 8.25; }, "RStart"},
+        Violation{"RStartWithinTolerance", [](Json& j) { j["RStart"] = 1.0e-13; j["ROptEnd"] = 8.25; }, "RStart"},
         Violation{"nR", [](Json& j) { j["nR"] = 57; }, "nR"},
         Violation{"dR", [](Json& j) { j["dR"] = -0.15; }, "dR"},
         Violation{"nX", [](Json& j) { j["nX"] = 5; }, "nX"},

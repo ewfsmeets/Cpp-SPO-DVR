@@ -20,7 +20,7 @@ Fortran default.
 | `HomoNuc` | bool | lhomo | homonuclear molecule |
 | `ZStart` `dZ` | real | zmin, delz | Z grid start, spacing (shared by both Z grids) |
 | `nZ` `nZSpecular` | int | nz, nzsp | scattering / specular Z points (valid FFT sizes, nZSpecular ≥ nZ) |
-| `RStart` `dR` `nR` | real, real, int | rmin, delr, nr | r grid |
+| `RStart` `dR` `nR` | real, real, int | rmin, delr, nr | r grid; RStart > 0 (more than 1e-12 above 0, the Fortran's tolerance) |
 | `nX` `nY` | int | nx, ny | x, y points (valid FFT sizes) |
 | `JMax` | int | jmaxw | maximum J of the rotational basis |
 | `ProjOp` | int | nproj | must be 2 (0 and 1 are rejected; 1 is a legacy option that is not ported) |
