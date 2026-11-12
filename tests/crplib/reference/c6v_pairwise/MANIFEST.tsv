@@ -1,0 +1,9 @@
+# Provenance of the Fortran reference files of this case, written by
+# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
+path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
+VERSIONS	b63f2ac240b863070313d81d4aef896e9b2c02cea1dbaa128a60d1984f8e2de9	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+atom_0_2.out	cdd592100223ba93f4bedb796c5ed481fda7f78c255cd1e250d6ec47787be32a	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+cambcord.out	0810d6286c4637d2f66b9f4687f00a3983dedad3007bc6ff2684336d3dbf2180	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+gasphase.out	c236935b85284a1fe55016a8ad37600551f168fcf21badedda2d0a21b85bb900	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+molecule_0_2.out	7c105ff8d0f4bb41a10286b94f024e45fef76b55fd1bbd631008957b70332ebc	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+wrapper.out	b1e1dd1802278743187fefdcb43a0e8b47929f792101527ad9dd91a92541ab0c	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-

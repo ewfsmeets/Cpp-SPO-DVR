@@ -8,7 +8,8 @@
 #   fortran_averages.out   averages.out (time, norm, <Z>, <r>, rest norm)
 #   fortran_fort21.bin     fort.21, the BK coefficients of every analysis step (gate 4)
 #   fortran_fort25.txt     fort.25, the state-resolved S-matrix elements and probabilities
-# All other Fortran output files stay in the scratch directory.
+# and their lines in the case's MANIFEST.tsv. All other Fortran output files stay in the scratch
+# directory.
 #
 # Usage: tools/fortran_reference/run_propagation_reference.sh [case] [scratch_dir]
 #   case         reference case directory name (default: hardwall_short)
@@ -32,4 +33,6 @@ cp "${scratch_dir}/fortran_stdout.txt" "${case_dir}/fortran_stdout.txt"
 cp "${scratch_dir}/averages.out" "${case_dir}/fortran_averages.out"
 cp "${scratch_dir}/fort.21" "${case_dir}/fortran_fort21.bin"
 cp "${scratch_dir}/fort.25" "${case_dir}/fortran_fort25.txt"
+record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" DVR.inp -- \
+  fortran_stdout.txt fortran_averages.out fortran_fort21.bin fortran_fort25.txt
 echo "* Reference files written to ${case_dir}"

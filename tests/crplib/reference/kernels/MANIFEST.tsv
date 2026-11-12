@@ -1,0 +1,15 @@
+# Provenance of the Fortran reference files of this case, written by
+# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
+path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
+VERSIONS	b63f2ac240b863070313d81d4aef896e9b2c02cea1dbaa128a60d1984f8e2de9	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline1d_clamped.out	9cb3d574681e77e8e48011de1016590d5e20c7da06c46ecebb45c93b91d77621	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline1d_decreasing.out	e1928ab0e3620c615c7fb990fe04f39b7d658ac17d35dfd0c3ff5a05d59e61d2	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline1d_natural.out	73fee10c0d730733306193535705bef5bc97ab6bf92e46173326f7afa1f8b77a	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline1d_not_a_knot.out	f31367c6d02b08a5d68bce886bcf34631bb3f809572042a7f0134713751e5ea0	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline1d_second_derivative.out	260639d5178c818081da44088a669b5e6707fe2f7bb631166fc00311f40b68c6	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline1d_zdep.out	8a850f2bb85972f027f0c796806d7f9eebec154595d88e09295dfc82ff73b019	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline2d.out	e2968a2c61b51d3d03f29e12e0253eec078712b16c083d9eabdc36030067e687	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+spline3d.out	b1b360a0e43f950d925d72fd9085ee183b2b53e58d4b70807772a33ca72df2a7	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+tables.out	b54448ed531fddbc222ef290abba2dce640264aeecfb2950b8c57e0ccb5b0bc5	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+trispl.out	8bf253ae93c1688da072dda1d249747677c588875164095fd888183277c8cefd	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+ubicar.out	126fdfafcf9017f7e2db5dd63801b3af3516c86ede05f8ffe6c6bd55c75a8d6c	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-

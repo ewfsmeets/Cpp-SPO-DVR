@@ -1,0 +1,7 @@
+# Provenance of the Fortran reference files of this case, written by
+# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
+path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
+fortran_averages.out	abc2bc17cf7b909f7c9a31c34b2991a61cae9c4af30bff0a3f5fb755c041c552	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_fort21.bin	ebdd14eb85144aa9c147421d6ac8b24a6635fd2c49bbeca764cc1aeb17e28df6	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_fort25.txt	9aec4eace40491145627e6360b84a8a27cb7293bfd611f12064fc1e4422f42c2	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_stdout.txt	2dcecd241040cdedf83c69e70cfd38f618ddf7a0b88051264a7a92a820f741d3	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-

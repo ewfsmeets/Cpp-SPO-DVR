@@ -1,0 +1,15 @@
+# Provenance of the Fortran reference files of this case, written by
+# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
+path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
+debug_asyp.dat	faf0ccc4eed1a6f3c5e5a585f70d280fca5151456d8a6b75d36fb3882ba3bed4	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fine_full/DVR.inp	3ddfcebe8cc7b123be55d15bcba2ea22d12e0a44eb7de9adaf4ed4fa342fa166	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fine_full/fort.10	ec5303130870ab0cd49fed73c7bba6a7411aa4bc589c97ad2a7fb7b73169c8fa	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fine_full/fort.25	bb4cbe049a95cc6ff921b0197bed906e5cb48f47207526a3e59d95b1d030020b	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fine_full/fort.3	23af46188ba86b33666928a681a4811075f9a2cbc0a0b22275c8dad8f1512cb0	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fine_full/stdout.txt	951490b6cc8382dec6d6b1da9aa1eca24ed1215787a0a784cd5a33e9e0829336	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_averages.out	686d92786ed71d63190785b318af9d13e4d78b8505a701c686193caf33bdc6f2	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_fort21.bin	20dc31fb169f904683c120b89c7ccd3a9921e2d8e0d5d3ba63ed52fb92be5f87	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_fort25.txt	0e03c18cb27be01889b7777578fca33f679acd0153d5c002f12168ec1eb6cc86	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_setup_stdout.txt	07e24e3d283e77d71391ba1328787fe44e5c2a54de6e9a42925f322018b0f261	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_stdout.txt	e824c930072c1bd0b887b6476090c7cc35a5d99facced9934154804e08dddb74	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+pes_reference.txt	bbf175c720939d74814a3e05c7a523bb89f7cea6a345f94b5a021a5689250b48	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-

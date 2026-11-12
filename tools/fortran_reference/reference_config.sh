@@ -109,17 +109,46 @@ check_install() {
   buildinfo_has "${buildinfo}" exe.sha256 "${exe_sha%% *}" ||
     refuse "${FORTRAN_REF_EXE} is not the executable of ${buildinfo} (exe.sha256); rebuild the install"
   # A libm/libgfortran/libgomp/FFTW upgrade can move results by an ulp.
-  local package installed
+  local drift
+  drift="$(runtime_drift)"
+  [[ "${drift}" != - ]] || return 0
+  if [[ "${SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT:-}" == 1 ]]; then
+    echo "warning: run-time packages ${drift} differ from ${buildinfo} (recorded in MANIFEST.tsv)" >&2
+  else
+    refuse "run-time packages ${drift} differ from ${buildinfo};" \
+      "rebuild the install, or set SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1 to run anyway"
+  fi
+}
+
+# runtime_drift: the run-time packages whose installed version is not the one in the install's
+# BUILDINFO.tsv, as "package=installed-version ..."; "-" when there are none.
+runtime_drift() {
+  local package installed drift=()
   for package in "${FORTRAN_RUNTIME_PACKAGES[@]}"; do
     installed="$(installed_version "${package}")"
-    buildinfo_has "${buildinfo}" "package.runtime.${package}" "${installed}" && continue
-    if [[ "${SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT:-}" == 1 ]]; then
-      echo "warning: run-time package ${package} ${installed} differs from ${buildinfo}" >&2
-    else
-      refuse "run-time package ${package} is ${installed}, not the version in ${buildinfo};" \
-        "rebuild the install, or set SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1 to run anyway"
-    fi
+    buildinfo_has "${FORTRAN_REF_DIR}/BUILDINFO.tsv" "package.runtime.${package}" "${installed}" ||
+      drift+=("${package}=${installed}")
   done
+  if ((${#drift[@]} > 0)); then echo "${drift[*]}"; else echo -; fi
+}
+
+# record_manifest RUN_DIR CASE_DIR PROGRAM INPUT... -- FILE...: writes the provenance lines of the
+# FILEs (relative to CASE_DIR, just generated there) into CASE_DIR/MANIFEST.tsv, replacing their
+# old lines (refdata.py manifest record): the calling script, the install, PROGRAM (the program
+# that ran), the INPUTs as run (files or data-set directories, relative to RUN_DIR or absolute)
+# and the run-time drift.
+record_manifest() {
+  local run_dir="$1" case_dir="$2" program="$3" inputs=()
+  shift 3
+  while (($# > 0)) && [[ "$1" != "--" ]]; do
+    inputs+=(--input "$1")
+    shift
+  done
+  (($# > 1)) || refuse "record_manifest: no \"--\" and file list after the inputs; fix the call"
+  shift
+  (cd "${run_dir}" && python3 -I -B "${FORTRAN_REPO_DIR}/tools/fortran_reference/refdata.py" manifest record \
+    "${case_dir}" "$@" --script "$(basename "$0")" --install "${FORTRAN_REF_DIR}" --binary "${program}" \
+    --runtime-drift "$(runtime_drift)" "${inputs[@]}")
 }
 
 # check_build_package PACKAGE: the installed PACKAGE is the version that built the install ("-":

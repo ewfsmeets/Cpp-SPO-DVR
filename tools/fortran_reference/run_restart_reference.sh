@@ -4,6 +4,7 @@
 # (fort.9 -> fort.8, fort.21 -> fort.22, as the Fortran code expects).
 # Writes into tests/reference/hardwall_small/:
 #   fortran_restart_stdout.txt   stdout of the restarted run (its probabilities cover 0 .. 14000)
+# and its line in the case's MANIFEST.tsv (inputs: the DVR.inp of both runs).
 # The wave function files stay in the scratch directory (they are large); a C++ restart from
 # them can be tried by hand with "RestartFormat": "fortran" and "RestartDir": <scratch>/part1.
 #
@@ -33,4 +34,6 @@ cp "${scratch_dir}/part1/fort.21" "${scratch_dir}/part2/fort.22"
 run_fortran "${scratch_dir}/part2" fortran_stdout.txt averages.out
 
 cp "${scratch_dir}/part2/fortran_stdout.txt" "${case_dir}/fortran_restart_stdout.txt"
+record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" part1/DVR.inp part2/DVR.inp -- \
+  fortran_restart_stdout.txt
 echo "* Reference file written to ${case_dir}/fortran_restart_stdout.txt (scratch: ${scratch_dir})"

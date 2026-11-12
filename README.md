@@ -227,6 +227,8 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
 - **Skipped regression tests:** a regression test skips (it does not fail) when its Fortran
   reference file is missing. The scripts in `tools/fortran_reference/` regenerate the files; they
   need a Fortran reference install ([tools/fortran_reference/README.md](tools/fortran_reference/README.md)).
+  `ctest -R ReferenceManifest` fails when a file listed in a case's `MANIFEST.tsv` is missing or
+  edited, or a case has no `MANIFEST.tsv` ([MANIFEST.tsv](tools/fortran_reference/README.md#manifesttsv)).
 - **Other build variants** ([Build variants](#build-variants-and-toolsbuild_allsh)): run the same
   ctest command in their build directory. Use `build-poison` after touching the uninitialised-memory
   code. The fast-math builds (`build-fast`, `build-cuda-fast`) are expected to fail a few unit tests

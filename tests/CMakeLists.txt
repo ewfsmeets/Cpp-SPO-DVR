@@ -62,3 +62,14 @@ add_reference_tools_test(RuntimeDriftRefused runtime-drift)
 add_reference_tools_test(RunChecksExitAndOutputs run)
 add_reference_tools_test(BuildLogAllowLists check-log)
 add_reference_tools_test(InstructionCheck check-binary)
+add_reference_tools_test(ManifestRecordAndDelete manifest)
+add_reference_tools_test(RegenerateRefusesBeforeDeleting regenerate-refusals)
+
+# Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
+# missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).
+set(reference_manifest_check ${PROJECT_SOURCE_DIR}/tools/fortran_reference/ReferenceManifest.cmake)
+add_test(NAME ReferenceManifest.FilesMatch
+         COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${reference_manifest_check})
+add_test(NAME ReferenceManifest.ChangedOrMissingFileFails
+         COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR}
+                 -DWORK=${CMAKE_CURRENT_BINARY_DIR}/reference_manifest_negative -P ${reference_manifest_check})

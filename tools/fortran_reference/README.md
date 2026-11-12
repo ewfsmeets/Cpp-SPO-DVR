@@ -13,10 +13,14 @@ them in a scratch clone or worktree when you only want to experiment.
 | `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4) |
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
 | `run_fine_analysis_reference.sh [case] [variant ...]` | Analysis-only runs on the committed `fortran_fort21.bin`: `fine_<variant>/` (gate 5) |
-| `run_crp_reference.sh kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the kernels and data sets of `tests/crplib/reference/` |
+| `run_crp_reference.sh [--generate] kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the committed point lists and data sets of `tests/crplib/reference/`; `--generate` first rewrites them (needs the C++ build) |
+| [regenerate_all.sh](regenerate_all.sh) | Regenerates every reference file, in dependency order ([below](#regenerating-all-references)) |
+| [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
+| [ReferenceManifest.cmake](ReferenceManifest.cmake) | Checks every file a `MANIFEST.tsv` lists against its sha256 (`ctest -R ReferenceManifest`) |
 | `test_reference_tools.sh` | The negative tests of these tools (`ctest -R FortranReference`; no Fortran run) |
 
-Each script's header gives its arguments, outputs, environment and run time.
+Each script's header gives its arguments, outputs, environment and run time. Every run script
+records the files it writes in the case's `MANIFEST.tsv`.
 
 ## Environment variables
 
@@ -94,3 +98,51 @@ default enables fast-math and FMA), and refuses:
 It then installs with one `mv`, makes the install read-only and writes `buildinfo/<id>.tsv`, which
 is committed with the reference data made from it. `--check-log` and `--check-binary` run only
 those checks, e.g. on a build made elsewhere.
+
+## MANIFEST.tsv
+
+Each reference case directory has a `MANIFEST.tsv`: one line per file a Fortran run generated
+there (not the inputs: the case's `DVR.inp` and `input.json`, the CRP `dataset/` and `*.in`).
+The run scripts write it through `refdata.py manifest record`, which replaces the lines of the
+files it records and refuses the inputs (and `fortran_unformatted/`, hand-made test records), so
+that a regeneration can never delete one. It is a TSV file: `#` writer lines, a header row, `-` for a value that was not
+recorded, rows sorted by path. Hashes other than the file's own are shortened to 12 hex digits.
+
+| Column | Value |
+|---|---|
+| `path` | The file, relative to the case directory |
+| `sha256` | Its sha256 |
+| `script` | The script that generated it |
+| `commit` | `git describe --always` of this repository, with `-dirty` when a tracked file outside the reference trees (`tests/**/reference/`) differs from it: those change in every regeneration |
+| `fortran_ref` | The install id (`BUILDINFO.tsv`) and `<program>:<sha256>` of the program that ran: `spodvr.x`, or the CRP driver linked against the install's objects |
+| `input_sha` | `<input>:<sha256>` of each input as run, comma-separated: the `DVR.inp` with the script's changes, a staged CRP data set (`dataset`, hashed as a tree: the sha256 of its sorted `sha256sum` lines), the fine analysis's `fort.22` (equal to the case's `fortran_fort21.bin`), the driver's `*.in` |
+| `runtime_drift` | The run-time packages whose installed version differs from `BUILDINFO.tsv` (`package=version`), when `SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1` let the run go ahead |
+| `cpu` | The CPU model and `flags:<sha256>` of its feature flags (libm picks code by CPU feature) |
+| `date` | The UTC date of the run |
+
+The lines of the files generated before the MANIFESTs existed carry `fortran_ref`
+`5.19 (pre-MANIFEST)`, `-` in the columns not recorded then, and the script that made them
+(`refdata.py manifest record --pre-manifest`).
+
+`ctest -R ReferenceManifest` checks that every case directory has a `MANIFEST.tsv` and that every
+listed file exists with its recorded sha256: a missing or edited reference, or a case left without
+MANIFEST by an interrupted regeneration, fails there, where the regression tests would skip
+(`FilesMatch`; `ChangedOrMissingFileFails` shows that it catches one changed byte, one deleted file
+and a deleted MANIFEST).
+
+## Regenerating all references
+
+```bash
+tools/fortran_reference/regenerate_all.sh      # about 45 min on 4 threads (estimate, below)
+git status --short tests/reference tests/crplib/reference
+```
+
+The script refuses unless the reference trees are clean in git, checks the install, then deletes
+every file the MANIFESTs list and the MANIFESTs themselves, so that nothing stale survives. It
+runs the steps in dependency order: setup, propagation, the restart, fine analysis (on the
+regenerated `fortran_fort21.bin`) and the CRP driver on the committed point lists. Each step
+checks its required outputs; the end runs the `ReferenceManifest` check. Its list of steps is the
+list of reference cases: a new case adds its step in the commit that adds the case. The scratch
+directories of all runs stay in one new `mktemp -d` directory, printed at the start. The run time
+is estimated from single-case Fortran runs measured on 2026-11-11 (cu111_dailight_small, 7000
+steps: 1212 s with 5.19, 1570 s with 5.24 `-O3`, 4 threads); the whole run is not yet timed.

@@ -1,7 +1,7 @@
 // crplib_make_dataset <case> <case_dir>: writes the synthetic data set of a reference case
 // (<case_dir>/dataset/) and the point lists the Fortran reference driver evaluates for it
 // (<case_dir>/<mode>[_<length>_<energy>].in, hexadecimal doubles). Used by
-// tools/fortran_reference/run_crp_reference.sh; the tests read the same files.
+// tools/fortran_reference/run_crp_reference.sh --generate; the tests read the same files.
 //
 // Cases: <symmetry>_pairwise (c6v, c3v, c4v), c6v_pairwise_angstrom (the data set in Angstrom/eV),
 // c4v_negative_spacing, <symmetry>_impulse_<k> (cut k, 1-based, equal to 1, all else 0).

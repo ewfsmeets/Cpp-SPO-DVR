@@ -17,6 +17,8 @@
 #   fort.10     fil10 (spectrum of the initial channel, reaction probability, averages, sums)
 #   fort.3      unit 3 (probability of every state on the fine grid; writeSMatrix)
 #   fort.25     the interpolated S-matrix elements, probabilities and phases (writeProbs)
+# and their lines in the case's MANIFEST.tsv (inputs: the DVR.inp as run and fort.22, whose hash
+# is that of fortran_fort21.bin).
 #
 # Usage: tools/fortran_reference/run_fine_analysis_reference.sh [case] [variant ...]
 #   case     reference case directory name (default: hardwall_small)
@@ -61,6 +63,9 @@ for variant in "${variants[@]}"; do
   run_fortran "${scratch_dir}" stdout.txt "${outputs[@]}"
   out_dir="${case_dir}/fine_${variant}"
   mkdir -p "${out_dir}"
-  for f in DVR.inp stdout.txt "${outputs[@]}"; do cp "${scratch_dir}/${f}" "${out_dir}/"; done
+  files=(DVR.inp stdout.txt "${outputs[@]}")
+  for f in "${files[@]}"; do cp "${scratch_dir}/${f}" "${out_dir}/"; done
+  record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" DVR.inp fort.22 -- \
+    "${files[@]/#/fine_${variant}/}"
   echo "  written: DVR.inp stdout.txt ${outputs[*]}"
 done

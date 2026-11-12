@@ -38,15 +38,18 @@ The program-side adapter is tested in `tests/test_crp_potential.cpp`.
 | `cu111_srp48` | the real data set in `potentials/` (only the point lists and the results; no `dataset/` copy) |
 
 Each case holds the data set (`dataset/`), the point lists (`*.in`, written by
-`crplib_make_dataset`) and the Fortran driver's results (`*.out`, hexadecimal and decimal), plus
-the compiler and glibc versions (`VERSIONS`). The `*_pairwise` data sets are also used by the gate
-cases `tests/reference/crp_*_synthetic_small`.
+`crplib_make_dataset`) and the Fortran driver's results (`*.out`, hexadecimal and decimal), with
+their provenance in `MANIFEST.tsv` (the older `VERSIONS` files hold only the compiler and glibc
+versions). The `*_pairwise` data sets are also used by the gate cases
+`tests/reference/crp_*_synthetic_small`.
 
-Regenerate a case (data set, point lists and Fortran results) after a change to the generator:
+Rerun the driver on the committed data set and point lists, or regenerate a case (data set, point
+lists and Fortran results) after a change to the generator:
 
 ```
-cmake --build build
 tools/fortran_reference/run_crp_reference.sh <case>      # or: kernels
+cmake --build build
+tools/fortran_reference/run_crp_reference.sh --generate <case>
 ```
 
 The driver is linked against the objects of the Fortran reference install and checks that the

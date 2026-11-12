@@ -11,6 +11,14 @@
 #   check-log          the build log checks accept a log of the pinned flags and refuse -Ofast,
 #                      -march, -DMKL, an error line, a warning and a missing link line
 #   check-binary       the instruction check refuses -mavx2 code and crtfastmath (-ffast-math)
+#   manifest           refdata.py manifest: record writes checked lines (ReferenceManifest.cmake
+#                      accepts them) and replaces a file's line; record_manifest records the inputs
+#                      (a data set as a tree) and the run-time drift; bad paths, committed inputs,
+#                      a non-case directory, a ';' in a field and a bad header refuse; delete
+#                      removes only the listed files, and refuses a listed input and a case
+#                      without MANIFEST
+#   regenerate-refusals  regenerate_all.sh refuses an unclean reference tree and a missing install
+#                      before it deletes anything (in a scratch git repository)
 #
 # Usage: tools/fortran_reference/test_reference_tools.sh CASE WORK [CXX]
 #   CASE  one of the cases above;  WORK  scratch directory (recreated);
@@ -72,6 +80,7 @@ make_install() {
     echo "# stub install of test_reference_tools.sh"
     printf 'key\tvalue\n'
     printf 'exe.sha256\t%s\n' "${sha%% *}"
+    printf 'id\tstub\n'
     for package in "${FORTRAN_RUNTIME_PACKAGES[@]}"; do printf 'package.runtime.%s\t0-recorded\n' "${package}"; done
   } > "${dir}/BUILDINFO.tsv"
   (cd "${dir}" && sha256sum bin/spodvr.x OBJS/* BUILDINFO.tsv > SHA256SUMS)
@@ -105,9 +114,9 @@ case "${test_case}" in
   runtime-drift)
     make_install "${work}/install" "exit 0"
     export SPODVR_FORTRAN_REF_DIR="${work}/install"
-    expect_refusal "run-time package ${FORTRAN_RUNTIME_PACKAGES[0]} is .*, not the version in" in_config check_install
+    expect_refusal "run-time packages ${FORTRAN_RUNTIME_PACKAGES[0]}=.* differ from" in_config check_install
     SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1 expect_success in_config check_install
-    grep -q "^warning: run-time package" "${work}/stderr.txt" || fail "allowed drift printed no warning"
+    grep -q "^warning: run-time packages" "${work}/stderr.txt" || fail "allowed drift printed no warning"
     ;;
   run)
     make_install "${work}/install" "env > env.txt; [ -f fail ] && exit 3; exit 0"
@@ -157,6 +166,66 @@ case "${test_case}" in
     expect_refusal "has VEX/EVEX instructions" "${check}" --check-binary "${work}/avx2"
     "${cxx}" -O2 -ffast-math -o "${work}/fastmath" "${work}/kernel.cpp"
     expect_refusal "links crtfastmath" "${check}" --check-binary "${work}/fastmath"
+    ;;
+  manifest)
+    make_install "${work}/install" "exit 0"
+    # Under tests/reference/, so that ReferenceManifest.cmake checks the MANIFEST written here.
+    case_dir="${work}/tests/reference/case"
+    mkdir -p "${case_dir}/fine_x" "${work}/run"
+    echo "input" > "${case_dir}/DVR.inp"
+    echo "a" > "${case_dir}/a.txt"
+    echo "b" > "${case_dir}/fine_x/b.txt"
+    echo "c" > "${case_dir}/c.txt"
+    mkdir -p "${case_dir}/dataset" "${work}/run/dataset" "${work}/not/fortran_unformatted"
+    echo "as run" > "${work}/run/DVR.inp"
+    echo "data" > "${work}/run/dataset/CRPData"
+    refdata=(python3 -I -B "${tools_dir}/refdata.py" manifest)
+    manifest_check=(cmake -DROOT="${work}" -P "${tools_dir}/ReferenceManifest.cmake")
+    export SPODVR_FORTRAN_REF_DIR="${work}/install"
+    expect_success in_config record_manifest "${work}/run" "${case_dir}" "${work}/install/bin/spodvr.x" DVR.inp dataset -- a.txt fine_x/b.txt
+    expect_success "${manifest_check[@]}"
+    grep -q "2 files in 1 MANIFESTs match" "${work}/stdout.txt" || fail "the MANIFEST does not list 2 files"
+    grep -qP '^a\.txt\t[0-9a-f]{64}\treference_config\.sh\t[^\t]+\tstub spodvr\.x:[0-9a-f]{12}\tDVR\.inp:[0-9a-f]{12},dataset:[0-9a-f]{12}\t[^\t]*libc6=' \
+      "${case_dir}/MANIFEST.tsv" || fail "the line of a.txt lacks the program, inputs or drift: $(cat "${case_dir}/MANIFEST.tsv")"
+    # A regenerated file replaces its line; the other line stays.
+    echo "a2" > "${case_dir}/a.txt"
+    expect_success "${refdata[@]}" record "${case_dir}" a.txt --script other.sh --pre-manifest
+    expect_success "${manifest_check[@]}"
+    grep -q "2 files in 1 MANIFESTs match" "${work}/stdout.txt" || fail "re-recording a.txt changed the line count"
+    grep -q $'^a\\.txt\t.*\tother\\.sh\t-\t5\\.19 (pre-MANIFEST)\t-\t-\t-\t-$' "${case_dir}/MANIFEST.tsv" ||
+      fail "a.txt's line was not replaced: $(cat "${case_dir}/MANIFEST.tsv")"
+    expect_refusal "is not a file path inside" "${refdata[@]}" record "${case_dir}" ../a.txt --script s --pre-manifest
+    expect_refusal "none.txt is not a file" "${refdata[@]}" record "${case_dir}" none.txt --script s --pre-manifest
+    # The committed inputs can never get a line, so a regeneration can never delete them.
+    expect_refusal "DVR.inp is a committed input" "${refdata[@]}" record "${case_dir}" DVR.inp --script s --pre-manifest
+    expect_refusal "dataset/x is a committed input" "${refdata[@]}" record "${case_dir}" dataset/x --script s --pre-manifest
+    expect_refusal "holds no Fortran output" "${refdata[@]}" record "${work}/not/fortran_unformatted" x --script s --pre-manifest
+    expect_success "${refdata[@]}" delete "${case_dir}"
+    [[ -f "${case_dir}/DVR.inp" && ! -e "${case_dir}/a.txt" && ! -e "${case_dir}/fine_x" && ! -e "${case_dir}/MANIFEST.tsv" ]] ||
+      fail "delete did not remove exactly the listed files, their empty directory and the MANIFEST: $(ls -AR "${case_dir}")"
+    expect_refusal "MANIFEST.tsv not found" "${refdata[@]}" delete "${case_dir}"
+    expect_refusal "holds a tab, line break" "${refdata[@]}" record "${case_dir}" c.txt --script 'a;b' --pre-manifest
+    { printf 'path\tsha256\tscript\tcommit\tfortran_ref\tinput_sha\truntime_drift\tcpu\tdate\n'
+      printf 'DVR.inp\t-\t-\t-\t-\t-\t-\t-\t-\n'; } > "${case_dir}/MANIFEST.tsv"
+    expect_refusal "DVR.inp is a committed input" "${refdata[@]}" delete "${case_dir}"
+    [[ -f "${case_dir}/DVR.inp" ]] || fail "delete removed the input DVR.inp"
+    printf 'path\tsha256\n' > "${case_dir}/MANIFEST.tsv"
+    expect_refusal "the header is not" "${refdata[@]}" record "${case_dir}" c.txt --script s --pre-manifest
+    ;;
+  regenerate-refusals)
+    repo="${work}/repo"
+    mkdir -p "${repo}/tools/fortran_reference" "${repo}/tests/reference/case"
+    cp "${tools_dir}/reference_config.sh" "${tools_dir}/regenerate_all.sh" "${tools_dir}/refdata.py" "${repo}/tools/fortran_reference/"
+    echo "data" > "${repo}/tests/reference/case/out.txt"
+    expect_success python3 -I -B "${tools_dir}/refdata.py" manifest record "${repo}/tests/reference/case" out.txt --script s --pre-manifest
+    git -C "${repo}" init -q
+    git -C "${repo}" add -A
+    git -C "${repo}" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm scratch
+    echo "stray" > "${repo}/tests/reference/case/stray.txt"
+    expect_refusal "reference trees are not clean" "${repo}/tools/fortran_reference/regenerate_all.sh"
+    rm "${repo}/tests/reference/case/stray.txt"
+    expect_refusal "is not a reference install" "${repo}/tools/fortran_reference/regenerate_all.sh"
+    [[ -z "$(git -C "${repo}" status --porcelain)" ]] || fail "a refused regeneration changed the tree: $(git -C "${repo}" status --porcelain)"
     ;;
   *)
     echo "usage: test_reference_tools.sh CASE WORK [CXX] (unknown case ${test_case})" >&2

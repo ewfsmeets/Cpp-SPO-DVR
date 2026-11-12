@@ -1,0 +1,10 @@
+# Provenance of the Fortran reference files of this case, written by
+# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
+path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
+debug_asyp.dat	faf0ccc4eed1a6f3c5e5a585f70d280fca5151456d8a6b75d36fb3882ba3bed4	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_averages.out	999b166fec6409917b8ab59e3a997c40347fa6bb19a0ed53b9b4c4cd71df5c5d	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_fort21.bin	5d597e3e2a8d6d6f94a13085b957003a55400cc3c02f2fc356093c13ca34bddc	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_fort25.txt	3ad37fa188d96c43b17d94a903ccf5477f820a744ca314827198d7be1437a3c9	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_setup_stdout.txt	c0c9fc782b0c5a43230055264284c373d34ba0e008f378176afc5d59d22bc2a2	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+fortran_stdout.txt	7ff0315e3d41c009eec8b2ed487823f2d9b4df7e9ee3f5aca98ceb11f1cf9fe5	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+pes_reference.txt	8ed13cb432559cb4ac6c237903e631a0e7d3cf7e16d502cd877ecf5fcaf376b1	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-

@@ -7,6 +7,7 @@
 #   fortran_setup_stdout.txt  stdout of the run (vasy table, grid info, e(v,j) table)
 #   debug_asyp.dat            full-precision rovibrational energies and eigenvectors
 #   pes_reference.txt         extracted from the binary .pes file (see extract_pes.py)
+# and their lines in the case's MANIFEST.tsv (inputs: the DVR.inp as run and a staged data set).
 # CRP library cases (SystemID CRPlibrary) get their data set copied into the scratch directory.
 #
 # Usage: tools/fortran_reference/run_setup_reference.sh [case] [scratch_dir]
@@ -33,4 +34,8 @@ run_fortran "${scratch_dir}" fortran_setup_stdout.txt '*.pes' debug_asyp.dat
 pes_files=("${scratch_dir}"/*.pes)
 python3 -I -B "${FORTRAN_REPO_DIR}/tools/fortran_reference/extract_pes.py" "${pes_files[0]}" "${case_dir}/pes_reference.txt"
 cp "${scratch_dir}/fortran_setup_stdout.txt" "${scratch_dir}/debug_asyp.dat" "${case_dir}/"
+inputs=(DVR.inp)
+[[ ! -d "${scratch_dir}/dataset" ]] || inputs+=(dataset)
+record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" "${inputs[@]}" -- \
+  fortran_setup_stdout.txt debug_asyp.dat pes_reference.txt
 echo "* Reference files written to ${case_dir}"
