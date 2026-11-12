@@ -39,12 +39,12 @@ The program-side adapter is tested in `tests/test_crp_potential.cpp`.
 
 Each case holds the data set (`dataset/`), the point lists (`*.in`, written by
 `crplib_make_dataset`) and the Fortran driver's results (`*.out`, hexadecimal and decimal), with
-their provenance in `MANIFEST.tsv` (the older `VERSIONS` files hold only the compiler and glibc
-versions). The `*_pairwise` data sets are also used by the gate cases
+their provenance in `MANIFEST.tsv` (the install and driver that made each file, its inputs, the
+CPU). The `*_pairwise` data sets are also used by the gate cases
 `tests/reference/crp_*_synthetic_small`.
 
-Rerun the driver on the committed data set and point lists, or regenerate a case (data set, point
-lists and Fortran results) after a change to the generator:
+Rerun the driver on the committed data set and point lists (the default, driver only), or
+regenerate a case (data set, point lists and Fortran results) after a change to the generator:
 
 ```
 tools/fortran_reference/run_crp_reference.sh <case>      # or: kernels

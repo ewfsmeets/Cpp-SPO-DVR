@@ -1,9 +1,9 @@
 # Validation against the Fortran code
 
-The C++ program is checked against the original Fortran program (version 5.19, upstream svn r1572,
-in `~/work/SPO-DVR_v5.19`; gfortran build) by five acceptance gates. Each gate is a regression test in `tests/` that compares
-the C++ results with Fortran output stored in `tests/reference/<case>/`; see the README section
-"Testing" for how to run them, and `tools/fortran_reference/` for regenerating the Fortran data.
+The C++ program is checked against the original Fortran program (upstream SPO-DVR 5.24 at svn
+r1713, built with `-O3`: [Reference data](#reference-data)) by five acceptance gates. Each gate is
+a regression test in `tests/` that compares the C++ results with Fortran output stored in
+`tests/reference/<case>/`; see the README section "Testing" for how to run them.
 
 **Tolerances.** Values that the Fortran prints in E/F format (e.g. E15.8, mantissa 0.dddddddd) are
 compared to half a unit in the last printed digit, not with a fixed relative tolerance (for
@@ -19,9 +19,41 @@ Dai–Zhang PES, 7000 steps, 435 rotational functions) was run with the Fortran,
 C++ GPU code and compared state by state, with criteria written before the comparisons:
 [validation_thesis_fig5_3_dz](validation_thesis_fig5_3_dz/README.md). With the default (strict)
 GPU build the S matrix agrees with the Fortran to 3.5e-13 (norm-weighted relative) and all 111
-reaction probabilities match the Fortran's 7 printed digits.
+reaction probabilities match the Fortran's 7 printed digits. That Fortran run used 5.19; on the
+same grid, the potential and the first 40 steps of 5.24 built with `-O3` are bitwise identical to
+5.19's (checked 2026-11-11), so the comparison holds for the current reference too.
+
+## Reference data
+
+The Fortran output in `tests/reference/` and `tests/crplib/reference/` comes from one build, the
+reference install `r1713-dce0ecc`: upstream 5.24 plus the fine-analysis sign fix (git `dce0ecc`,
+svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream_sync.md)).
+- **Why `-O3`:** the upstream default (`-Ofast -mtune=native -march=native`) brings fast-math and
+  FMA (CPU-dependent results; the computed machine epsilon underflows to 0, so the code falls back
+  to 1e-12). With `-O3`, 5.24 is bitwise identical to 5.19 on every gate case (checked 2026-11-11).
+- **Provenance:** the install's `BUILDINFO.tsv` (copies in `tools/fortran_reference/buildinfo/`)
+  and a `MANIFEST.tsv` per case (`ctest -R ReferenceManifest`). Build, regenerate, compare, bump:
+  [tools/fortran_reference/README.md](../tools/fortran_reference/README.md).
+- **5.19** (`~/work/SPO-DVR_v5.19`, install `v5.19`) is the archive, kept for the thesis record.
+
+### Reference history
+
+| Period | Fortran build | Reference data |
+|---|---|---|
+| until 2026-11-06 | 5.19 (svn r1572), gfortran 13 build of 2026-10-26, `-O3` | generated, mostly at 16 threads |
+| from the GCC 15 switch (2026-11-06) | 5.19 rebuilt with gfortran 15 | kept; the rebuild reproduces them except the Dai–Light BK files (≤ 8.3e-13 of the gate-4 scale) and last digits of fort.25 |
+| since 2026-11-12 | 5.24 r1713 `-O3` (install `r1713-dce0ecc`), gfortran 15, 4 threads | all regenerated (`regenerate_all.sh`) and compared with `refdata.py compare … --expected tools/fortran_reference/expected/r1713.tsv`. Identical: the averages of all 5 propagation cases, the potentials and gas-phase states, the hard-wall BK files, the CRP driver outputs, fine-analysis fort.10 and fort.3. Changed by the toolchain (gfortran 13 → 15 and its run-time libraries): the Dai–Light BK files by ≤ 8.3e-13 (short), 4.1e-13 (short_sym), 1.1e-14 (small) of the gate-4 scale, the propagation fort.25 (read by no test), stdout probabilities below 1e-20 by ≤ 1e-21. Changed by the r1713 fix: the signs of Im S and of the phase in the fine-analysis fort.25. Stdout labels |
+
+With the switch the C++ follows 5.24 twice: `RStart ≤ 0` is rejected (5.19: only `< 0`), and
+gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `FortranInterpolationBugs.*`
+keep the 5.19 model with its `s1_real` typo ([fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md)).
 
 ## Gates
+Status on the 5.24 r1713 reference data (measured 2026-11-12, as are the margins of gates 3–5
+below; the setup data of gates 1 and 2 did not change with the switch): the full ctest, 611
+tests = 607 passed + 4 skipped; the CUDA tests including the long ones, 19 of 19 (gates 3 and 4
+on the GPU; 7000-step BK within 8.5e-13 (hard wall) and 9.3e-13 (Dai–Light) of the scale).
+
 Main reference case: `tests/reference/hardwall_small/DVR.inp` (Fortran input), with the Fortran
 output next to it; the corrugated Cu(111) cases are in their own directories.
 **All gate values below are specific to the parameters in that `DVR.inp`** (grids, masses, JMax, …).
@@ -43,16 +75,18 @@ derived from exactly the same parameters.
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
    digits: |C++ − Fortran| ≤ half a unit in the 8th mantissa digit of E15.8 (the Fortran is not
    patched). Passes for hardwall_short (21 rows) and the full hardwall_small run (7000 steps, 141
-   rows). Default case `tests/reference/hardwall_short` (same as
+   rows; worst 0.989645 of half a printed unit). Default case `tests/reference/hardwall_short` (same as
    hardwall_small but 1000 steps); the full 7000-step hardwall_small run only with
    `SPODVR_LONG_TESTS=1`. The hard wall has no θ/φ/x/y coupling, so gate 3 only checks that the
    angular transform and x/y FFTs act as the identity there; their correctness rests on the
    analytic unit tests (test_angular, test_propagation). Corrugated cases (60° cell, C6v):
    `cu111_dailight_short` (1000 steps, default), `cu111_dailight_short_sym` (C6v UseSymmetry,
    nPhisOptimal: nφ 12), `cu111_dailight_small` (7000 steps, long; also fine analysis, gate 5
-   `Gate5DaiLight`). Status: all pass (gates 3, 4, 5). Full run: averages worst 0.99 of half a
-   unit, BK (1400 records) 6.4e-13 of max|c| = 0.26, probabilities within half a unit except the
-   reaction probability (see gate 4). Run times of this case: performance.md "Fortran vs C++".
+   `Gate5DaiLight`). Status: all pass (gates 3, 4, 5). Full Dai–Light run (7000 steps): averages
+   worst 0.986583 of half a printed unit, BK (1400 records) 6.41e-13 of max|c| = 0.265,
+   probabilities within half a unit (worst 0.989415) except the reaction probability (see gate 4).
+   The 1000-step Dai–Light cases: BK 6.25e-12 (short) and 6.288e-12 (short_sym) of the scale,
+   against the tolerance 1e-10. Run times of this case: performance.md "Fortran vs C++".
    fast-math (`SPODVR_FAST_MATH`) moved the reaction
    probability to 2.0e-12 / 5.3e-12 from the Fortran (old floor 1e-12): floor raised to 1e-11;
    not the default build.
@@ -83,8 +117,9 @@ derived from exactly the same parameters.
    tests/analysis_reference.hpp), and
    the probabilities of a Fortran run split by a restart
    (`fortran_restart_stdout.txt`, tools/fortran_reference/run_restart_reference.sh).
-   Status: all pass. Full run: probabilities worst 0.99 of half a unit, BK (1400 records) 6.4e-13
-   of max|c| = 0.41; Fortran restart run worst 0.99. In hardwall_short all BK coefficients are
+   Status: all pass. Full hard-wall run (hardwall_small, 7000 steps): probabilities worst 0.989451
+   of half a printed unit, BK (1400 records) 6.36e-13 of max|c| = 0.409; Fortran restart run
+   worst 0.99. In hardwall_short all BK coefficients are
    rounding noise (≤ 2e-15, the packet has not reached Zana), hence the scale floor 1e-4.
 5. **Fine analysis** (`tests/test_regression_fine_analysis.cpp`): the C++ analyses the Fortran's
    own BK file (hardwall_small `fortran_fort21.bin`); Fortran reference from unmodified
@@ -92,8 +127,9 @@ derived from exactly the same parameters.
    truncated (tEnd 13860), nen95 (NrOfEs -95), small (tEnd 800), empty (tEnd 100, nen95 = 0) in
    `hardwall_small/fine_<variant>/`). Compared to half a printed unit: AsympInfo numbers,
    probaf table, all of fil10 and unit 3 (spectrum), the interpolated per-energy blocks and
-   fort.25 probabilities; fort.25 Re S / Im S / phase against an emulation of the buggy Fortran
-   interpolation (see fortran_deviations.md). Status: all pass (worst 0.99 of half a unit).
+   fort.25 probabilities; fort.25 Re S / Im S / phase against an emulation of the reference's
+   interpolation, whose ATAN and sign bugs 5.24 keeps (see fortran_deviations.md). Status: all
+   pass (worst 0.990127 of half a printed unit, in `Gate5DaiLight`).
    Note: the associated Gauss-Legendre quadrature for |mJ| > 0 is dead code in the Fortran
    (`setupdvr.f90` forces `SymmetryInPhi = .FALSE.`, so only mJ = 0 is used). The rotational
    basis uses `legendre.f90 AssociatedLegendre` instead (C++ `associated_legendre`), tested

@@ -129,11 +129,12 @@ Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8
 with 15 rotational states (JMax = MJMax = 4; nθ = 3, nφ = 10), plus the on-the-fly analysis. AMD Ryzen 7
 5800X (8 cores, Zen 3, no AVX-512), WSL2, `OMP_NUM_THREADS=8`, the three runs one after the other on an
 otherwise idle machine; whole program, `/usr/bin/time`. Measured with GCC 13 / gfortran 13, before the
-switch to GCC 15 (2026-11-06); not re-measured since.
+switch to GCC 15 (2026-11-06), and with Fortran 5.19, before the reference moved to 5.24; not
+re-measured since.
 
 | Binary | Wall time | CPU time (user) | Threads busy (CPU / wall) |
 |---|---|---|---|
-| Fortran (gfortran -O3, FFTW, no `-march`) | 680 s | 5255 s | 7.7 |
+| Fortran 5.19 (gfortran -O3, FFTW, no `-march`) | 680 s | 5255 s | 7.7 |
 | C++, default flags (x86-64-v3, no FMA, LTO, oneMKL) | 764 s | 5040 s | 6.6 |
 | C++, `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native`, PGO (trained on 200 steps of the same case) | 675 s | 4489 s | 6.7 |
 
@@ -177,7 +178,7 @@ set-up. Measurements on the synthetic data sets of the library tests: the gate c
 `tests/reference/crp_*_synthetic_small` with nX = nY = 12 and JMax = MJMax = 8 (nθ = 5, nφ = 18;
 C4v with `nPhisOptimal` nφ = 20). That is 80 × 32 × 144 × 90 = 3.3·10⁷ PES evaluations, in
 potential-only runs with 8 threads on an otherwise idle machine (GCC 15 / gfortran 15). The Fortran
-time is the wall time of the whole run (two runs differed by up to 15 %); the C++ time is the
+(5.19) time is the wall time of the whole run (two runs differed by up to 15 %); the C++ time is the
 "6D potential computed in" line.
 
 | Data set | Fortran | C++ without S2–S4 | C++ | C++ with `UseSymmetry` + `nPhisOptimal` ((x, y) points computed) |

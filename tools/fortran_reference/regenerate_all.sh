@@ -16,9 +16,7 @@
 # Usage: tools/fortran_reference/regenerate_all.sh   (no arguments)
 # Environment: SPODVR_FORTRAN_REF_DIR, SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT (reference_config.sh);
 # TMPDIR (where the scratch directory is made).
-# Run time: about 45 min on 4 threads, estimated from the single-case Fortran run times measured on
-# 2026-11-11 (cu111_dailight_small, 7000 steps: 1212 s with 5.19, 1570 s with 5.24 -O3); the
-# whole run is not yet timed.
+# Run time: about 40 min on 4 threads (2381–2538 s with the r1713 install, 2026-11-12).
 # Docs: tools/fortran_reference/README.md.
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -3,7 +3,12 @@
 The scripts here run the Fortran SPO-DVR code to produce the reference data of the regression
 tests (`tests/reference/`, `tests/crplib/reference/`; the gates are described in
 [docs/validation.md](../../docs/validation.md)). They write straight into those directories: run
-them in a scratch clone or worktree when you only want to experiment.
+them in a scratch clone or worktree when you only want to experiment. Which Fortran the reference
+is, and why it is built with `-O3`: [docs/validation.md](../../docs/validation.md#reference-data).
+The recipe, in order: [build](#building-a-reference-install) an install,
+[regenerate](#regenerating-all-references) the references, [compare](#comparing-two-reference-trees)
+them with the committed ones; [moving to a newer upstream commit](#moving-the-reference-to-a-newer-upstream-commit)
+strings the three together.
 
 | Script | What it does |
 |---|---|
@@ -121,9 +126,10 @@ recorded, rows sorted by path. Hashes other than the file's own are shortened to
 | `cpu` | The CPU model and `flags:<sha256>` of its feature flags (libm picks code by CPU feature) |
 | `date` | The UTC date of the run |
 
-The lines of the files generated before the MANIFESTs existed carry `fortran_ref`
-`5.19 (pre-MANIFEST)`, `-` in the columns not recorded then, and the script that made them
-(`refdata.py manifest record --pre-manifest`).
+`refdata.py manifest record --pre-manifest` records files generated before the MANIFESTs existed
+(it bootstrapped the MANIFESTs of the 5.19 data): `fortran_ref` `5.19 (pre-MANIFEST)`, `-` in the
+columns not recorded then, and the script that made them. Since the data were regenerated with
+5.24 r1713, every line names that install.
 
 `ctest -R ReferenceManifest` checks that every case directory has a `MANIFEST.tsv` and that every
 listed file exists with its recorded sha256: a missing or edited reference, or a case left without
@@ -134,7 +140,7 @@ and a deleted MANIFEST).
 ## Regenerating all references
 
 ```bash
-tools/fortran_reference/regenerate_all.sh      # about 45 min on 4 threads (estimate, below)
+tools/fortran_reference/regenerate_all.sh      # about 40 min on 4 threads (2381–2538 s, 2026-11-12)
 git status --short tests/reference tests/crplib/reference
 ```
 
@@ -144,9 +150,10 @@ runs the steps in dependency order: setup, propagation, the restart, fine analys
 regenerated `fortran_fort21.bin`) and the CRP driver on the committed point lists. Each step
 checks its required outputs; the end runs the `ReferenceManifest` check. Its list of steps is the
 list of reference cases: a new case adds its step in the commit that adds the case. The scratch
-directories of all runs stay in one new `mktemp -d` directory, printed at the start. The run time
-is estimated from single-case Fortran runs measured on 2026-11-11 (cu111_dailight_small, 7000
-steps: 1212 s with 5.19, 1570 s with 5.24 `-O3`, 4 threads); the whole run is not yet timed.
+directories of all runs stay in one new `mktemp -d` directory, printed at the start. The whole
+run takes about 40 min with the r1713 install on 4 threads (2381–2538 s, 2026-11-12); the
+longest case, cu111_dailight_small with 7000 steps, took 1570 s when run alone (measured
+2026-11-11).
 Then compare the regenerated tree with the committed one ([below](#comparing-two-reference-trees)).
 
 ## Comparing two reference trees
@@ -200,11 +207,43 @@ printed number or a BK coefficient) never passes unless it is bitwise unchanged,
 `OLD` with one has no gate-4 scale. In the CRP driver outputs the hex word of each value is skipped: the 17-digit decimal
 on the same line determines the double.
 
-[expected/r1713.tsv](expected/r1713.tsv) lists the differences between the committed 5.19 data
-and the 5.24 r1713 `-O3` build, measured on 2026-11-11, each with its reason. `ctest -R
-FortranReference.Compare` checks that it matches the committed files, that every class it allows
+[expected/r1713.tsv](expected/r1713.tsv) lists the differences of the switch from the 5.19 data
+to the 5.24 r1713 `-O3` build, measured on 2026-11-11, each with its reason; the regenerated tree
+of the switch passed it. `ctest -R FortranReference.Compare` checks that it matches the committed
+files, that every class it allows
 passes, and that each fault fails: an edited number, a deleted file, an unknown label, a change
 of |S| or of a block header's sign in a fine `fort.25`, a BK change beyond the limit, NaN BK
 coefficients, a printed number out of range, a changed number count, three MANIFEST faults, an
 install other than the expected file's, a fine-analysis line without `fort.22`, overlapping rows
 and a malformed expected file ([test_refdata.py](test_refdata.py)).
+
+## Moving the reference to a newer upstream commit
+
+The pin is in [reference_config.sh](reference_config.sh): `FORTRAN_BUILD_*` names the upstream
+commit the build script builds, `FORTRAN_REF_ID` the install every run uses. The commit the port is
+up to speed with, and the port status of each upstream change, are in
+[docs/upstream_sync.md](../../docs/upstream_sync.md). Steps:
+
+1. **Review the upstream changes.** After `git -C ~/work/SPO-DVR pull`, list the commits after the
+   pin with `git -C ~/work/SPO-DVR log --oneline <pin>..master` and read
+   `git -C ~/work/SPO-DVR diff -w <pin> <new> -- sources.dir/SOURCES.dir`. Give each change a row
+   in the table of docs/upstream_sync.md (ported, a deviation, or not ported).
+2. **Pin and build.** Set `FORTRAN_BUILD_COMMIT`, `FORTRAN_BUILD_TREE`
+   (`git -C ~/work/SPO-DVR rev-parse <new>^{tree}`), `FORTRAN_BUILD_SVN` and
+   `FORTRAN_BUILD_VERSION`, and check that `FORTRAN_BUILD_GNU_MK_LINE` is still line 19 of
+   `sources.dir/GNU.mk`. Run `build_fortran_reference.sh` ([above](#building-a-reference-install));
+   a log line outside its allow-lists stops the build: understand it before widening a list.
+3. **Regenerate** in a scratch worktree with `SPODVR_FORTRAN_REF_DIR` set to the new install:
+   `regenerate_all.sh` ([above](#regenerating-all-references)).
+4. **Compare** with the committed references. Write `expected/<id>.tsv` (with
+   `# install: <id>`): a first run with only the header row lists every difference as a `FAIL`
+   line. Give each difference a row with its reason, or stop when one is not understood; review
+   the label whitelist of refdata.py when stdout labels changed. `refdata.py compare` must then
+   exit with status 0 ([above](#comparing-two-reference-trees)).
+5. **Switch and test.** Set `FORTRAN_REF_ID` to the new id; run the full ctest, the long tests
+   (`SPODVR_LONG_TESTS=1`) and the CUDA tests: every gate passes, with the same skipped tests as
+   before. A failing gate is a finding, not a tolerance to raise (docs/validation.md "Tolerances").
+6. **Commit together:** the regenerated data with their MANIFESTs, `buildinfo/<id>.tsv`,
+   `expected/<id>.tsv`, the pin, docs/upstream_sync.md (the commit, its svn revision and date, and
+   the new rows; `tools/check_docs.py` fails while its commit differs from `FORTRAN_BUILD_COMMIT`
+   or `FORTRAN_REF_ID` from `FORTRAN_BUILD_ID`) and the "Reference history" of [docs/validation.md](../../docs/validation.md#reference-history).

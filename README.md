@@ -61,9 +61,9 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 - Not yet implemented: the flux analysis. A propagating run with `doFluxAnalysis: true` is refused
   with a "not implemented yet" error ([docs/input_schema.md](docs/input_schema.md)).
 - Not yet implemented: the other Fortran potentials (their data files are in `potentials/`).
-- Fortran version: the port follows SPO-DVR 5.19 (2023), and every comparison uses it. The changes
-  of the later upstream versions (up to 5.24, 2025) are not ported yet; see
-  [docs/fortran_deviations.md](docs/fortran_deviations.md).
+- Fortran version: the port started from SPO-DVR 5.19 (2023). Every comparison uses upstream 5.24
+  at svn r1713 (2026), built with `-O3` ([docs/validation.md](docs/validation.md#reference-data)).
+  The port status of each upstream change since 5.19: [docs/upstream_sync.md](docs/upstream_sync.md).
 
 ## Dependencies
 
@@ -236,7 +236,9 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   their other gates pass.
 - **Docs consistency:** `python3 -I -B tools/check_docs.py [--spodvr build/spodvr]` (under 1 s)
   checks the docs against the code: input keys, output files, links and anchors, decision IDs,
-  local paths, command-line options (with `--spodvr`), gates and environment variables; it also
+  local paths, command-line options (with `--spodvr`), gates, environment variables, and the
+  upstream commit of `docs/upstream_sync.md` against the pin in
+  `tools/fortran_reference/reference_config.sh` (and the install the runs use against it); it also
   lists numbers repeated across docs (report-only). ctest runs it as `Docs.Consistency`
   (`ctest --test-dir build -R Docs`). Accepted findings, each with a reason, are in
   `tools/check_docs_allowlist.tsv`; a row that no longer suppresses anything fails the check.
@@ -377,7 +379,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker |
-| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), performance notes, GPU backend |
+| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |
 

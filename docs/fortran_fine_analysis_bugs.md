@@ -9,8 +9,10 @@ The fine analysis (Fortran `nread = 2`, input `onlyAnalysis` / `alsoAnalysis`) h
 The interpolation in the Fortran code (`Analyzor.f90 smatrix_calc`, nread = 2 branch without NAG,
 lines 732–790) has two bugs, and its sign handling causes a third class of errors. The C++ code
 fixes all three. The probabilities are not affected; the S-matrix elements and phases are.
-Line numbers refer to version 5.19. Upstream fixed bug 1 on 2026-11-09 (svn r1713, after version
-5.24). Bugs 2 and 3 are still present there.
+Line numbers refer to version 5.19, and so do the counts of wrong values in the last table
+(the 5.19 model with all three bugs). Upstream fixed bug 1 on 2026-11-09
+(svn r1713, after version 5.24); that is the reference of the port
+([validation.md](validation.md#reference-data)). Bugs 2 and 3 are still present there.
 
 ## The Fortran code
 ```fortran
@@ -89,27 +91,31 @@ input.
 
 1. **The fine-grid S agrees with the Fortran, and the bug model is what the Fortran does**
    (`tests/test_regression_fine_analysis.cpp`, gate 5).
-   - The test helper `fortran_interpolation_with_bugs` reproduces lines 739–787 literally.
+   - The test helper `fortran_interpolation_with_bugs` emulates the reference: lines 739–787
+     literally, with 5.24's `s1_imag` in place of the typo (bugs 2 and 3 remain). The unit tests
+     of item 2 keep the 5.19 model with all three bugs (`fortran519_interpolation_with_bugs`).
      Applied to the C++ grid values, it reproduces every Re S, Im S and phase in the Fortran
-     fort.25 to within half a unit in the last printed digit:
+     fort.25 to within half a unit in the last printed digit (counts printed by
+     `ctest -R Gate5 -V`, 5.24 r1713 reference data, 2026-11-12):
 
      | variant | values compared |
      |---|---|
      | full | 144 |
      | nen95 | 243 |
      | small | 297 |
+     | Dai–Light full (`cu111_dailight_small`) | 105303 |
 
      Values with |S| < 1e-8 of the largest are skipped.
    - In the nen95 variant the analysis energies fall on grid points (f = 0 or 1). There the
-     Fortran's quad-precision `ensctr` picks the neighbouring interval for 6 values; the test
+     Fortran's quad-precision `ensctr` picks the neighbouring interval for 7 values; the test
      accepts either interval.
    - All probabilities agree with the fixed C++ directly, to within half a printed unit:
      - full: 1365 printed in the per-energy blocks, 9904 in fort.25;
      - plus every value of the spectrum (fil10, unit 3, probaf table).
 2. **The differences occur only where predicted**
    (`tests/test_fine_analysis.cpp`, `FortranInterpolationBugs.*`).
-   - The emulated Fortran result is compared with the intended one (P and the unwrapped phase
-     interpolated linearly).
+   - The emulated 5.19 result (`fortran519_interpolation_with_bugs`, all three bugs) is compared
+     with the intended one (P and the unwrapped phase interpolated linearly).
    - Every difference falls into one of three classes:
      - Re S changes sign between the grid points (2);
      - Im S changes sign (3);

@@ -32,7 +32,7 @@ target_include_directories(test_crp_potential PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)
 
 # The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
-# command-line options, and two negative tests that show the checker fails on a planted fault.
+# command-line options, and negative tests that show the checker fails on a planted fault.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(check_docs ${PROJECT_SOURCE_DIR}/tools/check_docs.py)
 add_test(NAME Docs.Consistency
@@ -46,6 +46,9 @@ add_test(NAME Docs.UndocumentedKeyFails
 add_test(NAME Docs.StaleAllowlistRowFails
          COMMAND ${check_docs_negative} -DCASE=stale-allowlist
                  -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/stale-allowlist -P ${check_docs_negative_script})
+add_test(NAME Docs.UpstreamPinMismatchFails
+         COMMAND ${check_docs_negative} -DCASE=upstream-pin
+                 -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/upstream-pin -P ${check_docs_negative_script})
 
 # The refusals of the Fortran reference tools (tools/fortran_reference/test_reference_tools.sh,
 # tools/fortran_reference/README.md): stub installs and synthetic build logs, no Fortran run.

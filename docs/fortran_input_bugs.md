@@ -14,10 +14,11 @@ Later sections will cover more input checks: the optical potentials at the low e
 
 ## The demonstration runs
 - **Executables:**
-  - 5.19, the reference of the port: `~/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x`
+  - 5.19, the version the port started from: `~/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x`
     (gfortran 15, `-O3`, OpenMP, FFTW);
   - 5.24: upstream master at commit dce0ecc (svn r1713), built with `O3FLAGS = -O3` in `GNU.mk`
-    (the default flags enable fast-math).
+    (the default flags enable fast-math); now the reference of the port
+    ([validation.md](validation.md#reference-data)).
 - **Input:** `tests/reference/hardwall_small/DVR.inp` with the flux keys of each case appended.
   - Its wave packet spans EMinWP = 0.2 to EMaxWP = 0.6 eV.
   - rFluxAnalysis = 3.05 bohr is point 16 of the r grid (0.8 + 15 × 0.15) and lies below

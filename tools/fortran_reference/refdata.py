@@ -326,8 +326,8 @@ HEX_DOUBLE_LINE = re.compile(r"^(\S+ +\d+ +)[0-9A-Fa-f]{16}( +\S+)$")
 
 # The label whitelist of class labels: the stdout lines whose text changed from Fortran 5.19 to
 # 5.24 while their numbers did not, as (pattern, canonical form); the canonical form None drops the
-# line. Found by comparing every stdout of the r1713 -O3 build with the committed 5.19 references
-# (2026-11-11); expected/r1713.tsv names the files they apply to.
+# line. Found by comparing every stdout of the r1713 -O3 build with the 5.19 references committed
+# then (2026-11-11); expected/r1713.tsv names the files they apply to.
 LABELS_519_TO_524 = (
     # The line is gone in 5.24.
     (re.compile(r"\* NAG calls disabled \.\.\."), None),

@@ -17,6 +17,9 @@ Checks (each finding is printed as `file:line: <check>: <what>; <how to fix>`):
   env-vars      every SPODVR_* environment variable read by code, tests, tools or CMake is in a
                 living doc; retired variables appear only in their one allowed file. Report-only:
                 variables documented in several living docs
+  upstream-pin  the upstream commit and svn revision named in docs/upstream_sync.md equal the pin
+                (FORTRAN_BUILD_COMMIT, FORTRAN_BUILD_SVN) in tools/fortran_reference/reference_config.sh,
+                and its FORTRAN_REF_ID (the install the runs use) equals FORTRAN_BUILD_ID
   numbers       report-only: numbers with >= 3 significant digits or an exponent that occur in
                 more than one living doc (README.md, docs/*.md, the other tracked README.md files
                 outside the thesis record)
@@ -53,7 +56,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 CHECKS = ("input-keys", "output-files", "links", "decision-ids", "local-paths", "cli", "gates",
-          "env-vars", "numbers")
+          "env-vars", "upstream-pin", "numbers")
 REFERENCE_DATA = ("tests/reference/", "tests/crplib/reference/", "potentials/")
 THESIS_RECORD = "docs/validation_thesis_fig5_3_dz/"
 # This checker and its allow-list spell out the patterns they look for.
@@ -624,7 +627,82 @@ def check_env_vars(repo: Repo) -> tuple[list[Finding], list[str]]:
 
 
 # ---------------------------------------------------------------------------------------------
-# 9. Repeated numbers (report-only)
+# 9. The upstream commit of docs/upstream_sync.md against the pin
+# ---------------------------------------------------------------------------------------------
+UPSTREAM_SYNC = "docs/upstream_sync.md"
+REFERENCE_CONFIG = "tools/fortran_reference/reference_config.sh"
+# (name, row of the table at the top of upstream_sync.md, pin assignment in reference_config.sh)
+UPSTREAM_ITEMS = (
+    ("commit", re.compile(r"^\|\s*Upstream commit\s*\|\s*`([0-9a-f]{7,40})`\s*\|"),
+     re.compile(r'^FORTRAN_BUILD_COMMIT="([0-9a-f]{40})"$')),
+    ("svn revision", re.compile(r"^\|\s*svn revision\s*\|\s*(r\d+)\s*\|"),
+     re.compile(r'^FORTRAN_BUILD_SVN="(r\d+)"$')),
+)
+# The install id reference_config.sh derives from the pin (this check computes it the same way, so
+# the formula must stay), and the install every run uses.
+BUILD_ID_FORMULA = 'FORTRAN_BUILD_ID="${FORTRAN_BUILD_SVN}-${FORTRAN_BUILD_COMMIT:0:7}"'
+REF_ID = re.compile(r'^FORTRAN_REF_ID="([^"]+)"$')
+
+
+def first_match(lines: list[str], pattern: re.Pattern) -> tuple[int, str] | None:
+    """(line, first group) of the first line that matches, or None."""
+    for number, line in enumerate(lines, 1):
+        m = pattern.search(line)
+        if m:
+            return number, m.group(1)
+    return None
+
+
+def check_upstream_pin(repo: Repo) -> list[Finding]:
+    """The doc names the pinned commit (or a prefix of at least 7 digits) and svn revision; this
+    catches a reference bump that left upstream_sync.md behind, or a doc edited without a bump.
+    Then the runs must use the install built from the pin (check_reference_id)."""
+    doc, config = repo.lines(UPSTREAM_SYNC), repo.lines(REFERENCE_CONFIG)
+    for path, lines in ((UPSTREAM_SYNC, doc), (REFERENCE_CONFIG, config)):
+        if lines is None:
+            return [Finding("upstream-pin", path, 1, "file not found; restore it or update tools/check_docs.py")]
+    findings, pins = [], {}
+    for name, row, assignment in UPSTREAM_ITEMS:
+        named, pinned = first_match(doc, row), first_match(config, assignment)
+        if pinned is None:
+            findings.append(Finding("upstream-pin", REFERENCE_CONFIG, 1,
+                                    f"no pin of the upstream {name} ({assignment.pattern}); "
+                                    "restore it or update tools/check_docs.py"))
+            continue
+        pins[name] = pinned[1]
+        if named is None:
+            findings.append(Finding("upstream-pin", UPSTREAM_SYNC, 1,
+                                    f"no table row with the upstream {name} ({row.pattern}); add it"))
+            continue
+        agrees = pinned[1].startswith(named[1]) if name == "commit" else named[1] == pinned[1]
+        if not agrees:
+            findings.append(Finding("upstream-pin", UPSTREAM_SYNC, named[0],
+                                    f'upstream {name} "{named[1]}" is not the pin "{pinned[1]}" of '
+                                    f"{REFERENCE_CONFIG}:{pinned[0]}; name the pinned one, or move the pin",
+                                    doc[named[0] - 1]))
+    if len(pins) == len(UPSTREAM_ITEMS):
+        findings += check_reference_id(config, f"{pins['svn revision']}-{pins['commit'][:7]}")
+    return findings
+
+
+def check_reference_id(config: list[str], build_id: str) -> list[Finding]:
+    """FORTRAN_REF_ID equals FORTRAN_BUILD_ID: catches a pin moved without switching the runs to
+    its install (the data would come from another commit than the docs name), or the reverse."""
+    ref_id = first_match(config, REF_ID)
+    if ref_id is None or BUILD_ID_FORMULA not in config:
+        return [Finding("upstream-pin", REFERENCE_CONFIG, 1,
+                        f"no FORTRAN_REF_ID=\"<id>\" line, or no line {BUILD_ID_FORMULA}; "
+                        "restore it or update tools/check_docs.py")]
+    if ref_id[1] == build_id:
+        return []
+    return [Finding("upstream-pin", REFERENCE_CONFIG, ref_id[0],
+                    f'FORTRAN_REF_ID "{ref_id[1]}" is not FORTRAN_BUILD_ID "{build_id}" (the pinned build); '
+                    "regenerate with the pinned install and switch FORTRAN_REF_ID, or move the pin back",
+                    config[ref_id[0] - 1])]
+
+
+# ---------------------------------------------------------------------------------------------
+# 10. Repeated numbers (report-only)
 # ---------------------------------------------------------------------------------------------
 NUMBER = re.compile(r"(?<![\w.\-/−])(\d+(?:\.\d+)?)([eE][-+−]?\d+)?(?![\w]|\.\d|-\d)")
 
@@ -747,7 +825,8 @@ def run_checks(repo: Repo, args: argparse.Namespace) -> tuple[dict[str, list[Fin
     findings: dict[str, list[Finding]] = {}
     report, notes = [], []
     simple = {"input-keys": check_input_keys, "output-files": check_output_files, "links": check_links,
-              "decision-ids": check_decision_ids, "local-paths": check_local_paths, "gates": check_gates}
+              "decision-ids": check_decision_ids, "local-paths": check_local_paths, "gates": check_gates,
+              "upstream-pin": check_upstream_pin}
     for check in args.checks:
         if check in simple:
             findings[check] = simple[check](repo)

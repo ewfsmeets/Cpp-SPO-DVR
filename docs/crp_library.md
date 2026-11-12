@@ -237,14 +237,16 @@ rounding; no test case can tell them apart.
 al., J. Phys. Chem. A 117, 8770 (2013); upstream input `input.dir/v0j0_WPC_H2Cu111SRP_C3v_01.inp`):
 C3v, Å and eV, a = 2.6015 Å, 4 layers, 10 atom cuts, CutsInterpolation = F (the cuts hold V, up to
 1950 eV at the wall). `CRPData.6D` lists 31 molecular cuts, 29 used; the two extra ones have no file
-and are skipped, as in the Fortran (two warnings). Checked 2026-11-11 against Fortran 5.19:
+and are skipped, as in the Fortran (two warnings). Checked 2026-11-11 against Fortran 5.19; the
+current reference, 5.24 r1713, gives bitwise the same driver outputs and potential on these cases
+([validation.md](validation.md#reference-data)):
 - **Reading** (`tests/crplib/test_real_data_set.cpp`): every file as gfortran reads it, including the
   trailing comments after the items (`<-- …`, `# …`, `3.4d0  ZCM …`).
 - **The library on it**: V equals the data at 3132 cut knots (cut site and orientation, Z below
   ZsoMin) to 6.2e-15 relative; C3v symmetry and atom exchange to 2.3e-14; the gradient matches
   finite differences; S2, S3, S4 bitwise; 118 of the 256 cluster atoms in reach.
-- **Against the Fortran library** (reference case `cu111_srp48`, driver on the 5.19 objects; the
-  point lists follow the data set's ranges): atom PES bitwise in bohr/Hartree and Å/eV; molecule
+- **Against the Fortran library** (reference case `cu111_srp48`, driver on the reference
+  install's objects; the point lists follow the data set's ranges): atom PES bitwise in bohr/Hartree and Å/eV; molecule
   PES, QD wrapper, gas phase and CAMBCORD within D4 (≤ 1.9e-14 Hartree); with libmvec's cos the
   molecule PES is bitwise equal too.
 - **Against the Fortran program** (gates 1/2, `tests/reference/crp_cu111_srp48_small`, the upstream
