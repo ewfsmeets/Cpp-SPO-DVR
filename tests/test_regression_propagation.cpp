@@ -4,7 +4,10 @@
 // tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
 // SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing.
+// LowZGateFailsWithoutTheScatteringAbsorberLong (also SPODVR_LONG_TESTS=1) is the negative test of
+// the low-Z case.
 #include <cstdlib>
+#include <fstream>
 
 #include "regression_gate.hpp"
 
@@ -26,6 +29,41 @@ TEST(RegressionPropagation, Gate3DaiLightShortSymmetric) { run_gate("cu111_daili
 TEST(RegressionPropagation, Gate3DaiLightFullRunLong) {
   if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";
   run_gate("cu111_dailight_small");
+}
+
+// The low-Z absorbers of upstream 5.24: cu111_dailight_short with ZOptLow… (energy form) and
+// ZSpOptLow… (factor form), both from ZStart to Zana.
+TEST(RegressionPropagation, Gate3DaiLightShortLowZ) { run_gate("cu111_dailight_short_lowz"); }
+
+// Negative test of that gate: the C++ run without the scattering low-Z absorber must fail gates 3
+// and 4 by at least 100 times their tolerance, so the gate sees that absorber. It is the weaker of
+// the two (removing the specular one changes the averages about 100 times more: docs/validation.md).
+// Long suite: it cannot catch a code regression the gate misses (a broken absorber fails the gate),
+// its outcome changes only with the input or the reference, and a shorter run does not pay: the
+// deviation passes 100 tolerances in both gates only from t = 1500 of 2000 (measured 2026-11-12).
+TEST(RegressionPropagation, LowZGateFailsWithoutTheScatteringAbsorberLong) {
+  if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";
+  const fs::path dir = fs::path(SPODVR_REFERENCE_DIR) / "cu111_dailight_short_lowz";
+  const auto ref = read_fortran_reference(dir / "fortran_stdout.txt", dir / "fortran_averages.out");
+  if (!ref || !fs::exists(dir / "fortran_fort21.bin"))
+    GTEST_SKIP() << "no Fortran reference in " << dir << "; run "
+                 << "tools/fortran_reference/run_propagation_reference.sh cu111_dailight_short_lowz";
+  std::ifstream file(dir / "input.json");
+  nlohmann::json input = nlohmann::json::parse(file);
+  for (const char* key : {"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy"}) ASSERT_EQ(input.erase(key), 1u) << key;
+  const PropagationRun cpp = run_cpp_propagation(input);
+  const auto bk_ref = read_fortran_bk_records(dir / "fortran_fort21.bin");
+  ASSERT_EQ(cpp.averages.size(), ref->averages.size());
+  ASSERT_EQ(cpp.bk.size(), bk_ref.size());
+
+  // In the units of the gates: printed half units (gate 3 allows 1) and the BK tolerance (gate 4).
+  const double averages = averages_deviation(cpp, *ref);
+  const BkDeviation bk = bk_deviation(cpp, bk_ref);
+  const double bk_in_tolerances = bk.worst / (bk_gate_tolerance * bk.scale);
+  EXPECT_GT(averages, 100.0);
+  EXPECT_GT(bk_in_tolerances, 100.0);
+  std::cout << "  without the scattering low-Z absorber: averages " << averages << " x (half printed unit), BK "
+            << bk_in_tolerances << " x the gate-4 tolerance\n";
 }
 
 TEST(RegressionPropagation, ParsesTheFortranOutputFormats) {

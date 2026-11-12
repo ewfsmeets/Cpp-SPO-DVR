@@ -157,27 +157,40 @@ inline std::vector<std::vector<std::complex<double>>> read_fortran_bk_records(co
   return records;
 }
 
+// The BK deviation of a C++ run from the Fortran fort.21: the largest reference coefficient, the
+// gate-4 scale (that coefficient, at least 1e-4) and the largest |C++ - Fortran|, over the analysis
+// steps and coefficients both runs have (the callers check the counts).
+// A NaN coefficient on either side makes `worst` (in the reference also the scale) NaN.
+struct BkDeviation {
+  double largest = 0.0;
+  double scale = 0.0;
+  double worst = 0.0;
+};
+
+inline BkDeviation bk_deviation(const PropagationRun& cpp, const std::vector<std::vector<std::complex<double>>>& ref) {
+  BkDeviation d;
+  for (const auto& record : ref)
+    for (const auto& c : record) d.largest = nan_aware_max(d.largest, std::abs(c));
+  d.scale = nan_aware_max(d.largest, 1e-4);
+  for (std::size_t step = 0; step < std::min(cpp.bk.size(), ref.size()); ++step)
+    for (std::size_t k = 0; k < std::min(cpp.bk[step].size(), ref[step].size()); ++k)
+      d.worst = nan_aware_max(d.worst, std::abs(cpp.bk[step][k] - ref[step][k]));
+  return d;
+}
+
 // Gate 4 (BK coefficients): every coefficient of every analysis step, relative to the largest
 // coefficient of the run. The coefficients are amplitudes of at most ~1; before the wave packet
 // reaches the analysis line they are rounding noise (hardwall_short: all below 2e-15), so the
 // reference scale is at least 1e-4, i.e. noise is compared absolutely at tolerance * 1e-4.
-// A NaN coefficient on either side makes `worst` (in the reference also the scale) NaN: it fails.
+// A NaN coefficient on either side makes the deviation NaN: it fails.
 inline void compare_bk_with_fortran(const PropagationRun& cpp,
                                     const std::vector<std::vector<std::complex<double>>>& ref, double tolerance) {
   ASSERT_EQ(cpp.bk.size(), ref.size());
-  double largest = 0.0;
-  for (const auto& record : ref)
-    for (const auto& c : record) largest = nan_aware_max(largest, std::abs(c));
-  const double scale = nan_aware_max(largest, 1e-4);
-  double worst = 0.0;
-  for (std::size_t step = 0; step < ref.size(); ++step) {
-    ASSERT_EQ(cpp.bk[step].size(), ref[step].size());
-    for (std::size_t k = 0; k < ref[step].size(); ++k)
-      worst = nan_aware_max(worst, std::abs(cpp.bk[step][k] - ref[step][k]));
-  }
-  EXPECT_LE(worst, tolerance * scale);
-  std::cout << "  " << ref.size() << " BK records compared; max|c| = " << largest
-            << ", largest |C++ - Fortran| = " << worst << " (" << worst / scale << " of the reference scale)\n";
+  for (std::size_t step = 0; step < ref.size(); ++step) ASSERT_EQ(cpp.bk[step].size(), ref[step].size());
+  const BkDeviation d = bk_deviation(cpp, ref);
+  EXPECT_LE(d.worst, tolerance * d.scale);
+  std::cout << "  " << ref.size() << " BK records compared; max|c| = " << d.largest
+            << ", largest |C++ - Fortran| = " << d.worst << " (" << d.worst / d.scale << " of the reference scale)\n";
 }
 
 }  // namespace spodvr::testing

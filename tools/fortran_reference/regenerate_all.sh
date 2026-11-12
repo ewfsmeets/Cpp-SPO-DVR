@@ -16,7 +16,8 @@
 # Usage: tools/fortran_reference/regenerate_all.sh   (no arguments)
 # Environment: SPODVR_FORTRAN_REF_DIR, SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT (reference_config.sh);
 # TMPDIR (where the scratch directory is made).
-# Run time: about 40 min on 4 threads (2381–2538 s with the r1713 install, 2026-11-12).
+# Run time: about 45 min on 4 threads (2381–2538 s with the r1713 install, 2026-11-12, plus 158 s
+# for the case cu111_dailight_short_lowz added later).
 # Docs: tools/fortran_reference/README.md.
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -108,6 +109,7 @@ propagation hardwall_short
 propagation hardwall_small
 propagation cu111_dailight_short
 propagation cu111_dailight_short_sym
+propagation cu111_dailight_short_lowz
 propagation cu111_dailight_small
 
 # 4. The Fortran restart (hardwall_small in two parts).

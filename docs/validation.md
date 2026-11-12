@@ -35,7 +35,8 @@ reference install `r1713-dce0ecc`: upstream 5.24 plus the fine-analysis sign fix
 svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream_sync.md)).
 - **Why `-O3`:** the upstream default (`-Ofast -mtune=native -march=native`) brings fast-math and
   FMA (CPU-dependent results; the computed machine epsilon underflows to 0, so the code falls back
-  to 1e-12). With `-O3`, 5.24 is bitwise identical to 5.19 on every gate case (checked 2026-11-11).
+  to 1e-12). With `-O3`, 5.24 is bitwise identical to 5.19 on every gate case of 5.19 features
+  (checked 2026-11-11).
 - **Provenance:** the install's `BUILDINFO.tsv` (copies in `tools/fortran_reference/buildinfo/`)
   and a `MANIFEST.tsv` per case (`ctest -R ReferenceManifest`). Build, regenerate, compare, bump:
   [tools/fortran_reference/README.md](../tools/fortran_reference/README.md).
@@ -95,6 +96,21 @@ derived from exactly the same parameters.
    fast-math (`SPODVR_FAST_MATH`) moved the reaction
    probability to 2.0e-12 / 5.3e-12 from the Fortran (old floor 1e-12): floor raised to 1e-11;
    not the default build.
+   Low-Z absorbers (upstream 5.24): `cu111_dailight_short_lowz` (default, CPU and GPU) is
+   `cu111_dailight_short` plus `ZOptLowEnergy` 0.005 eV and `ZSpOptLowFactor` 4e-4 hartree, both
+   from ZStart = −2 to Zana = 8. Each matters on its own (C++ runs with one removed, 2026-11-12):
+   without the scattering one the averages move by 3.3e4 printed half units and the BK coefficients
+   by 9.6e3 gate tolerances, without the specular one by 3.1e6 and 5.5e5 (the summed probabilities
+   by only 1.2 and 2.6e3 half units: gate 4 sees the scattering one in the BK coefficients).
+   Margins (CPU / GPU): averages 0.976 / 0.976, probabilities 0.989 / 0.991 of half a printed unit,
+   BK 5.3e-12 / 2.3e-12 of the scale. The packet stays at Z ≳ 2 by t = 2000 (below Z = 2 then: 2e-11
+   of the specular, 3e-8 of the scattering norm; C++ checkpoint, 2026-11-12), so the gate exercises
+   the weak part of the profile (≤ 36 % of its peak); the strong end at Start is covered by
+   `PropagationTables.LowZAbsorberProfileIsTheMirroredFormula`, the legacy eV→hartree factor of the
+   strength by `Input.LowZAbsorberStrengths`. Negative test (Long suite: its outcome changes only
+   with the input or the reference; a code regression fails the gate itself)
+   `LowZGateFailsWithoutTheScatteringAbsorberLong`: without that absorber the C++ misses the
+   Fortran by 3.3e4 half units and 9.6e3 BK tolerances.
    Setup gates (gates 1/2 type, `tests/test_regression_pes.cpp`) for cu111_dailight_small (with
    switching 6..8), cu111_persson_small and cu111_dailight_short_sym (the Fortran symmetric .pes,
    expanded through symmetryIndex by extract_pes.py, vs the C++ gather): all pass, vasy ≤ 9e-16,

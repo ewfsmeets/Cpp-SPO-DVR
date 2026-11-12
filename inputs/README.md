@@ -179,6 +179,13 @@ waves, a high one reflects slow ones.
 - **Low-Z absorbers** (`ZOptLow…` on the scattering grid, `ZSpOptLow…` on the specular grid; keys
   of upstream 5.24, [input_schema.md](../docs/input_schema.md)): the mirror image at the start of a
   Z grid, V_opt = A·(3/2)·((end − q)/L)², strongest at Start, with ZStart ≤ Start < End ≤ `Zana`.
+- **When to use them:** off by default; only for amplitude that reaches the start of a Z grid, which
+  the periodic grid carries over to its far end. Like every absorber they remove whatever they
+  overlap. The specular grid holds the free incoming molecule (no surface potential), which crosses
+  the surface region towards ZStart: a `ZSpOptLow…` absorber also absorbs incoming amplitude. In the
+  gate case `cu111_dailight_short_lowz` (both weak, from −2 to `Zana` = 8) the specular one absorbed
+  1.6 % of the norm by t = 2000, the scattering one 0.02 % (C++ runs with one of them removed,
+  2026-11-12; [validation.md](../docs/validation.md)).
 - **The trap:** an absorber's strongest end (Start of a low-Z absorber, End of the others) lying
   exactly on a grid point. The grid points here are `ZStart + i·dZ` in double precision; the
   Fortran rounds the same expression from quad precision, so some points differ by one ulp

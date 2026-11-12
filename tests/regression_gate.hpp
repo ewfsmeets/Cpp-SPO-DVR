@@ -13,6 +13,9 @@
 
 namespace spodvr::testing {
 
+// Gate 4 tolerance of the BK coefficients, as a fraction of the reference scale (compare_bk_with_fortran).
+inline constexpr double bk_gate_tolerance = 1e-10;
+
 inline void run_gate(const std::string& case_name, const BackendFactory& backend = make_cpu_backend) {
   namespace fs = std::filesystem;
   const fs::path dir = fs::path(SPODVR_REFERENCE_DIR) / case_name;
@@ -27,7 +30,7 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
   // Gate 4: the printed probabilities, and the BK coefficients of every analysis step.
   compare_probabilities_with_fortran(cpp, read_fortran_probabilities(dir / "fortran_stdout.txt"));
   if (fs::exists(dir / "fortran_fort21.bin"))
-    compare_bk_with_fortran(cpp, read_fortran_bk_records(dir / "fortran_fort21.bin"), 1e-10);
+    compare_bk_with_fortran(cpp, read_fortran_bk_records(dir / "fortran_fort21.bin"), bk_gate_tolerance);
   else
     std::cout << "  no fortran_fort21.bin: BK coefficients not compared\n";
 

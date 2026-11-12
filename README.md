@@ -56,8 +56,8 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   potential really has that symmetry.
 - Implemented: checkpoint/restart (native files and Fortran-compatible files).
 - Absorbing potentials at the low end of the Z grids (keys `ZOptLow…`, `ZSpOptLow…`, added in
-  upstream 5.24) on the CPU and the GPU; not yet compared with the Fortran code in a regression
-  gate ([docs/upstream_sync.md](docs/upstream_sync.md)).
+  upstream 5.24) on the CPU and the GPU, compared with the Fortran code in the gate case
+  `cu111_dailight_short_lowz` ([docs/validation.md](docs/validation.md)).
 - Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).
@@ -222,7 +222,8 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   ./build/tests/test_input --gtest_filter='Input.*'   # one test program directly (GoogleTest)
   ```
 - **Long tests:** the full 7000-step regression runs (hard wall and Dai–Light; the latter alone takes
-  about 13 minutes on 8 cores) are skipped unless `SPODVR_LONG_TESTS` is set:
+  about 13 minutes on 8 cores) and the negative test of the low-Z gate (a 1000-step run) are
+  skipped unless `SPODVR_LONG_TESTS` is set:
   ```bash
   SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build -R Long --output-on-failure
   SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R 'Cuda.*Long' --output-on-failure

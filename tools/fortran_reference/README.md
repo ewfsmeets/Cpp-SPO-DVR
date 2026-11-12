@@ -140,7 +140,7 @@ and a deleted MANIFEST).
 ## Regenerating all references
 
 ```bash
-tools/fortran_reference/regenerate_all.sh      # about 40 min on 4 threads (2381–2538 s, 2026-11-12)
+tools/fortran_reference/regenerate_all.sh      # about 45 min on 4 threads (see below)
 git status --short tests/reference tests/crplib/reference
 ```
 
@@ -151,7 +151,8 @@ regenerated `fortran_fort21.bin`) and the CRP driver on the committed point list
 checks its required outputs; the end runs the `ReferenceManifest` check. Its list of steps is the
 list of reference cases: a new case adds its step in the commit that adds the case. The scratch
 directories of all runs stay in one new `mktemp -d` directory, printed at the start. The whole
-run takes about 40 min with the r1713 install on 4 threads (2381–2538 s, 2026-11-12); the
+run takes about 45 min with the r1713 install on 4 threads: 2381–2538 s (2026-11-12) before the
+case cu111_dailight_short_lowz was added, whose run takes 158 s (2026-11-12); the
 longest case, cu111_dailight_small with 7000 steps, took 1570 s when run alone (measured
 2026-11-11).
 Then compare the regenerated tree with the committed one ([below](#comparing-two-reference-trees)).

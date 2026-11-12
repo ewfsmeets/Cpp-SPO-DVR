@@ -133,11 +133,11 @@ struct PropagationRun {
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
 };
 
-// backend: the propagation backend (CPU by default; the GPU tests pass the CUDA backend).
-inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_json,
+// input: the JSON input of the run; backend: the propagation backend (CPU by default; the GPU
+// tests pass the CUDA backend).
+inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
                                           const BackendFactory& backend = make_cpu_backend) {
-  std::ifstream file(input_json);
-  const Config config = build_config(parse_input(nlohmann::json::parse(file)));
+  const Config config = build_config(parse_input(input));
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
   PotentialGrid potential = compute_potential_grid(*make_potential(config.input), config, grids, angular);
@@ -158,6 +158,27 @@ inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_jso
   return run;
 }
 
+// The C++ run of the JSON input file input_json.
+inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_json,
+                                          const BackendFactory& backend = make_cpu_backend) {
+  std::ifstream file(input_json);
+  return run_cpp_propagation(nlohmann::json::parse(file), backend);
+}
+
+// Largest |C++ - Fortran| of the averages (norm, <Z>, <r>, rest norm) in units of the printed half
+// unit, over the rows both runs have (the callers check the row counts). NaN if a value is NaN.
+inline double averages_deviation(const PropagationRun& cpp, const FortranPropagationReference& ref) {
+  double worst = 0.0;
+  for (std::size_t i = 0; i < std::min(cpp.averages.size(), ref.averages.size()); ++i) {
+    const Averages& c = cpp.averages[i];
+    const Averages& f = ref.averages[i];
+    for (const auto& [a, b] :
+         {std::pair{c.norm, f.norm}, {c.z_mean, f.z_mean}, {c.r_mean, f.r_mean}, {c.rest_norm, f.rest_norm}})
+      worst = nan_aware_max(worst, std::abs(a - b) / printed_half_unit(b));
+  }
+  return worst;
+}
+
 // Gate 3: initial wave packet block and the averages table against the Fortran output.
 inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropagationReference& ref) {
   EXPECT_PRINTED_EQ(cpp.initial.norm, ref.norm);
@@ -169,7 +190,6 @@ inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropaga
   EXPECT_PRINTED_EQ(cpp.initial.norm_inside, ref.norm_inside);
 
   ASSERT_EQ(cpp.averages.size(), ref.averages.size());
-  double worst = 0.0;  // largest |c - f| in units of the printed half unit
   for (std::size_t i = 0; i < ref.averages.size(); ++i) {
     const Averages& c = cpp.averages[i];
     const Averages& f = ref.averages[i];
@@ -178,11 +198,9 @@ inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropaga
     EXPECT_PRINTED_EQ(c.z_mean, f.z_mean) << "t = " << f.time;
     EXPECT_PRINTED_EQ(c.r_mean, f.r_mean) << "t = " << f.time;
     EXPECT_PRINTED_EQ(c.rest_norm, f.rest_norm) << "t = " << f.time;
-    for (const auto& [a, b] :
-         {std::pair{c.norm, f.norm}, {c.z_mean, f.z_mean}, {c.r_mean, f.r_mean}, {c.rest_norm, f.rest_norm}})
-      worst = nan_aware_max(worst, std::abs(a - b) / printed_half_unit(b));
   }
-  std::cout << "  largest deviation from the Fortran averages: " << worst << " x (half printed unit)\n";
+  std::cout << "  largest deviation from the Fortran averages: " << averages_deviation(cpp, ref)
+            << " x (half printed unit)\n";
 }
 
 }  // namespace spodvr::testing

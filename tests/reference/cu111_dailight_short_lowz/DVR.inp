@@ -1,0 +1,97 @@
+# Short Dai-Light H2/Cu(111) propagation case with both low-Z absorbers of upstream 5.24 (gates 3/4):
+# identical to ../cu111_dailight_short/DVR.inp apart from the Title and the six low-Z fields
+# at the end. The C++ equivalent of this file is input.json in this directory; keep both in sync.
+
+Title       : STRING  : "Dai-Light H2/Cu(111) short propagation test with low-Z absorbers";
+SystemID    : STRING  : "H2Cu111DaiLight";
+NewCalc     : LOGICAL : TRUE;
+
+ZDoF        : LOGICAL : TRUE;
+RDoF        : LOGICAL : TRUE;
+XDoF        : LOGICAL : TRUE;
+YDoF        : LOGICAL : TRUE;
+ThetaDoF    : LOGICAL : TRUE;
+PhiDoF      : LOGICAL : TRUE;
+
+# H2
+Mass1       : REAL    : 1.0078;
+Mass2       : REAL    : 1.0078;
+HomoNuc     : LOGICAL : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : REAL    : -2.0;
+dZ          : REAL    : 0.08;
+nZ          : INTEGER : 176;
+nZSpecular  : INTEGER : 280;
+
+# Grid in r
+RStart      : REAL    : 0.8;
+dR          : REAL    : 0.15;
+nR          : INTEGER : 56;
+
+# Grid in x, y (C6v: nX = nY)
+nX          : INTEGER : 8;
+nY          : INTEGER : 8;
+
+# Rotational basis (reduced). MJMax is set explicitly equal to JMax: the Fortran code treats
+# MJMax <= 0 as MJMax = JMax (setupdvr.f90 / transform.f90).
+JMax        : INTEGER : 4;
+MJMax       : INTEGER : 4;
+
+ProjOp      : INTEGER : 2;
+
+# Propagation
+tStart      : REAL    : 0.0;
+tEnd        : REAL    : 2000.0;
+dtStep      : REAL    : 2.0;
+nStep       : INTEGER : 1000;
+
+# Analysis
+dtAna       : REAL    : 10.0;
+dtAve       : REAL    : 100.0;
+DynamZSpAna : LOGICAL : TRUE;
+Zana        : REAL    : 8.0;
+NrOfEs      : INTEGER : 41;
+
+# Initial wave packet and state
+EMinWP      : REAL    : 0.2;
+EMaxWP      : REAL    : 0.6;
+Z0          : REAL    : 11.44;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : REAL    : 0.0;
+PhiParallel : REAL    : 0.0;
+
+# Complex absorbing potentials
+ZOptStart   : REAL    : 8.88;
+ZOptEnd     : REAL    : 12.0;
+ZOptEnergy  : REAL    : 0.3;
+ZSpOptStart : REAL    : 16.8;
+ZSpOptEnd   : REAL    : 20.32;
+ZSpOptEnergy: REAL    : 0.3;
+ROptStart   : REAL    : 4.55;
+ROptEnd     : REAL    : 9.05;
+ROptEnergy  : REAL    : 0.3;
+
+# No default exists in the Fortran code for TolSp; must be given.
+TolSp       : REAL    : 1.0E-07;
+
+writeSMatrix: LOGICAL : FALSE;
+writeProbs  : LOGICAL : TRUE;
+writeRDProbs: LOGICAL : TRUE;
+
+# Switching to the gas phase (Potential.f90 switchPotentialToGasPhase)
+UseSwitching: LOGICAL : TRUE;
+ZminSwitch  : REAL    : 6.0;
+ZmaxSwitch  : REAL    : 8.0;
+
+# Low-Z absorbers (upstream 5.24), both from ZStart (grid point 0, exact in both programs) to Zana.
+# Not pre-registered in ReadInput, hence typed. Weak on purpose: each one removes a part of the
+# flux, not all of it, so the gates compare sizeable values (docs/validation.md).
+ZOptLowStart   : REAL : -2.0;
+ZOptLowEnd     : REAL : 8.0;
+ZOptLowEnergy  : REAL : 0.005;
+ZSpOptLowStart : REAL : -2.0;
+ZSpOptLowEnd   : REAL : 8.0;
+ZSpOptLowFactor: REAL : 4.0E-04;

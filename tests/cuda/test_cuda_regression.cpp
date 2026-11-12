@@ -24,6 +24,11 @@ TEST(CudaRegressionPropagation, Gate3DaiLightShortSymmetric) {
   run_gate("cu111_dailight_short_sym", cuda::make_cuda_backend);
 }
 
+TEST(CudaRegressionPropagation, Gate3DaiLightShortLowZ) {
+  SPODVR_REQUIRE_GPU();
+  run_gate("cu111_dailight_short_lowz", cuda::make_cuda_backend);
+}
+
 TEST(CudaRegressionPropagation, Gate3FullRunLong) {
   SPODVR_REQUIRE_GPU();
   if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";

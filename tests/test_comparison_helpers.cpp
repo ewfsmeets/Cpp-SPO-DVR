@@ -183,3 +183,28 @@ TEST(GateComparisons, BkCoefficientsFailOnAFortranNaN) {
   ref[0][0] = {not_a_number, 0.1};
   EXPECT_NONFATAL_FAILURE(compare_bk_with_fortran(run_with_bk(), ref, 1e-10), "worst");
 }
+
+// --- the deviations a negative gate test asserts on ---------------------------------------------
+
+// In printed half units, the largest over the four averages; NaN with a NaN value.
+TEST(GateComparisons, AveragesDeviationInPrintedHalfUnits) {
+  PropagationRun run = run_with_averages();
+  EXPECT_EQ(averages_deviation(run, fortran_reference()), 0.0);
+  run.averages[0].z_mean = 5.0 + 3.0 * printed_half_unit(5.0);
+  // 5 + 3 half units is rounded to ulp(5) = 8.9e-16, i.e. 2e-8 half units: hence 1e-6.
+  EXPECT_NEAR(averages_deviation(run, fortran_reference()), 3.0, 1e-6);
+  run.averages[0].norm = not_a_number;
+  EXPECT_TRUE(std::isnan(averages_deviation(run, fortran_reference())));
+}
+
+// The reference's largest |c| (0.5 + 0.1i), its scale and the largest |C++ - Fortran|; NaN with a NaN.
+TEST(GateComparisons, BkDeviationGivesScaleAndLargestDifference) {
+  PropagationRun run = run_with_bk();
+  run.bk[1][0] += 1e-6;
+  const BkDeviation d = bk_deviation(run, bk_records());
+  EXPECT_EQ(d.largest, std::abs(cplx{0.5, 0.1}));
+  EXPECT_EQ(d.scale, d.largest);
+  EXPECT_NEAR(d.worst, 1e-6, 1e-15);
+  run.bk[0][1] = {not_a_number, 0.0};
+  EXPECT_TRUE(std::isnan(bk_deviation(run, bk_records()).worst));
+}
