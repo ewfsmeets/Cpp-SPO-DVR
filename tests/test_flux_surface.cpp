@@ -9,8 +9,8 @@
 #include <cmath>
 #include <complex>
 #include <cstdint>
-#include <fstream>
 #include <limits>
+#include <memory>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -19,17 +19,9 @@
 #include <nlohmann/json.hpp>
 
 #include "analysis/flux_analysis.hpp"
-#include "fft/fftw_fft.hpp"
-#include "grids/angular_grid.hpp"
-#include "grids/rotational_basis.hpp"
-#include "grids/spatial_grids.hpp"
-#include "input/json_input.hpp"
-#include "input/process.hpp"
-#include "potential/potential_factory.hpp"
-#include "potential/potential_grid.hpp"
-#include "propagation/cpu_backend.hpp"
+#include "backend_setup.hpp"
 #include "propagation/flux_surface.hpp"
-#include "propagation/propagation_tables.hpp"
+#include "propagation/propagation_backend.hpp"
 
 using namespace spodvr;
 using cplx = std::complex<double>;
@@ -222,54 +214,21 @@ TEST(FluxSurface, RejectsShapesThatDoNotFit) {
 
 namespace {
 
-// hardwall_small, with the flux analysis at r_c = 2.0 bohr (ir 8) if requested.
-nlohmann::json hardwall_small_json(bool flux) {
-  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/hardwall_small/input.json");
-  nlohmann::json json = nlohmann::json::parse(file);
-  if (flux) {
-    json["doFluxAnalysis"] = true;
-    json["rFluxAnalysis"] = 2.0;
-    json["EMinFluxAna"] = json["EMinWP"];
-    json["EMaxFluxAna"] = json["EMaxWP"];
-    json["DeltaEFluxAna"] = 0.15;
-  }
-  return json;
-}
+using spodvr::testing::BackendSetup;
 
-// Everything a CPU backend is built from.
-struct BackendSetup {
-  Config config;
-  SpatialGrids grids;
-  AngularGrid angular;
-  RotationalBasis basis;
-  PotentialGrid potential;
-  PropagationTables tables;
-  FftwFft fft;
-
-  explicit BackendSetup(const nlohmann::json& json)
-      : config(build_config(parse_input(json))),
-        grids(make_spatial_grids(config)),
-        angular(make_angular_grid(config)),
-        basis(angular, config.input.j_in, config.input.mj_in),
-        potential(compute_potential_grid(*make_potential(config.input), config, grids, angular)),
-        tables(make_propagation_tables(config, grids, basis, potential.asymptotic)) {}
-
-  [[nodiscard]] std::unique_ptr<PropagationBackend> backend() const {
-    const BackendInput input{config, grids, angular, basis, tables, fft};
-    return make_cpu_backend(input, potential, SpecularWave(config.input.nr, grids.z_specular.size()));
-  }
-};
+// hardwall_small with the flux analysis at r_c = 2.0 bohr (ir 8).
+nlohmann::json hardwall_small_flux_keys() { return spodvr::testing::flux_analysis_keys("hardwall_small", 2.0, 0.15); }
 
 }  // namespace
 
 // The backend reads its own psi at r_c = rFluxAnalysis with the weights D of that r_c: equal to the
 // column reference built here from the grid alone (bitwise in strict builds).
 TEST(FluxSurface, CpuBackendReadsItsWaveAtRFluxAnalysis) {
-  const BackendSetup s(hardwall_small_json(true));
+  const BackendSetup s("hardwall_small", hardwall_small_flux_keys());
   ASSERT_TRUE(s.grids.ir_flux_analysis.has_value());
   const int ir_flux = *s.grids.ir_flux_analysis;
   ASSERT_EQ(ir_flux, 8);
-  const std::unique_ptr<PropagationBackend> backend = s.backend();
+  const std::unique_ptr<PropagationBackend> backend = s.cpu();
   backend->read_wave_packet([](WavePacket& psi) { fill_pseudo_random(psi.scattering.values); });
 
   const ScatteringWave& psi = backend->wave_packet_on_host().scattering;
@@ -280,8 +239,8 @@ TEST(FluxSurface, CpuBackendReadsItsWaveAtRFluxAnalysis) {
 }
 
 TEST(FluxSurface, CpuBackendRefusesWithoutFluxAnalysis) {
-  const BackendSetup s(hardwall_small_json(false));
-  const std::unique_ptr<PropagationBackend> backend = s.backend();
+  const BackendSetup s("hardwall_small");
+  const std::unique_ptr<PropagationBackend> backend = s.cpu();
   FluxSurfaceWave out(backend->wave_packet_on_host().scattering.block_size(), s.grids.nz_potential);
   EXPECT_THROW(backend->flux_surface(out), std::logic_error);
 }
@@ -289,8 +248,8 @@ TEST(FluxSurface, CpuBackendRefusesWithoutFluxAnalysis) {
 // The seam's contract: a slot of nz_potential planes of n_rot nx ny blocks, nothing else (also not
 // fewer planes, which the free function would accept).
 TEST(FluxSurface, CpuBackendRefusesASlotOfAnotherShape) {
-  const BackendSetup s(hardwall_small_json(true));
-  const std::unique_ptr<PropagationBackend> backend = s.backend();
+  const BackendSetup s("hardwall_small", hardwall_small_flux_keys());
+  const std::unique_ptr<PropagationBackend> backend = s.cpu();
   const int blocks = backend->wave_packet_on_host().scattering.block_size();
   const int planes = s.grids.nz_potential;
   FluxSurfaceWave fits(blocks, planes);

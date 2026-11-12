@@ -5,7 +5,9 @@ memory for the whole run. After every analysis step only a few small pieces are 
 host:
 - the specular wave;
 - the nr (Z, r) blocks at Zana (the input of the BK analysis);
-- every `dtAve`, one density value per (Z, r) point.
+- every `dtAve`, one density value per (Z, r) point;
+- with the flux analysis (`doFluxAnalysis`), ψ and ∂ψ/∂r at r_c on the planes Z < zasymp ("Flux
+  surface" below).
 
 Everything else is unchanged: set-up, potential, gas phase, analysis, S-matrix, output files,
 checkpoints and restarts (also from or into Fortran files, and between CPU and GPU runs).
@@ -117,6 +119,21 @@ The tables are the CPU's. `potential_step_factors`, `specular_gas_phase_factors`
 `AngularTransform` matrices are shared, and exp(iA) is computed on the host with the CPU's
 `exp_i`, then re-laid out with izr fastest.
 
+### Flux surface
+`CudaBackend::flux_surface` (flux analysis only, once per analysis step) delivers what the CPU's
+`flux_surface` does: ψ at r_c and ∂ψ/∂r = Σ_ir D(ir)·ψ(ir) (the table
+`PropagationTables::flux_derivative`), on the planes iz < nzpot, into a host slot in layout (block, iz).
+- **Kernel** `flux_surface_chunk`: one thread per (block, plane) walks its contiguous r column and sums
+  from 0, ir ascending, the zero term D(r_c)·ψ(r_c) included, as the CPU.
+- **Read-back:** `read_flux_surface` (`src/cuda/device_flux_surface.cpp`) loops over chunks of nr/2
+  planes. Each chunk goes through the persistent read-back buffer of the BK plane (n_rot·nx·ny·nr
+  values) as [ψ_c | ∂ψ_c], then two `cudaMemcpy` into the slot. Nothing is allocated per call
+  (`cudaFree` would synchronise). The values do not depend on the chunk size
+  (`CudaBackend.FluxSurfaceDoesNotDependOnTheChunkSize`).
+- **Reads not coalesced:** neighbouring threads read columns n_zr·16 B apart. The cost is under
+  "Flux surface and flush" below (DZ: 1.2 % of a slow analysis step, about 1.4–1.6 % of a normal one).
+- Both backends enforce the same contract (`require_flux_surface_slot`).
+
 ### One method, two executions
 The CPU and the GPU backend implement the same method:
 - the same operator sequence `T/2 V (T V)^(n-1) T/2`;
@@ -174,6 +191,9 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
   1.2e-13 between the CPU with oneMKL and the CPU with FFTW. This is the same level the CPU build
   already accepts between FFT libraries (docs/validation.md: within ~1e-13, all gates pass).
 - **Densities** use CUDA's `hypot`, which can differ from glibc's by an ulp.
+- **Flux surface:** bitwise equal to the CPU's (`CudaBackend.FluxSurfaceMatchesTheCpu`). A
+  descending sum, a skipped zero term or FMA in the kernel makes that test fail (mutations,
+  2026-11-12: 45 539, 1 and 35 010 of 54 240 doubles differ on hardwall_short).
 - **Determinism:** no atomics, fixed launch shapes, everything on the default stream, so two GPU
   runs are bitwise identical. That holds for the same GPU model and library versions only, so no
   GPU reference files are stored.
@@ -189,7 +209,8 @@ GPU memory estimate for the DZ benchmark (below):
 | exp(−iV dt) table (19 symmetry representatives of 144 (x, y) points) | 1.0 GiB |
 | DVR scratch (slab of 500 points) | 1.0 GiB |
 | cuFFT work area (limit; the DZ grid needs < 1 MiB with cuFFT 12.3 / CUDA 13.3) | ≤ 0.5 GiB |
-| BK plane, copy buffer | small |
+| Read-back buffer (BK plane, flux surface chunks: n_rot·nx·ny·nr values) | 40 MB |
+| Copy buffer, densities, flux weights | small |
 
 The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is set at start-up).
 - **Host memory:** the host allocates ψ only to read a restart or to write the checkpoint at the end.
@@ -301,6 +322,38 @@ Considered and not done (2026-11-06):
   analysis of the previous one). Skipped: an nsys trace of DZ showed the GPU idle for less than
   1 ms per time step.
 
+### Flux surface and flush
+Measured 2026-11-12 with the commit that added this section, parent c6b89f9 (strict build, host 4
+threads on cpus 8–15), with `spodvr_cuda_operator_timing` and the flux keys added to the input (r_c =
+2.0 bohr on the medium grid of `tools/benchmark/run_benchmark.sh`, 2.5 bohr on DZ; energies EMinWP …
+EMaxWP by 0.02 and 0.025 eV), 5 and 3 repetitions. Per analysis step:
+
+| | medium (`run_benchmark.sh` grid) | DZ (`inputs/thesis_fig5_3_dz`) |
+|---|---|---|
+| planes below zasymp, chunks | 113 of 0.18 MB, 5 chunks of ≤ 28 | 125 of 1.0 MB, 7 chunks of ≤ 20 |
+| `flux_surface_chunk` kernels | 10.6 ms (2 runs) | 45.2 ms |
+| copies to the host (pageable `cudaMemcpy`) | 4.6–4.7 ms for 41.7 MB | 25.5 ms for 250 MB |
+| flux surface in all | 15.6–15.7 ms: 1.7 % of 898 ms (5 time steps) | 70.9 ms: 1.2 % of 5885 ms (8 time steps) |
+| flush on the host (21 / 22 energies), 1 slot | 60.5–61.0 ms | 387 ms |
+| flush, 8 slots, per analysis step | 11.6–13.7 ms | 79.6 ms |
+
+- **Kernel:** it reads ψ at every r of the nzpot planes (DZ: 5.0 GB) at ≈ 110 GB/s, a quarter of a full
+  pass (400 GB/s above). Probably because its reads are not coalesced and each thread sums one serial
+  chain of nr terms with few loads in flight (inferred, not profiled: ncu has no counters under WSL2;
+  half-used sectors alone would predict about twice the rate). `__restrict__` on its pointers changed
+  nothing (medium: 10.6 → 10.7 ms). Not done: a kernel that loads each group of columns into shared
+  memory with coalesced reads, then sums each column in the same order.
+- **Flush:** it runs on the host while the GPU waits. With one slot per flush it costs more than the
+  flux surface; several slots per flush make it small.
+- **Flux surface + flush (8 slots), summed:**
+  - DZ: (70.9 + 79.6) ms = 2.6 % of the measured 5885 ms. That step is slow: the time step of this
+    run was 736 ms, against 571–625 ms above (the GPU also drives the desktop). Against 8 time steps
+    of 571–625 ms the sum is ≈ 3.0–3.3 %, the flux surface alone ≈ 1.4–1.6 %.
+  - Medium: 3.0–3.3 %.
+  - So the sum is above 2 % of an analysis step. The flush ran on 4 host threads; a production run
+    may use 8. A re-measurement with the production thread count on an otherwise idle GPU is still
+    to be done.
+
 ### Fast build (`build-cuda-fast`: FMA in the kernels)
 ```bash
 cmake -S . -B build-cuda-fast -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON \
@@ -349,9 +402,10 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 | `src/cuda/cuda_backend.{hpp,cpp}` | `CudaBackend`, the factory, device info, GPU memory estimate |
 | `src/cuda/device_kinetic_operator.{hpp,cpp}` | the kinetic stage T (merged) and the specular grid (plans, tables, launch order) |
 | `src/cuda/device_potential_operator.{hpp,cpp}` | the potential stage (tables, exp(iA), slab loop) |
+| `src/cuda/device_flux_surface.{hpp,cpp}` | the flux surface, chunk by chunk through the read-back buffer |
 | `src/cuda/*_kernels.cu`, `kernels.hpp` | the kernels and their launch functions |
 | `src/cuda/cuda_fft.{hpp,cpp}` | cuFFT plans (64-bit, slabbed batches, shared work area, optional LTO load callback) |
 | `src/cuda/fft_callbacks.{hpp,cu,cpp}`, `cmake/embed_binary.cmake` | the exp(iA) load callback (LTO-IR, embedded at build time) |
 | `src/cuda/device_buffer.{hpp,cpp}`, `device_complex.hpp`, `cuda_error.{hpp,cpp}`, `launch.cuh` | device memory, complex arithmetic, layout, errors, launch helpers |
-| `tests/cuda/` | cuFFT vs FFTW, CPU vs GPU per analysis step, determinism, memory estimate, restart, gates 3/4 |
+| `tests/cuda/` | cuFFT vs FFTW, CPU vs GPU per analysis step and flux surface, determinism, memory estimate, restart, gates 3/4 |
 | `tools/benchmark/cuda_operator_timing.cpp` | per-stage and per-kernel timing |

@@ -1,5 +1,6 @@
 // The GPU propagation backend: the wave packet stays in GPU memory; per analysis step only the
-// specular wave, the BK plane and (for the averages) the per-point densities are copied back.
+// specular wave, the BK plane, (for the averages) the per-point densities and (for the flux
+// analysis) the flux surface are copied back.
 // CPU twin: propagation/cpu_backend.cpp. Fortran: SplitOperator.f90 Propagate
 #include "cuda/cuda_backend.hpp"
 
@@ -11,14 +12,15 @@
 #include <optional>
 #include <utility>
 
-#include "core/error.hpp"
 #include "cuda/cuda_error.hpp"
 #include "cuda/cuda_fft.hpp"
+#include "cuda/device_flux_surface.hpp"
 #include "cuda/device_kinetic_operator.hpp"
 #include "cuda/device_potential_operator.hpp"
 #include "cuda/device_wave_packet.hpp"
 #include "cuda/kernels.hpp"
 #include "propagation/angular_transform.hpp"
+#include "propagation/flux_surface.hpp"
 
 namespace spodvr::cuda {
 
@@ -40,6 +42,11 @@ DeviceLayout device_layout(const ScatteringShape& s) {
   return {std::int64_t(s.nr) * s.nz, s.n_rot, std::int64_t(s.nx) * s.ny};
 }
 
+// A device copy of a host table (an empty buffer for an empty table).
+DeviceBuffer<double> device_copy(const std::vector<double>& values) {
+  return values.empty() ? DeviceBuffer<double>() : DeviceBuffer<double>(std::span<const double>(values));
+}
+
 // (Z, r) points per staging chunk (at least one).
 std::int64_t staging_points(const DeviceLayout& layout) {
   const std::size_t point_bytes = sizeof(Complex) * layout.n_rot * layout.n_xy;
@@ -56,7 +63,6 @@ class CudaBackend final : public PropagationBackend {
   [[nodiscard]] const SpecularWave& specular() const override { return host_specular_; }
   [[nodiscard]] std::span<const std::complex<double>> z_plane(int iz) const override;
   [[nodiscard]] std::vector<double> block_densities() const override;
-  // Not on the GPU yet: throws NotSupportedError (nothing calls it before the flux analysis runs).
   void flux_surface(FluxSurfaceWave& out) const override;
 
  private:
@@ -74,10 +80,16 @@ class CudaBackend final : public PropagationBackend {
   DevicePotentialOperator potential_;
   DeviceBuffer<std::byte> fft_work_;
   SpecularWave host_specular_;  // copy of the specular wave after the last analysis step
-  // Buffers of the per-step copies (filled on request, hence mutable).
-  mutable DeviceBuffer<Complex> plane_;
+  // Buffers of the per-step copies (filled on request, hence mutable). readback_ (n_rot nx ny nr
+  // values) holds the BK plane, or a chunk of nr / 2 planes of the flux surface (no allocation in
+  // the time loop). Both users rely on synchronous copies on the default stream (the next kernel
+  // starts after the copy); an asynchronous or pinned copy to the host would need its own buffer.
+  mutable DeviceBuffer<Complex> readback_;
   mutable std::vector<cplx> host_plane_;
   mutable DeviceBuffer<double> densities_;
+  int nz_potential_;                  // planes below Z_asymptotic. Fortran: nzpot
+  std::optional<int> ir_flux_;        // r index of the flux surface; empty without flux analysis
+  DeviceBuffer<double> flux_weights_;  // PropagationTables::flux_derivative; empty without flux analysis
   std::optional<WavePacket> host_psi_;  // only for wave_packet_on_host (checkpoint, dump)
 };
 
@@ -98,9 +110,12 @@ CudaBackend::CudaBackend(const BackendInput& in, PotentialGrid potential, Specul
                 in.grids.r_optical, in.tables, fft_work_limit),
       potential_(make_potential_operator(in, potential)),
       host_specular_(std::move(initial)),
-      plane_(std::size_t(shape_.n_rot) * shape_.nx * shape_.ny * shape_.nr),
-      host_plane_(plane_.size()),
-      densities_(std::size_t(psi_.layout.n_zr)) {
+      readback_(std::size_t(shape_.n_rot) * shape_.nx * shape_.ny * shape_.nr),
+      host_plane_(readback_.size()),
+      densities_(std::size_t(psi_.layout.n_zr)),
+      nz_potential_(in.grids.nz_potential),
+      ir_flux_(in.grids.ir_flux_analysis),
+      flux_weights_(device_copy(in.tables.flux_derivative)) {
   share_fft_work_area();
   // The initial wave packet lives on the specular grid; the scattering grid starts empty.
   psi_.scattering.set_zero();
@@ -180,8 +195,8 @@ void CudaBackend::propagate_analysis_step() {
 }
 
 std::span<const std::complex<double>> CudaBackend::z_plane(int iz) const {
-  pack_z_plane(psi_.scattering.data(), psi_.layout, shape_.nr, iz, plane_.data());
-  plane_.download(as_device_complex(std::span<cplx>(host_plane_)));
+  pack_z_plane(psi_.scattering.data(), psi_.layout, shape_.nr, iz, readback_.data());
+  readback_.download(as_device_complex(std::span<cplx>(host_plane_)));
   return host_plane_;
 }
 
@@ -192,8 +207,10 @@ std::vector<double> CudaBackend::block_densities() const {
   return out;
 }
 
-void CudaBackend::flux_surface(FluxSurfaceWave& /*out*/) const {
-  throw NotSupportedError("the flux analysis (doFluxAnalysis) with --device cuda");
+void CudaBackend::flux_surface(FluxSurfaceWave& out) const {
+  require_flux_surface_slot("CudaBackend", ir_flux_.has_value(), out, shape_.n_rot * shape_.nx * shape_.ny,
+                            nz_potential_);
+  read_flux_surface(psi_, *ir_flux_, flux_weights_, readback_, out);
 }
 
 }  // namespace
@@ -246,8 +263,9 @@ MemoryEstimate estimate_gpu_memory(const Config& config, const SpatialGrids& gri
       shape, grids.nz_potential, angular.n_theta(), angular.n_phi(), DevicePotentialOperator::default_scratch_limit);
   const std::size_t scratch = n_tp * std::size_t(layout.n_xy) * slab;
   const std::size_t specular = std::size_t(p.nr) * grids.z_specular.size();
-  const std::size_t plane = std::size_t(layout.n_rot) * layout.n_xy * p.nr;
+  const std::size_t readback = std::size_t(layout.n_rot) * layout.n_xy * p.nr;
   const std::size_t staging = std::size_t(staging_points(layout) * layout.n_rot * layout.n_xy);
+  const std::size_t densities_and_weights = std::size_t(layout.n_zr) + (grids.ir_flux_analysis ? p.nr : 0);  // doubles
   const std::size_t c = sizeof(Complex);
 
   MemoryEstimate e;
@@ -257,7 +275,9 @@ MemoryEstimate estimate_gpu_memory(const Config& config, const SpatialGrids& gri
       {"exp(-i V dt) table", table, c * table, "computed on the host", true, true},
       {"DVR scratch (one slab)", scratch, c * scratch, std::to_string(slab) + " (Z, r) points per slab", true, true},
       {"cuFFT work area", fft_work_limit / c, fft_work_limit, "at most", true, true},
-      {"BK plane", plane, c * plane, "", true, true},
+      {"Read-back buffer", readback, c * readback, "BK plane, flux surface chunks", true, true},
+      {"Densities, flux weights", densities_and_weights, sizeof(double) * densities_and_weights,
+       "flux weights only with doFluxAnalysis", true, true},
       {"Copy buffer", staging, c * staging, "only while copying (restart, checkpoint)", true, true}};
   for (const MemoryItem& item : e.items) {
     if (item.during_setup) e.setup_bytes += item.bytes;

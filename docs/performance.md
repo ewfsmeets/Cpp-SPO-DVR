@@ -144,7 +144,9 @@ measured 2026-11-12 with the commit that added it, parent d4ad897): on the mediu
 `tools/benchmark/run_benchmark.sh build 4 20`, then `spodvr_operator_timing` alone), against 7176
 and 6934 ms per analysis step of 5 time steps: 0.6 %. It reads ψ once on the planes below
 Z_asymptotic; the r-derivative sum runs in tiles of 1024 blocks (chosen from cache sizes, not
-measured), with the same order per element as without tiles.
+measured), with the same order per element as without tiles. The GPU twin, and one flush of the flux
+accumulator on the host (1 and 8 slots), measured with `spodvr_cuda_operator_timing`: [cuda.md](cuda.md),
+"Flux surface and flush".
 
 ## Fortran vs C++ (full Dai–Light run, 8 threads, 2026-11-05)
 Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8 grid (nZ × nR × nX × nY)

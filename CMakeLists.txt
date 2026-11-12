@@ -315,6 +315,7 @@ if(SPODVR_USE_CUDA)
     src/cuda/cuda_error.cpp
     src/cuda/cuda_fft.cpp
     src/cuda/device_buffer.cpp
+    src/cuda/device_flux_surface.cpp
     src/cuda/device_kinetic_operator.cpp
     src/cuda/device_potential_operator.cpp
     src/cuda/fft_callbacks.cpp

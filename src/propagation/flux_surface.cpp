@@ -1,5 +1,5 @@
 // psi and its r-derivative at the flux surface r = r_c of the scattering wave, on the host (OpenMP).
-// CUDA twin: CudaBackend::flux_surface (not ported yet, it refuses). Fortran: WaveFunction.f90
+// CUDA twin: cuda::read_flux_surface (cuda/device_flux_surface.cpp). Fortran: WaveFunction.f90
 // getWaveFunctionAtZr, getWaveFuncDerivAtZr
 #include "propagation/flux_surface.hpp"
 
@@ -66,6 +66,15 @@ void flux_surface(const ScatteringWave& psi, int ir_flux, std::span<const double
       sum_derivative_tile(psi, iz, first, weights, std::span(out.derivative).subspan(out.index(first, iz), tile_size));
     }
   }
+}
+
+void require_flux_surface_slot(std::string_view backend, bool has_flux_analysis, const FluxSurfaceWave& out,
+                               int n_blocks, int n_planes) {
+  if (!has_flux_analysis)
+    throw std::logic_error(std::format("{}::flux_surface: this run has no flux analysis (doFluxAnalysis)", backend));
+  if (out.n_planes() != n_planes || out.n_blocks() != n_blocks)
+    throw std::logic_error(std::format("{}::flux_surface: a surface of {} blocks x {} planes for {} x {}", backend,
+                                       out.n_blocks(), out.n_planes(), n_blocks, n_planes));
 }
 
 }  // namespace spodvr
