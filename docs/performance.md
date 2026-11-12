@@ -109,6 +109,10 @@ header line.
 - Check the results of every change: `tools/check_bitwise_refactor.sh` (must be bitwise identical)
   or `tools/compare_propagation.sh` (rounding-level changes, ≤ 1e-13), then the gates
   (`ctest`, and `SPODVR_LONG_TESTS=1 ctest -R Long` for the full 7000-step run).
+- The final wave packet of two builds, or of the CPU and the GPU (built in `build*/tools/`):
+  `spodvr_dump_wave <input.json> <file> [--device cpu|cuda]` (threads: `OMP_NUM_THREADS`; `cuda`
+  only in a CUDA build), then `spodvr_compare_wave <a> <b> [tolerance]` (largest difference
+  relative to the largest amplitude; tolerance default 0, i.e. bitwise identical).
 
 ## Measurements (AMD Ryzen 7 5800X, 16 threads, WSL2; propagation time only)
 | Case | Baseline (faithful port) | Optimised, oneMKL FFT | Optimised, FFTW | Optimised + PGO (oneMKL) |

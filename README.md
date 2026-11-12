@@ -232,8 +232,11 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   by one ulp, and with GCC 15 also the hard-wall V<sub>asy</sub> table of gate 1 (1.6e-14 against 1e-14);
   their other gates pass.
 - **Numerically neutral changes** (refactors) must leave the results bitwise unchanged:
-  `tools/check_bitwise_refactor.sh [base-ref]`. For changes that may alter rounding:
-  `tools/compare_propagation.sh [base-ref] [tolerance]`.
+  `tools/check_bitwise_refactor.sh [base-ref]` (default `HEAD`). It builds both trees in a scratch
+  directory; to configure without network access, set `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` to
+  the nlohmann_json sources. For changes that may alter rounding:
+  `tools/compare_propagation.sh [base-ref] [tolerance]`. The final wave packet of two builds, or of
+  the CPU and the GPU: `spodvr_dump_wave` and `spodvr_compare_wave` ([docs/performance.md](docs/performance.md)).
 - **Production-grid validation:** beyond the gates, the full thesis calculation
   (`inputs/thesis_fig5_3_dz`, 7000 steps) was run with the Fortran, the C++ CPU and the C++ GPU
   code and compared state by state: [docs/validation_thesis_fig5_3_dz](docs/validation_thesis_fig5_3_dz/README.md).

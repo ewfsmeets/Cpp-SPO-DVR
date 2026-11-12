@@ -5,6 +5,8 @@ foreach(tool benchmark/operator_timing compare/dump_wave compare/compare_wave)
   add_executable(spodvr_${name} ${tool}.cpp)
   target_link_libraries(spodvr_${name} PRIVATE spodvr_core spodvr_warnings spodvr_fp)
 endforeach()
+# --device cpu|cuda: the program's backend choice (with the GPU backend in a CUDA build).
+target_link_libraries(spodvr_dump_wave PRIVATE spodvr_app)
 
 # CRP library timing (one thread): links only the library, with its strict FP flags.
 add_executable(spodvr_crp_timing benchmark/crp_timing.cpp)
