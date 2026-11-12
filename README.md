@@ -201,8 +201,8 @@ pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build
 
 ## Testing
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~5 min)
-OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1 min)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~7.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1.5 min)
 ```
 - **Run ctest serially** (no `-j`): many tests already use all OpenMP threads. Set
   `OMP_NUM_THREADS` to the number of physical cores (not hyperthreads).

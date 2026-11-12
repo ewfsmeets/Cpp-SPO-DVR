@@ -55,10 +55,12 @@ gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `Fortran
 keep the 5.19 model with its `s1_real` typo ([fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md)).
 
 ## Gates
-Status on the 5.24 r1713 reference data (measured 2026-11-12, as are the margins of gates 3–5
-below; the setup data of gates 1 and 2 did not change with the switch): the full ctest, 611
-tests = 607 passed + 4 skipped; the CUDA tests including the long ones, 19 of 19 (gates 3 and 4
-on the GPU; 7000-step BK within 8.5e-13 (hard wall) and 9.3e-13 (Dai–Light) of the scale).
+Status on the 5.24 r1713 reference data (measured 2026-11-12 at 5cbbcf4; the margins of gates
+3–5 below were measured at the switch, and the setup data of gates 1 and 2 did not change with
+it): the full ctest, 665 tests = 660 passed + 5 skipped (the long tests); the long tests
+(`SPODVR_LONG_TESTS=1 ctest -R Long`), 4 of 4; the CUDA tests including the long ones, 23 of 23
+(gates 3 and 4 on the GPU; 7000-step BK within 8.5e-13 (hard wall) and 9.3e-13 (Dai–Light) of the
+scale).
 
 Main reference case: `tests/reference/hardwall_small/DVR.inp` (Fortran input), with the Fortran
 output next to it; the corrugated Cu(111) cases are in their own directories.
