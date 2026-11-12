@@ -8,7 +8,16 @@ C++ uses double. Add every new deviation here. The fine-analysis bugs are descri
 differences are in [validation.md](validation.md).
 
 - `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2).
-- Error message `'EMaxFluxAna < EMinWP'` for the check `EMaxFluxAna < EMaxWP`.
+- flux Q1: the Fortran stops when `EMaxFluxAna .RLT. EMaxWP` (message `'EMaxFluxAna < EMinWP'`):
+  it rejects every flux energy range that ends inside the wave packet and accepts ranges beyond
+  it. C++: error if EMaxFluxAna > EMaxWP (tolerant, like the EMinFluxAna check). Details and a
+  demonstration: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q1-emaxfluxana-is-checked-the-wrong-way-round).
+- flux Q2: the Fortran rejects only `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passes and
+  `FluxAnalyzor.f90 setupFluxAnalyzor` divides by it (a garbage energy count, no flux results).
+  C++: error if DeltaEFluxAna ≤ 0 (tolerant). Details: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
+- Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
+  propagating run (new or restart) with exit code 3 once the input checks have passed;
+  analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
 - `InitGenComplexTransform` silently returns on invalid nφ.
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
 - `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.
@@ -165,7 +174,8 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
 The Fortran code continued upstream, to version 5.24 (2025) and a fix on 2026-11-09 (svn r1713).
 `git diff -w 601d833 master -- sources.dir/SOURCES.dir` in the upstream repository lists them
 (601d833 = svn r1572 = 5.19, identical to the reference sources). The C++ follows 5.19 throughout.
-The changes below come from reading that diff; the 5.24 code has not been built or run here.
+The changes below come from reading that diff. A 5.24 build (with `O3FLAGS = -O3`) appears in
+these docs only in the demonstration runs of [fortran_input_bugs.md](fortran_input_bugs.md).
 
 **Changes for inputs that use only 5.19 features.** The operators, absorber formulas, FFT paths
 of the build, input defaults and the formats of the averages, probability and BK files are

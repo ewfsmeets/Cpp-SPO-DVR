@@ -205,6 +205,22 @@ TEST(Input, SwitchingReplacesZAsymptotic) {
   expect_input_error(json, "ZminSwitch");
 }
 
+// flux Q1: a flux energy range that ends at or below EMaxWP is valid (the Fortran check rejects
+// every such range); the wave packet spans 0.2..0.6 eV.
+TEST(Input, FluxEnergyRangeInsideTheWavePacketIsValid) {
+  Json json = reference_json();
+  json["doFluxAnalysis"] = true;
+  json["rFluxAnalysis"] = 3.05;
+  json["EMinFluxAna"] = 0.2;
+  json["DeltaEFluxAna"] = 0.01;
+  for (const double e_max : {0.6, 0.5}) {  // EMaxFluxAna = EMaxWP, < EMaxWP
+    json["EMaxFluxAna"] = e_max;
+    const Config config = build(json);
+    EXPECT_NO_THROW((void)make_spatial_grids(config)) << "EMaxFluxAna = " << e_max;
+    EXPECT_EQ(config.input.e_max_flux_analysis, e_max);
+  }
+}
+
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
   const char* name;
@@ -277,7 +293,11 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"FluxMissing", [](Json& j) { j["doFluxAnalysis"] = true; }, "rFluxAnalysis"},
         Violation{"FluxOffGrid", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.01; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis"},
         Violation{"FluxEMin", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.1; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna"},
-        Violation{"FluxEMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.5; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna"},
+        // flux Q1: EMaxFluxAna above EMaxWP (0.6 eV) is rejected.
+        Violation{"FluxEMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.7; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna"},
+        // flux Q2: a zero or negative energy spacing is rejected (the Fortran accepts 0).
+        Violation{"FluxDeltaZero", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.0; }, "DeltaEFluxAna"},
+        Violation{"FluxDeltaNegative", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = -0.01; }, "DeltaEFluxAna"},
         Violation{"FluxDelta", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.5; }, "DeltaEFluxAna"},
         Violation{"FluxROpt", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 5.0; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis"},
         Violation{"EMinWP", [](Json& j) { j["EMinWP"] = 0.0; }, "EMinWP"},

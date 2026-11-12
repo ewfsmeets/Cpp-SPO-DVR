@@ -58,8 +58,9 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 - Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).
-- Not yet implemented: the flux analysis and the other Fortran potentials (their data files are in
-  `potentials/`).
+- Not yet implemented: the flux analysis. A propagating run with `doFluxAnalysis: true` is refused
+  with a "not implemented yet" error ([docs/input_schema.md](docs/input_schema.md)).
+- Not yet implemented: the other Fortran potentials (their data files are in `potentials/`).
 - Fortran version: the port follows SPO-DVR 5.19 (2023), and every comparison uses it. The changes
   of the later upstream versions (up to 5.24, 2025) are not ported yet; see
   [docs/fortran_deviations.md](docs/fortran_deviations.md).

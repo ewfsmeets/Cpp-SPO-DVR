@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <format>
 #include <string>
 
 #include "core/constants.hpp"
@@ -26,7 +27,8 @@ double nint(double x) { return static_cast<double>(std::lround(x)); }
 }  // namespace
 
 // Fortran: InputNew.f90 ValidateInput. The checks appear in the same order and with the same
-// messages (a few message typos are corrected, see docs/fortran_deviations.md).
+// messages (a few message typos are corrected, and two flux analysis checks are fixed: flux Q1,
+// flux Q2; see docs/fortran_deviations.md).
 void validate_input(const InputParameters& p, const SystemParameters& system, double zasymp) {
   using namespace fortran_compare;
   const auto& units = units::legacy;
@@ -145,10 +147,19 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
     check(rne(nint((p.r_flux_analysis - p.r_start) / p.dr) * p.dr, p.r_flux_analysis - p.r_start), "rFluxAnalysis",
           "rFluxAnalysis not on a grid point.");
     check(rlt(p.e_min_flux_analysis, p.e_min_wave_packet), "EMinFluxAna", "EMinFluxAna < EMinWP");
-    // Fortran message says 'EMaxFluxAna < EMinWP' for this check.
-    check(rlt(p.e_max_flux_analysis, p.e_max_wave_packet), "EMaxFluxAna", "EMaxFluxAna < EMaxWP");
+    // flux Q1: the Fortran rejects EMaxFluxAna < EMaxWP (message 'EMaxFluxAna < EMinWP'), i.e. every
+    // range inside the wave packet. Here the range must end inside it, like the EMinFluxAna check.
+    check(rgt(p.e_max_flux_analysis, p.e_max_wave_packet), "EMaxFluxAna",
+          std::format("EMaxFluxAna > EMaxWP ({} eV > {} eV): the flux analysis energies must lie inside the wave "
+                      "packet's energy range; use EMaxFluxAna <= EMaxWP",
+                      p.e_max_flux_analysis, p.e_max_wave_packet));
     check(rge(p.e_min_flux_analysis, p.e_max_flux_analysis), "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna");
-    check(p.delta_e_flux_analysis < 0.0, "DeltaEFluxAna", "DeltaEFluxAna < 0");
+    // flux Q2: the Fortran rejects only DeltaEFluxAna < 0, and FluxAnalyzor.f90 setupFluxAnalyzor
+    // then divides by DeltaEFluxAna = 0.
+    check(rle(p.delta_e_flux_analysis, 0.0), "DeltaEFluxAna",
+          std::format("DeltaEFluxAna <= 0 ({} eV): the flux analysis energy grid needs a positive spacing; use "
+                      "DeltaEFluxAna > 0",
+                      p.delta_e_flux_analysis));
     check(rgt(p.delta_e_flux_analysis, p.e_max_flux_analysis - p.e_min_flux_analysis), "DeltaEFluxAna",
           "DeltaEFluxAna > EMaxFluxAna-EMinFluxAna");
     check(rgt(p.r_flux_analysis, p.r_opt_start), "rFluxAnalysis", "rFluxAnalysis > ROptStart");
