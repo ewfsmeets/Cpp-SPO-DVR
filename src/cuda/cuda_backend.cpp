@@ -11,6 +11,7 @@
 #include <optional>
 #include <utility>
 
+#include "core/error.hpp"
 #include "cuda/cuda_error.hpp"
 #include "cuda/cuda_fft.hpp"
 #include "cuda/device_kinetic_operator.hpp"
@@ -55,6 +56,8 @@ class CudaBackend final : public PropagationBackend {
   [[nodiscard]] const SpecularWave& specular() const override { return host_specular_; }
   [[nodiscard]] std::span<const std::complex<double>> z_plane(int iz) const override;
   [[nodiscard]] std::vector<double> block_densities() const override;
+  // Not on the GPU yet: throws NotSupportedError (nothing calls it before the flux analysis runs).
+  void flux_surface(FluxSurfaceWave& out) const override;
 
  private:
   void upload(const WavePacket& host);
@@ -187,6 +190,10 @@ std::vector<double> CudaBackend::block_densities() const {
   std::vector<double> out(densities_.size());
   densities_.download(out);
   return out;
+}
+
+void CudaBackend::flux_surface(FluxSurfaceWave& /*out*/) const {
+  throw NotSupportedError("the flux analysis (doFluxAnalysis) with --device cuda");
 }
 
 }  // namespace

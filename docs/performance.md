@@ -96,7 +96,9 @@ header line.
   (round robin, balanced to within one group; several NUMA nodes). The results are bitwise identical
   with either.
 - Not covered: `apply_zr` (T_Z + T_r) works on units that span all (Z, r) points, so on a NUMA machine
-  it reads memory of every socket whatever the schedule.
+  it reads memory of every socket whatever the schedule. The same holds for the flux surface
+  (`flux_surface`, flux analysis only, once per analysis step): it runs `static` over the planes
+  iz < nzpot, the partition of the accumulator slot it writes, and reads ψ at every r of its planes.
 - To be investigated: the group size, larger chunks (the Fortran uses (nZ − nzpot)·nR/threads
   points), `static,1` vs `dynamic,1` on one node, and a default thread count of the physical cores.
   Plan: `~/work/loop_scheduling_optimization.md`.
@@ -135,6 +137,14 @@ header line.
 For the tiny test grids FFTW is faster (oneMKL has a large per-call overhead for 4×4 and length-10
 transforms); at realistic sizes oneMKL is as fast or faster. Per time step on the medium case (16
 threads): T_Z + T_r ≈ 0.4 s, T_xy ≈ 0.17 s, potential (incl. angular transforms) ≈ 0.33 s.
+
+Flux surface (ψ and ∂ψ/∂r at r_c for the flux analysis, `flux_surface`, once per analysis step;
+measured 2026-11-12 with the commit that added it, parent d4ad897): on the medium case with 4 threads
+(cpus 8–15), 39.8 ms per call in both operator-timing runs (3 and 5 repetitions: the one of
+`tools/benchmark/run_benchmark.sh build 4 20`, then `spodvr_operator_timing` alone), against 7176
+and 6934 ms per analysis step of 5 time steps: 0.6 %. It reads ψ once on the planes below
+Z_asymptotic; the r-derivative sum runs in tiles of 1024 blocks (chosen from cache sizes, not
+measured), with the same order per element as without tiles.
 
 ## Fortran vs C++ (full Dai–Light run, 8 threads, 2026-11-05)
 Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8 grid (nZ × nR × nX × nY)

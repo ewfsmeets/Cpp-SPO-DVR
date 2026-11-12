@@ -207,6 +207,7 @@ add_library(spodvr_core
   src/propagation/split_operator.cpp
   src/propagation/propagation_backend.cpp
   src/propagation/cpu_backend.cpp
+  src/propagation/flux_surface.cpp
   src/propagation/averages.cpp
   src/propagation/propagation.cpp
   src/propagation/memory_estimate.cpp

@@ -1,5 +1,6 @@
 // Per-operator timing of the propagator for an input file: the (r, Z) kinetic step, the (x, y)
-// kinetic step, the potential step, the specular grid, and one analysis step (all operators).
+// kinetic step, the potential step, the specular grid, the flux surface (once per analysis step),
+// and one analysis step (all operators).
 // Usage: spodvr_operator_timing <input.json> [repetitions]   (threads: OMP_NUM_THREADS)
 #include <omp.h>
 
@@ -8,15 +9,18 @@
 #include <fstream>
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
+#include "analysis/flux_analysis.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
+#include "propagation/flux_surface.hpp"
 #include "propagation/propagation.hpp"
 
 using namespace spodvr;
@@ -73,6 +77,12 @@ int main(int argc, char** argv) {
   time_call("T_xy (2D FFT)", repetitions, [&] { kinetic.apply_xy(psi.scattering, TimeStep::Full); });
   time_call("potential incl. transforms", repetitions, [&] { potential_op.apply(psi); });
   time_call("specular grid", repetitions, [&] { specular.apply(psi.specular, TimeStep::Full, false); });
+  // At rFluxAnalysis, or in the middle of the r grid without flux analysis: the cost does not depend on r_c.
+  const int ir_flux = grids.ir_flux_analysis.value_or(p.nr / 2);
+  const std::vector<double> flux_weights = flux_derivative_weights(p.nr, grids.r.spacing(), ir_flux);
+  FluxSurfaceWave flux_slot(psi.scattering.block_size(), grids.nz_potential);
+  time_call("flux surface (psi, dpsi/dr)", repetitions,
+            [&] { flux_surface(psi.scattering, ir_flux, flux_weights, flux_slot); });
   const std::string label = "analysis step (" + std::to_string(config.derived.steps_per_analysis) + " steps)";
   time_call(label.c_str(), repetitions, [&] { propagator.propagate_analysis_step(psi); });
   return 0;

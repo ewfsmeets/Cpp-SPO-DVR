@@ -9,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "analysis/flux_analysis.hpp"
 #include "core/fortran_math.hpp"
 #include "grids/angular_grid.hpp"
 #include "grids/rotational_basis.hpp"
@@ -262,4 +263,21 @@ TEST(PropagationTables, FftScaleFactors) {
   EXPECT_EQ(s.tables.fft_scale_z, 0.08 / std::sqrt(2.0 * M_PI));
   EXPECT_EQ(s.tables.fft_scale_r, 0.15 / std::sqrt(2.0 * M_PI));
   EXPECT_EQ(s.tables.fft_scale_x, std::sqrt(s.config.derived.dx / 4));
+}
+
+// The weights of d psi / dr at the flux surface: none without flux analysis; with it, D at
+// rFluxAnalysis = 2.0 bohr (ir 8 on hardwall_small's r grid, 56 points 0.15 bohr apart).
+TEST(PropagationTables, FluxDerivativeWeightsOnlyWithFluxAnalysis) {
+  const TablesSetup without(reference_json());
+  EXPECT_TRUE(without.tables.flux_derivative.empty());
+
+  nlohmann::json json = reference_json();
+  json["doFluxAnalysis"] = true;
+  json["rFluxAnalysis"] = 2.0;
+  json["EMinFluxAna"] = json["EMinWP"];
+  json["EMaxFluxAna"] = json["EMaxWP"];
+  json["DeltaEFluxAna"] = 0.15;
+  const TablesSetup with(json);
+  ASSERT_EQ(with.grids.ir_flux_analysis, 8);
+  EXPECT_EQ(with.tables.flux_derivative, flux_derivative_weights(56, 0.15, 8));
 }
