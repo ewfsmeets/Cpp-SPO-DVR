@@ -1,0 +1,24 @@
+# Expected differences of the switch of the Fortran reference from 5.19 to 5.24 r1713 (-O3), for
+# tools/fortran_reference/refdata.py compare; columns and classes: tools/fortran_reference/README.md.
+# The row whose glob matches a file classifies it (the globs are disjoint); a file no row matches
+# must be identical (the debug_asyp.dat and pes_reference.txt files, the hard-wall BK files, the CRP
+# driver outputs, the inputs). Measured 2026-11-11: every Fortran reference of the 5.24 r1713 -O3
+# build against the committed data (5.19, GCC 13 build of 2026-10-26). 5.24 -O3 is bitwise equal to
+# 5.19 rebuilt with GCC 15, so the numeric differences below come from the toolchain and run-time
+# libraries, except the sign changes in the fine fort.25 files: those are the r1713 fix.
+# The regenerated tree must come from this install (its MANIFEST lines):
+# install: r1713-dce0ecc
+glob	allowed	limit	reason
+tests/crplib/reference/*/VERSIONS	removed	-	replaced by the provenance lines of MANIFEST.tsv; the driver no longer writes them
+tests/reference/*/fine_*/fort.10	identical	-	fine-analysis probabilities: identical in all 6 variants
+tests/reference/*/fine_*/fort.25	signs_only	4,6	the r1713 fine-analysis fix: the signs of Im S (number 4 of a line) and of the phase (6) change; |S| and P do not (incl. elements with |S| close to 1)
+tests/reference/*/fine_*/fort.3	identical	-	fine-analysis S-matrix summary: identical in all 5 variants that write it
+tests/reference/*/fine_*/stdout.txt	labels	-	5.24 label changes only
+tests/reference/*/fortran_averages.out	identical	-	averages (gate 3): identical in all 5 propagation cases
+tests/reference/*/fortran_fort25.txt	unread	-	no test reads the propagation fort.25; phases of near-zero S elements move by up to 0.035 (Dai-Light short cases), last digits in cu111_dailight_small
+tests/reference/*/fortran_restart_stdout.txt	labels	-	5.24 label changes only
+tests/reference/*/fortran_setup_stdout.txt	labels	-	5.24 label changes only (all 8 setup cases)
+tests/reference/cu111_dailight_*/fortran_fort21.bin	bk_scaled	1e-12	Dai-Light BK coefficients (gate 4): up to 8.3e-13 (short), 4.1e-13 (short_sym), 1.1e-14 (small) of the gate-4 scale
+tests/reference/cu111_dailight_short*/fortran_stdout.txt	abs	1e-20	5.24 label changes, and 472 (short) and 539 (short_sym) printed probabilities below 1e-20 that moved by up to 1e-21
+tests/reference/cu111_dailight_small/fortran_stdout.txt	labels	-	5.24 label changes only
+tests/reference/hardwall_*/fortran_stdout.txt	labels	-	5.24 label changes only

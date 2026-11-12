@@ -65,6 +65,30 @@ add_reference_tools_test(InstructionCheck check-binary)
 add_reference_tools_test(ManifestRecordAndDelete manifest)
 add_reference_tools_test(RegenerateRefusesBeforeDeleting regenerate-refusals)
 
+# refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1713.tsv is valid and
+# matches the committed files, every class it allows passes, each fault and each refusal fails.
+set(refdata_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_refdata.py)
+function(add_refdata_test name test_case)
+  add_test(NAME FortranReference.Compare${name}
+           COMMAND ${Python3_EXECUTABLE} -I -B ${refdata_test} ${test_case}
+                   ${CMAKE_CURRENT_BINARY_DIR}/refdata_compare/${test_case})
+endfunction()
+add_refdata_test(ExpectedFileMatchesTree expected-file)
+add_refdata_test(AllowedDifferencesPass allowed)
+add_refdata_test(EditedNumberFails edited-number)
+add_refdata_test(DeletedFileFails deleted-file)
+add_refdata_test(UnknownLabelFails unknown-label)
+add_refdata_test(SMagnitudeChangeFails s-magnitude)
+add_refdata_test(BkBeyondLimitFails bk-limit)
+add_refdata_test(BkNotFiniteFails bk-nan)
+add_refdata_test(PrintedNotFiniteFails non-finite-number)
+add_refdata_test(NumberCountChangeFails number-count)
+add_refdata_test(ProvenanceFaultsFail provenance)
+add_refdata_test(OtherInstallFails install-mismatch)
+add_refdata_test(FineLineWithoutBkInputFails fine-without-fort22)
+add_refdata_test(OverlappingRowsRefused multi-match)
+add_refdata_test(BadExpectedFileRefused refusals)
+
 # Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
 # missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).
 set(reference_manifest_check ${PROJECT_SOURCE_DIR}/tools/fortran_reference/ReferenceManifest.cmake)

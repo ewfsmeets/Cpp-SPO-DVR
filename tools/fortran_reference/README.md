@@ -16,8 +16,9 @@ them in a scratch clone or worktree when you only want to experiment.
 | `run_crp_reference.sh [--generate] kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the committed point lists and data sets of `tests/crplib/reference/`; `--generate` first rewrites them (needs the C++ build) |
 | [regenerate_all.sh](regenerate_all.sh) | Regenerates every reference file, in dependency order ([below](#regenerating-all-references)) |
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
+| [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1713.tsv](expected/r1713.tsv) ([below](#comparing-two-reference-trees)) |
 | [ReferenceManifest.cmake](ReferenceManifest.cmake) | Checks every file a `MANIFEST.tsv` lists against its sha256 (`ctest -R ReferenceManifest`) |
-| `test_reference_tools.sh` | The negative tests of these tools (`ctest -R FortranReference`; no Fortran run) |
+| `test_reference_tools.sh`, `test_refdata.py` | The negative tests of these tools (`ctest -R FortranReference`; no Fortran run) |
 
 Each script's header gives its arguments, outputs, environment and run time. Every run script
 records the files it writes in the case's `MANIFEST.tsv`.
@@ -146,3 +147,64 @@ list of reference cases: a new case adds its step in the commit that adds the ca
 directories of all runs stay in one new `mktemp -d` directory, printed at the start. The run time
 is estimated from single-case Fortran runs measured on 2026-11-11 (cu111_dailight_small, 7000
 steps: 1212 s with 5.19, 1570 s with 5.24 `-O3`, 4 threads); the whole run is not yet timed.
+Then compare the regenerated tree with the committed one ([below](#comparing-two-reference-trees)).
+
+## Comparing two reference trees
+
+```bash
+python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected tools/fortran_reference/expected/r1713.tsv
+python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected FILE --no-provenance
+```
+
+`compare` reads the reference files (`tests/reference/`, `tests/crplib/reference/`) of two
+repository checkouts: `OLD` with the committed references (e.g. the main checkout), `NEW` with
+regenerated ones (e.g. a worktree after `regenerate_all.sh`). It classifies each file by the
+row of the expected-differences file whose glob matches its path (a file that two rows match is
+refused); a file that no row matches must be byte-identical, and a file added in `NEW` always
+fails. It prints one line per file that is not identical (`ok` or `FAIL`, the class, what
+differs: lines, numbers, the largest absolute difference and printed units, a changed line count,
+or for BK files the fraction of the gate-4 scale), a note for each row that matches no file, and
+a summary. Exit status 0 only if every difference is allowed; it takes 4–7 s on the full trees
+(measured 2026-11-12).
+
+It also checks the provenance of `NEW` (`--no-provenance` skips only this, e.g. for files copied
+in by hand): every case has a `MANIFEST.tsv` that lists exactly its generated files with their
+sha256; all lines name the install of the expected file's `# install: <id>` line, whose
+`BUILDINFO.tsv` copy in [buildinfo/](buildinfo/) has the executable the lines name
+(`exe.sha256`); no line records run-time drift; and every fine-analysis line names its input
+`fort.22`, which is the case's `fortran_fort21.bin`.
+
+The expected-differences file is a TSV file: `#` writer lines, among them exactly one
+`# install: <id>` (the install whose output it describes), the header
+`glob<TAB>allowed<TAB>limit<TAB>reason`, `-` for an empty field, rows sorted by glob. The globs
+must be disjoint: in a glob, `*` and `?` match within one path component. The classes, a closed
+list:
+
+| Class | Allowed differences | `limit` |
+|---|---|---|
+| `identical` | None: the same as no row, written to document a measurement | `-` |
+| `volatile` | Text lines that differ between two runs of one build: the version line (build and run dates), the thread count, the set-up timings, the `iz = N` lines (printed from a parallel loop), the CPU timing table at the end | `-` |
+| `labels` | As `volatile`, plus the label whitelist `LABELS_519_TO_524` in refdata.py: the stdout lines whose text changed from 5.19 to 5.24 while their numbers did not. Every `labels` row uses it, so a later bump of the reference must review it | `-` |
+| `abs` | As `labels`, plus every number within `limit` of its old value | absolute limit |
+| `printed_units` | As `labels`, plus every number within `limit` units of its last printed digit | units |
+| `signs_only` | As `labels`, plus a sign change of the numbers at the listed positions (1-based) of a table row: a line of numbers only, with at least as many numbers as the largest position (an S-matrix row of `fort.25`, not a block header). With the sign, their printed digits may change by one unit (the negated value is computed another way) | positions, e.g. `4,6` |
+| `bk_scaled` | BK coefficients (`fortran_fort21.bin`): identical header records, every coefficient within `limit` times the gate-4 scale of `OLD` (its largest coefficient modulus, at least 1e-4) | fraction of the scale |
+| `unread` | Any change of content (no test reads the file; the line still reports what changed, e.g. the line count of an emptied file); it must exist in both trees | `-` |
+| `removed` | The file may be missing from `NEW` (if present, it must be identical) | `-` |
+
+Text files are compared line by line, after the volatile lines are dropped and (for every class
+but `volatile`) the whitelisted label lines are put in one form. A number may move inside its
+right-aligned field (a minus sign takes a blank), but the field width, the number of numbers and
+every other character must stay. A value that is not finite (NaN or out of the double range, a
+printed number or a BK coefficient) never passes unless it is bitwise unchanged, and a BK file of
+`OLD` with one has no gate-4 scale. In the CRP driver outputs the hex word of each value is skipped: the 17-digit decimal
+on the same line determines the double.
+
+[expected/r1713.tsv](expected/r1713.tsv) lists the differences between the committed 5.19 data
+and the 5.24 r1713 `-O3` build, measured on 2026-11-11, each with its reason. `ctest -R
+FortranReference.Compare` checks that it matches the committed files, that every class it allows
+passes, and that each fault fails: an edited number, a deleted file, an unknown label, a change
+of |S| or of a block header's sign in a fine `fort.25`, a BK change beyond the limit, NaN BK
+coefficients, a printed number out of range, a changed number count, three MANIFEST faults, an
+install other than the expected file's, a fine-analysis line without `fort.22`, overlapping rows
+and a malformed expected file ([test_refdata.py](test_refdata.py)).
