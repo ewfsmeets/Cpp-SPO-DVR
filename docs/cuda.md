@@ -344,7 +344,8 @@ EMaxWP by 0.02 and 0.025 eV), 5 and 3 repetitions. Per analysis step:
   nothing (medium: 10.6 → 10.7 ms). Not done: a kernel that loads each group of columns into shared
   memory with coalesced reads, then sums each column in the same order.
 - **Flush:** it runs on the host while the GPU waits. With one slot per flush it costs more than the
-  flux surface; several slots per flush make it small.
+  flux surface; several slots per flush make it small. A run uses the slots its host memory budget
+  holds, 8 on DZ ([performance.md](performance.md#memory-and-numa)).
 - **Flux surface + flush (8 slots), summed:**
   - DZ: (70.9 + 79.6) ms = 2.6 % of the measured 5885 ms. That step is slow: the time step of this
     run was 736 ms, against 571–625 ms above (the GPU also drives the desktop). Against 8 time steps
@@ -407,5 +408,5 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 | `src/cuda/cuda_fft.{hpp,cpp}` | cuFFT plans (64-bit, slabbed batches, shared work area, optional LTO load callback) |
 | `src/cuda/fft_callbacks.{hpp,cu,cpp}`, `cmake/embed_binary.cmake` | the exp(iA) load callback (LTO-IR, embedded at build time) |
 | `src/cuda/device_buffer.{hpp,cpp}`, `device_complex.hpp`, `cuda_error.{hpp,cpp}`, `launch.cuh` | device memory, complex arithmetic, layout, errors, launch helpers |
-| `tests/cuda/` | cuFFT vs FFTW, CPU vs GPU per analysis step and flux surface, determinism, memory estimate, restart, gates 3/4 |
+| `tests/cuda/` | cuFFT vs FFTW, CPU vs GPU per analysis step, flux surface and flux coefficients of a run, determinism, memory estimate, restart, gates 3/4 |
 | `tools/benchmark/cuda_operator_timing.cpp` | per-stage and per-kernel timing |

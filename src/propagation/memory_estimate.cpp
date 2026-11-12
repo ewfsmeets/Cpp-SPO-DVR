@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <complex>
+#include <stdexcept>
 
+#include "analysis/flux_analysis.hpp"
 #include "grids/rotational_basis.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "propagation/angular_transform.hpp"
@@ -18,7 +20,48 @@ namespace {
 constexpr std::size_t real_bytes = sizeof(double);
 constexpr std::size_t complex_bytes = sizeof(std::complex<double>);
 
+// The totals of the items while the propagation is set up, during the time loop, and their maximum.
+void add_up(MemoryEstimate& estimate) {
+  estimate.setup_bytes = 0;
+  estimate.propagation_bytes = 0;
+  for (const MemoryItem& item : estimate.items) {
+    if (item.during_setup) estimate.setup_bytes = estimate.setup_bytes + item.bytes;
+    if (item.during_propagation) estimate.propagation_bytes = estimate.propagation_bytes + item.bytes;
+  }
+  estimate.peak_bytes = std::max(estimate.setup_bytes, estimate.propagation_bytes);
+}
+
+// The coefficients phi, phi' of the flux analysis and its slots, each with psi and d psi / dr per block
+// (n_blocks = n_rot nx ny) and plane below Z_asymptotic. Allocated after the set-up, next to the other
+// arrays of the time loop. Fortran: FluxAnalyzor.f90 phi, phiDeriv
+void add_flux_items(MemoryEstimate& estimate, const Config& config, const SpatialGrids& grids, std::size_t n_blocks) {
+  const std::size_t surface_values = 2 * n_blocks * grids.nz_potential;
+  const int n_energies = flux_energy_count(config.input);
+  const std::size_t coefficient_values = surface_values * n_energies;
+  const FluxMemoryPlan plan = plan_flux_memory(estimate.propagation_bytes, coefficient_values * complex_bytes,
+                                               surface_values * complex_bytes, std::nullopt);
+  estimate.flux_slot_count = plan.slot_count;
+  estimate.items.push_back({"Flux coefficients", coefficient_values, coefficient_values * complex_bytes,
+                            std::to_string(n_energies) + " energies", false, true});
+  const std::size_t slot_values = surface_values * plan.slot_count;
+  estimate.items.push_back({"Flux surface slots", slot_values, slot_values * complex_bytes,
+                            std::to_string(plan.slot_count) + " analysis steps per flush", false, true});
+}
+
 }  // namespace
+
+FluxMemoryPlan plan_flux_memory(std::size_t base, std::size_t coefficient_bytes, std::size_t slot_bytes,
+                                std::optional<std::size_t> physical_bytes) {
+  if (slot_bytes == 0) throw std::invalid_argument("plan_flux_memory: slots of 0 bytes");
+  const int budget_slots =
+      static_cast<int>(std::clamp(flux_slot_budget_bytes / slot_bytes, std::size_t(1), std::size_t(max_flux_slots)));
+  // Unknown memory, or a run too large without the flux analysis too (the estimate warns about that).
+  if (!physical_bytes || base > *physical_bytes) return {budget_slots, true};
+  const std::size_t free_bytes = *physical_bytes - base;
+  if (coefficient_bytes > free_bytes || free_bytes - coefficient_bytes < slot_bytes) return {1, false};
+  const std::size_t fitting_slots = (free_bytes - coefficient_bytes) / slot_bytes;
+  return {static_cast<int>(std::min(fitting_slots, std::size_t(budget_slots))), true};
+}
 
 MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,
                                int n_threads) {
@@ -78,13 +121,11 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
     const std::size_t work_values = std::max(zr_unit, xy_group + dvr_blocks + exp_scratch);
     estimate.items.push_back({"Work arrays", work_values, work_values * complex_bytes * n_threads,
                               "per thread, x " + std::to_string(n_threads) + " threads", false, true});
+    add_up(estimate);
+    if (p.do_flux_analysis) add_flux_items(estimate, config, grids, std::size_t(basis.size()) * n_xy);
   }
 
-  for (const MemoryItem& item : estimate.items) {
-    if (item.during_setup) estimate.setup_bytes = estimate.setup_bytes + item.bytes;
-    if (item.during_propagation) estimate.propagation_bytes = estimate.propagation_bytes + item.bytes;
-  }
-  estimate.peak_bytes = std::max(estimate.setup_bytes, estimate.propagation_bytes);
+  add_up(estimate);
   return estimate;
 }
 

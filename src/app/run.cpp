@@ -138,13 +138,15 @@ struct BkOutput {
   }
 };
 
-// A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis.
+// A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis;
+// flux_slot_count: MemoryEstimate::flux_slot_count.
 // Fortran: Main.f90 from SetupRDBasis to StateToStateProbs
 void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                      const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
-                     const std::filesystem::path& output_dir, Device device) {
+                     const std::filesystem::path& output_dir, Device device, int flux_slot_count) {
   check_restart_directory(config, output_dir);
-  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device));
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device),
+                                    flux_slot_count);
   print_propagation_setup(out, style, grids, propagation);
   print_analysis_setup(out, style, config, propagation.analysis_basis(), propagation.analysis_energies());
 
@@ -276,6 +278,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       report_crp_data_set(out, style, dynamic_cast<const CrpPotential&>(*potential), grids, analysis_only);
     std::optional<PotentialGrid> potential_grid;
     std::vector<double> asymptotic;
+    int flux_slot_count = 0;  // the flux analysis's slots in the memory estimate; 0 without it
     if (analysis_only) {
       asymptotic = compute_asymptotic_potential(*potential, config, grids);
     } else {
@@ -286,8 +289,9 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
         print_surface_symmetry(out, style, symmetry, check);
         require_symmetric_potential(check, config, symmetry);
       }
-      print_memory_estimate(out, style, estimate_memory(config, grids, angular, symmetry, omp_get_max_threads()),
-                            physical_memory_bytes());
+      const MemoryEstimate estimate = estimate_memory(config, grids, angular, symmetry, omp_get_max_threads());
+      print_memory_estimate(out, style, estimate, physical_memory_bytes());
+      flux_slot_count = estimate.flux_slot_count;
       check_device_memory(out, style, propagates ? device : Device::Cpu, config, grids, angular,
                           symmetry.n_representatives());
       // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
@@ -323,7 +327,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     }
 
     run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir,
-                    device);
+                    device, flux_slot_count);
     // alsoAnalysis: the fine analysis of the BK file this run has just written (the
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)

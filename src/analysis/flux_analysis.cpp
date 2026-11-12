@@ -287,6 +287,23 @@ void FluxAccumulator::add_tile(int iz, int first_block, int tile_size, int n) {
   }
 }
 
+// Fortran: FluxAnalyzor.f90 readWriteFluxCoeffs ("read": readFluxCoeffs into phi and phiDeriv)
+void FluxAccumulator::read_coefficients(const std::function<void(FluxCoefficients&)>& read) {
+  if (pending_ > 0)
+    throw std::logic_error(
+        std::format("FluxAccumulator: cannot read the coefficients while {} analysis steps are pending", pending_));
+  const std::size_t n_blocks = coefficients_.index.n0;
+  const std::size_t n_planes = coefficients_.index.n1;
+  const std::size_t n_energies = coefficients_.index.n2;
+  read(coefficients_);
+  // The slots are added in this layout: a reader fills the arrays, it does not replace them.
+  const FluxCoefficients& c = coefficients_;
+  const std::size_t size = n_blocks * n_planes * n_energies;
+  if (c.index.n0 != n_blocks || c.index.n1 != n_planes || c.index.n2 != n_energies || c.phi.size() != size ||
+      c.phi_derivative.size() != size)
+    throw std::logic_error("FluxAccumulator: the coefficients read have other sizes than the run's");
+}
+
 const FluxCoefficients& FluxAccumulator::coefficients() const {
   if (pending_ > 0)
     throw std::logic_error(

@@ -74,6 +74,13 @@ header line.
   is set up (potential and exp(−iV dt) table exist together) and during the time loop, and the
   physical memory, with a warning if the run does not fit. Small tables and FFT plans are not
   counted; the medium grid estimate (5.0 GiB) matches the measured peak resident size (4.99 GiB).
+- The flux analysis (`doFluxAnalysis`) adds its coefficients φ, φ′ and K slots, each slot holding
+  ψ and ∂ψ/∂r at r_c of one analysis step; a flush adds the K steps to φ and φ′ in one pass. K is
+  what `flux_slot_budget_bytes` (2 GiB) holds, at most `max_flux_slots` = 8 (`plan_flux_memory`,
+  `src/propagation/memory_estimate.*`). Chosen from the DZ measurement in [cuda.md](cuda.md#flux-surface-and-flush):
+  one flush took 387 ms per analysis step with 1 slot and 79.6 ms with 8; one DZ slot is 250.56 MB,
+  so 2 GiB holds those 8 (test `MemoryEstimate.FluxSlotsOfTheDzGrid`). The results do not depend on
+  K (`FluxPropagation.CoefficientsDoNotDependOnTheSlotCount`).
 
 ## Threads and loop scheduling
 - **Single NUMA node** (one socket, e.g. the Ryzen 5800X): dynamic schedule, and only as many threads

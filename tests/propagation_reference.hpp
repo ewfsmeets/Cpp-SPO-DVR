@@ -29,6 +29,7 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 
 namespace spodvr::testing {
@@ -143,7 +144,8 @@ inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
   PotentialGrid potential = compute_potential_grid(*make_potential(config.input), config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
-  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend);
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend,
+                                    estimate_memory(config, grids, angular, 1).flux_slot_count);
   PropagationRun run;
   run.initial = propagation.initial_wave_packet();
   PropagationObserver observer;

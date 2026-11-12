@@ -162,6 +162,12 @@ class FluxAccumulator {
   // Adds the filled slots to the coefficients.
   void flush();
 
+  // Restart: `read` overwrites the coefficients in place with those of the earlier run (same
+  // sizes), and the steps added afterwards continue their sums. Throws std::logic_error while steps
+  // are pending or if `read` changed the sizes.
+  // Fortran: FluxAnalyzor.f90 readWriteFluxCoeffs ("read")
+  void read_coefficients(const std::function<void(FluxCoefficients&)>& read);
+
   [[nodiscard]] const FluxEnergies& energies() const { return energies_; }
   [[nodiscard]] int slot_count() const { return static_cast<int>(slots_.size()); }
   [[nodiscard]] int pending_steps() const { return pending_; }  // filled slots not yet added
@@ -174,7 +180,7 @@ class FluxAccumulator {
   void add_tile(int iz, int first_block, int tile_size, int n);
 
   FluxEnergies energies_;
-  double time_step_;  // Fortran: dtAnalysis
+  double time_step_;  // nanspo dt (flux Q4; the Fortran uses dtAnalysis)
   FluxCoefficients coefficients_;
   std::vector<FluxSurfaceWave> slots_;
   Index2D slot_coefficient_index_;                       // (n, slot)

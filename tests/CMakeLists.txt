@@ -34,6 +34,11 @@ target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)
 # The flux analysis is strict in every build (spodvr_strict_objects); its tests compare it bit for
 # bit with expressions written out in the test, which must then be strict too (also in build-fast).
 target_link_libraries(test_flux_analysis PRIVATE spodvr_strict_fp)
+# The same for the time loop's flux tests, which recompute the sums in the test (flux_propagation_run.hpp).
+target_link_libraries(test_flux_propagation PRIVATE spodvr_strict_fp)
+if(SPODVR_USE_CUDA)
+  target_link_libraries(test_cuda_flux PRIVATE spodvr_strict_fp)
+endif()
 
 # The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
 # command-line options, and negative tests that show the checker fails on a planted fault.

@@ -3,12 +3,15 @@
 
 #include <algorithm>
 #include <fstream>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
 #include <nlohmann/json.hpp>
 
 #include "analysis/fine_analysis.hpp"
+#include "analysis/flux_analysis.hpp"
 #include "app/fine_analysis_run.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -93,7 +96,8 @@ TEST(MemoryEstimate, MatchesAllocations) {
   const FftwFft fft;
   const GasPhase gas =
       compute_gas_phase(setup.config, setup.grids, setup.angular, potential.asymptotic, fft, LapackEigensolver());
-  WavePacketPropagation propagation(setup.config, setup.grids, setup.angular, std::move(potential), gas, fft);
+  WavePacketPropagation propagation(setup.config, setup.grids, setup.angular, std::move(potential), gas, fft,
+                                    make_cpu_backend, e.flux_slot_count);
   EXPECT_EQ(e.items[2].values, propagation.wave_packet_on_host().scattering.values.size());
   EXPECT_EQ(e.items[3].bytes, 2 * propagation.wave_packet_on_host().specular.values.size() * complex_bytes);
 }
@@ -116,6 +120,117 @@ TEST(MemoryEstimate, PotentialOnlyRun) {
   ASSERT_EQ(e.items.size(), 1U);
   EXPECT_EQ(e.peak_bytes, e.items[0].bytes);
   EXPECT_EQ(e.propagation_bytes, 0U);
+}
+
+namespace {
+
+// hardwall_small with the flux analysis at r_c = 2.0 bohr, 0.2 .. 0.6 eV by 0.15 eV: 3 energies (flux Q3).
+nlohmann::json hardwall_small_with_flux() {
+  nlohmann::json json = reference_json("hardwall_small");
+  json.update({{"doFluxAnalysis", true},
+               {"rFluxAnalysis", 2.0},
+               {"EMinFluxAna", 0.2},
+               {"EMaxFluxAna", 0.6},
+               {"DeltaEFluxAna", 0.15}});
+  return json;
+}
+
+}  // namespace
+
+// The flux analysis adds its coefficients and the slots, 2 complex values (psi, d psi / dr) per block
+// and plane below Z_asymptotic each, during the time loop only: 15 x 16 blocks, 113 planes, 3
+// energies, and 8 slots (the budget holds far more of this small grid).
+TEST(MemoryEstimate, FluxAnalysisByHand) {
+  const MemoryEstimate without = RunGrids(reference_json("hardwall_small")).estimate(4);
+  const MemoryEstimate e = RunGrids(hardwall_small_with_flux()).estimate(4);
+  EXPECT_EQ(without.flux_slot_count, 0);
+  ASSERT_EQ(e.items.size(), 7U);
+  const std::size_t surface = 2 * 15 * 16 * 113;
+  EXPECT_EQ(e.items[5].values, surface * 3);
+  EXPECT_EQ(e.items[5].bytes, surface * 3 * complex_bytes);
+  EXPECT_EQ(e.flux_slot_count, max_flux_slots);
+  EXPECT_EQ(e.items[6].values, surface * max_flux_slots);
+  EXPECT_EQ(e.items[6].bytes, surface * max_flux_slots * complex_bytes);
+  for (const std::size_t i : {5U, 6U}) {
+    EXPECT_FALSE(e.items[i].during_setup);
+    EXPECT_TRUE(e.items[i].during_propagation);
+  }
+  EXPECT_EQ(e.setup_bytes, without.setup_bytes);
+  EXPECT_EQ(e.propagation_bytes, without.propagation_bytes + e.items[5].bytes + e.items[6].bytes);
+}
+
+// The flux arrays of the estimate are those the propagation allocates with the estimate's slot count.
+TEST(MemoryEstimate, FluxMatchesAllocations) {
+  const RunGrids setup(hardwall_small_with_flux());
+  const MemoryEstimate e = setup.estimate(1);
+  PotentialGrid potential =
+      compute_potential_grid(*make_potential(setup.config.input), setup.config, setup.grids, setup.angular);
+  const FftwFft fft;
+  const GasPhase gas =
+      compute_gas_phase(setup.config, setup.grids, setup.angular, potential.asymptotic, fft, LapackEigensolver());
+  WavePacketPropagation propagation(setup.config, setup.grids, setup.angular, std::move(potential), gas, fft,
+                                    make_cpu_backend, e.flux_slot_count);
+  ASSERT_TRUE(propagation.flux().has_value());
+  const FluxCoefficients& c = propagation.flux()->coefficients();
+  EXPECT_EQ(e.items[5].values, c.phi.size() + c.phi_derivative.size());
+  EXPECT_EQ(propagation.flux()->slot_count(), e.flux_slot_count);
+  EXPECT_EQ(e.items[6].values, std::size_t(e.flux_slot_count) * 2 * c.n_blocks() * c.n_planes());
+}
+
+// The slot budget on the DZ grid (inputs/thesis_fig5_3_dz, which must exist, with r_c = 2.5 bohr and
+// 0.4 .. 0.95 eV by 0.025 eV): 435 x 144 blocks, 125 planes, so one slot is 250.56 MB, the coefficients
+// of 22 energies 22 slots, and the budget holds 8 slots (the comment at flux_slot_budget_bytes).
+TEST(MemoryEstimate, FluxSlotsOfTheDzGrid) {
+  const std::string path = std::string(SPODVR_REFERENCE_DIR) + "/../../inputs/thesis_fig5_3_dz/input.json";
+  std::ifstream file(path);
+  ASSERT_TRUE(file.is_open()) << path;
+  nlohmann::json json = nlohmann::json::parse(file);
+  json.update({{"doFluxAnalysis", true},
+               {"rFluxAnalysis", 2.5},
+               {"EMinFluxAna", 0.4},
+               {"EMaxFluxAna", 0.95},
+               {"DeltaEFluxAna", 0.025}});
+  const MemoryEstimate e = RunGrids(json).estimate(1);
+  const std::size_t slot_bytes = 2 * std::size_t(435 * 144) * 125 * complex_bytes;
+  EXPECT_EQ(slot_bytes, 250'560'000U);
+  ASSERT_GE(e.items.size(), 2U);
+  const MemoryItem& coefficients = e.items[e.items.size() - 2];
+  const MemoryItem& slots = e.items.back();
+  EXPECT_EQ(coefficients.bytes, 22 * slot_bytes);
+  EXPECT_EQ(e.flux_slot_count, 8);
+  EXPECT_EQ(slots.bytes, 8 * slot_bytes);
+  EXPECT_LE(slots.bytes, flux_slot_budget_bytes);
+}
+
+// The slot count: what the budget holds, 1 to max_flux_slots, without a known physical memory or when
+// the run is too large without the flux analysis too; within the physical memory as many as fit next
+// to the base and the coefficients, and "does not fit" only when not even one slot does.
+TEST(PlanFluxMemory, SlotsFromTheBudgetAndThePhysicalMemory) {
+  constexpr std::size_t gib = std::size_t(1) << 30;
+  constexpr std::size_t mib = std::size_t(1) << 20;
+  auto slots = [](std::size_t slot_bytes, std::optional<std::size_t> physical = std::nullopt) {
+    return plan_flux_memory(10 * gib, 4 * gib, slot_bytes, physical);
+  };
+  EXPECT_EQ(slots(1).slot_count, max_flux_slots);
+  EXPECT_EQ(slots(250 * mib).slot_count, 8);
+  EXPECT_EQ(slots(gib).slot_count, 2);
+  EXPECT_EQ(slots(3 * gib).slot_count, 1);  // above the budget: still one slot
+  EXPECT_TRUE(slots(3 * gib).fits);
+
+  EXPECT_EQ(slots(gib, 20 * gib).slot_count, 2);                      // the budget binds
+  EXPECT_EQ(slots(250 * mib, 15 * gib).slot_count, 4);                // 1 GiB free for slots
+  const FluxMemoryPlan one = slots(250 * mib, 14 * gib + 250 * mib);  // exactly one slot
+  EXPECT_EQ(one.slot_count, 1);
+  EXPECT_TRUE(one.fits);
+  const FluxMemoryPlan none = slots(250 * mib, 14 * gib + 249 * mib);
+  EXPECT_EQ(none.slot_count, 1);
+  EXPECT_FALSE(none.fits);
+  EXPECT_FALSE(slots(250 * mib, 12 * gib).fits);  // not even the coefficients
+  const FluxMemoryPlan too_large_anyway = slots(250 * mib, 9 * gib);
+  EXPECT_EQ(too_large_anyway.slot_count, 8);
+  EXPECT_TRUE(too_large_anyway.fits);  // the flux analysis is not the cause
+
+  EXPECT_THROW((void)plan_flux_memory(0, 0, 0, std::nullopt), std::invalid_argument);
 }
 
 TEST(FormatBytes, Units) {

@@ -621,6 +621,45 @@ TEST(FluxAccumulator, NeedsAtLeastOneSlot) {
   EXPECT_THROW(FluxAccumulator(4, 2, three_energies(), analysis_time_step, 0), std::invalid_argument);
 }
 
+// Restart: the coefficients of the first 4 of 7 steps, read into a fresh accumulator, continue there
+// as in the unsplit sum, bitwise (the elements' time order is the same), for any slot count.
+TEST(FluxAccumulator, ReadCoefficientsContinueTheSums) {
+  const FluxEnergies e = three_energies();
+  const int n_blocks = 1100;
+  const int n_planes = 3;
+  const FluxCoefficients unsplit = accumulate(e, n_blocks, n_planes, 7, 1);
+  const FluxCoefficients first = accumulate(e, n_blocks, n_planes, 4, 3);
+  for (const int slots : {1, 2}) {
+    SCOPED_TRACE(slots);
+    FluxAccumulator second(n_blocks, n_planes, e, analysis_time_step, slots);
+    second.read_coefficients([&](FluxCoefficients& c) {
+      c.phi = first.phi;
+      c.phi_derivative = first.phi_derivative;
+    });
+    EXPECT_EQ(count_differences(second.coefficients().phi, first.phi), 0);  // a round trip
+    for (int step = 4; step < 7; ++step) second.add_step(step_time(step), fill_step(step));
+    second.flush();
+    EXPECT_EQ(count_differences(second.coefficients().phi, unsplit.phi), 0);
+    EXPECT_EQ(count_differences(second.coefficients().phi_derivative, unsplit.phi_derivative), 0);
+  }
+}
+
+// Reading needs the pending steps added first (they would be lost), and must keep the sizes (the
+// slots are added in this layout).
+TEST(FluxAccumulator, ReadCoefficientsRefusesPendingStepsAndOtherSizes) {
+  FluxAccumulator flux(4, 2, three_energies(), analysis_time_step, 3);
+  flux.add_step(step_time(0), fill_step(0));
+  EXPECT_THROW(flux.read_coefficients([](FluxCoefficients&) {}), std::logic_error);
+  flux.flush();
+  EXPECT_NO_THROW(flux.read_coefficients([](FluxCoefficients&) {}));
+
+  FluxAccumulator fewer_energies(4, 2, three_energies(), analysis_time_step, 3);
+  EXPECT_THROW(fewer_energies.read_coefficients([](FluxCoefficients& c) { c = FluxCoefficients(4, 2, 2); }),
+               std::logic_error);
+  FluxAccumulator shorter(4, 2, three_energies(), analysis_time_step, 3);
+  EXPECT_THROW(shorter.read_coefficients([](FluxCoefficients& c) { c.phi_derivative.pop_back(); }), std::logic_error);
+}
+
 // The coefficients and the slots start at zero, every element written (the poison build fills
 // unwritten elements with NaN, which differs from 0).
 TEST(FluxAccumulator, CoefficientsAndSlotsStartAtZero) {

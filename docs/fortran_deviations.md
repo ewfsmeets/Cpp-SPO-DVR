@@ -23,6 +23,18 @@ differences are in [validation.md](validation.md).
   4 energies (0.2–0.5 eV), 0.40–0.95 eV in steps of 0.025 gives 22 (the last 0.925 eV). C++: the same
   count (`flux_energy_count`); `make_flux_energies` adds a warning when the last energy lies below
   EMaxFluxAna (`src/analysis/flux_analysis.cpp`; test `FluxEnergies.CountDropsTheEndPointAsTheFortran`).
+- flux Q4, fixed: the Fortran weighs every analysis step of the flux sums with the input dtAna
+  (`FluxAnalyzor.f90 storeTimeIndependentWF`, coeff = … · dtAnalysis), but a step lasts nanspo·dtStep
+  with nanspo = INT(dtAna/dtStep) (`InputNew.f90 ProcessInput`), and nothing checks that dtAna is a
+  multiple of dtStep. C++: the step's own length nanspo·dtStep (`derived.analysis_time_step`), as the
+  S-matrix sums use (`Analyzor.f90 BalintKurtiCoeffs`, dtmul). The two are equal to the bit when
+  nanspo·dtStep rounds to dtAna, as in every gate case (dtStep 2, dtAna 10). They differ otherwise
+  (test `FluxPropagation.FluxQ4WeightIsTheEffectiveAnalysisStep`, the first case):
+  - by a fraction of dtStep when dtAna is not a multiple of it: dtAna = 10.5 at dtStep 2 gives steps
+    of 10 a.u., whose Fortran weights are 1.05 times too large;
+  - by a whole dtStep when the quotient truncates: 0.3/0.1 = 2.9999999999999996, so dtAna 0.3 at
+    dtStep 0.1 gives nanspo = 2, steps of 0.2;
+  - by rounding only: dtAna 0.9 at dtStep 0.3 gives nanspo = 3 and 3 · 0.3 = 0.8999999999999999.
 - flux Q5, kept: `FluxAnalyzor.f90` converts its energies, and the wave packet's EMinWP and EMaxWP
   for b(k), with `Constants_eV2Ha` = 0.036749308286 (`units::precise`); the initial wave packet and
   every other energy use chaev = 27.2114 (`units::legacy`). The two differ by 1.27e-7 relative, and
