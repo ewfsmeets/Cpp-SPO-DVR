@@ -2251,7 +2251,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.203579D-13  0.000000D+00  0.414442D-27   3.141593
+   0   0  -0.203579D-13 -0.000000D+00  0.414442D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -2732,7 +2732,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.280042D-13  0.000000D+00  0.784233D-27   3.141593
+   0   0  -0.280042D-13 -0.000000D+00  0.784233D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -4439,7 +4439,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.102047D-12  0.000000D+00  0.104136D-25   3.141593
+   0   0  -0.102047D-12 -0.000000D+00  0.104136D-25  -3.141593
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -4920,7 +4920,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.105475D-12  0.000000D+00  0.111250D-25   3.141593
+   0   0  -0.105475D-12 -0.000000D+00  0.111250D-25  -3.141593
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -8985,7 +8985,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.277543D-13  0.000000D+00  0.770301D-27   3.141593
+   0   0  -0.277543D-13 -0.000000D+00  0.770301D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -9466,7 +9466,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.253608D-13  0.000000D+00  0.643169D-27   3.141593
+   0   0  -0.253608D-13 -0.000000D+00  0.643169D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -11561,7 +11561,7 @@
 
  v j mj dif.order are:   0   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.924141D+00  0.383179D+00  0.100086D+01   2.748535
+   0   0  -0.924141D+00 -0.383179D+00  0.100086D+01  -2.748535
 
  v j mj dif.order are:   0   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -12042,7 +12042,7 @@
 
  v j mj dif.order are:   0   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.952231D+00  0.308301D+00  0.100179D+01   2.828476
+   0   0  -0.952231D+00 -0.308301D+00  0.100179D+01  -2.828476
 
  v j mj dif.order are:   0   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -12523,7 +12523,7 @@
 
  v j mj dif.order are:   0   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.972499D+00  0.231202D+00  0.999210D+00   2.908185
+   0   0  -0.972499D+00 -0.231202D+00  0.999210D+00  -2.908185
 
  v j mj dif.order are:   0   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -13004,7 +13004,7 @@
 
  v j mj dif.order are:   0   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.987616D+00  0.152566D+00  0.998661D+00   2.988325
+   0   0  -0.987616D+00 -0.152566D+00  0.998661D+00  -2.988325
 
  v j mj dif.order are:   0   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -13485,7 +13485,7 @@
 
  v j mj dif.order are:   0   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.997751D+00  0.754186D-01  0.100120D+01   3.066148
+   0   0  -0.997751D+00 -0.754186D-01  0.100120D+01  -3.066148
 
  v j mj dif.order are:   0   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -13578,7 +13578,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.564216D-13 -0.000000D+00  0.318340D-26  -0.000000
+   0   0   0.564216D-13  0.000000D+00  0.318340D-26  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -13966,7 +13966,7 @@
 
  v j mj dif.order are:   0   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.100066D+01  0.299017D-03  0.100132D+01   3.141294
+   0   0  -0.100066D+01 -0.299017D-03  0.100132D+01  -3.141294
 
  v j mj dif.order are:   0   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -14059,7 +14059,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.500816D-13 -0.000000D+00  0.250817D-26  -0.000000
+   0   0   0.500816D-13  0.000000D+00  0.250817D-26  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -14540,7 +14540,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.445391D-13 -0.000000D+00  0.198373D-26  -0.000000
+   0   0   0.445391D-13  0.000000D+00  0.198373D-26  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -15719,7 +15719,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.404704D-15 -0.000000D+00  0.163785D-30  -0.000000
+   0   0   0.404704D-15  0.000000D+00  0.163785D-30  -0.000000
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -18124,7 +18124,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.160439D-13  0.000000D+00  0.257407D-27   3.141593
+   0   0  -0.160439D-13 -0.000000D+00  0.257407D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -18605,7 +18605,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.154119D-13  0.000000D+00  0.237528D-27   3.141593
+   0   0  -0.154119D-13 -0.000000D+00  0.237528D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -19086,7 +19086,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.158293D-13  0.000000D+00  0.250568D-27   3.141593
+   0   0  -0.158293D-13 -0.000000D+00  0.250568D-27  -3.141593
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase
@@ -23679,7 +23679,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.817929D-15 -0.000000D+00  0.669009D-30  -0.000000
+   0   0   0.817929D-15  0.000000D+00  0.669009D-30  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -25075,7 +25075,7 @@
 
  v j mj dif.order are:   1   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.562392D-05 -0.495324D-05  0.561631D-10  -2.419518
+   0   0  -0.562392D-05  0.495324D-05  0.561631D-10   2.419518
 
  v j mj dif.order are:   1   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -25587,7 +25587,7 @@
 
  v j mj dif.order are:   1   0   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.793052D-05  0.193105D-05  0.666221D-10   0.238847
+   0   0   0.793052D-05 -0.193105D-05  0.666221D-10  -0.238847
 
  v j mj dif.order are:   1   0   0   1
   m1  m2        s-matrix element          prob          phase
@@ -27263,7 +27263,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.140807D-13 -0.000000D+00  0.198267D-27  -0.000000
+   0   0   0.140807D-13  0.000000D+00  0.198267D-27  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -27930,7 +27930,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.165446D-13 -0.000000D+00  0.273722D-27  -0.000000
+   0   0   0.165446D-13  0.000000D+00  0.273722D-27  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -28395,7 +28395,7 @@
 
  v j mj dif.order are:   1   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.148296D-14 -0.000000D+00  0.219918D-29  -3.141593
+   0   0  -0.148296D-14  0.000000D+00  0.219918D-29   3.141593
 
  v j mj dif.order are:   1   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -28597,7 +28597,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.172871D-13 -0.000000D+00  0.298845D-27  -0.000000
+   0   0   0.172871D-13  0.000000D+00  0.298845D-27  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -29264,7 +29264,7 @@
 
  v j mj dif.order are:   0   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.164505D-13 -0.000000D+00  0.270620D-27  -0.000000
+   0   0   0.164505D-13  0.000000D+00  0.270620D-27  -0.000000
 
  v j mj dif.order are:   0   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -30396,7 +30396,7 @@
 
  v j mj dif.order are:   1   2   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0  -0.128763D-14 -0.000000D+00  0.165800D-29  -3.141593
+   0   0  -0.128763D-14  0.000000D+00  0.165800D-29   3.141593
 
  v j mj dif.order are:   1   2   0   1
   m1  m2        s-matrix element          prob          phase
@@ -32816,7 +32816,7 @@
 
  v j mj dif.order are:   0   4   0   0
   m1  m2        s-matrix element          prob          phase
-   0   0   0.123398D-13 -0.000000D+00  0.152270D-27  -0.000000
+   0   0   0.123398D-13  0.000000D+00  0.152270D-27  -0.000000
 
  v j mj dif.order are:   0   4   0   1
   m1  m2        s-matrix element          prob          phase

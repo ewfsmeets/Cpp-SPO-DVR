@@ -1,11 +1,10 @@
 # Provenance of the Fortran reference files of this case, written by
 # tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
 path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
-VERSIONS	b63f2ac240b863070313d81d4aef896e9b2c02cea1dbaa128a60d1984f8e2de9	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-atom_0_2.out	46e7e1026a54709c3446d4f280e4f234cc6a5b5ccf848baaff877e0231d52c7c	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-atom_1_3.out	6ccc7e7cae4481f5abfc5481af20470c7510f9e803ce2e6b13e5fd55fdafc66f	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-cambcord.out	0810d6286c4637d2f66b9f4687f00a3983dedad3007bc6ff2684336d3dbf2180	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-gasphase.out	a1f7d6337be7958575e7c1d1955e1986c0cc5e93208c1768174c1284c96f1b69	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-molecule_0_2.out	50856249e58baff709c07fa8cfd2e94ba464db14bdeea0a29a42e6304c743c91	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-molecule_1_3.out	09b5107d829b16f112f1403b4a1d7e20307b3ac03296b1f9f20e59e8e2d9a2fb	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-wrapper.out	2d8017bd4a0ca048f4ecd8b1413418ee8e89cfb87ead9599a053a737722e9b6a	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+atom_0_2.out	46e7e1026a54709c3446d4f280e4f234cc6a5b5ccf848baaff877e0231d52c7c	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	atom_0_2.in:5c24216480cc,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+atom_1_3.out	6ccc7e7cae4481f5abfc5481af20470c7510f9e803ce2e6b13e5fd55fdafc66f	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	atom_1_3.in:bbb45262db34,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+cambcord.out	0810d6286c4637d2f66b9f4687f00a3983dedad3007bc6ff2684336d3dbf2180	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	cambcord.in:a5dc1b96715f,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+gasphase.out	a1f7d6337be7958575e7c1d1955e1986c0cc5e93208c1768174c1284c96f1b69	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	gasphase.in:efc86b0db1a0,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+molecule_0_2.out	50856249e58baff709c07fa8cfd2e94ba464db14bdeea0a29a42e6304c743c91	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	molecule_0_2.in:546a7c99918e,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+molecule_1_3.out	09b5107d829b16f112f1403b4a1d7e20307b3ac03296b1f9f20e59e8e2d9a2fb	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	molecule_1_3.in:79d61d8dcec4,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+wrapper.out	2d8017bd4a0ca048f4ecd8b1413418ee8e89cfb87ead9599a053a737722e9b6a	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	wrapper.in:d67560dc54f8,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12

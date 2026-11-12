@@ -127,9 +127,10 @@ struct Comparison {
 };
 
 // The Fortran interpolation of S between two grid points, literally (Analyzor.f90 smatrix_calc,
-// nread = 2, non-NAG, lines 739-787), including its bugs: ATAN instead of ATAN2 for the phases,
-// s1_real instead of s1_imag in the interpolated Im S, and the signs of Re S and Im S taken
-// separately from the linearly interpolated S. Test use only.
+// nread = 2), as in the reference 5.24 (svn r1713), including its remaining bugs: ATAN
+// instead of ATAN2 for the phases, and the signs of Re S and Im S taken separately from the
+// linearly interpolated S. r1713 fixed the third one, s1_real for s1_imag in the interpolated Im S
+// (5.19; the unit tests in test_fine_analysis.cpp keep that documented 5.19 model). Test use only.
 cplx fortran_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   const double s1_real = s1.real();
   const double s1_imag = s1.imag();
@@ -142,7 +143,7 @@ cplx fortran_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   const double phase2 = fortran_compare::rne(s2_real, 0.0) ? std::atan(s2_imag / s2_real) : 0.0;
   const double phase_interpolated = phase1 + (phase2 - phase1) * f;
   const double sreal_interpolated = s1_real + (s2_real - s1_real) * f;
-  const double simag_interpolated = s1_imag + (s2_imag - s1_real) * f;  // the Fortran typo
+  const double simag_interpolated = s1_imag + (s2_imag - s1_imag) * f;  // 5.24 r1713; 5.19 had s1_real
   const double sreal = std::sqrt(prob_interpolated) * std::cos(phase_interpolated);
   const double simag = std::sqrt(prob_interpolated) * std::sin(phase_interpolated);
   // Fortran SIGN(a, b): |a| with the sign of b (b = 0 counts as positive).
@@ -265,7 +266,8 @@ void run_gate(const std::string& case_name, const std::string& variant) {
       if (std::abs(s1) < 1e-8 * s_max && std::abs(s2) < 1e-8 * s_max) continue;
       // Signs decided by a linear interpolation within rounding of zero cannot be compared.
       const double re_lin = s1.real() + (s2.real() - s1.real()) * f;
-      const double im_lin = s1.imag() + (s2.imag() - s1.real()) * f;
+      // As the reference 5.24 r1713 (5.19 had s1.real()).
+      const double im_lin = s1.imag() + (s2.imag() - s1.imag()) * f;
       if (std::abs(re_lin) < 1e-10 * s_max || std::abs(im_lin) < 1e-10 * s_max) {
         n_undecidable = n_undecidable + 1;
         continue;
@@ -274,6 +276,9 @@ void run_gate(const std::string& case_name, const std::string& variant) {
       // On a grid point (f = 0 or 1 to rounding) the Fortran may have chosen the neighbouring
       // interval: its E_z (ensctr, quad precision) differs from the C++ one in the last bits.
       // The emulation of that interval is used if it matches the Fortran value better.
+      // Measured: the nen95 variant passes with either emulation (5.19's s1_real or 5.24's s1_imag),
+      // because the typo term is multiplied by f, which is close to 0 there or, in this fallback,
+      // by f - 1, close to 0 too.
       const cplx printed(parse_fortran_real(entry.re), parse_fortran_real(entry.im));
       const int n_grid = g.size();
       std::optional<cplx> other;

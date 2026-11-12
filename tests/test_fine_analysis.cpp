@@ -399,8 +399,10 @@ TEST(FineAnalysis, SkippedEnergiesAndSmallGrids) {
 
 namespace {
 
-// Fortran smatrix_calc (nread = 2, non-NAG) literally, bugs included (see the gate 5 test).
-cplx fortran_interpolation_with_bugs(cplx s1, cplx s2, double f) {
+// Fortran 5.19 smatrix_calc (nread = 2, non-NAG) literally, bugs included: the documented 5.19
+// model (docs/fortran_fine_analysis_bugs.md). The gate 5 test emulates the reference 5.24 r1713,
+// which fixed the s1_real typo.
+cplx fortran519_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   const double prob1 = s1.real() * s1.real() + s1.imag() * s1.imag();
   const double prob2 = s2.real() * s2.real() + s2.imag() * s2.imag();
   const double prob = prob1 + (prob2 - prob1) * f;
@@ -457,7 +459,7 @@ TEST(FortranInterpolationBugs, OnlyPredictedPointsDifferAndFixIsAccurate) {
       n_pairs = n_pairs + 1;
 
       const cplx fixed = r.interpolated.energies[ie].s_matrix[k];
-      const cplx fortran = fortran_interpolation_with_bugs(s1, s2, f);
+      const cplx fortran = fortran519_interpolation_with_bugs(s1, s2, f);
       const cplx intended = intended_interpolation(s1, s2, f);
       err_fixed = std::max(err_fixed, std::abs(fixed - s_exact) / std::abs(s_exact));
       err_fortran = std::max(err_fortran, std::abs(fortran - s_exact) / std::abs(s_exact));
@@ -506,7 +508,7 @@ TEST(FortranInterpolationBugs, SyntheticFastPhase) {
       const cplx s2 = exact(i + 1);
       const cplx s = exact(i + f);
       const cplx fixed = interpolate_s_matrix(s1, s2, f);
-      const cplx fortran = fortran_interpolation_with_bugs(s1, s2, f);
+      const cplx fortran = fortran519_interpolation_with_bugs(s1, s2, f);
       const cplx intended = intended_interpolation(s1, s2, f);
       err_fixed = std::max(err_fixed, std::abs(fixed - s) / std::abs(s));
       const bool atan_case = s1.real() * s2.real() < 0.0;

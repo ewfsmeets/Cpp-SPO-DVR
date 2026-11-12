@@ -1,10 +1,9 @@
 
-*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261105 at 103421.557 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 145106.660 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
 * MPI disabled ...
-* NAG calls disabled ...
 * FFTW library will be used for FFTs ...
 * Estimate FFTW plans will be used for FFTs ...
 * Generic code will be used for diagonalizations ...
@@ -27,8 +26,8 @@
 
 *** THE INPUT PARAMETERS SETUP INTERNALLY BY THE PROGRAM ***
 
-* The surface lattice constant in X (bohr):                 0.62396600E+01
-* The surface lattice constant in Y (bohr):                 0.52396600E+01
+* The surface lattice constant in U (bohr):                 0.62396600E+01
+* The surface lattice constant in V (bohr):                 0.52396600E+01
 * The asymptotic value in Z (bohr):                         0.70000000E+01
 * The cutoff value in r (bohr):                             0.10000000E+04
 * The unit cell skewing angle (degrees):                    0.90000000E+02
@@ -198,27 +197,27 @@ reaches the gas phase, is the new asymptotic Z-value.
 
      nzpot =                                       113
 
-     optical potential in z scat.grid:
-     nzchsp =                                         137
-     z(nzchsp)=                                        8.880000
+     start optical potential in z scat.grid:
+     nzchmi =                                         136
+     z(nzchmi)=                                        8.800000
 
-     optical potential in z scat.grid:
+     end optical potential in z scat.grid:
      nzchmx =                                         176
      z(nzchmx)=                                       12.000000
 
-     optical potential in z spec.grid:
-     nschsp =                                         236
-     z(nschsp)=                                       16.800000
+     start optical potential in z spec.grid:
+     nschmi =                                         235
+     z(nschmi)=                                       16.720000
 
-     optical potential in z spec.grid:
+     end optical potential in z spec.grid:
      nschmx =                                         280
      z(nschmx)=                                       20.320000
 
-     optical potential in r scat.grid:
-     nrchsp =                                          26
-     r(nrchsp)=                                        4.550000
+     start optical potential in r scat.grid:
+     nrchmi =                                          25
+     r(nrchmi)=                                        4.400000
 
-     optical potential in r scat.grid:
+     end optical potential in r scat.grid:
      nrchmx =                                          56
      r(nrchmx)=                                        9.050000
 
@@ -242,7 +241,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  * Initialising the HardwallPES module
 
- Total time for potential initialisation =  0.75250000E-05 secs
+ Total time for potential initialisation =  0.69599992E-05 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -402,9 +401,9 @@ WARNING: Diffractional basis too small to describe all open channels!
 ********************************************************************************
 
 
-* Optical potential in Z absorbs with coefficient:          0.19938827E-01
-* Optical potential in r absorbs with coefficient:          0.23896325E-01
-* Optical potential in Z specular absorbs with coefficient: 0.18298964E-01
+* Optical potential in Z [high end] absorbs with coefficient:                   0.19938827E-01
+* Optical potential in r absorbs with coefficient:                              0.23896325E-01
+* Optical potential in Z [high end] specular absorbs with coefficient:          0.18298964E-01
 
 
 
@@ -9882,13 +9881,13 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                           0.0877 (a)
+ Total computation                           0.0831 (a)
 
                ...
 
  Propagating the wavefunction                0.0000 (b)
 
- Setup time                                  0.0690
+ Setup time                                  0.0650
 
  Saving the wave function for rerun          0.0000
 
@@ -9896,7 +9895,7 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  Calculating and saving BK-coeffs            0.0000
 
- Asymptotic analysis                         0.0188
+ Asymptotic analysis                         0.0180
 
  Saving the flux coefficients                0.0000
 
@@ -9904,7 +9903,7 @@ WARNING: Diffractional basis too small to describe all open channels!
 
 -----------------------------------------------------
 
- Sum                                         0.0877 (a)
+ Sum                                         0.0830 (a)
 
                ...
 
@@ -9942,5 +9941,5 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  FFTs along Y                                0.0000
 
- Time spent on FGH for asympwf               0.0294
+ Time spent on FGH for asympwf               0.0299
 

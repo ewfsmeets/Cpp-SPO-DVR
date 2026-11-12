@@ -1,10 +1,9 @@
 
-*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Nov  6 2026 at 11:39:04) run on 20261111 at 182350.945 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 140928.179 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
 * MPI disabled ...
-* NAG calls disabled ...
 * FFTW library will be used for FFTs ...
 * Estimate FFTW plans will be used for FFTs ...
 * Generic code will be used for diagonalizations ...
@@ -27,8 +26,8 @@
 
 *** THE INPUT PARAMETERS SETUP INTERNALLY BY THE PROGRAM ***
 
-* The surface lattice constant in X (bohr):                 0.49161535E+01
-* The surface lattice constant in Y (bohr):                 0.49161535E+01
+* The surface lattice constant in U (bohr):                 0.49161535E+01
+* The surface lattice constant in V (bohr):                 0.49161535E+01
 * The asymptotic value in Z (bohr):                         0.11900000E+02
 * The cutoff value in r (bohr):                             0.10000000E+04
 * The unit cell skewing angle (degrees):                    0.60000000E+02
@@ -199,27 +198,27 @@ reaches the gas phase, is the new asymptotic Z-value.
 
      nzpot =                                        86
 
-     optical potential in z scat.grid:
-     nzchsp =                                          89
-     z(nzchsp)=                                       12.200000
+     start optical potential in z scat.grid:
+     nzchmi =                                          88
+     z(nzchmi)=                                       12.050000
 
-     optical potential in z scat.grid:
+     end optical potential in z scat.grid:
      nzchmx =                                         120
      z(nzchmx)=                                       16.850000
 
-     optical potential in z spec.grid:
-     nschsp =                                         152
-     z(nschsp)=                                       21.650000
+     start optical potential in z spec.grid:
+     nschmi =                                         151
+     z(nschmi)=                                       21.500000
 
-     optical potential in z spec.grid:
+     end optical potential in z spec.grid:
      nschmx =                                         210
      z(nschmx)=                                       30.350000
 
-     optical potential in r scat.grid:
-     nrchsp =                                          20
-     r(nrchsp)=                                        4.200000
+     start optical potential in r scat.grid:
+     nrchmi =                                          19
+     r(nrchmi)=                                        4.000000
 
-     optical potential in r scat.grid:
+     end optical potential in r scat.grid:
      nrchmx =                                          48
      r(nrchmx)=                                        9.800000
 
@@ -235,7 +234,7 @@ reaches the gas phase, is the new asymptotic Z-value.
      ectmin (ev) =                                     0.500000
      ectmax (ev) =                                     0.900000
 
- Total time for potential initialisation =  0.60799998E-05 secs
+ Total time for potential initialisation =  0.84300009E-05 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -349,7 +348,7 @@ reaches the gas phase, is the new asymptotic Z-value.
  Saving dataset PES into file : ./dataset_86_-1.000_0.150_48_0.400_0.200_6_6_4.916_4_4.pes
  * Imposing a maximum on the potential; vmax (eV) =  0.10000000E+02
 
- Total time setting up the potential =  0.70353645E+01 secs
+ Total time setting up the potential =  0.71355923E+01 secs
 
 
 
@@ -498,9 +497,9 @@ WARNING: Diffractional basis too small to describe all open channels!
 ********************************************************************************
 
 
-* Optical potential in Z absorbs with coefficient:          0.14453227E-01
-* Optical potential in r absorbs with coefficient:          0.89223387E-02
-* Optical potential in Z specular absorbs with coefficient: 0.84425299E-02
+* Optical potential in Z [high end] absorbs with coefficient:                   0.14453227E-01
+* Optical potential in r absorbs with coefficient:                              0.89223387E-02
+* Optical potential in Z [high end] specular absorbs with coefficient:          0.84425299E-02
 
  CPU TIMES 
 
@@ -558,13 +557,13 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  Potential initialisation time               0.0000
 
- Potential setup time                        7.0354
+ Potential setup time                        7.1356
 
  FFTs along X                                0.0000
 
  FFTs along Y                                0.0000
 
- Time spent on FGH for asympwf               0.0181
+ Time spent on FGH for asympwf               0.0180
 
  *** DISPOSURE OF DVR ***
 

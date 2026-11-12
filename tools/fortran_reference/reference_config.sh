@@ -37,9 +37,10 @@ unset retired_var
 FORTRAN_REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # The reference every run script uses: an install with the fixed layout bin/spodvr.x, OBJS/ (*.o,
-# *.mod), BUILDINFO.tsv and SHA256SUMS (README.md of this directory). v5.19 is the archive build.
+# *.mod), BUILDINFO.tsv and SHA256SUMS (README.md of this directory). The reference is
+# r1713-dce0ecc (5.24 plus the r1713 fine-analysis fix, built with -O3); v5.19 is the archive build.
 FORTRAN_REF_ROOT="${HOME}/work/SPO-DVR_ref"
-FORTRAN_REF_ID="v5.19"
+FORTRAN_REF_ID="r1713-dce0ecc"
 FORTRAN_REF_DIR="${SPODVR_FORTRAN_REF_DIR:-${FORTRAN_REF_ROOT}/${FORTRAN_REF_ID}}"
 FORTRAN_REF_EXE="${FORTRAN_REF_DIR}/bin/spodvr.x"
 FORTRAN_REF_OBJS="${FORTRAN_REF_DIR}/OBJS"

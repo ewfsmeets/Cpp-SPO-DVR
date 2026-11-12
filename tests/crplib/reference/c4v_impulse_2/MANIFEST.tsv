@@ -1,6 +1,5 @@
 # Provenance of the Fortran reference files of this case, written by
 # tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
 path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
-VERSIONS	b63f2ac240b863070313d81d4aef896e9b2c02cea1dbaa128a60d1984f8e2de9	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-molecule_0_2.out	8f3c81f36c942731893ca2ed8f72d757196352557a75459c6c61cf23bf85050f	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-wrapper.out	cd262d5e43a85fe07e4cb609699732797e9967d2229016e5ec4e8d5b6e750870	run_crp_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+molecule_0_2.out	8f3c81f36c942731893ca2ed8f72d757196352557a75459c6c61cf23bf85050f	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	molecule_0_2.in:8389308d2f2d,dataset:d5b06e3c2a89	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+wrapper.out	cd262d5e43a85fe07e4cb609699732797e9967d2229016e5ec4e8d5b6e750870	run_crp_reference.sh	7fa5e58	r1713-dce0ecc crp_reference_driver:3ca73e08e9ee	wrapper.in:25dd4a716f60,dataset:d5b06e3c2a89	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12

@@ -1,10 +1,9 @@
 
-*** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261026 at 151056.591 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 144833.825 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
 * MPI disabled ...
-* NAG calls disabled ...
 * FFTW library will be used for FFTs ...
 * Estimate FFTW plans will be used for FFTs ...
 * Generic code will be used for diagonalizations ...
@@ -19,7 +18,7 @@
 
 * Setting up global data...
 * Calculated machines precision: 0.55511151E-16
-* Using a maximum number of 16 threads in this run.
+* Using a maximum number of 4 threads in this run.
 * Setting up global data...
 * Preparing module inputfields for reading the input file ...
 * Trying to read input file "DVR.inp" ...
@@ -27,8 +26,8 @@
 
 *** THE INPUT PARAMETERS SETUP INTERNALLY BY THE PROGRAM ***
 
-* The surface lattice constant in X (bohr):                 0.62396600E+01
-* The surface lattice constant in Y (bohr):                 0.52396600E+01
+* The surface lattice constant in U (bohr):                 0.62396600E+01
+* The surface lattice constant in V (bohr):                 0.52396600E+01
 * The asymptotic value in Z (bohr):                         0.70000000E+01
 * The cutoff value in r (bohr):                             0.10000000E+04
 * The unit cell skewing angle (degrees):                    0.90000000E+02
@@ -198,27 +197,27 @@ reaches the gas phase, is the new asymptotic Z-value.
 
      nzpot =                                       113
 
-     optical potential in z scat.grid:
-     nzchsp =                                         137
-     z(nzchsp)=                                        8.880000
+     start optical potential in z scat.grid:
+     nzchmi =                                         136
+     z(nzchmi)=                                        8.800000
 
-     optical potential in z scat.grid:
+     end optical potential in z scat.grid:
      nzchmx =                                         176
      z(nzchmx)=                                       12.000000
 
-     optical potential in z spec.grid:
-     nschsp =                                         236
-     z(nschsp)=                                       16.800000
+     start optical potential in z spec.grid:
+     nschmi =                                         235
+     z(nschmi)=                                       16.720000
 
-     optical potential in z spec.grid:
+     end optical potential in z spec.grid:
      nschmx =                                         280
      z(nschmx)=                                       20.320000
 
-     optical potential in r scat.grid:
-     nrchsp =                                          26
-     r(nrchsp)=                                        4.550000
+     start optical potential in r scat.grid:
+     nrchmi =                                          25
+     r(nrchmi)=                                        4.400000
 
-     optical potential in r scat.grid:
+     end optical potential in r scat.grid:
      nrchmx =                                          56
      r(nrchmx)=                                        9.050000
 
@@ -242,7 +241,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  * Initialising the HardwallPES module
 
- Total time for potential initialisation =  0.25780002E-04 secs
+ Total time for potential initialisation =  0.20640000E-04 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -378,7 +377,7 @@ reaches the gas phase, is the new asymptotic Z-value.
  iz = 113
  Saving HardWallPES PES into file : ./HardWallPES_113_-2.000_0.080_56_0.800_0.150_4_4_6.240_4_4.pes
 
- Total time setting up the potential =  0.82157140E-02 secs
+ Total time setting up the potential =  0.26488383E-01 secs
 
 
 
@@ -533,9 +532,9 @@ WARNING: Diffractional basis too small to describe all open channels!
 ********************************************************************************
 
 
-* Optical potential in Z absorbs with coefficient:          0.19938827E-01
-* Optical potential in r absorbs with coefficient:          0.23896325E-01
-* Optical potential in Z specular absorbs with coefficient: 0.18298964E-01
+* Optical potential in Z [high end] absorbs with coefficient:                   0.19938827E-01
+* Optical potential in r absorbs with coefficient:                              0.23896325E-01
+* Optical potential in Z [high end] specular absorbs with coefficient:          0.18298964E-01
 
 
 
@@ -13149,21 +13148,21 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                          63.4169 (a)
+ Total computation                         151.6836 (a)
 
                ...
 
- Propagating the wavefunction               62.9727 (b)
+ Propagating the wavefunction              151.1533 (b)
 
- Setup time                                  0.1492
+ Setup time                                  0.1531
 
- Saving the wave function for rerun          0.0190
+ Saving the wave function for rerun          0.0177
 
- Calculating averages                        0.0082
+ Calculating averages                        0.0589
 
- Calculating and saving BK-coeffs            0.1193
+ Calculating and saving BK-coeffs            0.0952
 
- Asymptotic analysis                         0.0199
+ Asymptotic analysis                         0.0214
 
  Saving the flux coefficients                0.0000
 
@@ -13171,43 +13170,43 @@ WARNING: Diffractional basis too small to describe all open channels!
 
 -----------------------------------------------------
 
- Sum                                        63.2884 (a)
+ Sum                                       151.4997 (a)
 
                ...
 
- FFTs along X and Y                          4.9867
+ FFTs along X and Y                         11.7950
 
- Kinetic energy operation along Z           15.3580
+ Kinetic energy operation along Z           28.8418
 
- Kinetic energy operation along r           10.8539
+ Kinetic energy operation along r           24.0821
 
- Potential energy multiplication             9.8297
+ Potential energy multiplication            43.6306
 
- Legengre transforms                         9.9417
+ Legengre transforms                        20.1245
 
- Shifting the wavefunction                   1.6832
+ Shifting the wavefunction                   7.0652
 
- Kinetic energy multiplications (xy)         0.7789
+ Kinetic energy multiplications (xy)         1.8421
 
- Absorbing the wavefunction                  1.1737
+ Absorbing the wavefunction                  2.7792
 
- Projection formalism                        0.2169
+ Projection formalism                        0.5676
 
- Operations on specular grid                 0.1038
+ Operations on specular grid                 0.2977
 
 -----------------------------------------------------
 
- Sum                                        54.9266 (b)
+ Sum                                       141.0258 (b)
 
                ...
 
  Potential initialisation time               0.0000
 
- Potential setup time                        0.0082
+ Potential setup time                        0.0265
 
- FFTs along X                                2.2819
+ FFTs along X                                5.5125
 
- FFTs along Y                                2.7048
+ FFTs along Y                                6.2824
 
- Time spent on FGH for asympwf               0.0316
+ Time spent on FGH for asympwf               0.0298
 

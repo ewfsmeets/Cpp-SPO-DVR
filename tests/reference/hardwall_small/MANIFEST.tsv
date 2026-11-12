@@ -1,34 +1,34 @@
 # Provenance of the Fortran reference files of this case, written by
 # tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
 path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
-debug_asyp.dat	51b7258662ba170af2c7cc6679f27083943c52471fb37f4a4d9684f5752ece83	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_empty/DVR.inp	c712825a0b99c06358d7408dab49cbe310922880da031d64556c46c86b9621c7	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_empty/fort.10	3435c02aef39d5d1341da999c5236d359a351fb688f7b02f02a0bdf65fdb0ee1	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_empty/stdout.txt	da9e1bbc7612fe1c3702d146021696a1f7948c77b8dd2a4695db9da207f8ae90	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_full/DVR.inp	38d4f39da1e944b2b688b07d70b8b3318c91749d36b26eb128ab3aaf3d34f52c	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_full/fort.10	70da3cef00311d4b8704eb73fe103256f3290087b08c455be606b73a79b3c994	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_full/fort.25	fabb2209703a12ed65cfbca92bc2265d9d89545112b1ab4752efeea5182d8e30	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_full/fort.3	c4f81d38b25282577c1baa869cda43835faa072abf950bcb1f72d979fdf24d28	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_full/stdout.txt	4c256d0f8f8ca5f731465e94c144867920625f111f4e0da3770941e32f7fb263	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_nen95/DVR.inp	abd5b4ed231cf70578217ae7bc27313f4c52095decb01bd316095e6654d3297f	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_nen95/fort.10	70da3cef00311d4b8704eb73fe103256f3290087b08c455be606b73a79b3c994	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_nen95/fort.25	5f8752b55aabaadd829eecd831724e39c1cf01b5e91d543e7b0373402a5122b7	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_nen95/fort.3	c4f81d38b25282577c1baa869cda43835faa072abf950bcb1f72d979fdf24d28	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_nen95/stdout.txt	af2ce2e4bef9c04a78b4235b179d7929ec44ac3b1dd5b60202d78f727e05f01a	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_small/DVR.inp	cbaccfa9f1a16f2b886e84fd39ccc4351efdee0d54adc8efa57236fae6918858	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_small/fort.10	097130139fedbc78849a8202ff54631e55de281688f55dc140e3353a24775731	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_small/fort.25	b7604ad9395222008703cdf40b907edea68f5b3745b5b2323c7f941e41e80aca	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_small/fort.3	4eed5b252f7c7b68fc1f0ce714b40d6b1a618e936bd0d1e097f2889220a87415	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_small/stdout.txt	49bc47fe9f895503ab6a737163db46c6b868add5776b7daa1a2a6a8a401406c2	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_truncated/DVR.inp	03d6c796a96406aac3fec41468a5bef96fb57320e512658bca76190a760451ee	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_truncated/fort.10	70da3cef00311d4b8704eb73fe103256f3290087b08c455be606b73a79b3c994	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_truncated/fort.25	fabb2209703a12ed65cfbca92bc2265d9d89545112b1ab4752efeea5182d8e30	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_truncated/fort.3	c4f81d38b25282577c1baa869cda43835faa072abf950bcb1f72d979fdf24d28	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fine_truncated/stdout.txt	921a9b730d5854c1a04cd3df73c0cdc27c7be183ea48e3cf1c5dc0f5b4546d64	run_fine_analysis_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fortran_averages.out	adfb033c0d943723ca37a2ad0f1e1ccca4e70e6418cf491858dde09bdf105d01	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fortran_fort21.bin	737c951b004212bfefd5dfa810c9360383789fcc1786e5a57457da218d6eb8f2	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fortran_fort25.txt	229313237d963d2a73706792e89fca251723d7740997347ae2f74112c739d40b	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fortran_restart_stdout.txt	7f1fe7a9e0255711fba5dd4da1589c3b5f6d5fa5f31eb915837c3ec751ebaf0d	run_restart_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fortran_setup_stdout.txt	12776e05615aae3df70efeb060d962d4eb871ed67fdf61030c72fec52c78157f	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-fortran_stdout.txt	e37beccd84bf921ae1f03e0c33716f3355d833efde46422632ca0905dc9af897	run_propagation_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
-pes_reference.txt	eb5a5aad8229cb8ca76ea9760830d989ffbfa308b5e3a76ca0d16ec09ad6f038	run_setup_reference.sh	-	5.19 (pre-MANIFEST)	-	-	-	-
+debug_asyp.dat	51b7258662ba170af2c7cc6679f27083943c52471fb37f4a4d9684f5752ece83	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:34036fc82c7b	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_empty/DVR.inp	c712825a0b99c06358d7408dab49cbe310922880da031d64556c46c86b9621c7	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:c712825a0b99,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_empty/fort.10	3435c02aef39d5d1341da999c5236d359a351fb688f7b02f02a0bdf65fdb0ee1	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:c712825a0b99,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_empty/stdout.txt	a56928cbf54d1a8c203c379f0df9f0b473d0eab7affb842ac6d2f8beea56ff29	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:c712825a0b99,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_full/DVR.inp	38d4f39da1e944b2b688b07d70b8b3318c91749d36b26eb128ab3aaf3d34f52c	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:38d4f39da1e9,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_full/fort.10	70da3cef00311d4b8704eb73fe103256f3290087b08c455be606b73a79b3c994	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:38d4f39da1e9,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_full/fort.25	cb34800a950e99e9a015cd9da74d8cfd3ec8375be4a838662bc7641b98d1ddc1	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:38d4f39da1e9,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_full/fort.3	c4f81d38b25282577c1baa869cda43835faa072abf950bcb1f72d979fdf24d28	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:38d4f39da1e9,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_full/stdout.txt	e60fa3b0f1a1a742ca8b6fe3c19ce2d74393f4df1233317259d8b4b8ebeef4b3	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:38d4f39da1e9,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_nen95/DVR.inp	abd5b4ed231cf70578217ae7bc27313f4c52095decb01bd316095e6654d3297f	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:abd5b4ed231c,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_nen95/fort.10	70da3cef00311d4b8704eb73fe103256f3290087b08c455be606b73a79b3c994	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:abd5b4ed231c,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_nen95/fort.25	dbdd07287a238c66fa5951e2b8f955e3c986e97712cd13eecb07b97b2729ac1f	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:abd5b4ed231c,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_nen95/fort.3	c4f81d38b25282577c1baa869cda43835faa072abf950bcb1f72d979fdf24d28	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:abd5b4ed231c,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_nen95/stdout.txt	0d00cb153b3714864b23aebfc9e8c0c065ac03b942bb88b9aefed19c05589190	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:abd5b4ed231c,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_small/DVR.inp	cbaccfa9f1a16f2b886e84fd39ccc4351efdee0d54adc8efa57236fae6918858	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:cbaccfa9f1a1,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_small/fort.10	097130139fedbc78849a8202ff54631e55de281688f55dc140e3353a24775731	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:cbaccfa9f1a1,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_small/fort.25	a06eba84e4a7dd058dbf8f2da5aaeb333b468fa45aea6e64e879db23faf2e817	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:cbaccfa9f1a1,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_small/fort.3	4eed5b252f7c7b68fc1f0ce714b40d6b1a618e936bd0d1e097f2889220a87415	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:cbaccfa9f1a1,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_small/stdout.txt	db86251ab0d5c5cd9e28fb09092a0c4562b3b5be51c0226592958d7951929456	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:cbaccfa9f1a1,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_truncated/DVR.inp	03d6c796a96406aac3fec41468a5bef96fb57320e512658bca76190a760451ee	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:03d6c796a964,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_truncated/fort.10	70da3cef00311d4b8704eb73fe103256f3290087b08c455be606b73a79b3c994	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:03d6c796a964,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_truncated/fort.25	cb34800a950e99e9a015cd9da74d8cfd3ec8375be4a838662bc7641b98d1ddc1	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:03d6c796a964,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_truncated/fort.3	c4f81d38b25282577c1baa869cda43835faa072abf950bcb1f72d979fdf24d28	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:03d6c796a964,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fine_truncated/stdout.txt	0c6c08fa778a00134fd8c5294a9e84b246366b275beff8f8841a0288c03b8f38	run_fine_analysis_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:03d6c796a964,fort.22:737c951b0042	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fortran_averages.out	adfb033c0d943723ca37a2ad0f1e1ccca4e70e6418cf491858dde09bdf105d01	run_propagation_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:1854356f9808	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fortran_fort21.bin	737c951b004212bfefd5dfa810c9360383789fcc1786e5a57457da218d6eb8f2	run_propagation_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:1854356f9808	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fortran_fort25.txt	229313237d963d2a73706792e89fca251723d7740997347ae2f74112c739d40b	run_propagation_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:1854356f9808	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fortran_restart_stdout.txt	e62f8c5ba332b3e56a566dc96361b620a728396efa78d9a8a5c041ca7ce74c65	run_restart_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	part1/DVR.inp:2c0e6e9f106f,part2/DVR.inp:c78c6425a5ab	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fortran_setup_stdout.txt	5f23feb457afa3024e8dcc04c391483d1c8a3032ac098db90340960bf421b099	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:34036fc82c7b	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+fortran_stdout.txt	a54759f663343c3f8296eb32ea036433b4ff87c200cf8669b9fb9aa9a272a8c4	run_propagation_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:1854356f9808	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+pes_reference.txt	eb5a5aad8229cb8ca76ea9760830d989ffbfa308b5e3a76ca0d16ec09ad6f038	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:34036fc82c7b	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
