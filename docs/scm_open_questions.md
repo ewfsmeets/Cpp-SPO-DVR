@@ -34,12 +34,12 @@ and routine in upstream `sources.dir/SOURCES.dir/DistortedSurfacePES.dir/`.
 
 - [SCM in one page](#scm-in-one-page) and [notation](#notation)
 - [The questions by priority](#the-questions-by-priority)
-- [Q6, Q5, Q9. The data: production snapshots, parameters, provenance](#q6-q5-q9-the-data-production-snapshots-parameters-provenance)
 - [Q2. The jump at the cell edges, and what a 1×1 cell can describe](#q2-the-jump-at-the-cell-edges-and-what-a-11-cell-can-describe)
 - [Q4. The lattice rescaling](#q4-the-lattice-rescaling)
 - [Q1. The units of the bond-length clamp](#q1-the-units-of-the-bond-length-clamp)
 - [Q11. Re-centring a snapshot, and its drift](#q11-re-centring-a-snapshot-and-its-drift)
 - [Q3. Deep holes where the CRP clamps Z or r](#q3-deep-holes-where-the-crp-clamps-z-or-r)
+- [Q6, Q5, Q9. The data: production snapshots, parameters, provenance](#q6-q5-q9-the-data-production-snapshots-parameters-provenance)
 - [Q12. HD](#q12-hd)
 - [Technical questions](#technical-questions) (Q7, Q8, Q10, Q13)
 - [Literature](#literature)
@@ -144,40 +144,13 @@ The labels Q1–Q13 are stable names (used in our message to the authors), not r
 
 | Priority | Question | Size (example snapshot) | Effect on ensemble-averaged observables | In your own runs until answered | C++ port |
 |---|---|---|---|---|---|
-| 1 | Q6, Q5, Q9: the production data and provenance | — | without them no published result can be reproduced or the port validated against it | use the example for method tests only | the example only |
-| 2 | Q2: the jump at the cell edges; what a 1×1 cell can describe | steps of 0.3–0.9 eV near the barrier | **systematic** in diffraction and specular scattering; reaction: unknown | treat per-snapshot diffraction as unconverged | reproduces it; reports the jump |
-| 3 | Q4: the lattice rescaling | +14 meV mean ΔV near the barrier; CRP values unchanged (mapped); open: is the CRP set the 0 K or the 925 K lattice? | **systematic** | run as coded | as coded |
-| 4 | Q1: is the bond-length clamp in bohr or Å? | lowest V on the slice +0.034 eV (limits in Å) or −0.29 eV (r dependence in Å); larger beyond the barrier | **systematic** | allow ≈ 0.03 eV (limits in Å) to 0.3 eV (r dependence in Å) of systematic uncertainty | as coded (bohr) |
-| 5 | Q11: may a snapshot be re-centred; remove its drift? | lowest V on the slice: sd 0.061 eV over the 49 cells of one snapshot; drift 12–52 meV | statistics, and a small systematic shift | do not count re-centred cells as independent | the example only |
-| 6 | Q3: holes where the CRP clamps Z or r | V down to 255 eV below the gas phase below Z = 0.47 bohr, 357 eV for r > 4.35 bohr | none unless amplitude reaches them | keep the Z grid above 0.47 bohr; set `ImposeVMin` | reproduces them; warns |
-| 7 | Q12: HD (all these PESes, not only SCM) | V off by up to 0.4–0.5 eV at accessible tilted geometries near the barrier height | systematic (HD only) | avoid HD | rejects HD with SCM |
-
-## Q6, Q5, Q9. The data: production snapshots, parameters, provenance
-
-**Why first.** The repository holds one example snapshot and one `params.dat`. Without the
-production data, no published SCM result can be reproduced, the port cannot be validated against
-published curves, and several of the questions below (Q1, Q4) could be settled by comparison.
-
-**Q6. The production snapshots.** How many snapshots per T_s, at which T_s, with which weights
-(equal weights for canonical sampling)? Is the example a 925 K snapshot from an embedded-atom-method
-(EAM) MD run (the file tag `Multiseedv3_New` and the default `SCMType = 'EAMSCM'` suggest so; its
-displacements fit 925 K, see the primer)? Could the production position files (e.g. the "Dist"
-ensembles and the constrained one-, three- and five-atom "At1/3/5" sets of Smits, Litjens & Somers
-2022), the production `params.dat`, the CRP data-set version and the `DVR.inp` be shared?
-
-**Q5. Two layers, one parameter set.** Only Cu atoms of the top two layers enter ΔV (hard-coded:
-`UsedLayers = 2` in `SCM_Types.f90`), each layer with its own line in `params.dat`. In the example
-both lines are identical. A second-layer atom is partly screened by the top layer, so a fit might
-give it weaker parameters. Are identical lines intended, and is the example `params.dat` the
-published parameter set or a test file?
-
-**Q9. Provenance.** Which code version and compiler options produced the published QD-SCM results?
-Are reference outputs (probabilities of one snapshot with its input) available? One such output
-would let us check the whole chain, and would settle Q1 by itself.
-
-**Cost of an ensemble.** One 6D run per snapshot. A production-size grid takes hours of GPU time
-per run (the C++ code's thesis benchmark grid: about 1.5–1.8 h for 10 000 steps on an RTX 4070 Ti),
-so 100 snapshots are about a week and 1000 are months.
+| 1 | Q2: the jump at the cell edges; what a 1×1 cell can describe | steps of 0.3–0.9 eV near the barrier | **systematic** in diffraction and specular scattering; reaction: unknown | treat per-snapshot diffraction as unconverged | reproduces it; reports the jump |
+| 2 | Q4: the lattice rescaling | +14 meV mean ΔV near the barrier; CRP values unchanged (mapped); open: is the CRP set the 0 K or the 925 K lattice? | **systematic** | run as coded | as coded |
+| 3 | Q1: is the bond-length clamp in bohr or Å? | lowest V on the slice +0.034 eV (limits in Å) or −0.29 eV (r dependence in Å); larger beyond the barrier | **systematic** | allow ≈ 0.03 eV (limits in Å) to 0.3 eV (r dependence in Å) of systematic uncertainty | as coded (bohr) |
+| 4 | Q11: may a snapshot be re-centred; remove its drift? | lowest V on the slice: sd 0.061 eV over the 49 cells of one snapshot; drift 12–52 meV | statistics, and a small systematic shift | do not count re-centred cells as independent | the example only |
+| 5 | Q3: holes where the CRP clamps Z or r | V down to 255 eV below the gas phase below Z = 0.47 bohr, 357 eV for r > 4.35 bohr | none unless amplitude reaches them | keep the Z grid above 0.47 bohr; set `ImposeVMin` | reproduces them; warns |
+| 6 | Q12: HD (all these PESes, not only SCM) | V off by up to 0.4–0.5 eV at accessible tilted geometries near the barrier height | systematic (HD only) | avoid HD | rejects HD with SCM |
+| 7 | Q6, Q5, Q9: the production data and provenance | — | not needed: the port is validated against the Fortran on the example; the data would only allow comparison with published results | use the example for method tests only | the example only |
 
 ## Q2. The jump at the cell edges, and what a 1×1 cell can describe
 
@@ -418,6 +391,35 @@ were used?).
 the ideal surface's lowest V on your grid (SCM legitimately lowers minima by up to 55 meV at
 Z ≥ 1 bohr). **The C++ port:** reproduces the holes, warns when an SCM
 grid reaches below Zmin or beyond Rmax, and reports the lowest V_SCM − V_ideal there.
+
+## Q6, Q5, Q9. The data: production snapshots, parameters, provenance
+
+**Why ask, and why last.** The repository holds one example snapshot and one `params.dat`. The C++
+port needs nothing more: it is validated against the Fortran on the example. Reproducing a published
+production run is not a goal, so the production data would only allow a comparison with published
+curves (which could settle Q1 and Q4). Two of the questions stand on their own: the identical layer
+parameters (Q5), and which code produced the published results (Q9).
+
+**Q6. The production snapshots.** How many snapshots per T_s, at which T_s, with which weights
+(equal weights for canonical sampling)? Is the example a 925 K snapshot from an embedded-atom-method
+(EAM) MD run (the file tag `Multiseedv3_New` and the default `SCMType = 'EAMSCM'` suggest so; its
+displacements fit 925 K, see the primer)? Could the production position files (e.g. the "Dist"
+ensembles and the constrained one-, three- and five-atom "At1/3/5" sets of Smits, Litjens & Somers
+2022), the production `params.dat`, the CRP data-set version and the `DVR.inp` be shared?
+
+**Q5. Two layers, one parameter set.** Only Cu atoms of the top two layers enter ΔV (hard-coded:
+`UsedLayers = 2` in `SCM_Types.f90`), each layer with its own line in `params.dat`. In the example
+both lines are identical. A second-layer atom is partly screened by the top layer, so a fit might
+give it weaker parameters. Are identical lines intended, and is the example `params.dat` the
+published parameter set or a test file?
+
+**Q9. Provenance.** Which code version and compiler options produced the published QD-SCM results?
+Are reference outputs (probabilities of one snapshot with its input) available? One such output
+would let us check the whole chain, and would settle Q1 by itself.
+
+**Cost of an ensemble.** One 6D run per snapshot. A production-size grid takes hours of GPU time
+per run (the C++ code's thesis benchmark grid: about 1.5–1.8 h for 10 000 steps on an RTX 4070 Ti),
+so 100 snapshots are about a week and 1000 are months.
 
 ## Q12. HD
 
