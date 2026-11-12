@@ -59,7 +59,7 @@ THESIS_RECORD = "docs/validation_thesis_fig5_3_dz/"
 # This checker and its allow-list spell out the patterns they look for.
 SELF = ("tools/check_docs.py", "tools/check_docs_allowlist.tsv")
 # Retired SPODVR_* environment variables: they may appear only in RETIRED_ENV_HOME.
-RETIRED_ENV_VARS: tuple[str, ...] = ()
+RETIRED_ENV_VARS: tuple[str, ...] = ("SPODVR_FORTRAN_EXE", "SPODVR_FORTRAN_OBJS")
 RETIRED_ENV_HOME = "tools/fortran_reference/reference_config.sh"
 ALLOWLIST_HEADER = ["check", "file", "match", "reason"]
 ALLOWABLE_CHECKS = tuple(c for c in CHECKS if c != "numbers")  # numbers is report-only

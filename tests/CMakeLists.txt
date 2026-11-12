@@ -46,3 +46,19 @@ add_test(NAME Docs.UndocumentedKeyFails
 add_test(NAME Docs.StaleAllowlistRowFails
          COMMAND ${check_docs_negative} -DCASE=stale-allowlist
                  -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/stale-allowlist -P ${check_docs_negative_script})
+
+# The refusals of the Fortran reference tools (tools/fortran_reference/test_reference_tools.sh,
+# tools/fortran_reference/README.md): stub installs and synthetic build logs, no Fortran run.
+set(reference_tools_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_reference_tools.sh)
+function(add_reference_tools_test name test_case)
+  add_test(NAME FortranReference.${name}
+           COMMAND bash ${reference_tools_test} ${test_case}
+                   ${CMAKE_CURRENT_BINARY_DIR}/fortran_reference_tools/${test_case} ${CMAKE_CXX_COMPILER})
+endfunction()
+add_reference_tools_test(RetiredVariablesRefused retired-variables)
+add_reference_tools_test(ExistingScratchDirRefused existing-scratch)
+add_reference_tools_test(ChangedInstallRefused changed-install)
+add_reference_tools_test(RuntimeDriftRefused runtime-drift)
+add_reference_tools_test(RunChecksExitAndOutputs run)
+add_reference_tools_test(BuildLogAllowLists check-log)
+add_reference_tools_test(InstructionCheck check-binary)

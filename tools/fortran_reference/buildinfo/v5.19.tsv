@@ -1,0 +1,23 @@
+# Fortran reference install: SPO-DVR 5.19, the archive. Written by hand 2026-11-12 (symlinks into ~/work/SPO-DVR_v5.19,
+# which must never be rebuilt or deleted). Build packages: "-" where not recorded at build time.
+key	value
+commit	601d833
+date	2026-11-12
+defines	-DX86 -DGFORTRAN
+exe.sha256	b3e4442d501cb8f28112bc00136c5b966b9eb63aa135b0cdec776c4c5ba0e800
+flags	-O3 -fopenmp -fdefault-real-8 -ffree-line-length-none -fallow-argument-mismatch -I/usr/include
+id	v5.19
+package.build.cpp-15	-
+package.build.gfortran-15	15.2.0-16ubuntu1 (the executable's .comment: GCC (Ubuntu 15.2.0-16ubuntu1) 15.2.0)
+package.build.libc6-dev	-
+package.build.libfftw3-dev	-
+package.runtime.libc6	2.43-2ubuntu2.4
+package.runtime.libfftw3-double3	3.3.10-2fakesync1build3
+package.runtime.libgfortran5	16-20260322-1ubuntu1
+package.runtime.libgomp1	16-20260322-1ubuntu1
+source	~/work/SPO-DVR_v5.19 (plain directory; SOURCES.dir identical to upstream 601d833)
+svn	r1572
+tarball.sha256	-
+tree	-
+version	5.19
+zgvb	_ZGVbN2v_acos@GLIBC_2.35 _ZGVbN2v_cos@GLIBC_2.22 _ZGVbN2v_exp@GLIBC_2.22 _ZGVbN2v_sin@GLIBC_2.22

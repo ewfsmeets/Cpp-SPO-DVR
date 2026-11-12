@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Generates the Fortran reference data for the setup / potential / gas-phase gates.
 #
-# Runs the reference executable in potential-only mode (nread = 6: stops right after
-# SetupAsympWF) with DoDump enabled, in a scratch directory, and copies the results into
-# tests/reference/<case>/:
+# Runs the reference executable (reference_config.sh) in potential-only mode (nread = 6: stops
+# right after SetupAsympWF) with DoDump enabled, in a scratch directory, and copies the results
+# into tests/reference/<case>/:
 #   fortran_setup_stdout.txt  stdout of the run (vasy table, grid info, e(v,j) table)
 #   debug_asyp.dat            full-precision rovibrational energies and eigenvectors
 #   pes_reference.txt         extracted from the binary .pes file (see extract_pes.py)
@@ -11,42 +11,26 @@
 #
 # Usage: tools/fortran_reference/run_setup_reference.sh [case] [scratch_dir]
 #   case         reference case directory name (default: hardwall_small)
-#   scratch_dir  where to run (default: a new mktemp -d directory); never the Fortran tree.
+#   scratch_dir  where to run, a directory that does not exist yet (default: a new mktemp -d)
+# Environment: SPODVR_FORTRAN_REF_DIR, SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT (reference_config.sh).
+# Run time: seconds (the small cases). Docs: tools/fortran_reference/README.md.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/reference_config.sh"
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-case_name="${1:-hardwall_small}"
-case_dir="${repo_dir}/tests/reference/${case_name}"
-scratch_dir="${2:-$(mktemp -d)}"
-fortran_exe="${SPODVR_FORTRAN_EXE:-${HOME}/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x}"
+(($# <= 2)) || { echo "usage: run_setup_reference.sh [case] [scratch_dir]" >&2; exit 2; }
+case_dir="${FORTRAN_REPO_DIR}/tests/reference/${1:-hardwall_small}"
+scratch_dir="$(new_scratch_dir "${2:-}")"
 
-[[ -f "${case_dir}/DVR.inp" ]] || { echo "error: ${case_dir}/DVR.inp not found" >&2; exit 1; }
-[[ -x "${fortran_exe}" ]] || { echo "error: Fortran executable ${fortran_exe} not found" >&2; exit 1; }
-
-mkdir -p "${scratch_dir}"
-cp "${case_dir}/DVR.inp" "${scratch_dir}/DVR.inp"
-# CRP library cases: the data set (CRPlibDataSet in input.json, relative to the repository root) is
-# copied as "dataset", the short relative path of DVR.inp (the Fortran fails above 50 characters).
-crp_dataset="$(grep -o '"CRPlibDataSet" *: *"[^"]*"' "${case_dir}/input.json" | sed 's/.*: *"\(.*\)"/\1/' || true)"
-if [[ -n "${crp_dataset}" ]]; then
-  [[ -f "${repo_dir}/${crp_dataset}/CRPData" ]] || { echo "error: CRP data set ${crp_dataset} not found" >&2; exit 1; }
-  rm -rf "${scratch_dir}/dataset" && cp -r "${repo_dir}/${crp_dataset}" "${scratch_dir}/dataset"
-fi
+stage_inputs "${case_dir}" "${scratch_dir}"
 cat >> "${scratch_dir}/DVR.inp" <<'INP'
 
 # Appended by run_setup_reference.sh: potential-only run with full-precision gas-phase dump.
 Potential   : LOGICAL : TRUE;
 DoDump      : LOGICAL : TRUE;
 INP
+run_fortran "${scratch_dir}" fortran_setup_stdout.txt '*.pes' debug_asyp.dat
 
-echo "* Running ${fortran_exe} in ${scratch_dir}"
-(cd "${scratch_dir}" && OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}" "${fortran_exe}" > fortran_setup_stdout.txt 2>&1) || {
-  echo "error: Fortran run failed; see ${scratch_dir}/fortran_setup_stdout.txt" >&2; exit 1; }
-
-pes_file="$(ls "${scratch_dir}"/*.pes 2>/dev/null | head -n 1 || true)"
-[[ -n "${pes_file}" ]] || { echo "error: no .pes file written in ${scratch_dir}" >&2; exit 1; }
-[[ -f "${scratch_dir}/debug_asyp.dat" ]] || { echo "error: no debug_asyp.dat written" >&2; exit 1; }
-
-python3 -I "${repo_dir}/tools/fortran_reference/extract_pes.py" "${pes_file}" "${case_dir}/pes_reference.txt"
+pes_files=("${scratch_dir}"/*.pes)
+python3 -I -B "${FORTRAN_REPO_DIR}/tools/fortran_reference/extract_pes.py" "${pes_files[0]}" "${case_dir}/pes_reference.txt"
 cp "${scratch_dir}/fortran_setup_stdout.txt" "${scratch_dir}/debug_asyp.dat" "${case_dir}/"
 echo "* Reference files written to ${case_dir}"

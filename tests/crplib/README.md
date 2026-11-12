@@ -49,7 +49,9 @@ cmake --build build
 tools/fortran_reference/run_crp_reference.sh <case>      # or: kernels
 ```
 
-The driver is linked against the objects of the Fortran reference build and checks that the
-compiler is gfortran 15.2.0; the results are only bitwise comparable with that build.
+The driver is linked against the objects of the Fortran reference install and checks that the
+installed gfortran is the one that built them (`BUILDINFO.tsv`,
+[tools/fortran_reference/README.md](../../tools/fortran_reference/README.md)); the results are only
+bitwise comparable with that build.
 `ReferenceDataSets.MatchTheGenerator` fails when a committed data set differs from what the
 generator writes.
