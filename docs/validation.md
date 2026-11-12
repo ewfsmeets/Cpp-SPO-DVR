@@ -28,6 +28,13 @@ reaction probabilities match the Fortran's 7 printed digits. That Fortran run us
 same grid, the potential and the first 40 steps of 5.24 built with `-O3` are bitwise identical to
 5.19's (checked 2026-11-11), so the comparison holds for the current reference too.
 
+**Flux analysis (one-off replay).** The C++ recomputed one Fortran analysis step of the flux
+analysis (hardwall_small restarted at t = 7000 with zero-filled flux files) from the Fortran's own
+ψ and eviroi: all 162 720 complex values of its two flux coefficient files (32 544 nonzero) are
+bitwise equal, and the C++ writer reproduces both files byte for byte (2026-11-12). Recipe and two
+routine-level checks (b(k), the r-derivative weights, the accumulation and P(E)):
+[validation_flux_replay](validation_flux_replay/README.md).
+
 ## Reference data
 
 The Fortran output in `tests/reference/` and `tests/crplib/reference/` comes from one build, the

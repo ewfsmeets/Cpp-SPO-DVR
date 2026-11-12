@@ -1,10 +1,14 @@
 // Restart files in the Fortran layout. Fortran: WaveFunction.f90 SaveWaveFunc / ReadWaveFunc,
-// AsympInfo.f90 ReadOrWriteAsympInfo, RotDifBasis.f90 WriteToFile, Analyzor.f90 BalintKurtiCoeffs
+// AsympInfo.f90 ReadOrWriteAsympInfo, RotDifBasis.f90 WriteToFile, Analyzor.f90 BalintKurtiCoeffs,
+// FluxAnalyzor.f90 writeFluxCoeffs / readFluxCoeffs
 #include "io/fortran_files.hpp"
 
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -157,6 +161,60 @@ int read_fortran_bk_file(const std::filesystem::path& path, const Config& config
     on_record(istep * deltat, bk);  // Fortran: GetSMatrixElemsOfOldRun
   }
   return n_records;
+}
+
+namespace {
+
+// The record order of the flux files, (iz, n) with n outer, is the memory order of (block, iz, n):
+// record k holds the n_blocks values from k n_blocks on.
+std::size_t flux_record_count(const FluxCoefficients& c) { return c.index.n1 * c.index.n2; }
+
+// Fortran: FluxAnalyzor.f90 writeFluxCoeffs, write(funit) phi(:, iz, ien) for ien, then iz
+void write_flux_array(const std::filesystem::path& path, const FluxCoefficients& c, std::span<const cplx> values) {
+  FortranRecordWriter file(path);
+  for (std::size_t k = 0; k < flux_record_count(c); ++k) file.write_array(values.subspan(k * c.index.n0, c.index.n0));
+  file.close();
+}
+
+std::string flux_count_error(const std::filesystem::path& path, const std::string& found, const FluxCoefficients& c) {
+  return std::format(
+      "'{}' holds {} flux coefficient records, expected {} ({} flux energies x {} planes Z < zasymp): "
+      "EMinFluxAna, EMaxFluxAna, DeltaEFluxAna or the Z grid differ from the run that wrote it",
+      path.string(), found, flux_record_count(c), c.n_energies(), c.n_planes());
+}
+
+// Fortran: FluxAnalyzor.f90 readFluxCoeffs, read(funit) phi(:, iz, ien) for ien, then iz. The
+// Fortran accepts longer records and extra records; here the file must fit the input exactly (flux Q8).
+void read_flux_array(const std::filesystem::path& path, const FluxCoefficients& c, std::span<cplx> values) {
+  FortranRecordReader file(path);
+  const std::size_t record_bytes = c.index.n0 * sizeof(cplx);
+  for (std::size_t k = 0; k < flux_record_count(c); ++k) {
+    if (file.at_end()) throw CheckpointError(flux_count_error(path, std::to_string(k), c));
+    FortranRecordParser record = file.read(std::format("flux coefficient record {}", k + 1));
+    if (record.size() != record_bytes)
+      throw CheckpointError(std::format(
+          "record {} of '{}' has {} bytes, expected {} ({} complex values: the rotational functions x nX x nY "
+          "of the input)",
+          k + 1, path.string(), record.size(), record_bytes, c.n_blocks()));
+    record.read_array(values.subspan(k * c.index.n0, c.index.n0));
+  }
+  if (!file.at_end())
+    throw CheckpointError(flux_count_error(path, "more than " + std::to_string(flux_record_count(c)), c));
+}
+
+}  // namespace
+
+void write_fortran_flux_coefficients(const std::filesystem::path& phi_path,
+                                     const std::filesystem::path& derivative_path,
+                                     const FluxCoefficients& coefficients) {
+  write_flux_array(phi_path, coefficients, coefficients.phi);
+  write_flux_array(derivative_path, coefficients, coefficients.phi_derivative);
+}
+
+void read_fortran_flux_coefficients(const std::filesystem::path& phi_path, const std::filesystem::path& derivative_path,
+                                    FluxCoefficients& coefficients) {
+  read_flux_array(phi_path, coefficients, coefficients.phi);
+  read_flux_array(derivative_path, coefficients, coefficients.phi_derivative);
 }
 
 }  // namespace spodvr

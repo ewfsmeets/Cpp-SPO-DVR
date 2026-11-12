@@ -29,6 +29,15 @@ differences are in [validation.md](validation.md).
   |b(k)|² differs from the momentum distribution of the C++ initial packet by 2.9e-7 of its peak
   (hardwall_small). C++: the same factors (tests `FluxEnergies.FollowTheFortranExpressions` and
   `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket`).
+- flux Q8, checked: the Fortran's flux restart files `flux_coeffs.dat` (φ) and `flux_coeffs_deriv.dat`
+  (φ′) have no header: one gfortran record φ(:, iz, n) per plane Z < zasymp and flux energy, energy
+  outer (`FluxAnalyzor.f90 writeFluxCoeffs`). `readFluxCoeffs` reads them unchecked: longer records
+  and extra records are read silently, so a file written for another energy grid or rotational
+  basis is read shifted; only too few or too short records stop it (a gfortran run-time error).
+  C++: `read_fortran_flux_coefficients` (`src/io/fortran_files.cpp`) requires exactly
+  nE × nz_potential records of (rotational functions × nX × nY) complex values each, and otherwise
+  stops with an error naming the expected sizes (test
+  `FortranFluxFiles.RecordCountAndLengthMustFitTheInput`).
 - flux Q9, kept: b(k) (`MyFunctions.f90 getBkCoeffWavePacket`) has the phase e^(+i·δk·z0), δk = k0 − k,
   the initial wave packet's momentum amplitude e^(−i·δk·z0): b is its complex conjugate. P(E) does not
   depend on it (a phase per energy cancels in conj(φ)·φ′), but the energy-resolved φ and the Fortran's

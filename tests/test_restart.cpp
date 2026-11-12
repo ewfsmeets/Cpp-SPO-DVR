@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <complex>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -16,9 +17,11 @@
 
 #include <nlohmann/json.hpp>
 
+#include "analysis/flux_analysis.hpp"
 #include "app/cli.hpp"
 #include "app/run.hpp"
 #include "io/binary_file.hpp"
+#include "io/fortran_files.hpp"
 #include "io/fortran_unformatted.hpp"
 
 using namespace spodvr;
@@ -482,4 +485,78 @@ TEST(FortranUnformatted, BadMarkersAndShortRecordsAreErrors) {
 
   FortranRecordParser record(std::vector<std::byte>(4), "test record");
   EXPECT_THROW((void)record.read<double>(), CheckpointError);
+}
+
+namespace {
+
+// A flux coefficient file written by gfortran as FluxAnalyzor.f90 writeFluxCoeffs writes it
+// (tests/reference/fortran_unformatted/flux_coeffs.f90): 3 blocks, 2 planes, 4 energies.
+const fs::path gfortran_flux_file = fs::path(SPODVR_REFERENCE_DIR) / "fortran_unformatted" / "flux_coeffs.bin";
+constexpr int flux_file_blocks = 3;
+constexpr int flux_file_planes = 2;
+constexpr int flux_file_energies = 4;
+
+// The value that file holds at (block, iz, n): (v, -1/v), v = (block + 1) + 10 (iz + 1) + 100 (n + 1).
+std::complex<double> flux_file_value(int block, int iz, int n) {
+  const double v = (block + 1) + 10 * (iz + 1) + 100 * (n + 1);
+  return {v, -1.0 / v};
+}
+
+// The message of the CheckpointError that reading the gfortran file as both flux files into
+// coefficients of the given sizes throws; empty if it reads.
+std::string flux_read_error(int n_blocks, int n_planes, int n_energies) {
+  FluxCoefficients c(n_blocks, n_planes, n_energies);
+  try {
+    read_fortran_flux_coefficients(gfortran_flux_file, gfortran_flux_file, c);
+  } catch (const CheckpointError& e) {
+    return e.what();
+  }
+  return {};
+}
+
+}  // namespace
+
+// Record (iz, n), n outer, holds phi(:, iz, n): every value lands at its (block, iz, n), bit for bit.
+TEST(FortranFluxFiles, ReadsTheGfortranFileInTheFortranLayout) {
+  FluxCoefficients c(flux_file_blocks, flux_file_planes, flux_file_energies);
+  read_fortran_flux_coefficients(gfortran_flux_file, gfortran_flux_file, c);
+  for (int n = 0; n < flux_file_energies; ++n)
+    for (int iz = 0; iz < flux_file_planes; ++iz)
+      for (int block = 0; block < flux_file_blocks; ++block) {
+        EXPECT_EQ(c.phi[c.index(block, iz, n)], flux_file_value(block, iz, n)) << block << " " << iz << " " << n;
+        EXPECT_EQ(c.phi_derivative[c.index(block, iz, n)], flux_file_value(block, iz, n));
+      }
+}
+
+TEST(FortranFluxFiles, WritesTheSameBytesAsGfortran) {
+  FluxCoefficients c(flux_file_blocks, flux_file_planes, flux_file_energies);
+  for (int n = 0; n < flux_file_energies; ++n)
+    for (int iz = 0; iz < flux_file_planes; ++iz)
+      for (int block = 0; block < flux_file_blocks; ++block) {
+        c.phi[c.index(block, iz, n)] = flux_file_value(block, iz, n);
+        c.phi_derivative[c.index(block, iz, n)] = flux_file_value(block, iz, n);
+      }
+  const fs::path dir = fs::temp_directory_path() / ("spodvr_flux_files_" + std::to_string(::getpid()));
+  fs::create_directories(dir);
+  write_fortran_flux_coefficients(dir / "phi.dat", dir / "phi_derivative.dat", c);
+  EXPECT_EQ(read_file(dir / "phi.dat"), read_file(gfortran_flux_file));
+  EXPECT_EQ(read_file(dir / "phi_derivative.dat"), read_file(gfortran_flux_file));
+  fs::remove_all(dir);
+}
+
+// Flux Q8: the files have no header, so a file written for other sizes (another flux energy grid,
+// Z grid or rotational basis) is an error, not a partial or shifted read.
+TEST(FortranFluxFiles, RecordCountAndLengthMustFitTheInput) {
+  EXPECT_EQ(flux_read_error(3, 2, 4), "");
+  EXPECT_NE(
+      flux_read_error(4, 2, 4).find("record 1 of '" + gfortran_flux_file.string() + "' has 48 bytes, expected 64"),
+      std::string::npos);
+  EXPECT_NE(flux_read_error(3, 2, 5).find("holds 8 flux coefficient records, expected 10 (5 flux energies x 2 planes"),
+            std::string::npos);
+  EXPECT_NE(flux_read_error(3, 1, 4).find("holds more than 4 flux coefficient records, expected 4"), std::string::npos);
+  EXPECT_NE(flux_read_error(3, 2, 3).find("holds more than 6 flux coefficient records, expected 6"), std::string::npos);
+
+  FluxCoefficients c(flux_file_blocks, flux_file_planes, flux_file_energies);
+  EXPECT_THROW(read_fortran_flux_coefficients(gfortran_flux_file, gfortran_flux_file.parent_path() / "missing.bin", c),
+               CheckpointError);
 }

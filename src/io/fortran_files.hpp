@@ -5,6 +5,7 @@
 
 #include "analysis/analysis_basis.hpp"
 #include "analysis/balint_kurti.hpp"
+#include "analysis/flux_analysis.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "input/config.hpp"
 #include "io/fortran_unformatted.hpp"
@@ -50,5 +51,20 @@ class FortranBkFileWriter {
 int read_fortran_bk_file(const std::filesystem::path& path, const Config& config, const RotationalBasis& rotations,
                          const AnalysisBasis& basis,
                          const std::function<void(double, const BkCoefficients&)>& on_record);
+
+// Flux coefficient files, one per array (Fortran: flux_coeffs.dat holds phi, flux_coeffs_deriv.dat
+// phi'): one record per (iz, n), n outer, each holding the n_blocks values phi(:, iz, n) of one
+// plane and energy. No header, so the reader checks the record count and lengths (flux Q8).
+// Fortran: FluxAnalyzor.f90 writeFluxCoeffs (one call per array)
+void write_fortran_flux_coefficients(const std::filesystem::path& phi_path,
+                                     const std::filesystem::path& derivative_path,
+                                     const FluxCoefficients& coefficients);
+
+// Reads both files in place into `coefficients`, whose sizes (blocks, planes, energies) come from
+// the input. Throws CheckpointError unless each file holds exactly n_energies x n_planes records
+// of n_blocks complex values (flux Q8).
+// Fortran: FluxAnalyzor.f90 readFluxCoeffs (one call per array)
+void read_fortran_flux_coefficients(const std::filesystem::path& phi_path, const std::filesystem::path& derivative_path,
+                                    FluxCoefficients& coefficients);
 
 }  // namespace spodvr
