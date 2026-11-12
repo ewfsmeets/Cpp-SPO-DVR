@@ -82,15 +82,19 @@ endif()
 #                       vectorise complex multiplications
 #   -fno-math-errno     math functions need not set errno (sqrt is inlined)
 #   -fno-trapping-math  no floating-point traps (more vectorisation)
+# SPODVR_FAST_MATH replaces these strict flags by -ffast-math, except in spodvr_strict_objects
+# (below), which is compiled with strict_fp_flags in every build.
+set(strict_fp_flags -ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math)
 if(SPODVR_FAST_MATH)
   set(fp_flags -ffast-math -fcx-fortran-rules)
 else()
-  set(fp_flags -ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math)
+  set(fp_flags ${strict_fp_flags})
 endif()
 
 # Target instruction set. With -ffp-contract=off our results do not depend on it.
 if(SPODVR_ARCH)
   list(APPEND fp_flags -march=${SPODVR_ARCH})
+  list(APPEND strict_fp_flags -march=${SPODVR_ARCH})
 endif()
 
 # Profile-guided optimisation: GENERATE builds a program that writes profile data to
@@ -109,6 +113,10 @@ target_compile_options(spodvr_warnings INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${wa
 add_library(spodvr_fp INTERFACE)
 target_compile_options(spodvr_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${fp_flags}>")
 target_link_options(spodvr_fp INTERFACE ${pgo_link_flags})
+# The strict flags in every build. Linked after spodvr_fp, they follow its flags on the command
+# line and override -ffast-math (test_flux_analysis: its reference expressions must stay strict).
+add_library(spodvr_strict_fp INTERFACE)
+target_compile_options(spodvr_strict_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${strict_fp_flags}>")
 
 # Link-time optimisation in Release builds.
 include(CheckIPOSupported)
@@ -150,9 +158,28 @@ target_include_directories(spodvr_crplib PUBLIC src)
 target_link_libraries(spodvr_crplib PRIVATE spodvr_warnings spodvr_crplib_fp)
 
 # =============================================================================================
+# spodvr_strict_objects: sources of spodvr_core compiled with strict floating point in every build,
+# also the fast-math one. The flux analysis: its sums must stay bitwise the same for any slot or
+# thread count (no reassociation), and its complex division must be gfortran's (Smith's algorithm).
+# Not b(k) (wave_packet_params.cpp, docs/performance.md): computed once per energy, its rounding
+# cannot break those properties, and that file also sets the absorbers and the wave packet.
+# =============================================================================================
+add_library(spodvr_strict_objects OBJECT
+  src/analysis/flux_analysis.cpp
+)
+target_include_directories(spodvr_strict_objects PRIVATE src)
+# Of spodvr_core's definitions only this one changes a header today (AlignedVector's allocator);
+# copy any other that does. No PGO flags: these objects are compiled the same with any SPODVR_PGO.
+if(SPODVR_POISON_UNINITIALISED)
+  target_compile_definitions(spodvr_strict_objects PRIVATE SPODVR_POISON_UNINITIALISED)
+endif()
+target_link_libraries(spodvr_strict_objects PRIVATE OpenMP::OpenMP_CXX spodvr_warnings spodvr_strict_fp)
+
+# =============================================================================================
 # spodvr_core: everything except the program driver and the GPU backend
 # =============================================================================================
 add_library(spodvr_core
+  $<TARGET_OBJECTS:spodvr_strict_objects>
   src/core/loop_schedule.cpp
   src/core/machine_epsilon.cpp
   src/core/numerical_libraries.cpp
@@ -186,7 +213,6 @@ add_library(spodvr_core
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
   src/analysis/fine_analysis.cpp
-  src/analysis/flux_analysis.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp
   src/io/fortran_unformatted.cpp

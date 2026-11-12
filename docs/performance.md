@@ -18,6 +18,16 @@ change no result but let GCC vectorise (complex multiplication without the C99 N
 exactly the gfortran semantics). Never use `-ffast-math`/`-Ofast` or FMA contraction in production
 builds: they change the results (measured below; `SPODVR_FAST_MATH` exists only for experiments).
 
+Two parts are compiled with strict floating point also under `SPODVR_FAST_MATH`: the CRP library
+([crp_library.md](crp_library.md)) and the flux analysis (`src/analysis/flux_analysis.cpp`, CMake
+target `spodvr_strict_objects`, flags `strict_fp_flags`). The flux sums must not depend on the slot or
+thread count, its complex division must be gfortran's (Smith's algorithm), and fast-math changed its
+energy count (flux Q3: 0.2–0.6 eV by 0.08 eV gave 5 energies instead of 6 in `build-fast` at 1c62438,
+test `FluxEnergies.CountDropsTheEndPointAsTheFortran`; GCC 15.2, 2026-11-12).
+The wave packet's b(k) (`wave_packet_params.cpp`) keeps the build's flags: it is computed once per
+energy, so its rounding cannot break those properties (in `build-fast` it equalled the strict values
+at all 401 momenta of `FluxMomentumAmplitude.IsBitwiseTheFortranExpression`, 2026-11-12).
+
 ### Profile-guided optimisation (about 15% faster)
 ```
 cmake -S . -B build-pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_PGO=GENERATE -DSPODVR_PGO_DIR=$PWD/pgo
@@ -26,7 +36,8 @@ cmake --build build-pgo
 cmake -S . -B build-pgo -DSPODVR_PGO=USE
 cmake --build build-pgo
 ```
-Results are bitwise identical to the normal build.
+Results are bitwise identical to the normal build. The strict objects (`spodvr_strict_objects`,
+above) get no PGO flags.
 
 ### Running a oneMKL build
 Inside the build tree the oneMKL library path is in the executable's RPATH. An installed or copied

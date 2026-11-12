@@ -1,11 +1,13 @@
-// Tests: the building blocks of the flux analysis (FluxAnalyzor.f90): the wave packet's momentum
-// amplitude b(k), the flux energies (flux Q3, flux Q5) and the r-derivative weights D at the flux
-// surface (WaveFunction.f90 getWaveFuncDerivAtZr).
+// Tests: the flux analysis (FluxAnalyzor.f90): the wave packet's momentum amplitude b(k), the flux
+// energies (flux Q3, flux Q5), the r-derivative weights D at the flux surface (WaveFunction.f90
+// getWaveFuncDerivAtZr), the time-to-energy coefficients c_n, their accumulation and the probability.
 #include <gtest/gtest.h>
+#include <omp.h>
 
 #include <cmath>
 #include <complex>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -288,6 +290,7 @@ TEST(FluxEnergies, FollowTheFortranExpressions) {
     EXPECT_EQ(e.total[n], (z_energy + parallel) + rovibrational);
     EXPECT_EQ(e.momentum[n], std::sqrt(2.0 * mass * z_energy));
     EXPECT_EQ(e.amplitude[n], hardwall_amplitude(config, e.momentum[n]));
+    EXPECT_EQ(e.transform_factor[n], flux_transform_factor(e.momentum[n], mass, e.amplitude[n]));
   }
   EXPECT_NE(e.z_energy[0], units::legacy.ev_to_hartree(0.2));
 }
@@ -400,4 +403,423 @@ TEST(FluxRDerivative, RejectsAColumnOfAnotherLength) {
   const std::vector<double> w = flux_derivative_weights(8, 0.1, 3);
   const std::vector<cplx> column(7);
   EXPECT_THROW((void)flux_r_derivative(w, column), std::invalid_argument);
+}
+
+// ------------------------------------------------------------------------------------------------
+// The time-to-energy coefficients c_n
+// ------------------------------------------------------------------------------------------------
+
+namespace {
+
+// (ar + i ai) / (br + i bi) by Smith's algorithm, as GCC expands a complex division under
+// -fcx-fortran-rules, gfortran's default (gcc tree-complex.cc expand_complex_div_wide).
+cplx smith_division(cplx a, cplx b) {
+  const double ar = a.real();
+  const double ai = a.imag();
+  const double br = b.real();
+  const double bi = b.imag();
+  if (std::abs(br) < std::abs(bi)) {
+    const double ratio = br / bi;
+    const double divisor = (br * ratio) + bi;
+    return {((ar * ratio) + ai) / divisor, ((ai * ratio) - ar) / divisor};
+  }
+  const double ratio = bi / br;
+  const double divisor = (bi * ratio) + br;
+  return {((ai * ratio) + ar) / divisor, (ai - (ar * ratio)) / divisor};
+}
+
+// z x with the real x promoted to the complex number (x, 0), as gfortran multiplies by a real.
+cplx times_promoted_real(cplx z, double x) { return {z.real() * x - z.imag() * 0.0, z.real() * 0.0 + z.imag() * x}; }
+
+// Three flux energies of hardwall_small (0.2, 0.35, 0.5 eV) with a parallel and a rovibrational energy.
+FluxEnergies three_energies() { return make_flux_energies(flux_config(0.2, 0.6, 0.15), 0.0123, 0.0098765); }
+
+}  // namespace
+
+// A_n = k / ((2 pi M) b) is a complex division by Smith's algorithm, bitwise, as gfortran's; the
+// textbook form k conj(d) / |d|^2 rounds differently for some of these 200 momenta, so the test
+// fails if the division is written that way. Both branches of the algorithm occur.
+TEST(FluxTransformFactor, IsSmithsComplexDivision) {
+  const Config config = flux_config(0.2, 0.6, 0.002);
+  const FluxEnergies e = make_flux_energies(config, 0.0, 0.0);
+  const double mass = config.derived.total_mass;
+  int textbook_differs = 0;
+  int small_real_part = 0;
+  for (int n = 0; n < e.size(); ++n) {
+    const double k = e.momentum[n];
+    const cplx denominator = (Constants::two_pi * mass) * e.amplitude[n];
+    const cplx expected = smith_division(cplx(k, 0.0), denominator);
+    const cplx factor = flux_transform_factor(k, mass, e.amplitude[n]);
+    EXPECT_EQ(factor.real(), expected.real()) << "n = " << n;
+    EXPECT_EQ(factor.imag(), expected.imag()) << "n = " << n;
+    if (k * std::conj(denominator) / std::norm(denominator) != factor) ++textbook_differs;
+    if (std::abs(denominator.real()) < std::abs(denominator.imag())) ++small_real_part;
+  }
+  EXPECT_GT(textbook_differs, 0) << "these momenta do not distinguish the two divisions";
+  EXPECT_GT(small_real_part, 0);
+  EXPECT_LT(small_real_part, e.size());
+}
+
+// c_n(t) = (A_n exp(i E_tot,n t)) dt, written out as gfortran computes it: the reals E, t and dt
+// are complex numbers (x, 0) there, and exp is cexp. The C++ multiplies by the reals directly, which
+// can change only the sign of an exactly zero component; EXPECT_EQ compares values (-0 == 0).
+TEST(FluxStepCoefficient, IsTheFortranExpression) {
+  const FluxEnergies e = three_energies();
+  const double dt = 10.0;
+  for (int n = 0; n < e.size(); ++n)
+    for (const double t : {10.0, 20.0, 1230.0, 7000.0}) {
+      const cplx argument = times_promoted_real(times_promoted_real(Constants::imaginary_unit, e.total[n]), t);
+      const cplx expected = times_promoted_real(e.transform_factor[n] * std::exp(argument), dt);
+      const cplx c = flux_step_coefficient(e, n, t, dt);
+      EXPECT_EQ(c.real(), expected.real()) << "n = " << n << ", t = " << t;
+      EXPECT_EQ(c.imag(), expected.imag()) << "n = " << n << ", t = " << t;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// The accumulation of the flux coefficients
+// ------------------------------------------------------------------------------------------------
+
+namespace {
+
+constexpr double analysis_time_step = 10.0;  // dtAna of the gate cases (a.u.)
+
+// The time at the end of analysis step `step` (0-based).
+double step_time(int step) { return analysis_time_step * (step + 1); }
+
+// Test values of psi (part 0) and d psi / dr (part 1) at the flux surface; all four sign
+// combinations of the real and imaginary parts occur.
+cplx surface_value(int step, int block, int iz, int part) {
+  const double x = 0.37 * block + 1.91 * iz + 0.73 * step + 2.3 * part;
+  return {std::sin(x), std::cos(1.7 * x + 0.4)};
+}
+
+// Fills a slot with the test values of one step.
+std::function<void(FluxSurfaceWave&)> fill_step(int step) {
+  return [step](FluxSurfaceWave& slot) {
+    for (int iz = 0; iz < slot.n_planes(); ++iz)
+      for (int block = 0; block < slot.n_blocks(); ++block) {
+        slot.psi[slot.index(block, iz)] = surface_value(step, block, iz, 0);
+        slot.derivative[slot.index(block, iz)] = surface_value(step, block, iz, 1);
+      }
+  };
+}
+
+// The coefficients after `steps` analysis steps through `slots` slots, flushed at the end.
+FluxCoefficients accumulate(const FluxEnergies& energies, int n_blocks, int n_planes, int steps, int slots) {
+  FluxAccumulator flux(n_blocks, n_planes, energies, analysis_time_step, slots);
+  for (int step = 0; step < steps; ++step) flux.add_step(step_time(step), fill_step(step));
+  flux.flush();
+  return flux.coefficients();
+}
+
+// Number of elements in which a and b differ; NaN counts as a difference.
+int count_differences(const ComplexVector& a, const ComplexVector& b) {
+  if (a.size() != b.size()) return -1;
+  int count = 0;
+  for (std::size_t k = 0; k < a.size(); ++k)
+    if (a[k] != b[k]) ++count;
+  return count;
+}
+
+}  // namespace
+
+// phi(block, iz, n) = ((0 + c_n(t_1) psi(t_1)) + c_n(t_2) psi(t_2)) + ..., one addition per step in
+// time order as the Fortran's loop, written out here; the same for phi' with d psi / dr. Bitwise,
+// for 5 steps in 2 slots: two flushes when full, the last step by flush().
+TEST(FluxAccumulator, AddsTheStepsInTheFortranOrder) {
+  const FluxEnergies e = three_energies();
+  const int n_blocks = 3;
+  const int n_planes = 2;
+  const int steps = 5;
+  const Index3D index(n_blocks, n_planes, e.size());
+  std::vector<cplx> phi(index.size(), cplx(0.0, 0.0));
+  std::vector<cplx> phi_derivative(index.size(), cplx(0.0, 0.0));
+  for (int step = 0; step < steps; ++step)
+    for (int n = 0; n < e.size(); ++n) {
+      const cplx c = flux_step_coefficient(e, n, step_time(step), analysis_time_step);  // Fortran: coeff
+      for (int iz = 0; iz < n_planes; ++iz)
+        for (int block = 0; block < n_blocks; ++block) {
+          const std::size_t k = index(block, iz, n);
+          phi[k] = phi[k] + c * surface_value(step, block, iz, 0);
+          phi_derivative[k] = phi_derivative[k] + c * surface_value(step, block, iz, 1);
+        }
+    }
+
+  const FluxCoefficients c = accumulate(e, n_blocks, n_planes, steps, 2);
+  ASSERT_EQ(c.phi.size(), phi.size());
+  for (std::size_t k = 0; k < phi.size(); ++k) {
+    EXPECT_EQ(c.phi[k], phi[k]) << "k = " << k;
+    EXPECT_EQ(c.phi_derivative[k], phi_derivative[k]) << "k = " << k;
+  }
+}
+
+// The flush adds the slots to each element in time order, so the coefficients are bitwise the same
+// for any slot count: 1 (a flush per step), 3 (two flushes when full, one by flush()), 7 (one, when
+// full) and 8 (never full). 2500 blocks: two full tiles of the flush and a partial one.
+TEST(FluxAccumulator, IsBitwiseTheSameForAnySlotCount) {
+  const FluxEnergies e = three_energies();
+  const FluxCoefficients one = accumulate(e, 2500, 5, 7, 1);
+  EXPECT_NE(one.phi.back(), cplx(0.0, 0.0));
+  for (const int slots : {3, 7, 8}) {
+    SCOPED_TRACE(slots);
+    const FluxCoefficients c = accumulate(e, 2500, 5, 7, slots);
+    EXPECT_EQ(count_differences(c.phi, one.phi), 0);
+    EXPECT_EQ(count_differences(c.phi_derivative, one.phi_derivative), 0);
+  }
+}
+
+// One thread sums each element of the coefficients (in time order), and one thread each energy of
+// the probability: 1 and 4 threads give bitwise the same coefficients, densities and probabilities.
+TEST(FluxAccumulator, IsBitwiseTheSameForAnyThreadCount) {
+  const FluxEnergies e = three_energies();
+  const FluxGrid grid{.n_rot = 25,
+                      .nx = 10,
+                      .ny = 10,
+                      .dz = 0.1,
+                      .dx = 0.8,
+                      .dy = 0.9,
+                      .skewing_angle = pi / 3.0,
+                      .total_mass = 3674.0,
+                      .reduced_mass = 918.0};
+  const int threads = omp_get_max_threads();
+  omp_set_num_threads(1);
+  const FluxCoefficients one = accumulate(e, 2500, 5, 7, 3);
+  const FluxResults results_one = flux_results(one, e, grid);
+  omp_set_num_threads(4);
+  const FluxCoefficients four = accumulate(e, 2500, 5, 7, 3);
+  const FluxResults results_four = flux_results(four, e, grid);
+  omp_set_num_threads(threads);
+
+  EXPECT_EQ(count_differences(four.phi, one.phi), 0);
+  EXPECT_EQ(count_differences(four.phi_derivative, one.phi_derivative), 0);
+  EXPECT_EQ(results_four.density, results_one.density);
+  EXPECT_EQ(results_four.probability, results_one.probability);
+}
+
+// The coefficients are complete only when no step is pending: reading them earlier throws. Full
+// slots are flushed at once; with one slot, every step.
+TEST(FluxAccumulator, CoefficientsNeedAFlushWhileStepsArePending) {
+  FluxAccumulator flux(4, 2, three_energies(), analysis_time_step, 3);
+  flux.add_step(step_time(0), fill_step(0));
+  EXPECT_EQ(flux.pending_steps(), 1);
+  EXPECT_THROW((void)flux.coefficients(), std::logic_error);
+  flux.add_step(step_time(1), fill_step(1));
+  flux.add_step(step_time(2), fill_step(2));
+  EXPECT_EQ(flux.pending_steps(), 0);
+  EXPECT_NO_THROW((void)flux.coefficients());
+  flux.add_step(step_time(3), fill_step(3));
+  flux.flush();
+  EXPECT_EQ(flux.pending_steps(), 0);
+
+  FluxAccumulator single(4, 2, three_energies(), analysis_time_step, 1);
+  single.add_step(step_time(0), fill_step(0));
+  EXPECT_EQ(single.pending_steps(), 0);
+}
+
+TEST(FluxAccumulator, NeedsAtLeastOneSlot) {
+  EXPECT_THROW(FluxAccumulator(4, 2, three_energies(), analysis_time_step, 0), std::invalid_argument);
+}
+
+// The coefficients and the slots start at zero, every element written (the poison build fills
+// unwritten elements with NaN, which differs from 0).
+TEST(FluxAccumulator, CoefficientsAndSlotsStartAtZero) {
+  const FluxCoefficients c(1500, 3, 2);
+  const FluxSurfaceWave slot(1500, 3);
+  const ComplexVector zero_coefficients(c.index.size(), cplx(0.0, 0.0));
+  const ComplexVector zero_slot(slot.index.size(), cplx(0.0, 0.0));
+  EXPECT_EQ(count_differences(c.phi, zero_coefficients), 0);
+  EXPECT_EQ(count_differences(c.phi_derivative, zero_coefficients), 0);
+  EXPECT_EQ(count_differences(slot.psi, zero_slot), 0);
+  EXPECT_EQ(count_differences(slot.derivative, zero_slot), 0);
+}
+
+// A stationary state exp(-i E t) psi_0 at E = E_tot,0 gives phi_n = A_n dt psi_0 S_n, S_n the Dirichlet
+// kernel sum_j exp(i (E_tot,n - E) t_j) (N at n = 0): the sign of c_n's exponent against exp(-i H t).
+// Tolerance 1e-14 of N |A_n| dt |psi_0|: phases up to 16 rad (1.8e-15) and 1 / (1 - exp(i w dt)) at
+// w dt = 0.055 (2e-15); measured 2026-11-12: 8.6e-16.
+TEST(FluxAccumulator, AStationaryStateAddsUpCoherentlyAtItsEnergy) {
+  const FluxEnergies e = three_energies();
+  const int steps = 40;
+  const double dt = analysis_time_step;
+  const double energy = e.total[0];
+  const cplx psi0(0.3, -0.7);
+  FluxAccumulator flux(1, 1, e, dt, 6);
+  for (int step = 0; step < steps; ++step) {
+    const double t = step_time(step);
+    flux.add_step(t, [&](FluxSurfaceWave& slot) {
+      slot.psi[0] = std::exp(-Constants::imaginary_unit * energy * t) * psi0;
+      slot.derivative[0] = slot.psi[0];
+    });
+  }
+  flux.flush();
+  const FluxCoefficients& c = flux.coefficients();
+
+  double worst = 0.0;
+  for (int n = 0; n < e.size(); ++n) {
+    const double w = e.total[n] - energy;
+    const cplx kernel =
+        (n == 0) ? cplx(steps, 0.0)
+                 : std::polar(1.0, w * dt) * (1.0 - std::polar(1.0, w * steps * dt)) / (1.0 - std::polar(1.0, w * dt));
+    const cplx expected = e.transform_factor[n] * dt * psi0 * kernel;
+    const double scale = steps * std::abs(e.transform_factor[n]) * dt * std::abs(psi0);
+    worst = nan_aware_max(worst, std::abs(c.phi[c.index(0, 0, n)] - expected) / scale);
+  }
+  EXPECT_LE(worst, 1e-14);
+}
+
+// ------------------------------------------------------------------------------------------------
+// The reaction probability
+// ------------------------------------------------------------------------------------------------
+
+namespace {
+
+// A skewed (60 degree) cell with the H2 masses of hardwall_small.
+FluxGrid small_grid(int n_rot, int nx, int ny) {
+  const Config config = flux_config(0.2, 0.6, 0.15);
+  return FluxGrid{.n_rot = n_rot,
+                  .nx = nx,
+                  .ny = ny,
+                  .dz = 0.1,
+                  .dx = 0.8,
+                  .dy = 0.9,
+                  .skewing_angle = pi / 3.0,
+                  .total_mass = config.derived.total_mass,
+                  .reduced_mass = config.derived.reduced_mass};
+}
+
+// Coefficients with test values in every element.
+FluxCoefficients sample_coefficients(int n_blocks, int n_planes, int n_energies) {
+  FluxCoefficients c(n_blocks, n_planes, n_energies);
+  for (int k = 0; k < static_cast<int>(c.phi.size()); ++k) {
+    c.phi[k] = surface_value(1, k, 2, 0);
+    c.phi_derivative[k] = surface_value(3, k, 4, 1);
+  }
+  return c;
+}
+
+}  // namespace
+
+// computeFluxProbability written out: prefac ((2 pi M) / (k mu)) dz times every Im(conj(phi) phi'),
+// iz outer and the blocks inner, into the density at (ix, iy) of ixy = iy + ny ix; P = ((sum dx) dy)
+// sin(angle); E in eV. Bitwise; sum ((dx dy) sin(angle)) differs for some of the 40 energies.
+TEST(FluxResults, FollowTheFortranSums) {
+  const FluxEnergies e = make_flux_energies(flux_config(0.2, 0.6, 0.01), 0.0123, 0.0098765);
+  const FluxGrid g = small_grid(2, 2, 3);
+  const int n_planes = 2;
+  const FluxCoefficients c = sample_coefficients(g.n_rot * g.nx * g.ny, n_planes, e.size());
+  const FluxResults r = flux_results(c, e, g);
+  const Index3D density_index(g.nx, g.ny, e.size());  // the Fortran's reacProbDensity(nx, ny, nE)
+  ASSERT_EQ(r.density.size(), density_index.size());
+  ASSERT_EQ(r.probability.size(), e.z_energy.size());
+
+  std::vector<double> density(density_index.size(), 0.0);
+  int other_order = 0;
+  for (int n = 0; n < e.size(); ++n) {
+    SCOPED_TRACE(n);
+    const double prefactor = ((Constants::two_pi * g.total_mass) / (e.momentum[n] * g.reduced_mass)) * g.dz;
+    for (int iz = 0; iz < n_planes; ++iz)
+      for (int block = 0; block < c.n_blocks(); ++block) {
+        const int ixy = block / g.n_rot;
+        const std::size_t k = density_index(ixy / g.ny, ixy % g.ny, n);
+        const cplx phi = c.phi[c.index(block, iz, n)];
+        const cplx phi_derivative = c.phi_derivative[c.index(block, iz, n)];
+        const double flux = phi.real() * phi_derivative.imag() + (-phi.imag()) * phi_derivative.real();
+        density[k] = density[k] + prefactor * flux;
+      }
+    double sum = 0.0;
+    for (int iy = 0; iy < g.ny; ++iy)
+      for (int ix = 0; ix < g.nx; ++ix) sum = sum + density[density_index(ix, iy, n)];
+    const double probability = sum * g.dx * g.dy * std::sin(g.skewing_angle);  // left to right, as the Fortran
+
+    EXPECT_EQ(r.probability[n], probability);
+    EXPECT_EQ(r.energy[n], e.z_energy[n] / 0.036749308286);
+    if (sum * ((g.dx * g.dy) * std::sin(g.skewing_angle)) != probability) ++other_order;
+  }
+  EXPECT_EQ(r.density, density);
+  EXPECT_GT(other_order, 0) << "these energies do not distinguish the orders of the area element";
+}
+
+// The density is stored (ix, iy, n) with ix fastest, as the Fortran's reacProbDensity(nx, ny, nE),
+// while psi's blocks run over ixy = iy + ny ix: a single block at ix = 1, iy = 0 (ixy = 3) lands at
+// density index 1, not 3.
+TEST(FluxResults, DensityIsStoredWithXFastest) {
+  const FluxEnergies e = three_energies();
+  const FluxGrid g = small_grid(2, 2, 3);
+  FluxCoefficients c(g.n_rot * g.nx * g.ny, 1, e.size());
+  const int block = 1 + g.n_rot * (0 + g.ny * 1);  // irot 1, ix 1, iy 0
+  c.phi[c.index(block, 0, 0)] = cplx(1.0, 0.0);
+  c.phi_derivative[c.index(block, 0, 0)] = cplx(0.0, 2.0);  // Im(conj(phi) phi') = 2
+  const FluxResults r = flux_results(c, e, g);
+  ASSERT_EQ(r.density_index(1, 0, 0), 1U);
+  for (int i = 0; i < static_cast<int>(r.density.size()); ++i) {
+    if (i == 1)
+      EXPECT_GT(r.density[i], 0.0);
+    else
+      EXPECT_EQ(r.density[i], 0.0) << "i = " << i;
+  }
+}
+
+// phi = a exp(i q r) + b exp(-i q r) on the r grid, phi' from D (exact for q = 2 pi m / L): the net
+// flux Im(conj(phi) phi') = q (|a|^2 - |b|^2) gives P(E_n) = ((2 pi M) / (k_n mu)) dz dx dy sin(angle)
+// sum q (|a|^2 - |b|^2). Tolerance 1e-14: 7 x the roundoff of D's sum for m = 5, 1.1e-16 sum |D| / q =
+// 1.4e-15 (DifferentiatePeriodicWavesExactly); measured 2026-11-12: 1.2e-15.
+TEST(FluxResults, ProbabilityIsTheNetFluxOfASampledWave) {
+  const FluxEnergies e = three_energies();
+  const FluxGrid g = small_grid(1, 2, 2);
+  const int nr = 56;
+  const double dr = 0.15;
+  const double r_start = 0.8;
+  const int ir_flux = 8;
+  const int n_planes = 3;
+  const std::vector<double> weights = flux_derivative_weights(nr, dr, ir_flux);
+  const double q = 2.0 * pi * 5.0 / (nr * dr);
+  FluxCoefficients c(g.n_rot * g.nx * g.ny, n_planes, e.size());
+  std::vector<double> net_flux(e.size(), 0.0);  // sum of q (|a|^2 - |b|^2)
+  for (int n = 0; n < e.size(); ++n)
+    for (int iz = 0; iz < n_planes; ++iz)
+      for (int block = 0; block < c.n_blocks(); ++block) {
+        const cplx a(1.0 + 0.1 * block, 0.2 * iz);
+        const cplx b = std::polar(0.5 + 0.05 * iz, 0.3 + n);
+        std::vector<cplx> column(nr);
+        for (int ir = 0; ir < nr; ++ir) {
+          const double r = r_start + ir * dr;
+          column[ir] = a * std::polar(1.0, q * r) + b * std::polar(1.0, -q * r);
+        }
+        c.phi[c.index(block, iz, n)] = column[ir_flux];
+        c.phi_derivative[c.index(block, iz, n)] = flux_r_derivative(weights, column);
+        net_flux[n] += q * (std::norm(a) - std::norm(b));
+      }
+
+  const FluxResults r = flux_results(c, e, g);
+  double worst = 0.0;
+  for (int n = 0; n < e.size(); ++n) {
+    const double prefactor = (Constants::two_pi * g.total_mass) / (e.momentum[n] * g.reduced_mass);
+    const double expected = prefactor * g.dz * g.dx * g.dy * std::sin(g.skewing_angle) * net_flux[n];
+    worst = nan_aware_max(worst, std::abs(r.probability[n] - expected) / expected);
+  }
+  EXPECT_LE(worst, 1e-14);
+}
+
+// delz is the Z spacing (both Z grids have it), delx and dely the x and y spacings; the skew angle
+// and the masses come from the set-up.
+TEST(FluxResults, GridOfARun) {
+  const Config config = flux_config(0.2, 0.6, 0.15);
+  const SpatialGrids grids = make_spatial_grids(config);
+  const FluxGrid g = make_flux_grid(config, grids, 7);
+  EXPECT_EQ(g.n_rot, 7);
+  EXPECT_EQ(g.nx, config.input.nx);
+  EXPECT_EQ(g.ny, config.input.ny);
+  EXPECT_EQ(g.dz, config.input.dz);
+  EXPECT_EQ(g.dx, config.derived.dx);
+  EXPECT_EQ(g.dy, config.derived.dy);
+  EXPECT_EQ(g.skewing_angle, config.derived.system.skewing_angle);
+  EXPECT_EQ(g.total_mass, config.derived.total_mass);
+  EXPECT_EQ(g.reduced_mass, config.derived.reduced_mass);
+}
+
+TEST(FluxResults, RejectCoefficientsOfAnotherSize) {
+  const FluxGrid g = small_grid(2, 2, 3);
+  EXPECT_THROW((void)flux_results(FluxCoefficients(11, 1, 3), three_energies(), g), std::invalid_argument);
+  EXPECT_THROW((void)flux_results(FluxCoefficients(12, 1, 2), three_energies(), g), std::invalid_argument);
 }

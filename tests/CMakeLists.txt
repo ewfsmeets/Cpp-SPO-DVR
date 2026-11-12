@@ -31,6 +31,10 @@ add_subdirectory(crplib)
 target_include_directories(test_crp_potential PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/crplib)
 target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)
 
+# The flux analysis is strict in every build (spodvr_strict_objects); its tests compare it bit for
+# bit with expressions written out in the test, which must then be strict too (also in build-fast).
+target_link_libraries(test_flux_analysis PRIVATE spodvr_strict_fp)
+
 # The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
 # command-line options, and negative tests that show the checker fails on a planted fault.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)

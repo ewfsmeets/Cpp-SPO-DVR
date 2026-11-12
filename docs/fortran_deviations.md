@@ -116,6 +116,13 @@ differences are in [validation.md](validation.md).
   `tan` in the 5.24 objects, where `(-1.0)**distance` is a parity select, ±1 as with `__powidf2`). C++ uses the scalar functions, so these agree only to a few ulp.
   Real`**`integer is libgcc `__powidf2` (repeated squaring): use `fortran_integer_power`, not
   `std::pow`.
+- Signed zeros, accepted (not reproduced; values equal): gfortran multiplies a complex number by a
+  real x as by the complex number (x, 0); the C++ multiplies its two parts by x. The values are the
+  same; only the sign of an exactly zero part can differ: (−0, −1)·1 has the real part +0 with
+  gfortran 15.2 (bits 0000000000000000) and −0 in the C++ (8000000000000000), 2026-11-12. This holds
+  for every real × complex product of the port, e.g. the FFT scaling (`v = scale_ * v` in
+  `src/fft/fftw_fft.cpp`, `Y = Scale * Y` in `fftw_2_scs.f90`) and b(k), the r-derivative and c_n of
+  the flux analysis. Compare such data by value (==), not by bytes.
 - More quad-precision sites (same policy, plain double in C++): `erot = dfloat(j(j+1))/(...)`
   (GridEnergies.f90; in practice bitwise equal), the CAP profiles `vimag/vimar/vimas` and their
   low-end counterparts (complex × `dfloat(nabpow+1)` → complex(16), Absorption.f90), `scalFacX/Y = sqrt(delx/dfloat(nx))`
