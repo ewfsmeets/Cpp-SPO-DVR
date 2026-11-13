@@ -265,6 +265,29 @@ TEST(CudaBackend, MemoryEstimateMatchesTheAllocations) {
   EXPECT_LE(used, e.peak_bytes + slack);
 }
 
+// The host memory of a GPU run in the estimate (MemoryEstimate::gpu_host) is that of the GPU backend's
+// host arrays: during the set-up V (one double) and exp(i A) (one complex value) per value of the potential
+// grid, its symmetry maps, two specular waves and the read-back plane of z_plane; in the time loop the
+// host copy of psi (wave_packet_on_host), three specular waves and the read-back plane.
+TEST(CudaBackend, HostMemoryEstimateMatchesTheAllocations) {
+  SPODVR_REQUIRE_GPU();
+  const BackendSetup s("cu111_dailight_short_sym");
+  const MemoryEstimate e = estimate_memory(s.config, s.grids, s.angular, 1);
+  const GridSymmetry& symmetry = s.potential.symmetry;
+  ASSERT_LT(symmetry.n_representatives(), symmetry.n_xy());  // the maps are counted
+  std::size_t maps = 2 * std::size_t(symmetry.n_xy());       // representative and operation per (x, y)
+  for (int iop = 0; iop < static_cast<int>(symmetry.operations().size()); ++iop) maps += symmetry.phi_index(iop).size();
+
+  const auto gpu = gpu_backend(s);
+  const std::size_t complex_bytes = sizeof(cplx);
+  const std::size_t plane = gpu->z_plane(0).size() * complex_bytes;
+  const WavePacket& host = gpu->wave_packet_on_host();
+  const std::size_t specular = host.specular.values.size() * complex_bytes;
+  EXPECT_EQ(e.gpu_host.setup,
+            s.potential.values.size() * (sizeof(double) + complex_bytes) + maps * sizeof(int) + 2 * specular + plane);
+  EXPECT_EQ(e.gpu_host.time_loop, host.scattering.values.size() * complex_bytes + 3 * specular + plane);
+}
+
 namespace {
 
 // Both low-Z absorbers of upstream 5.24 on, from ZStart to Zana (scattering) and to Z = 6

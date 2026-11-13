@@ -29,6 +29,11 @@ struct Style {
 // Memory size in binary units: "512 B", "3.2 MiB", "4.0 GiB".
 [[nodiscard]] std::string format_bytes(std::size_t bytes);
 
+// Energy tables on screen show at most this many rows (all energies are in the data files).
+inline constexpr int max_printed_energies = 50;
+// Every k-th energy of n_energies is printed, k = ceil(n_energies / max_printed_energies) (at least 1).
+[[nodiscard]] int energy_stride(int n_energies);
+
 // Section header with a rule above and below.
 void print_section(std::ostream& out, const Style& style, std::string_view title);
 

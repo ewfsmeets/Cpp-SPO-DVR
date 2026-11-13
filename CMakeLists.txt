@@ -237,6 +237,8 @@ add_library(spodvr_core
   src/report/propagation_report.cpp
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp
+  src/report/flux_files.cpp
+  src/report/flux_report.cpp
   src/report/fine_analysis_report.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)

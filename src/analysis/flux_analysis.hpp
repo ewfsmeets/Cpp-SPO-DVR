@@ -77,6 +77,17 @@ struct FluxEnergies {
 [[nodiscard]] std::complex<double> flux_r_derivative(std::span<const double> weights,
                                                      std::span<const std::complex<double>> column);
 
+// |chi(r_c)| / max_r |chi(r)| for the initial rovibrational state chi = chi_vin on the r grid and the
+// flux surface r_c = r(ir_flux) (0-based). The flux analysis leaves out the initial channel (J_in, mJ_in,
+// specular), which lives on the specular grid for Z < zasymp, as the Fortran does (flux Q7, kept): this
+// ratio bounds only the incoming packet's part of it, not the scattered or reacting part. The set-up
+// warns above flux_initial_state_ratio_limit. Throws std::invalid_argument for ir_flux outside chi, chi = 0 or a
+// value that is not finite.
+[[nodiscard]] double flux_initial_state_ratio(std::span<const double> chi, int ir_flux);
+
+// The ratio above which the set-up warns about the left-out initial channel (flux Q7).
+inline constexpr double flux_initial_state_ratio_limit = 1e-6;
+
 // The wave function psi and its r-derivative at the flux surface r = r_c of one analysis step, on
 // the planes iz < nz_potential; layout (block, iz), block = (irot, ixy) as in the scattering wave.
 // One slot of the FluxAccumulator, which the backend fills (every element: a reused slot still holds

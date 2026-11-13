@@ -862,3 +862,21 @@ TEST(FluxResults, RejectCoefficientsOfAnotherSize) {
   EXPECT_THROW((void)flux_results(FluxCoefficients(11, 1, 3), three_energies(), g), std::invalid_argument);
   EXPECT_THROW((void)flux_results(FluxCoefficients(12, 1, 2), three_energies(), g), std::invalid_argument);
 }
+
+// flux Q7: |chi(r_c)| / max |chi| whatever the sign and scale of chi; an index outside the grid, a zero
+// state and non-finite values are refused (a NaN must not hide the set-up's warning).
+TEST(FluxInitialStateRatio, IsTheSizeAtTheFluxSurfaceOverTheLargest) {
+  const std::vector<double> chi = {0.0, 1e-9, -0.5, 2.0, -4.0, 0.25};
+  EXPECT_EQ(flux_initial_state_ratio(chi, 1), 1e-9 / 4.0);
+  EXPECT_EQ(flux_initial_state_ratio(chi, 2), 0.125);
+  EXPECT_EQ(flux_initial_state_ratio(chi, 4), 1.0);
+  EXPECT_EQ(flux_initial_state_ratio(chi, 0), 0.0);
+  EXPECT_THROW((void)flux_initial_state_ratio(chi, -1), std::invalid_argument);
+  EXPECT_THROW((void)flux_initial_state_ratio(chi, 6), std::invalid_argument);
+  EXPECT_THROW((void)flux_initial_state_ratio(std::vector<double>(4, 0.0), 1), std::invalid_argument);
+  for (const double bad : {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity()}) {
+    std::vector<double> with_bad = chi;
+    with_bad[5] = bad;
+    EXPECT_THROW((void)flux_initial_state_ratio(with_bad, 1), std::invalid_argument) << bad;
+  }
+}

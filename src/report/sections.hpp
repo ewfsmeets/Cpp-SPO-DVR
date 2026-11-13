@@ -26,7 +26,9 @@ void print_grids(std::ostream& out, const Style& style, const Config& config, co
 // operations, reduction, and the result of the PES self-check.
 void print_surface_symmetry(std::ostream& out, const Style& style, const GridSymmetry& symmetry,
                             const SymmetryCheck& check);
-// The expected memory, with a warning if the peak exceeds the physical memory (if known).
+// The expected memory, with a warning if the peak exceeds the physical memory (if known): for a GPU
+// run its host peak (MemoryEstimate::gpu_host_peak_bytes), else peak_bytes. With the flux analysis
+// also the numbers of its memory rule (print_flux_memory).
 void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEstimate& estimate,
                            std::optional<std::size_t> physical_bytes, std::string_view title = "MEMORY ESTIMATE");
 void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,

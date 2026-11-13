@@ -214,7 +214,11 @@ GPU memory estimate for the DZ benchmark (below):
 
 The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is set at start-up).
 - **Host memory:** the host allocates ψ only to read a restart or to write the checkpoint at the end.
-  The host MEMORY ESTIMATE block still describes a CPU run.
+  The host MEMORY ESTIMATE block lists a CPU run's arrays, and adds the host memory of the GPU run
+  (`MemoryEstimate::gpu_host`, test `CudaBackend.HostMemoryEstimateMatchesTheAllocations`): V and
+  exp(iA) during the set-up, the host copy of ψ in the time loop, the specular waves and the read-back
+  plane in both. Its peak, with the flux arrays (`doFluxAnalysis`), is what the memory warning and
+  the flux analysis's memory rule compare with the physical memory.
 - **Production grids** (> 64 GB) do not fit on one GPU of this class. The options are surface
   symmetry (C6v: the potential ~12× smaller), a data-centre GPU (80–141 GB), or a multi-GPU version
   (not implemented).

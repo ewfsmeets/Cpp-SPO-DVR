@@ -33,6 +33,24 @@ analysis surface, the energy range and the list of result files.
 Set-up files: `asymptotic_potential.dat` (vasy(r)) and `gas_phase_states.dat` (rovibrational
 energies and wave functions).
 
+## Flux analysis (`doFluxAnalysis`)
+The reaction probability from the flux through the surface r = r_c (`rFluxAnalysis`), written after
+the propagation in the same table format. `E_z` is the energy of the motion normal to the surface
+(Fortran ZScatEnergy): EMinFluxAna + n·DeltaEFluxAna, converted between eV and hartree with the
+flux analysis's own factor, as in the Fortran (flux Q5). The number of energies follows the Fortran
+and may drop EMaxFluxAna (flux Q3).
+
+| File | One row per | Columns |
+|---|---|---|
+| `flux_reaction.tsv` | flux energy | `E_z`, `P_flux` (the reaction probability) |
+| `flux_density.tsv` | flux energy and (x, y) grid point, iy fastest | `E_z`, `ix`, `iy` (0-based), `x`, `y` (skewed grid coordinates along the lattice vectors), `X` = x + y·cos(skew), `Y` = y·sin(skew) (Cartesian), `density` = P(x, y; E_z) in 1/bohr², whose sum times dx·dy·sin(skew) is `P_flux` |
+
+`flux_analysis.json` holds the run metadata: program version, title, SystemID, units, initial
+state, the flux surface (`r`, its 0-based index `ir`, and `z_points`, the planes Z < zasymp summed),
+the energies (count, first and last E_z, and the three input keys), the surface grid (nx, ny, dx,
+dy, skewing angle in degrees, point group) and the list of flux files. An analysis-only run writes
+no flux files (flux Q6).
+
 ## Correspondence with the Fortran output
 | Fortran | C++ |
 |---|---|
@@ -43,6 +61,8 @@ energies and wave functions).
 | averages.out | `averages.dat` |
 | fort.9 / fort.8 (wave function) | `checkpoint.bin` (or fort.9 with `CheckpointFormat`) |
 | fort.21 / fort.22 (BK coefficients) | `bk_coefficients.bin` (or fort.21 with `CheckpointFormat`) |
+| flux_reaction.dat (E in eV, P; `FluxAnalyzor.f90 computeFluxProbability`) | `flux_reaction.tsv` |
+| flux_density.dat (a header with nE, the skewing angle, point group, nx, dx, ny, dy; then E, x, y, density in the same order) | `flux_density.tsv` (the header in its comments and `flux_analysis.json`) |
 
 ## Fine analysis (`onlyAnalysis`, `alsoAnalysis`)
 Written to `fine_analysis/` in the output directory, in the same table formats as above:

@@ -41,6 +41,8 @@
 #include "report/analysis_report.hpp"
 #include "report/crp_report.hpp"
 #include "report/fine_analysis_report.hpp"
+#include "report/flux_files.hpp"
+#include "report/flux_report.hpp"
 #include "report/propagation_report.hpp"
 #include "report/sections.hpp"
 
@@ -138,17 +140,27 @@ struct BkOutput {
   }
 };
 
-// A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis;
-// flux_slot_count: MemoryEstimate::flux_slot_count.
-// Fortran: Main.f90 from SetupRDBasis to StateToStateProbs
+// The FLUX ANALYSIS set-up block of a propagation with the flux analysis, from its memory rule.
+void report_flux_setup(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
+                       const GasPhase& gas, const FluxAccumulator& flux, const FluxMemoryCheck& memory) {
+  const double ratio =
+      flux_initial_state_ratio(gas.states.wave_function(config.input.v_in, config.input.j_in), *grids.ir_flux_analysis);
+  print_flux_analysis_setup(out, style, config, grids, flux.energies(), ratio, memory);
+}
+
+// A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis and,
+// with doFluxAnalysis, the flux analysis with the slot count and memory rule of `estimate`.
+// Fortran: Main.f90 from SetupRDBasis to StateToStateProbs, computeFluxProbability
 void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                      const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
-                     const std::filesystem::path& output_dir, Device device, int flux_slot_count) {
+                     const std::filesystem::path& output_dir, Device device, const MemoryEstimate& estimate) {
   check_restart_directory(config, output_dir);
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device),
-                                    flux_slot_count);
+                                    estimate.flux_slot_count());
   print_propagation_setup(out, style, grids, propagation);
   print_analysis_setup(out, style, config, propagation.analysis_basis(), propagation.analysis_energies());
+  if (propagation.flux())
+    report_flux_setup(out, style, config, grids, gas, *propagation.flux(), estimate.flux_memory.value());
 
   const BkRecords earlier =
       config.derived.run_mode == 1 ? restore_from_checkpoint(out, config, propagation) : BkRecords{};
@@ -194,7 +206,14 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   print_scattering_results(out, style, config, propagation.analysis_basis(), results);
 
   write_averages_file(output_dir / "averages.dat", averages);
-  const auto files = write_scattering_files(output_dir, config, propagation.analysis_basis(), results);
+  std::vector<std::filesystem::path> files =
+      write_scattering_files(output_dir, config, propagation.analysis_basis(), results);
+  // The reaction probability from the flux. Fortran: computeFluxProbability
+  if (propagation.flux()) {
+    const FluxResults flux = propagation.flux_results();
+    print_flux_results(out, style, flux);
+    for (std::filesystem::path& f : write_flux_files(output_dir, config, grids, flux)) files.push_back(std::move(f));
+  }
   out << "\n  Data files written to " << output_dir.string() << ": averages.dat";
   for (const auto& f : files) out << ", " << f.filename().string();
   out << ", " << bk_file;
@@ -261,6 +280,10 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (device == Device::Cuda && !propagates)
       out << "  Note: --device cuda has no effect in this run mode (no propagation).\n";
     if (device == Device::Cuda && propagates) out << "  " << prepare_device(device) << '\n';
+    // flux Q6: an analysis-only run reads BK coefficients, not the wave packet the flux needs.
+    if (config.input.do_flux_analysis && config.derived.run_mode == 2)
+      out << "  Note: doFluxAnalysis has no effect in an analysis-only run (onlyAnalysis): the flux analysis "
+             "needs the propagation.\n";
     print_input_summary(out, style, config);
 
     const auto potential = make_potential(config.input);
@@ -278,7 +301,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       report_crp_data_set(out, style, dynamic_cast<const CrpPotential&>(*potential), grids, analysis_only);
     std::optional<PotentialGrid> potential_grid;
     std::vector<double> asymptotic;
-    int flux_slot_count = 0;  // the flux analysis's slots in the memory estimate; 0 without it
+    std::optional<MemoryEstimate> estimate;  // the run's memory (slot count and rule of the flux analysis)
     if (analysis_only) {
       asymptotic = compute_asymptotic_potential(*potential, config, grids);
     } else {
@@ -289,9 +312,11 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
         print_surface_symmetry(out, style, symmetry, check);
         require_symmetric_potential(check, config, symmetry);
       }
-      const MemoryEstimate estimate = estimate_memory(config, grids, angular, symmetry, omp_get_max_threads());
-      print_memory_estimate(out, style, estimate, physical_memory_bytes());
-      flux_slot_count = estimate.flux_slot_count;
+      const std::optional<std::size_t> physical = physical_memory_bytes();
+      estimate = estimate_memory(config, grids, angular, symmetry, omp_get_max_threads(),
+                                 propagates ? device : Device::Cpu, physical);
+      print_memory_estimate(out, style, *estimate, physical);
+      if (estimate->flux_memory) require_flux_memory(*estimate->flux_memory);  // before the long set-up
       check_device_memory(out, style, propagates ? device : Device::Cpu, config, grids, angular,
                           symmetry.n_representatives());
       // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
@@ -327,7 +352,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     }
 
     run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir,
-                    device, flux_slot_count);
+                    device, *estimate);
     // alsoAnalysis: the fine analysis of the BK file this run has just written (the
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)

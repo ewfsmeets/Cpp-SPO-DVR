@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "core/unit_conversion.hpp"
+#include "report/flux_report.hpp"
 
 namespace spodvr {
 
@@ -196,12 +197,18 @@ void print_memory_estimate(std::ostream& out, const Style& style, const MemoryEs
     list.add("Setting up the propagation", format_bytes(estimate.setup_bytes));
     list.add("During the propagation", format_bytes(estimate.propagation_bytes));
   }
+  if (estimate.gpu_host_peak_bytes)
+    list.add("Host memory of the GPU run (peak)", format_bytes(*estimate.gpu_host_peak_bytes));
   list.add("Physical memory", physical_bytes ? format_bytes(*physical_bytes) : "unknown");
   list.print(out, style);
   out << "\n  Small tables and FFT plans are not included.\n";
-  if (physical_bytes && estimate.peak_bytes > *physical_bytes)
-    out << "  " << style.warning("Warning") << ": the run needs " << format_bytes(estimate.peak_bytes)
+  if (estimate.gpu_host_peak_bytes)
+    out << "  The arrays above are a CPU run's; a GPU run keeps most of them in GPU memory.\n";
+  const std::size_t needed = estimate.gpu_host_peak_bytes.value_or(estimate.peak_bytes);
+  if (physical_bytes && needed > *physical_bytes)
+    out << "  " << style.warning("Warning") << ": the run needs " << format_bytes(needed)
         << ", more than the physical memory.\n";
+  if (estimate.flux_memory) print_flux_memory(out, style, *estimate.flux_memory);
 }
 
 void print_asymptotic_potential(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,

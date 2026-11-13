@@ -10,6 +10,7 @@
 #include <complex>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <sstream>
@@ -132,12 +133,14 @@ struct PropagationRun {
   std::vector<std::vector<std::complex<double>>> bk;  // BK coefficients per analysis step
   ScatteringResults scattering;
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
+  std::optional<FluxResults> flux;                    // with doFluxAnalysis: flux_results() after run()
 };
 
 // input: the JSON input of the run; backend: the propagation backend (CPU by default; the GPU
-// tests pass the CUDA backend).
-inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
-                                          const BackendFactory& backend = make_cpu_backend) {
+// tests pass the CUDA backend); prepare (if set): called on the propagation before run(), e.g. to
+// replace its wave packet.
+inline PropagationRun run_cpp_propagation(const nlohmann::json& input, const BackendFactory& backend = make_cpu_backend,
+                                          const std::function<void(WavePacketPropagation&)>& prepare = {}) {
   const Config config = build_config(parse_input(input));
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
@@ -145,7 +148,8 @@ inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend,
-                                    estimate_memory(config, grids, angular, 1).flux_slot_count);
+                                    estimate_memory(config, grids, angular, 1).flux_slot_count());
+  if (prepare) prepare(propagation);
   PropagationRun run;
   run.initial = propagation.initial_wave_packet();
   PropagationObserver observer;
@@ -153,6 +157,7 @@ inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
   observer.on_analysis_step = [&](double, const BkCoefficients& bk) { run.bk.push_back(bk.values); };
   propagation.run(observer);
   run.scattering = propagation.scattering_results();
+  if (propagation.flux()) run.flux = propagation.flux_results();
   const AnalysisBasis& basis = propagation.analysis_basis();
   for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
     run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),

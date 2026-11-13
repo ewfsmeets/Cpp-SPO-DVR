@@ -85,7 +85,7 @@ void dump_final_wave_packet(const Arguments& arguments) {
 
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft,
                                     backend_factory(arguments.device),
-                                    estimate_memory(config, grids, angular, 1).flux_slot_count);
+                                    estimate_memory(config, grids, angular, 1).flux_slot_count());
   propagation.run({});
   write_wave_packet(arguments.output, propagation.wave_packet_on_host());
 }

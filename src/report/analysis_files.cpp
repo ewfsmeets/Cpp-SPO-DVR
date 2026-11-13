@@ -9,30 +9,11 @@
 #include <nlohmann/json.hpp>
 
 #include "report/format.hpp"
+#include "report/tsv_file.hpp"
 
 namespace spodvr {
 
 namespace {
-
-// A tab-separated table: '#' comment lines, one header line, then rows.
-class TsvFile {
- public:
-  TsvFile(const std::filesystem::path& path, const std::vector<std::string>& comments,
-          const std::vector<std::string>& columns)
-      : file_(path) {
-    if (!file_) throw std::runtime_error("cannot open output file '" + path.string() + "'");
-    for (const std::string& line : comments) file_ << "# " << line << '\n';
-    write_row(columns);
-  }
-
-  void write_row(const std::vector<std::string>& cells) {
-    for (std::size_t i = 0; i < cells.size(); ++i) file_ << (i == 0 ? "" : "\t") << cells[i];
-    file_ << '\n';
-  }
-
- private:
-  std::ofstream file_;
-};
 
 const std::string energy_comment =
     "Energies in eV. E_coll: collision (translational) energy; E_total: E_coll + E(vin, jin).";

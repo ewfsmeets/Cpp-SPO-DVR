@@ -43,7 +43,7 @@ inline nlohmann::json flux_run_input(double t_start, double t_end, int n_steps, 
 
 // The slot count of the run's memory estimate (the flux slot budget) for the set-up.
 inline int flux_budget_slots(const BackendSetup& s) {
-  return estimate_memory(s.config, s.grids, s.angular, 1).flux_slot_count;
+  return estimate_memory(s.config, s.grids, s.angular, 1).flux_slot_count();
 }
 
 // Replaces the initial wave packet of a propagation by distinct values of varying magnitude and phase

@@ -1,14 +1,21 @@
 // Tests: the flux analysis in the time loop (WavePacketPropagation): its coefficients are the sums of the
 // flux surfaces of every analysis step, whatever the slot and thread count, a restart continues them
-// bitwise, and the rest of the run is the same with the flux analysis on.
+// bitwise, and the rest of the run is the same with the flux analysis on; its result files and table
+// (the writer and report of run.cpp) do not depend on the thread count.
 #include <gtest/gtest.h>
 #include <omp.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <filesystem>
+#include <fstream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -18,6 +25,9 @@
 #include "flux_propagation_run.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
+#include "propagation_reference.hpp"
+#include "report/flux_files.hpp"
+#include "report/flux_report.hpp"
 
 using namespace spodvr;
 using namespace spodvr::testing;
@@ -190,4 +200,64 @@ TEST(FluxPropagation, WithoutTheFluxAnalysisThereIsNone) {
   EXPECT_FALSE(propagation.flux().has_value());
   EXPECT_THROW((void)propagation.flux_results(), std::logic_error);
   EXPECT_THROW(propagation.read_flux_coefficients([](FluxCoefficients&) {}), std::logic_error);
+}
+
+namespace {
+
+std::string file_contents(const std::filesystem::path& path) {
+  std::ifstream file(path, std::ios::binary);
+  std::ostringstream text;
+  text << file.rdbuf();
+  return text.str();
+}
+
+// What run.cpp does with the flux results of a propagation, for the input of these tests from the test
+// wave packet with `threads` threads: run_cpp_propagation, then the result table and the files of
+// run.cpp (print_flux_results, write_flux_files) into dir. Returns the results and the printed table.
+std::pair<FluxResults, std::string> flux_output(int threads, const std::filesystem::path& dir) {
+  nlohmann::json input = reference_case_input(flux_run_case);
+  input.update(flux_run_input(0.0, 120.0, 60));
+  const int caller_threads = omp_get_max_threads();
+  omp_set_num_threads(threads);
+  const PropagationRun run = run_cpp_propagation(input, make_cpu_backend, start_from_test_wave_packet);
+  omp_set_num_threads(caller_threads);
+  EXPECT_TRUE(run.flux.has_value());
+  if (!run.flux) return {};
+  const Config config = build_config(parse_input(input));
+  std::filesystem::create_directories(dir);
+  (void)write_flux_files(dir, config, make_spatial_grids(config), *run.flux);
+  std::ostringstream table;
+  print_flux_results(table, Style{false}, *run.flux);
+  return {*run.flux, table.str()};
+}
+
+}  // namespace
+
+// End to end: the propagation's flux results through the writer and report of run.cpp give the three
+// files and the table, byte-identical with 1 and 4 threads; the results are those of the coefficients of
+// the run above (budget_run) and are finite and nonzero (from the test wave packet, not rounding noise).
+TEST(FluxOutput, FilesAndTableOfOneAndFourThreadsAreByteIdentical) {
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() / ("spodvr_flux_output_" + std::to_string(::getpid()));
+  std::filesystem::remove_all(root);
+  const auto [one, one_table] = flux_output(1, root / "threads_1");
+  const auto [four, four_table] = flux_output(4, root / "threads_4");
+  for (const char* name : {"flux_reaction.tsv", "flux_density.tsv", "flux_analysis.json"}) {
+    ASSERT_TRUE(std::filesystem::exists(root / "threads_1" / name)) << name;
+    const std::string text = file_contents(root / "threads_1" / name);
+    EXPECT_FALSE(text.empty()) << name;
+    EXPECT_EQ(text, file_contents(root / "threads_4" / name)) << name;
+  }
+  EXPECT_EQ(one_table, four_table);
+  EXPECT_EQ(one.probability, four.probability);
+  std::filesystem::remove_all(root);
+
+  const BackendSetup& s = flux_setup();
+  const FluxResults expected = flux_results(
+      *budget_run().coefficients, make_flux_energies(s.config, s.tables.parallel_energy, s.gas.initial.energy),
+      make_flux_grid(s.config, s.grids, s.basis.size()));
+  EXPECT_EQ(one.probability, expected.probability);
+  EXPECT_EQ(one.density, expected.density);
+  ASSERT_EQ(one.probability.size(), 3U);
+  for (const double p : one.probability) EXPECT_TRUE(std::isfinite(p) && p != 0.0) << p;
 }

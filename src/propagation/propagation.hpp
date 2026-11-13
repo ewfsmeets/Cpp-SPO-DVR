@@ -48,7 +48,7 @@ class WavePacketPropagation {
   // The potential grid is taken over by the backend (and premultiplied by -dt there). config,
   // grids, angular, gas and fft must outlive the propagation (they are referenced). With the flux
   // analysis (doFluxAnalysis), flux_slot_count (>= 1) analysis steps are collected per pass over its
-  // coefficients: MemoryEstimate::flux_slot_count. The results do not depend on it, the time does
+  // coefficients: MemoryEstimate::flux_slot_count(). The results do not depend on it, the time does
   // (DZ: the flush takes about 5 times longer per step with 1 slot than with 8, docs/cuda.md).
   // Ignored without the flux analysis.
   WavePacketPropagation(const Config& config, const SpatialGrids& grids, const AngularGrid& angular,

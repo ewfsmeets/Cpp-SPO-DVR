@@ -39,8 +39,9 @@ std::string read_file(const fs::path& path) {
   return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
-// Runs the program on `json` with output into `dir`; returns the exit code (stderr in err).
-int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
+// Runs the program on `json` with output into `dir`; returns the exit code (stderr in err, stdout in
+// printed).
+int run(const nlohmann::json& json, const fs::path& dir, std::string& err, std::string& printed) {
   fs::create_directories(dir);
   const fs::path input = dir / "input.json";
   std::ofstream(input) << json.dump(1);
@@ -52,7 +53,13 @@ int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
   std::ostringstream errors;
   const int code = run_program(cl, out, errors, false);
   err = errors.str();
+  printed = out.str();
   return code;
+}
+
+int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
+  std::string printed;
+  return run(json, dir, err, printed);
 }
 
 nlohmann::json with_times(nlohmann::json json, double t_start, double t_end, int n_steps) {
@@ -123,10 +130,12 @@ const FirstRun& first_run() {
 //   only_native   onlyAnalysis of full/bk_coefficients.bin
 //   only_fortran  onlyAnalysis of full/fort.21
 //   in_place      onlyAnalysis with the output directory = RestartDir (a copy of full)
+//   only_flux     only_native with the flux analysis keys (flux Q6)
 struct FineAnalysisRuns {
   fs::path root = fs::temp_directory_path() / ("spodvr_fine_analysis_test_" + std::to_string(::getpid()));
-  int code_full, code_first, code_second, code_native, code_fortran, code_in_place;
+  int code_full, code_first, code_second, code_native, code_fortran, code_in_place, code_flux;
   std::string err;
+  std::string flux_printed;  // stdout of only_flux
 
   static nlohmann::json json(double t_start, double t_end) {
     nlohmann::json j = short_json();
@@ -156,6 +165,13 @@ struct FineAnalysisRuns {
     fs::create_directories(root / "in_place");
     fs::copy_file(root / "full" / "bk_coefficients.bin", root / "in_place" / "bk_coefficients.bin");
     code_in_place = run(only_analysis(root / "in_place", "native"), root / "in_place", err);
+    nlohmann::json flux = only_analysis(root / "full", "native");
+    flux.update({{"doFluxAnalysis", true},
+                 {"rFluxAnalysis", 2.0},
+                 {"EMinFluxAna", 0.2},
+                 {"EMaxFluxAna", 0.6},
+                 {"DeltaEFluxAna", 0.15}});
+    code_flux = run(flux, root / "only_flux", err, flux_printed);
   }
   ~FineAnalysisRuns() { fs::remove_all(root); }
 };
@@ -192,6 +208,23 @@ TEST(FineAnalysisRuns, AllRunModesGiveBitwiseIdenticalResults) {
   // The analysis-only run in RestartDir leaves the BK file alone and writes no propagation files.
   EXPECT_EQ(read_file(r.root / "full" / "bk_coefficients.bin"), read_file(r.root / "in_place" / "bk_coefficients.bin"));
   EXPECT_FALSE(fs::exists(r.root / "in_place" / "checkpoint.bin"));
+}
+
+// flux Q6: an analysis-only run with doFluxAnalysis prints one note and computes no flux (the Fortran
+// sets the flux analysis up but computes nothing): no flux files, and the fine analysis is that of
+// the same run without the flux keys.
+TEST(FineAnalysisRuns, FluxQ6AnalysisOnlyRunPrintsANoteAndNoFlux) {
+  const FineAnalysisRuns& r = fine_runs();
+  ASSERT_EQ(r.code_flux, 0) << r.err;
+  const std::string note = "Note: doFluxAnalysis has no effect in an analysis-only run";
+  const std::size_t at = r.flux_printed.find(note);
+  EXPECT_NE(at, std::string::npos) << r.flux_printed;
+  EXPECT_EQ(r.flux_printed.find(note, at + 1), std::string::npos);  // once
+  EXPECT_EQ(r.flux_printed.find("FLUX ANALYSIS"), std::string::npos);
+  for (const char* name : {"flux_reaction.tsv", "flux_density.tsv", "flux_analysis.json"})
+    EXPECT_FALSE(fs::exists(r.root / "only_flux" / name)) << name;
+  for (const std::string& name : fine_analysis_files)
+    EXPECT_EQ(read_file(r.root / "only_native" / name), read_file(r.root / "only_flux" / name)) << name;
 }
 
 TEST(FineAnalysisRuns, Errors) {

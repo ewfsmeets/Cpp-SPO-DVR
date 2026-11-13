@@ -136,6 +136,20 @@ cplx flux_r_derivative(std::span<const double> weights, std::span<const cplx> co
   return derivative;
 }
 
+// Fortran: none (flux Q7: the Fortran neither computes nor prints this ratio)
+double flux_initial_state_ratio(std::span<const double> chi, int ir_flux) {
+  if (ir_flux < 0 || std::size_t(ir_flux) >= chi.size())
+    throw std::invalid_argument(
+        std::format("flux_initial_state_ratio: r index {} outside the {} r points", ir_flux, chi.size()));
+  double largest = 0.0;
+  for (const double value : chi) {
+    if (!std::isfinite(value)) throw std::invalid_argument("flux_initial_state_ratio: a value is not finite");
+    largest = std::max(largest, std::abs(value));
+  }
+  if (largest == 0.0) throw std::invalid_argument("flux_initial_state_ratio: the state is zero");
+  return std::abs(chi[ir_flux]) / largest;
+}
+
 FluxSurfaceWave::FluxSurfaceWave(int n_blocks, int n_planes)
     : index(n_blocks, n_planes), psi(index.size()), derivative(index.size()) {
   // Zero, written statically over iz: the partition of the flush (first touch).

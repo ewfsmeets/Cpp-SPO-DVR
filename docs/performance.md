@@ -81,6 +81,14 @@ header line.
   one flush took 387 ms per analysis step with 1 slot and 79.6 ms with 8; one DZ slot is 250.56 MB,
   so 2 GiB holds those 8 (test `MemoryEstimate.FluxSlotsOfTheDzGrid`). The results do not depend on
   K (`FluxPropagation.CoefficientsDoNotDependOnTheSlotCount`).
+- The flux arrays exist only in the time loop. Their memory rule (`check_flux_memory`): if the run
+  fits in the physical memory without them (the larger of its set-up and time loop), K shrinks to
+  what is left next to the time loop and φ, φ′; if not even one slot fits, the run stops with an
+  input error naming DeltaEFluxAna, before the potential is computed. A run that is too large without
+  the flux analysis only gets the estimate's warning. With `--device cuda` the base is the host
+  memory of a GPU run ([cuda.md](cuda.md#memory)). The estimate prints the numbers of the rule below
+  its table, and the FLUX ANALYSIS block repeats K, the memory per energy and the most energies that
+  fit (tests `FluxMemoryRule.*`).
 
 ## Threads and loop scheduling
 - **Single NUMA node** (one socket, e.g. the Ryzen 5800X): dynamic schedule, and only as many threads

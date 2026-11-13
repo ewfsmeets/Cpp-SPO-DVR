@@ -41,6 +41,28 @@ differences are in [validation.md](validation.md).
   |b(k)|² differs from the momentum distribution of the C++ initial packet by 2.9e-7 of its peak
   (hardwall_small). C++: the same factors (tests `FluxEnergies.FollowTheFortranExpressions` and
   `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket`).
+- flux Q6: with `onlyAnalysis` (nread = 2) the Fortran sets the flux analysis up
+  (`FluxAnalyzor.f90 setupFluxAnalyzor` allocates φ and φ′ and, when NewCalc is false, reads the
+  flux restart files) but computes and writes nothing (`Main.f90` calls `computeFluxProbability` only
+  without onlyAnalysis). C++: an analysis-only run with `doFluxAnalysis` prints one note and has no
+  flux arrays and no flux files (`src/app/run.cpp`; test
+  `FineAnalysisRuns.FluxQ6AnalysisOnlyRunPrintsANoteAndNoFlux`).
+- flux Q7, kept: the flux analysis leaves out the initial channel at r_c. At every point Z < zasymp,
+  every r included, each potential step moves the wave packet's projection on the initial channel
+  (rotational state J_in, mJ_in times the initial (x, y) plane wave, the specular diffraction order)
+  to the specular grid (`Potential.f90 PerformEXPPotentialOp` calls `TwoGrids.f90 SubSpecFromScat`
+  for every izr ≤ nzpot·nr), so the scattering wave holds none of it there; and
+  `FluxAnalyzor.f90 storeTimeIndependentWF` takes ψ and ∂ψ/∂r at r_c from the scattering wave only
+  (`getWaveFunctionAtZr`, `getWaveFuncDerivAtZr`). After the collision that channel also carries
+  scattered and reacting parts. P(E) misses that channel's own flux (its cross terms with the rest
+  vanish in the (x, y) sum, the plane waves being orthogonal); P(x, y; E) misses its own flux and the
+  cross terms. The incoming packet χ_vin(r)·G(Z) carries no flux in r of its own (χ_vin is real), so
+  of it only cross terms are missed, in P(x, y; E). C++: the same (`PotentialOperator`, its
+  SubSpecFromScat block; gate 6 compares with the Fortran). The FLUX ANALYSIS set-up block prints
+  |χ_vin(r_c)| / max |χ_vin| and warns above 1e-6; this ratio bounds only the incoming packet's part
+  of what is left out. The size of the rest is not measured. Tests
+  `FluxInitialStateRatio.IsTheSizeAtTheFluxSurfaceOverTheLargest`,
+  `FluxReport.SetupBlockShowsTheMemoryRuleAndWarnsAboveTheFluxQ7Limit`.
 - flux Q8, checked: the Fortran's flux restart files `flux_coeffs.dat` (φ) and `flux_coeffs_deriv.dat`
   (φ′) have no header: one gfortran record φ(:, iz, n) per plane Z < zasymp and flux energy, energy
   outer (`FluxAnalyzor.f90 writeFluxCoeffs`). `readFluxCoeffs` reads them unchecked: longer records
@@ -58,7 +80,8 @@ differences are in [validation.md](validation.md).
   packet's Fourier transform).
 - Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
   propagating run (new or restart) with exit code 3 once the input checks have passed;
-  analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
+  analysis-only (`onlyAnalysis`) runs accept the keys and print a note (flux Q6), potential-only
+  (`Potential`) runs accept them and ignore them.
 - `InitGenComplexTransform` silently returns on invalid nφ.
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
 - `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.
