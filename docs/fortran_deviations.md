@@ -78,8 +78,9 @@ differences are in [validation.md](validation.md).
   flux restart files do. C++: the same phase (`wave_packet_momentum_amplitude`; test
   `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket` checks b = conj of the
   packet's Fourier transform).
-- Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
-  propagating run (new or restart) with exit code 3 once the input checks have passed;
+- Not ported (yet): the restart of the flux analysis (`FluxAnalyzor.f90 readWriteFluxCoeffs`). A
+  restart with `doFluxAnalysis = true` stops with exit code 3 once the input checks have passed; a
+  new run computes the flux analysis (gate 6, [validation.md](validation.md));
   analysis-only (`onlyAnalysis`) runs accept the keys and print a note (flux Q6), potential-only
   (`Potential`) runs accept them and ignore them.
 - `InitGenComplexTransform` silently returns on invalid nφ.

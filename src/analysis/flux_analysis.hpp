@@ -138,6 +138,16 @@ struct FluxGrid {
 // The FluxGrid of a run with n_rot rotational functions (RotationalBasis::size()).
 [[nodiscard]] FluxGrid make_flux_grid(const Config& config, const SpatialGrids& grids, int n_rot);
 
+// An (x, y) grid point, 0-based.
+struct FluxGridXY {
+  int ix;
+  int iy;
+};
+
+// The (x, y) point of the block (irot, ixy) of psi: block = irot + n_rot ixy, ixy = iy + ny ix.
+// Fortran: getOuterIndex, getInnerIndex
+[[nodiscard]] FluxGridXY flux_block_xy(int block, const FluxGrid& grid);
+
 // The reaction probability from the flux through r = r_c, per flux energy.
 // Fortran: FluxAnalyzor.f90 computeFluxProbability (reacProbability, reacProbDensity)
 struct FluxResults {

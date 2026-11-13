@@ -289,10 +289,11 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     const auto potential = make_potential(config.input);
     const AngularGrid angular = make_angular_grid(config);
     const SpatialGrids grids = make_spatial_grids(config);
-    // The flux analysis is not ported: a propagating run refuses it once its input checks have
-    // passed. The developer tools and the tests' run_cpp_propagation bypass this on purpose.
-    if (config.input.do_flux_analysis && propagates)
-      throw NotSupportedError("doFluxAnalysis = true: the flux analysis is not implemented yet");
+    // A restart cannot continue the flux analysis yet (its coefficients are not saved): refused once
+    // the input checks have passed.
+    if (config.input.do_flux_analysis && config.derived.run_mode == 1)
+      throw NotSupportedError(
+          "doFluxAnalysis = true in a restart: restarting the flux analysis is not implemented yet");
     print_grids(out, style, config, grids, angular);
 
     // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.

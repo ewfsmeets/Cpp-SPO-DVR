@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -22,12 +23,16 @@
 
 #include "analysis/flux_analysis.hpp"
 #include "backend_setup.hpp"
+#include "core/array_index.hpp"
 #include "flux_propagation_run.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 #include "propagation_reference.hpp"
 #include "report/flux_files.hpp"
 #include "report/flux_report.hpp"
+#include "symmetry/grid_symmetry.hpp"
+#include "symmetry/point_group.hpp"
+#include "symmetry/surface_lattice.hpp"
 
 using namespace spodvr;
 using namespace spodvr::testing;
@@ -260,4 +265,89 @@ TEST(FluxOutput, FilesAndTableOfOneAndFourThreadsAreByteIdentical) {
   EXPECT_EQ(one.density, expected.density);
   ASSERT_EQ(one.probability.size(), 3U);
   for (const double p : one.probability) EXPECT_TRUE(std::isfinite(p) && p != 0.0) << p;
+}
+
+namespace {
+
+// The (x, y) point of the grid index ixy = iy + ny ix (GridSymmetry::apply_to_xy).
+FluxGridXY grid_point(int ixy, int ny) { return {ixy / ny, ixy % ny}; }
+
+// The largest |P(x', y'; E) - P(x, y; E)| / max |P| over every (x, y) and energy, where (x', y') is the
+// image of (x, y) under operation `op` of `symmetry`, with ix shifted by `ix_shift` (0: none).
+double density_asymmetry(const FluxResults& r, const GridSymmetry& symmetry, int op, int ix_shift) {
+  const int nx = symmetry.nx();
+  const int ny = symmetry.ny();
+  double worst = 0.0;
+  double largest = 0.0;
+  for (std::size_t n = 0; n < r.probability.size(); ++n)
+    for (int ix = 0; ix < nx; ++ix)
+      for (int iy = 0; iy < ny; ++iy) {
+        const FluxGridXY image = grid_point(symmetry.apply_to_xy(op, ix, iy), ny);
+        const double p = r.density[r.density_index(ix, iy, n)];
+        const double q = r.density[r.density_index((image.ix + ix_shift) % nx, image.iy, n)];
+        worst = nan_aware_max(worst, std::abs(q - p));
+        largest = nan_aware_max(largest, std::abs(p));
+      }
+  return worst / largest;
+}
+
+}  // namespace
+
+// C6v invariance of P(x, y; E) of the gate-6 case (cu111_dailight_short: j = 0, normal incidence, a C6v
+// PES). With nphi = 10 the usable grid operations are C2v: the identity, C2 and two mirrors. The
+// discrete kinetic operator of the 60-degree grid is not invariant under them: the cross term
+// -2 cos(skew) kx ky / 2M differs in sign between a Nyquist momentum's grid image and its true image
+// (C2), and a mirror maps momenta out of the FFT box (aliasing). So P(x, y; E) of the run, as the
+// Fortran's, is symmetric only to 1.7e-4 (C2) and 2.1e-4 (mirrors) of its largest value (both codes,
+// measured 2026-11-13). Dropping that cross term on the Nyquist row and column makes the propagation
+// C2-symmetric; then P(x, y; E) is too, to rounding: the flux surface, c_n and flux_results keep the
+// wave function's symmetry. Control: the same check with ix shifted by one (a density layout
+// off by one) fails. A full run of the case: Long suite.
+TEST(FluxPropagation, DensityIsC2InvariantWithAC2SymmetricKineticOperatorLong) {
+  if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";
+  BackendSetup s("cu111_dailight_short");
+  const InputParameters& p = s.config.input;
+  const DerivedParameters& d = s.config.derived;
+  ASSERT_EQ(p.e_parallel, 0.0);  // k0 = 0: momenta (i or i - n) dk
+  auto momentum = [](int i, int n, double dk) { return (i <= n / 2 ? i : i - n) * dk; };
+  const Index2D xy{std::size_t(p.ny), std::size_t(p.nx)};  // ixy = iy + ny ix
+  for (int ix = 0; ix < p.nx; ++ix)
+    for (int iy = 0; iy < p.ny; ++iy) {
+      if (ix != p.nx / 2 && iy != p.ny / 2) continue;
+      const double kx = momentum(ix, p.nx, d.delta_kx);
+      const double ky = momentum(iy, p.ny, d.delta_ky);
+      const double energy = (0.5 / d.total_mass) * (kx * kx) + (0.5 / d.total_mass) * (ky * ky);
+      s.tables.xy_kinetic.full[xy(iy, ix)] = exp_minus_i(energy * p.time_step);
+      s.tables.xy_kinetic.half[xy(iy, ix)] = exp_minus_i(energy * p.time_step / 2.0);
+    }
+
+  const std::unique_ptr<PropagationBackend> backend = s.cpu();
+  const FluxEnergies energies = make_flux_energies(s.config, s.tables.parallel_energy, s.gas.initial.energy);
+  const int n_blocks = s.basis.size() * p.nx * p.ny;
+  FluxCoefficients sums(n_blocks, s.grids.nz_potential, energies.size());
+  FluxSurfaceWave surface(n_blocks, s.grids.nz_potential);
+  const int n_steps = static_cast<int>(std::lround((p.t_end - p.t_start) / d.analysis_time_step));
+  for (int step = 1; step <= n_steps; ++step) {
+    backend->propagate_analysis_step();
+    backend->flux_surface(surface);
+    add_flux_surface_by_hand(sums, energies, p.t_start + step * d.analysis_time_step, d.analysis_time_step, surface);
+  }
+  const FluxResults r = flux_results(sums, energies, make_flux_grid(s.config, s.grids, s.basis.size()));
+
+  const GridSymmetry symmetry(SurfaceLattice(d.system), PointGroup(d.system.point_group), p.nx, p.ny,
+                              s.angular.n_phi());
+  ASSERT_EQ(symmetry.operations().size(), 4U);
+  const auto c2 = std::ranges::find(symmetry.operations(), SurfaceOperation{false, 6});
+  ASSERT_NE(c2, symmetry.operations().end());
+  const int op = static_cast<int>(c2 - symmetry.operations().begin());
+  const double asymmetry = density_asymmetry(r, symmetry, op, 0);
+  const double shifted = density_asymmetry(r, symmetry, op, 1);
+  EXPECT_LE(asymmetry, 1e-12);
+  EXPECT_GT(shifted, 1e-2);
+  double mirrors = 0.0;  // printed only: not invariant on this grid
+  for (std::size_t k = 0; k < symmetry.operations().size(); ++k)
+    if (symmetry.operations()[k].mirror)
+      mirrors = nan_aware_max(mirrors, density_asymmetry(r, symmetry, static_cast<int>(k), 0));
+  std::cout << "  C2: max |P(-x, -y) - P(x, y)| / max |P| = " << asymmetry << "; with ix shifted by one " << shifted
+            << "; the mirrors " << mirrors << '\n';
 }

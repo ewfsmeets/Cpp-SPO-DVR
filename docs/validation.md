@@ -1,7 +1,7 @@
 # Validation against the Fortran code
 
 The C++ program is checked against the original Fortran program (upstream SPO-DVR 5.24 at svn
-r1713, built with `-O3`: [Reference data](#reference-data)) by five acceptance gates. Each gate is
+r1713, built with `-O3`: [Reference data](#reference-data)) by six acceptance gates. Each gate is
 a regression test in `tests/` that compares the C++ results with Fortran output stored in
 `tests/reference/<case>/`; see the README section "Testing" for how to run them.
 
@@ -56,6 +56,7 @@ svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream
 | until 2026-11-06 | 5.19 (svn r1572), gfortran 13 build of 2026-10-26, `-O3` | generated, mostly at 16 threads |
 | from the GCC 15 switch (2026-11-06) | 5.19 rebuilt with gfortran 15 | kept; the rebuild reproduces them except the Dai–Light BK files (≤ 8.3e-13 of the gate-4 scale) and last digits of fort.25 |
 | since 2026-11-12 | 5.24 r1713 `-O3` (install `r1713-dce0ecc`), gfortran 15, 4 threads | all regenerated (`regenerate_all.sh`) and compared with `refdata.py compare … --expected tools/fortran_reference/expected/r1713.tsv`. Identical: the averages of all 5 propagation cases, the potentials and gas-phase states, the hard-wall BK files, the CRP driver outputs, fine-analysis fort.10 and fort.3. Changed by the toolchain (gfortran 13 → 15 and its run-time libraries): the Dai–Light BK files by ≤ 8.3e-13 (short), 4.1e-13 (short_sym), 1.1e-14 (small) of the gate-4 scale, the propagation fort.25 (read by no test), stdout probabilities below 1e-20 by ≤ 1e-21. Changed by the r1713 fix: the signs of Im S and of the phase in the fine-analysis fort.25. Stdout labels |
+| 2026-11-13 | the same | `cu111_dailight_short` regenerated with the flux keys (gate 6), its two sibling cases with changed header comments: their averages, BK files and fort.25 (and `_sym`'s potential) byte-identical; the case's four flux files are new and its stdout gains the flux set-up lines (16 760 → 16 772 compared lines) |
 
 With the switch the C++ follows 5.24 twice: `RStart ≤ 0` is rejected (5.19: only `< 0`), and
 gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `FortranInterpolationBugs.*`
@@ -95,8 +96,8 @@ derived from exactly the same parameters.
    `SPODVR_LONG_TESTS=1`. The hard wall has no θ/φ/x/y coupling, so gate 3 only checks that the
    angular transform and x/y FFTs act as the identity there; their correctness rests on the
    analytic unit tests (test_angular, test_propagation). Corrugated cases (60° cell, C6v):
-   `cu111_dailight_short` (1000 steps, default), `cu111_dailight_short_sym` (C6v UseSymmetry,
-   nPhisOptimal: nφ 12), `cu111_dailight_small` (7000 steps, long; also fine analysis, gate 5
+   `cu111_dailight_short` (1000 steps, default; with the flux analysis of gate 6),
+   `cu111_dailight_short_sym` (C6v UseSymmetry, nPhisOptimal: nφ 12; no flux keys), `cu111_dailight_small` (7000 steps, long; also fine analysis, gate 5
    `Gate5DaiLight`). Status: all pass (gates 3, 4, 5). Full Dai–Light run (7000 steps): averages
    worst 0.986583 of half a printed unit, BK (1400 records) 6.41e-13 of max|c| = 0.265,
    probabilities within half a unit (worst 0.989415) except the reaction probability (see gate 4).
@@ -106,7 +107,7 @@ derived from exactly the same parameters.
    probability to 2.0e-12 / 5.3e-12 from the Fortran (old floor 1e-12): floor raised to 1e-11;
    not the default build.
    Low-Z absorbers (upstream 5.24): `cu111_dailight_short_lowz` (default, CPU and GPU) is
-   `cu111_dailight_short` plus `ZOptLowEnergy` 0.005 eV and `ZSpOptLowFactor` 4e-4 hartree, both
+   `cu111_dailight_short` without its flux keys, plus `ZOptLowEnergy` 0.005 eV and `ZSpOptLowFactor` 4e-4 hartree, both
    from ZStart = −2 to Zana = 8. Each matters on its own (C++ runs with one removed, 2026-11-12):
    without the scattering one the averages move by 3.3e4 printed half units and the BK coefficients
    by 9.6e3 gate tolerances, without the specular one by 3.1e6 and 5.5e5 (the summed probabilities
@@ -164,3 +165,18 @@ derived from exactly the same parameters.
    (`setupdvr.f90` forces `SymmetryInPhi = .FALSE.`, so only mJ = 0 is used). The rotational
    basis uses `legendre.f90 AssociatedLegendre` instead (C++ `associated_legendre`), tested
    analytically (closed forms, orthonormality, cos²θ matrix elements, transform round trip).
+6. **Flux analysis** (`tests/flux_reference.hpp`, in the gate-3 runs of `cu111_dailight_short`, CPU and
+   GPU; a missing Fortran flux file fails): the case has `doFluxAnalysis` (0.2/0.35/0.5 eV; r_c = 1.7
+   bohr, of 1.7, 2.0, 2.3 bohr the largest cancellation ratio |Σ Im(φ*φ′)|/Σ|φ||φ′|, 0.042–0.047).
+   (a) φ, φ′ within 1e-11·B_n (B_n = |c_n|·Σ_t max|ψ_c(t)| ≥ |φ|; B′_n with ∂ψ_c/∂r): recomputed with
+   the Fortran's eviroi 2.9e-13 (CPU), 2.0e-13 (GPU), 6.0e-13 (build-fast, build-cuda-fast)
+   of B_n; the run's own (C++ eviroi, 1.2e-15 hartree off) 1.9e-12. (b) The run's 195 values of P(E)
+   and P(x, y; E) within max(half a printed unit, 1e-10·prefac·Σ|φ||φ′|): worst 0.977. (c) The
+   Fortran's φ, φ′ through `flux_results`: its E15.8 text exactly (781 values; every build). Negative
+   controls, same runs: c_n with exp(−iEt) fails (a) at 359 148 of 360 000 values of φ, D reversed at
+   359 784 of φ′ and (b) at 195 of 195, one φ off by 2e-11·B_n there only, M and μ swapped (c) at 195 of
+   195; A_n as k·conj(d)/|d|² (an ulp): `FluxTransformFactor.IsSmithsComplexDivision`. Reference flux
+   routines: no FMA, no libmvec (objdump, 2026-11-13). P(x, y; E) is symmetric only to 1.7e-4 (C2),
+   2.1e-4 (mirrors) in both codes (`RegressionPropagation.FortranFluxDensityIsC2SymmetricOnlyToTheGridsAccuracy`):
+   T_xy of the 60° grid is not (Nyquist cross term, aliasing); with a C2-invariant T_xy C2 holds to
+   7.5e-15 (`FluxPropagation.DensityIsC2InvariantWithAC2SymmetricKineticOperatorLong`).

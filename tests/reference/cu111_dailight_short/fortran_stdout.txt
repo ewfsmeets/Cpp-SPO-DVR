@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 141505.127 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261113 at 024055.939 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -193,7 +193,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
      asymptotic analysis at z =                        8.000000
 
- No flux analysis performed.
+ Flux analysis in r performed at ir =    7 (r =  0.17000000E+01)
 
      nzpot =                                       125
 
@@ -233,7 +233,7 @@ reaches the gas phase, is the new asymptotic Z-value.
      ectmin (ev) =                                     0.200000
      ectmax (ev) =                                     0.600000
 
- Total time for potential initialisation =  0.24220000E-04 secs
+ Total time for potential initialisation =  0.22919994E-04 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -385,7 +385,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  Saving H2Cu111DaiLight PES into file : ./H2Cu111DaiLight_125_-2.000_0.080_56_0.800_0.150_8_8_4.840_4_4.pes
 
- Total time setting up the potential =  0.18394884E+01 secs
+ Total time setting up the potential =  0.20474604E+01 secs
 
 
 
@@ -599,6 +599,18 @@ WARNING: Diffractional basis too small to describe all open channels!
 ********************************************************************************
 
  ----- Split operator propagator set up -----
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE FLUX ANALYZOR
+********************************************************************************
+
+ Computing flux probabilty for    3 energies
+ Flux analysis performed at ir =    7 (r =  0.17000000E+01)
+ Memory required for flux analysis =  11.52 MB
+
+ ----- Flux analyzor set up -----
 
 
 
@@ -16895,65 +16907,65 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                         162.6456 (a)
+ Total computation                         230.3816 (a)
 
                ...
 
- Propagating the wavefunction              159.8285 (b)
+ Propagating the wavefunction              223.9631 (b)
 
- Setup time                                  2.0257
+ Setup time                                  2.3047
 
- Saving the wave function for rerun          0.0811
+ Saving the wave function for rerun          0.0854
 
- Calculating averages                        0.1259
+ Calculating averages                        0.1441
 
- Calculating and saving BK-coeffs            0.1173
+ Calculating and saving BK-coeffs            0.1449
 
- Asymptotic analysis                         0.0749
+ Asymptotic analysis                         0.0877
 
- Saving the flux coefficients                0.0000
+ Saving the flux coefficients                3.1860
 
- Flux analysis                               0.0000
+ Flux analysis                               0.0021
 
 -----------------------------------------------------
 
- Sum                                       162.2535 (a)
+ Sum                                       229.9180 (a)
 
                ...
 
- FFTs along X and Y                         11.2575
+ FFTs along X and Y                         13.4061
 
- Kinetic energy operation along Z           33.2411
+ Kinetic energy operation along Z           48.5611
 
- Kinetic energy operation along r           25.1793
+ Kinetic energy operation along r           36.3077
 
- Potential energy multiplication            51.0073
+ Potential energy multiplication            57.6431
 
- Legengre transforms                        23.2617
+ Legengre transforms                        28.0951
 
- Shifting the wavefunction                   5.3854
+ Shifting the wavefunction                   7.4297
 
- Kinetic energy multiplications (xy)         1.6451
+ Kinetic energy multiplications (xy)         1.9643
 
- Absorbing the wavefunction                  2.4469
+ Absorbing the wavefunction                  2.9651
 
- Projection formalism                        0.3659
+ Projection formalism                        0.4598
 
- Operations on specular grid                 0.0807
+ Operations on specular grid                 0.1007
 
 -----------------------------------------------------
 
- Sum                                       153.8709 (b)
+ Sum                                       196.9328 (b)
 
                ...
 
  Potential initialisation time               0.0000
 
- Potential setup time                        1.8395
+ Potential setup time                        2.0475
 
- FFTs along X                                5.2186
+ FFTs along X                                6.2140
 
- FFTs along Y                                6.0389
+ FFTs along Y                                7.1922
 
- Time spent on FGH for asympwf               0.0279
+ Time spent on FGH for asympwf               0.0493
 

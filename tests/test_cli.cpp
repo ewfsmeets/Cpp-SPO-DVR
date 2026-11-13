@@ -36,7 +36,7 @@ int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
 }
 
 // hardwall_small with a flux analysis that passes every input check: r = 3.05 bohr is a grid
-// point below ROptStart, and 0.2..0.6 eV is the wave packet's energy range.
+// point below ROptStart, and 0.2..0.6 eV is the wave packet's energy range; 60 steps to t = 120.
 nlohmann::json flux_input() {
   std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/hardwall_small/input.json");
   nlohmann::json json = nlohmann::json::parse(file);
@@ -45,6 +45,8 @@ nlohmann::json flux_input() {
   json["EMinFluxAna"] = 0.2;
   json["EMaxFluxAna"] = 0.6;
   json["DeltaEFluxAna"] = 0.01;
+  json["tEnd"] = 120.0;
+  json["nStep"] = 60;
   return json;
 }
 
@@ -86,15 +88,26 @@ TEST(Cli, Errors) {
   EXPECT_THROW((void)parse_command_line({"a.json", "--schedule", "guided"}), std::invalid_argument);
 }
 
-// The flux analysis is not ported: a propagating run with a valid flux input stops with exit code
-// 3 (not supported), names doFluxAnalysis and writes no data file. An invalid flux input is still
-// an input error (exit code 2): the input checks come first.
-TEST(FluxAnalysisGuard, PropagatingRunIsRefusedWithExitCode3) {
+// A new run with the flux analysis runs through and writes its flux files. A restart with it stops
+// with exit code 3 (not supported: the flux coefficients cannot be continued yet), names
+// doFluxAnalysis and writes no data file. An invalid flux input is still an input error (exit code
+// 2): the input checks come first.
+TEST(FluxAnalysisGuard, NewRunWritesTheFluxFilesAndARestartIsRefusedWithExitCode3) {
   const ScratchDir dir("spodvr_flux_guard");
   std::string err;
-  EXPECT_EQ(run(flux_input(), dir.path / "valid", err), 3);
+  EXPECT_EQ(run(flux_input(), dir.path / "new", err), 0) << err;
+  for (const char* name : {"flux_reaction.tsv", "flux_density.tsv", "flux_analysis.json"})
+    EXPECT_TRUE(fs::exists(dir.path / "new" / name)) << name;
+
+  nlohmann::json restart = flux_input();
+  restart["NewCalc"] = false;
+  restart["RestartDir"] = (dir.path / "new").string();
+  restart["tStart"] = 120.0;
+  restart["tEnd"] = 240.0;
+  EXPECT_EQ(run(restart, dir.path / "restart", err), 3);
   EXPECT_NE(err.find("doFluxAnalysis"), std::string::npos) << err;
-  EXPECT_FALSE(fs::exists(dir.path / "valid" / "asymptotic_potential.dat"));
+  EXPECT_NE(err.find("restart"), std::string::npos) << err;
+  EXPECT_FALSE(fs::exists(dir.path / "restart" / "asymptotic_potential.dat"));
 
   nlohmann::json invalid = flux_input();
   invalid["EMaxFluxAna"] = 0.7;

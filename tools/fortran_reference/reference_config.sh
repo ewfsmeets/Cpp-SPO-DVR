@@ -191,6 +191,15 @@ stage_inputs() {
   cp -r "${FORTRAN_REPO_DIR}/${data_set}" "${dir}/dataset"
 }
 
+# FLUX_OUTPUTS: the files the Fortran writes with doFluxAnalysis (FluxAnalyzor.f90).
+FLUX_OUTPUTS=(flux_coeffs.dat flux_coeffs_deriv.dat flux_reaction.dat flux_density.dat)
+
+# input_has_flux_analysis FILE: the DVR.inp FILE switches the flux analysis on (a line
+# "doFluxAnalysis : LOGICAL : TRUE;" or "doFluxAnalysis : TRUE;", any case), so a run writes FLUX_OUTPUTS.
+input_has_flux_analysis() {
+  grep -qiE '^[[:space:]]*doFluxAnalysis[[:space:]]*:([^:;]*:)?[[:space:]]*TRUE[[:space:]]*;' "$1"
+}
+
 # set_field FILE NAME VALUE: sets the value of the line "NAME : TYPE : value;" of a DVR.inp,
 # keeping its spacing.
 set_field() {

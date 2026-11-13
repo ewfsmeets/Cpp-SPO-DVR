@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 140909.807 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261113 at 024446.605 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -234,7 +234,7 @@ reaches the gas phase, is the new asymptotic Z-value.
      ectmin (ev) =                                     0.200000
      ectmax (ev) =                                     0.600000
 
- Total time for potential initialisation =  0.13170000E-04 secs
+ Total time for potential initialisation =  0.17590006E-04 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -385,7 +385,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  Saving H2Cu111DaiLight PES into file : ./H2Cu111DaiLight_125_-2.000_0.080_56_0.800_0.150_8_8_4.840_4_4.pes
 
- Total time setting up the potential =  0.30289790E+00 secs
+ Total time setting up the potential =  0.38277526E+00 secs
 
 
 
@@ -601,13 +601,13 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  Potential initialisation time               0.0000
 
- Potential setup time                        0.3029
+ Potential setup time                        0.3828
 
  FFTs along X                                0.0000
 
  FFTs along Y                                0.0000
 
- Time spent on FGH for asympwf               0.0303
+ Time spent on FGH for asympwf               0.0295
 
  *** DISPOSURE OF DVR ***
 

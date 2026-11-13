@@ -134,13 +134,19 @@ struct PropagationRun {
   ScatteringResults scattering;
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
   std::optional<FluxResults> flux;                    // with doFluxAnalysis: flux_results() after run()
+  std::optional<FluxCoefficients> flux_coefficients;  // with doFluxAnalysis: phi and phi' after run()
+  double initial_state_energy = 0.0;                  // the gas-phase energy of the initial state (hartree)
 };
+
+// Called with the flux surface of every analysis step (PropagationObserver::on_flux_surface).
+using FluxSurfaceObserver = std::function<void(double time, const FluxSurfaceWave&)>;
 
 // input: the JSON input of the run; backend: the propagation backend (CPU by default; the GPU
 // tests pass the CUDA backend); prepare (if set): called on the propagation before run(), e.g. to
-// replace its wave packet.
+// replace its wave packet; on_flux_surface (if set): the run's flux surfaces (doFluxAnalysis).
 inline PropagationRun run_cpp_propagation(const nlohmann::json& input, const BackendFactory& backend = make_cpu_backend,
-                                          const std::function<void(WavePacketPropagation&)>& prepare = {}) {
+                                          const std::function<void(WavePacketPropagation&)>& prepare = {},
+                                          const FluxSurfaceObserver& on_flux_surface = {}) {
   const Config config = build_config(parse_input(input));
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
@@ -152,12 +158,17 @@ inline PropagationRun run_cpp_propagation(const nlohmann::json& input, const Bac
   if (prepare) prepare(propagation);
   PropagationRun run;
   run.initial = propagation.initial_wave_packet();
+  run.initial_state_energy = gas.initial.energy;
   PropagationObserver observer;
   observer.on_averages = [&](const Averages& a) { run.averages.push_back(a); };
   observer.on_analysis_step = [&](double, const BkCoefficients& bk) { run.bk.push_back(bk.values); };
+  observer.on_flux_surface = on_flux_surface;
   propagation.run(observer);
   run.scattering = propagation.scattering_results();
-  if (propagation.flux()) run.flux = propagation.flux_results();
+  if (propagation.flux()) {
+    run.flux = propagation.flux_results();
+    run.flux_coefficients = propagation.flux()->coefficients();
+  }
   const AnalysisBasis& basis = propagation.analysis_basis();
   for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
     run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
@@ -167,9 +178,10 @@ inline PropagationRun run_cpp_propagation(const nlohmann::json& input, const Bac
 
 // The C++ run of the JSON input file input_json.
 inline PropagationRun run_cpp_propagation(const std::filesystem::path& input_json,
-                                          const BackendFactory& backend = make_cpu_backend) {
+                                          const BackendFactory& backend = make_cpu_backend,
+                                          const FluxSurfaceObserver& on_flux_surface = {}) {
   std::ifstream file(input_json);
-  return run_cpp_propagation(nlohmann::json::parse(file), backend);
+  return run_cpp_propagation(nlohmann::json::parse(file), backend, {}, on_flux_surface);
 }
 
 // Largest |C++ - Fortran| of the averages (norm, <Z>, <r>, rest norm) in units of the printed half

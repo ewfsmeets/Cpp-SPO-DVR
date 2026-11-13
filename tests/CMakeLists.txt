@@ -34,10 +34,13 @@ target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)
 # The flux analysis is strict in every build (spodvr_strict_objects); its tests compare it bit for
 # bit with expressions written out in the test, which must then be strict too (also in build-fast).
 target_link_libraries(test_flux_analysis PRIVATE spodvr_strict_fp)
-# The same for the time loop's flux tests, which recompute the sums in the test (flux_propagation_run.hpp).
+# The same for the time loop's flux tests, which recompute the sums in the test (flux_propagation_run.hpp),
+# and for gate 6 in the regression tests (flux_reference.hpp, through flux_propagation_run.hpp).
 target_link_libraries(test_flux_propagation PRIVATE spodvr_strict_fp)
+target_link_libraries(test_regression_propagation PRIVATE spodvr_strict_fp)
 if(SPODVR_USE_CUDA)
   target_link_libraries(test_cuda_flux PRIVATE spodvr_strict_fp)
+  target_link_libraries(test_cuda_regression PRIVATE spodvr_strict_fp)
 endif()
 
 # The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
@@ -76,6 +79,7 @@ add_reference_tools_test(BuildLogAllowLists check-log)
 add_reference_tools_test(InstructionCheck check-binary)
 add_reference_tools_test(ManifestRecordAndDelete manifest)
 add_reference_tools_test(RegenerateRefusesBeforeDeleting regenerate-refusals)
+add_reference_tools_test(FluxCaseWithoutFluxFilesRefused flux-outputs)
 
 # refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1713.tsv is valid and
 # matches the committed files, every class it allows passes, each fault and each refusal fails.

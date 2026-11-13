@@ -1,14 +1,16 @@
 #pragma once
 
-// Gates 3 and 4 (docs/validation.md) for one reference case, with a given propagation backend: the C++ run
-// of <case>/input.json against the Fortran output of the same case (skipped when missing).
+// Gates 3, 4 and 6 (docs/validation.md) for one reference case, with a given propagation backend: the C++
+// run of <case>/input.json against the Fortran output of the same case (skipped when missing).
 // Used by test_regression_propagation.cpp (CPU) and cuda/test_cuda_regression.cpp (GPU).
 
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include "analysis_reference.hpp"
+#include "flux_reference.hpp"
 #include "propagation_reference.hpp"
 
 namespace spodvr::testing {
@@ -24,7 +26,9 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
     GTEST_SKIP() << "no Fortran reference in " << dir << "; run "
                  << "tools/fortran_reference/run_propagation_reference.sh " << case_name;
   ASSERT_FALSE(ref->averages.empty()) << "no averages found in fortran_averages.out";
-  const PropagationRun cpp = run_cpp_propagation(dir / "input.json", backend);
+  std::optional<FluxGate> flux_gate = FluxGate::for_case(dir);  // a case with doFluxAnalysis
+  const PropagationRun cpp =
+      run_cpp_propagation(dir / "input.json", backend, flux_gate ? flux_gate->observer() : FluxSurfaceObserver{});
   compare_with_fortran(cpp, *ref);  // gate 3
 
   // Gate 4: the printed probabilities, and the BK coefficients of every analysis step.
@@ -38,6 +42,8 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
   // (tools/fortran_reference/run_restart_reference.sh). The C++ restart is bitwise exact (test_restart).
   if (fs::exists(dir / "fortran_restart_stdout.txt"))
     compare_probabilities_with_fortran(cpp, read_fortran_probabilities(dir / "fortran_restart_stdout.txt"));
+
+  if (flux_gate) flux_gate->compare(cpp);  // gate 6: the flux analysis
 }
 
 }  // namespace spodvr::testing

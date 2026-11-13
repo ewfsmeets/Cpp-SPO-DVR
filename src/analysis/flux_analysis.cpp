@@ -183,17 +183,12 @@ FluxGrid make_flux_grid(const Config& config, const SpatialGrids& grids, int n_r
                   .reduced_mass = config.derived.reduced_mass};
 }
 
-namespace {
-
-// (ix, iy) of the block (irot, ixy) of psi, ixy = iy + ny ix. Fortran: getOuterIndex, getInnerIndex
-struct GridXY {
-  int ix;
-  int iy;
-};
-GridXY block_xy(int block, const FluxGrid& grid) {
+FluxGridXY flux_block_xy(int block, const FluxGrid& grid) {
   const int ixy = block / grid.n_rot;
   return {ixy / grid.ny, ixy % grid.ny};
 }
+
+namespace {
 
 // P(x, y; E_n) and P(E_n) of energy n into r. Fortran: computeFluxProbability, one ien
 void add_energy_results(const FluxCoefficients& c, const FluxEnergies& e, const FluxGrid& grid, int n, FluxResults& r) {
@@ -202,7 +197,7 @@ void add_energy_results(const FluxCoefficients& c, const FluxEnergies& e, const 
   // iz outer, the blocks in memory order inner: the Fortran's summation order per (x, y).
   for (int iz = 0; iz < c.n_planes(); ++iz)
     for (int block = 0; block < c.n_blocks(); ++block) {
-      const auto [ix, iy] = block_xy(block, grid);
+      const auto [ix, iy] = flux_block_xy(block, grid);
       const std::size_t k = c.index(block, iz, n);
       const double flux = std::imag(std::conj(c.phi[k]) * c.phi_derivative[k]);  // Fortran: AIMAG(contrb)
       double& density = r.density[r.density_index(ix, iy, n)];

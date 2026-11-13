@@ -1,15 +1,20 @@
-// Regression gates 3 and 4 (docs/validation.md): the propagation and the on-the-fly analysis of
-// tests/reference/hardwall_short (1000 steps) against the Fortran output of the same case
-// (fortran_stdout.txt, fortran_averages.out and, if present, fortran_fort21.bin, written by
-// tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
+// Regression gates 3, 4 and 6 (docs/validation.md): the propagation, the on-the-fly analysis and (a case
+// with doFluxAnalysis) the flux analysis of tests/reference/hardwall_short (1000 steps) and the
+// corrugated cases against the Fortran output of the same case (fortran_stdout.txt, fortran_averages.out,
+// fortran_fort21.bin if present, fortran_flux_*, written by
+// tools/fortran_reference/run_propagation_reference.sh). Skipped when missing (gate 6: fails).
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
 // SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing.
 // LowZGateFailsWithoutTheScatteringAbsorberLong (also SPODVR_LONG_TESTS=1) is the negative test of
 // the low-Z case.
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 
 #include "regression_gate.hpp"
+#include "symmetry/grid_symmetry.hpp"
+#include "symmetry/point_group.hpp"
+#include "symmetry/surface_lattice.hpp"
 
 using namespace spodvr;
 using namespace spodvr::testing;
@@ -101,4 +106,42 @@ TEST(RegressionPropagation, ParsesTheFortranOutputFormats) {
   ASSERT_EQ(ref->averages.size(), 2u);
   EXPECT_EQ(ref->averages[1].time, 100.0);
   EXPECT_EQ(ref->averages[1].rest_norm, 0.99999945);
+}
+
+// The Fortran's own P(x, y; E) of the gate-6 case is C2-symmetric only to about 1e-4 of its largest
+// value, not to rounding: the discrete T_xy of the 60-degree grid is not C2-invariant (docs/validation.md,
+// gate 6, which the C++ matches; with a C2-invariant T_xy the C++ density is symmetric to rounding:
+// FluxPropagation.DensityIsC2InvariantWithAC2SymmetricKineticOperatorLong). This checks that premise
+// on the reference itself (measured 2026-11-13: 1.7e-4 for the C++).
+TEST(RegressionPropagation, FortranFluxDensityIsC2SymmetricOnlyToTheGridsAccuracy) {
+  const fs::path dir = fs::path(SPODVR_REFERENCE_DIR) / "cu111_dailight_short";
+  ASSERT_TRUE(fs::exists(dir / "fortran_flux_density.dat"))
+      << "run tools/fortran_reference/run_propagation_reference.sh cu111_dailight_short";
+  std::ifstream file(dir / "input.json");
+  const Config config = build_config(parse_input(nlohmann::json::parse(file)));
+  const FluxGrid grid = make_flux_grid(config, make_spatial_grids(config), 1);  // n_rot 1: a block is an ixy
+  const int n_energies = flux_energy_count(config.input);
+  const GridSymmetry symmetry(SurfaceLattice(config.derived.system), PointGroup(config.derived.system.point_group),
+                              grid.nx, grid.ny, make_angular_grid(config).n_phi());
+  const auto c2 = std::ranges::find(symmetry.operations(), SurfaceOperation{false, 6});
+  ASSERT_NE(c2, symmetry.operations().end());
+  const int op = static_cast<int>(c2 - symmetry.operations().begin());
+
+  const std::vector<std::vector<std::string>> lines = read_tokens(dir / "fortran_flux_density.dat");
+  auto density = [&](int n, int ix, int iy) {
+    return parse_fortran_real(lines.at(fortran_density_line(n, ix, iy, grid, n_energies)).at(3));
+  };
+  double worst = 0.0;
+  double largest = 0.0;
+  for (int n = 0; n < n_energies; ++n)
+    for (int ix = 0; ix < grid.nx; ++ix)
+      for (int iy = 0; iy < grid.ny; ++iy) {
+        const FluxGridXY image = flux_block_xy(symmetry.apply_to_xy(op, ix, iy), grid);
+        worst = nan_aware_max(worst, std::abs(density(n, image.ix, image.iy) - density(n, ix, iy)));
+        largest = nan_aware_max(largest, std::abs(density(n, ix, iy)));
+      }
+  const double asymmetry = worst / largest;
+  EXPECT_GT(asymmetry, 1e-5);
+  EXPECT_LT(asymmetry, 1e-3);
+  std::cout << "  the Fortran's P(x, y; E): max |P(-x, -y) - P(x, y)| / max |P| = " << asymmetry << '\n';
 }
