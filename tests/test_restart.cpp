@@ -286,7 +286,11 @@ TEST(Restart, NumberOfPhiPointsIsChecked) {
   EXPECT_EQ(run(json, r.root / "symmetric_restart", err), 0) << err;
 
   std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/cu111_dailight_short/input.json");
-  const nlohmann::json dai = with_times(nlohmann::json::parse(file), 0.0, 20.0, 10);
+  nlohmann::json dai = with_times(nlohmann::json::parse(file), 0.0, 20.0, 10);
+  // The case's flux analysis (gate 6) is switched off: this test is not about it, and a restart
+  // with it is refused (exit 3).
+  for (const char* key : {"doFluxAnalysis", "rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"})
+    ASSERT_EQ(dai.erase(key), 1u) << key;
   ASSERT_EQ(run(dai, r.root / "dailight_first", err), 0) << err;
   nlohmann::json restart = restart_from(with_times(dai, 20.0, 40.0, 10), r.root / "dailight_first");
   restart["UseSymmetry"] = true;

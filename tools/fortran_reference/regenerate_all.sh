@@ -2,7 +2,7 @@
 # Regenerates every Fortran reference file of the repository from the committed inputs (each
 # case's DVR.inp and input.json, the CRP data sets and point lists), in dependency order:
 #   1. deletes the files the MANIFEST.tsv of each case lists, and the MANIFESTs;
-#   2. setup runs (gates 1, 2), 3. propagation (gates 3, 4), 4. the Fortran restart,
+#   2. setup runs (gates 1, 2), 3. propagation (gates 3, 4, 6), 4. the Fortran restart,
 #   5. fine analysis (gate 5, on the fortran_fort21.bin just regenerated),
 #   6. the CRP driver on the committed point lists;
 # each through its run_*.sh script, which writes the MANIFEST lines. Each step then checks its
@@ -50,11 +50,15 @@ setup() {
   require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" fortran_setup_stdout.txt debug_asyp.dat pes_reference.txt
 }
 
+# propagation CASE [FILE...]: the run's four outputs, and the FILEs of a case that writes more.
 propagation() {
   "${tools_dir}/run_propagation_reference.sh" "$1"
   require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" \
-    fortran_stdout.txt fortran_averages.out fortran_fort21.bin fortran_fort25.txt
+    fortran_stdout.txt fortran_averages.out fortran_fort21.bin fortran_fort25.txt "${@:2}"
 }
+
+# The outputs of a case with doFluxAnalysis (gate 6).
+flux_files=(fortran_flux_coeffs.bin fortran_flux_coeffs_deriv.bin fortran_flux_reaction.dat fortran_flux_density.dat)
 
 restart() {
   "${tools_dir}/run_restart_reference.sh"
@@ -107,7 +111,7 @@ setup crp_cu111_srp48_small
 # 3. Propagation runs.
 propagation hardwall_short
 propagation hardwall_small
-propagation cu111_dailight_short
+propagation cu111_dailight_short "${flux_files[@]}"
 propagation cu111_dailight_short_sym
 propagation cu111_dailight_short_lowz
 propagation cu111_dailight_small

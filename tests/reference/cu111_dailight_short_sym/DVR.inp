@@ -1,5 +1,6 @@
 # Short Dai-Light H2/Cu(111) propagation case with surface symmetry (C6v, UseSymmetry and
-# nPhisOptimal): identical to ../cu111_dailight_short/DVR.inp apart from these two fields.
+# nPhisOptimal): identical to ../cu111_dailight_short/DVR.inp apart from these two fields and
+# the flux analysis keys there (this case has no flux analysis).
 # The C++ equivalent of this file is input.json in this directory; keep both in sync.
 
 Title       : STRING  : "Dai-Light H2/Cu(111) short propagation test with C6v symmetry";

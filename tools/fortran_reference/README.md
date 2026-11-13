@@ -15,7 +15,7 @@ strings the three together.
 | [reference_config.sh](reference_config.sh) | The one home of the pins, paths, thread count and environment, and the functions the scripts share (sourced, not run) |
 | [build_fortran_reference.sh](build_fortran_reference.sh) | Builds the pinned upstream commit into a read-only reference install |
 | `run_setup_reference.sh [case]` | Potential-only run: `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` (gates 1, 2) |
-| `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4) |
+| `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4); a case with `doFluxAnalysis` also `fortran_flux_coeffs.bin`, `fortran_flux_coeffs_deriv.bin`, `fortran_flux_reaction.dat`, `fortran_flux_density.dat` (gate 6) |
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
 | `run_fine_analysis_reference.sh [case] [variant ...]` | Analysis-only runs on the committed `fortran_fort21.bin`: `fine_<variant>/` (gate 5) |
 | `run_crp_reference.sh [--generate] kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the committed point lists and data sets of `tests/crplib/reference/`; `--generate` first rewrites them (needs the C++ build) |

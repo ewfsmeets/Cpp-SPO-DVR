@@ -28,5 +28,8 @@
   "TolSp": 1.0e-7,
 
   "writeSMatrix": false, "writeProbs": true, "writeRDProbs": true,
-  "UseSwitching": true, "ZminSwitch": 6.0, "ZmaxSwitch": 8.0
+  "UseSwitching": true, "ZminSwitch": 6.0, "ZmaxSwitch": 8.0,
+
+  "doFluxAnalysis": true, "rFluxAnalysis": 1.7,
+  "EMinFluxAna": 0.2, "EMaxFluxAna": 0.6, "DeltaEFluxAna": 0.15
 }
