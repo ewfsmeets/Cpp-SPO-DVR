@@ -15,7 +15,7 @@
 #include "temporary_directory.hpp"
 
 using namespace crplib;
-using crplib_test::TemporaryDirectory;
+using test_support::TemporaryDirectory;
 
 namespace {
 
@@ -166,6 +166,29 @@ TEST(DataSet, CrpDataErrors) {
   expect_data_error(dir.path() / "set", "lattice constant");
   dir.write("set/CRPData", "C6v\n0 2\n4.8\n0\n");
   expect_data_error(dir.path() / "set", "number of layers");
+}
+
+// Unreadable text (the file reader's fortran_text::ReadError) reaches the caller as a DataError
+// (expect_data_error catches nothing else), with the reader's message naming the file and line.
+TEST(DataSet, ReaderErrorsAreDataErrors) {
+  TemporaryDirectory dir("dataset");
+  const auto fresh_set = [&](const std::string& name) {
+    write_data_set(crplib_test::pairwise_data_set(Symmetry::c6v), dir.path() / name);
+    return dir.path() / name;
+  };
+  // A unit code that is not an integer: the reader's message, with the file name put in front.
+  const std::filesystem::path units = fresh_set("units");
+  dir.write("units/CRPData", "C6v\nx 2\n4.8\n2\n3.9\n");
+  const std::string crpdata = (units / "CRPData").string();
+  expect_data_error(units, crpdata + ": " + crpdata + ":2: 'x' is not an integer");
+  // A malformed number in an atom-surface file (the second value of the second point).
+  const std::filesystem::path corrugation = fresh_set("corrugation");
+  dir.write("corrugation/Atom/intrep.dat", "-0.036\n0\n4\n0 0.03\n0.25 abc\n");
+  expect_data_error(corrugation, (corrugation / "Atom" / "intrep.dat").string() + ":5: 'abc' is not a real number");
+  // A missing file of the molecule-surface PES.
+  const std::filesystem::path h2 = fresh_set("h2");
+  std::filesystem::remove(h2 / "Molecule" / "VH2.dat");
+  expect_data_error(h2, (h2 / "Molecule" / "VH2.dat").string() + ": cannot open the file");
 }
 
 TEST(DataSet, LayerRequirements) {

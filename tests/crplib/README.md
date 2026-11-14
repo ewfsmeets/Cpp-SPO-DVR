@@ -3,15 +3,16 @@
 The library's own tests: one program per `test_*.cpp`, linked only against `spodvr_crplib`, run
 by CTest with the prefix `CrpLib.` (`ctest --test-dir build -R CrpLib`). No real data set is
 needed; [docs/crp_library.md](../../docs/crp_library.md) "Testing without a real data set"
-explains the approach.
+explains the approach. The reader of the data files (`src/fortran_text/`: the subset of Fortran
+list-directed input the files use, and the rejected forms) is tested in
+[`tests/fortran_text/`](../fortran_text/) (prefix `FortranText.`).
 
 | File | Tests |
 |---|---|
-| `test_list_directed_reader.cpp` | the subset of Fortran list-directed input the data files use, and the rejected forms |
 | `test_units.cpp` | unit factors and the Fortran composition of conversions |
 | `test_spline.cpp`, `test_periodic_spline_3d.cpp` | spline kernels: exact for cubics, derivatives, bitwise vs the Fortran |
 | `test_fourier_tables.cpp` | the Fourier tables: bitwise vs the Fortran, inverse of their site bases |
-| `test_dataset.cpp` | reading, writing, validation; the committed data sets equal the generator's output |
+| `test_dataset.cpp` | reading (the file reader's errors reach the caller as `DataError`), writing, validation; the committed data sets equal the generator's output |
 | `test_atom_surface.cpp` | atom-surface PES: exactness at the sites, symmetry, gradients, STOP paths, bitwise vs the Fortran |
 | `test_site_interpolation.cpp` | the angular interpolation at each site type |
 | `test_molecule_surface.cpp` | molecule-surface PES: impulse responses, the pairwise model, gradients, gas phase, switching, bitwise vs the Fortran |
@@ -22,7 +23,8 @@ explains the approach.
 Shared headers: `crp_synthetic.hpp` (cut geometry, the pairwise model, synthetic data sets),
 `reference_basis.hpp` (the Fourier bases and site positions, written down independently of the
 library),
-`fortran_reference.hpp` (reading the driver output, `EXPECT_BITS`), `temporary_directory.hpp`.
+`fortran_reference.hpp` (reading the driver output, `EXPECT_BITS`); and
+`tests/temporary_directory.hpp` (shared with `tests/fortran_text/` and `tests/test_crp_potential.cpp`).
 The program-side adapter is tested in `tests/test_crp_potential.cpp`.
 
 ## Reference data (`reference/`)

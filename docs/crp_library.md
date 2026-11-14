@@ -11,10 +11,14 @@ the input key `CRPlibDataSet` names the data set ([input_schema.md](input_schema
 - **Not ported** (unused by SPO-DVR): the 7D wrapper (surface coordinate Q), multi-PES data sets
   (a `<data set>.dat` file; that branch is empty in the Fortran), MPI synchronisation, PES mixing,
   and the routines no active code path calls (`CHECKR`, `DPL2D`, `DPLCOFT`, the C4v 1D splines).
-- **Self-contained:** CMake target `spodvr_crplib`, namespace `crplib`, standard library only.
-  It keeps the Fortran library's own constants and unit factors (below). A CTest
-  (`CrpLib.IncludeBoundary`) checks that the library includes only its own headers and that only
-  the adapter `src/potential/crp_potential.cpp` includes the library.
+- **Self-contained:** CMake target `spodvr_crplib`, namespace `crplib`, standard library only,
+  apart from the reader of its text files, `src/fortran_text/` (target `spodvr_fortran_text`,
+  namespace `fortran_text`, standard library only; a library of its own, so that other readers of
+  Fortran text files can use it). It keeps the Fortran library's own constants and unit factors
+  (below). A CTest (`CrpLib.IncludeBoundary`) checks that the library includes only its own
+  headers, those of `src/fortran_text/` and the standard library, that `src/fortran_text/`
+  includes only its own headers and the standard library, and that only the adapter
+  `src/potential/crp_potential.cpp` includes the library.
 - **Exact:** the library is compiled with strict floating-point flags in every build (also the
   fast-math one). V and gradients are bitwise equal to the Fortran library on the synthetic test
   data sets; the one exception (a few ulp, data sets with CutsInterpolation = F) and the Fortran
@@ -42,10 +46,12 @@ and the top layer is at z = 0.
 
 ## Data-set format
 
-A data set is a directory. Every file is read with Fortran list-directed input (`READ(u, *)`): one
-READ takes the next items from one or more lines and skips the rest of its last line. Separators
-are blanks, commas or tabs; `D` exponents are accepted. Repeat counts (`3*1.0`), null values
-(`,,`) and `/` are rejected with an error (the Fortran would accept them).
+A data set is a directory. Every file is read with Fortran list-directed input (`READ(u, *)`,
+`fortran_text::ListDirectedReader`): one READ takes the next items from one or more lines and skips
+the rest of its last line. Separators are blanks, commas or tabs; `D` exponents are accepted.
+Repeat counts (`3*1.0`), null values (`,,`) and `/` are rejected with an error (the Fortran would
+accept them). The reader's errors (`fortran_text::ReadError`) reach the caller of `read_data_set`
+as `DataError`, with the same message.
 
 | File | Content (one READ per item) |
 |---|---|
@@ -172,7 +178,8 @@ here, 2.5 s with `UseSymmetry` ([performance.md](performance.md) "CRP library").
 ## Testing without a real data set
 
 The library tests need no real data set (the one in the repository is checked separately, see
-"The real data set" below). The tests (`tests/crplib/`, see its README) use:
+"The real data set" below). The tests (`tests/crplib/`, see its README; the reader of the text
+files is tested in `tests/fortran_text/`, CTest prefix `FortranText.`) use:
 - Properties that need no data: splines reproduce cubics, the Fourier tables invert their site
   bases, every site function returns its cut values at the cut orientations, homonuclear and
   surface symmetry, periodicity, gradients against finite differences.
@@ -190,8 +197,9 @@ The library tests need no real data set (the one in the repository is checked se
 ### Mutation check
 
 `tools/crp_mutation_check/run.sh` applies deliberate bugs to a git worktree and runs the library
-tests; each must make a test fail, except the removal of a redundant safety margin (marked in
-`mutations.py`). Result (2026-11-11, 245 library tests; the numbers are the failing tests):
+tests and those of its text reader (`ctest -R "CrpLib|FortranText"`); each must make a test fail,
+except the removal of a redundant safety margin (marked in `mutations.py`). Result (2026-11-14,
+245 tests: 232 of the library, 13 of the reader; the numbers are the failing tests):
 
 | Mutation | Caught by (number of failing tests) |
 |---|---|

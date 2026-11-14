@@ -39,8 +39,8 @@
 
 using namespace spodvr;
 using crplib::Symmetry;
-using crplib_test::TemporaryDirectory;
 using spodvr::testing::nan_aware_max;
+using test_support::TemporaryDirectory;
 using Json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -274,6 +274,12 @@ TEST(CrpPotential, UnusableDataSetNamesTheKey) {
   crplib::write_data_set(crplib_test::pairwise_data_set(Symmetry::c6v), dir.path());
   std::ofstream(dir.path() / "CRPData") << "C5v\n";
   (void)error_message([&] { (void)CrpPotential(dir.path()); });
+
+  // Unreadable text (a reader error in the library) too: a lattice constant that is not a number.
+  std::ofstream(dir.path() / "CRPData") << "C6v\n0 2\nabc\n2\n3.9\n";
+  const std::string message = error_message([&] { (void)CrpPotential(dir.path()); });
+  EXPECT_NE(message.find((dir.path() / "CRPData").string() + ":3: 'abc' is not a real number"), std::string::npos)
+      << message;
 }
 
 // Where the Fortran library stops (an atom below the atom-surface cuts) the program reports an

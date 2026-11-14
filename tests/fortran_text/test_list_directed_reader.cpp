@@ -1,20 +1,21 @@
-// Tests: list-directed reading of the CRP data-set files (src/crplib/list_directed_reader.*).
+// Tests: list-directed reading of text files, the subset the CRP data-set files use
+// (src/fortran_text/list_directed_reader.*).
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <limits>
 
-#include "crplib/errors.hpp"
-#include "crplib/list_directed_reader.hpp"
+#include "fortran_text/list_directed_reader.hpp"
 #include "temporary_directory.hpp"
 
-using crplib::DataError;
-using crplib::detail::ListDirectedReader;
-using crplib::detail::parse_fortran_real;
+using fortran_text::ListDirectedReader;
+using fortran_text::parse_fortran_real;
+using fortran_text::ReadError;
+using test_support::TemporaryDirectory;
 
 namespace {
 
-ListDirectedReader reader_for(const crplib_test::TemporaryDirectory& dir, std::string_view text) {
+ListDirectedReader reader_for(const TemporaryDirectory& dir, std::string_view text) {
   return ListDirectedReader(dir.write("input.dat", text));
 }
 
@@ -47,7 +48,7 @@ TEST(FortranReal, RejectsOtherText) {
 }
 
 TEST(ListDirectedReader, OneStatementPerRecord) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "C6v  extra words\n1 3\n4.8\n");
   EXPECT_EQ(in.read(1).text(0), "C6v");  // the rest of the record is skipped
   const auto units = in.read(2);
@@ -55,11 +56,11 @@ TEST(ListDirectedReader, OneStatementPerRecord) {
   EXPECT_EQ(units.integer(1), 3);
   EXPECT_EQ(in.read(1).real(0), 4.8);
   EXPECT_FALSE(in.try_read(1).has_value());
-  EXPECT_THROW(in.read(1), DataError);
+  EXPECT_THROW(in.read(1), ReadError);
 }
 
 TEST(ListDirectedReader, StatementContinuesOnTheNextRecords) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "1.0\n2.0, 3.0\n\n4.0 5.0 6.0\n7.0\n");
   const auto s = in.read(4);
   ASSERT_EQ(s.size(), 4);
@@ -68,7 +69,7 @@ TEST(ListDirectedReader, StatementContinuesOnTheNextRecords) {
 }
 
 TEST(ListDirectedReader, SeparatorsAndQuotes) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "\t1,2 ,  3\r\n'a b.dat' \"it''s\" 'x''y'\n");
   const auto numbers = in.read(3);
   EXPECT_EQ(numbers.integer(2), 3);
@@ -79,17 +80,17 @@ TEST(ListDirectedReader, SeparatorsAndQuotes) {
 }
 
 TEST(ListDirectedReader, LogicalValues) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "18 T\n18 .FALSE.\n1 .true.\n1 f\n1 yes\n");
   EXPECT_TRUE(in.read(2).logical(1));
   EXPECT_FALSE(in.read(2).logical(1));
   EXPECT_TRUE(in.read(2).logical(1));
   EXPECT_FALSE(in.read(2).logical(1));
-  EXPECT_THROW((void)in.read(2).logical(1), DataError);
+  EXPECT_THROW((void)in.read(2).logical(1), ReadError);
 }
 
 TEST(ListDirectedReader, EmptyStatementSkipsARecord) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "1\nskipped line\n2.5 3.5\n");
   EXPECT_EQ(in.read(1).integer(0), 1);
   EXPECT_EQ(in.read(0).size(), 0);  // e.g. NumLayers - 1 = 0 interlayer spacings
@@ -97,14 +98,14 @@ TEST(ListDirectedReader, EmptyStatementSkipsARecord) {
 }
 
 TEST(ListDirectedReader, OptionalStatementAtTheEnd) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "1\n0.5\n");
   EXPECT_EQ(in.read(1).integer(0), 1);
   EXPECT_FALSE(in.try_read(2).has_value());  // one value only, then the end of the file (END=)
 }
 
 TEST(ListDirectedReader, LinesAsTheyAre) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "  short info, with / and *\r\nlong\n");
   EXPECT_EQ(in.read_line(), "  short info, with / and *");
   EXPECT_EQ(in.read_line(), "long");
@@ -112,13 +113,13 @@ TEST(ListDirectedReader, LinesAsTheyAre) {
 }
 
 TEST(ListDirectedReader, ErrorsNameFileAndLine) {
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "1 2\n3*1.0\n");
   (void)in.read(2);
   try {
     (void)in.read(3);
     FAIL() << "repeat count accepted";
-  } catch (const DataError& e) {
+  } catch (const ReadError& e) {
     const std::string message = e.what();
     EXPECT_NE(message.find("input.dat:2:"), std::string::npos) << message;
     EXPECT_NE(message.find("repeat counts"), std::string::npos) << message;
@@ -126,19 +127,19 @@ TEST(ListDirectedReader, ErrorsNameFileAndLine) {
 }
 
 TEST(ListDirectedReader, UnsupportedInputIsRejected) {
-  crplib_test::TemporaryDirectory dir("reader");
-  EXPECT_THROW((void)reader_for(dir, "1,,2\n").read(3), DataError);      // null value
-  EXPECT_THROW((void)reader_for(dir, ",1 2\n").read(2), DataError);      // leading null value
-  EXPECT_THROW((void)reader_for(dir, "1 / 2\n").read(2), DataError);     // slash
-  EXPECT_THROW((void)reader_for(dir, "'open\n").read(1), DataError);     // unterminated string
-  EXPECT_THROW((void)reader_for(dir, "1.5\n").read(1).integer(0), DataError);  // not an integer
-  EXPECT_THROW((void)reader_for(dir, "x\n").read(1).real(0), DataError);
-  EXPECT_THROW(ListDirectedReader(dir.path() / "missing.dat"), DataError);
+  TemporaryDirectory dir("reader");
+  EXPECT_THROW((void)reader_for(dir, "1,,2\n").read(3), ReadError);      // null value
+  EXPECT_THROW((void)reader_for(dir, ",1 2\n").read(2), ReadError);      // leading null value
+  EXPECT_THROW((void)reader_for(dir, "1 / 2\n").read(2), ReadError);     // slash
+  EXPECT_THROW((void)reader_for(dir, "'open\n").read(1), ReadError);     // unterminated string
+  EXPECT_THROW((void)reader_for(dir, "1.5\n").read(1).integer(0), ReadError);  // not an integer
+  EXPECT_THROW((void)reader_for(dir, "x\n").read(1).real(0), ReadError);
+  EXPECT_THROW(ListDirectedReader(dir.path() / "missing.dat"), ReadError);
 }
 
 TEST(ListDirectedReader, TextAfterTheLastValueIsIgnored) {
   // Fortran stops reading a record once it has all values: the rest may contain anything.
-  crplib_test::TemporaryDirectory dir("reader");
+  TemporaryDirectory dir("reader");
   auto in = reader_for(dir, "1.0 2.0 / comment, 3*4 ,,\n");
   EXPECT_EQ(in.read(2).real(1), 2.0);
 }

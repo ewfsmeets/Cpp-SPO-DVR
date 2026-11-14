@@ -9,14 +9,14 @@
 
 #include <unistd.h>
 
-namespace crplib_test {
+namespace test_support {
 
 class TemporaryDirectory {
  public:
   explicit TemporaryDirectory(std::string_view tag) {
     static std::atomic<int> counter{0};
     path_ = std::filesystem::temp_directory_path() /
-            ("crplib_" + std::string(tag) + "_" + std::to_string(::getpid()) + "_" + std::to_string(counter++));
+            ("spodvr_test_" + std::string(tag) + "_" + std::to_string(::getpid()) + "_" + std::to_string(counter++));
     std::filesystem::remove_all(path_);
     std::filesystem::create_directories(path_);
   }
@@ -41,4 +41,4 @@ class TemporaryDirectory {
   std::filesystem::path path_;
 };
 
-}  // namespace crplib_test
+}  // namespace test_support

@@ -4,7 +4,8 @@ A self-contained C++ port of the Fortran CRP library of M. Wijzenbroek
 (`CRPlibrary.dir/` of SPO-DVR 5.19; the reference, 5.24 at svn r1713, adds only an SCM accessor,
 see [docs/upstream_sync.md](../../docs/upstream_sync.md)): CRP potential energy surfaces of a diatomic
 molecule at a C3v, C4v or C6v surface, with analytic gradients. CMake target `spodvr_crplib`,
-namespace `crplib`, standard library only, strict floating-point flags in every build. It keeps
+namespace `crplib`, standard library only (apart from the reader of its text files,
+[`src/fortran_text/`](../fortran_text/)), strict floating-point flags in every build. It keeps
 the Fortran library's own constants and unit factors. SPO-DVR uses it only through
 `src/potential/crp_potential.cpp`.
 
@@ -14,7 +15,7 @@ Documentation (API, data-set format, behaviour outside the data, cut tables):
 
 | Files | Content | Fortran |
 |---|---|---|
-| `dataset.*`, `list_directed_reader.*` | the data set as written in its files; reading (list-directed input), writing, validation | `CRP_Wrapper.f90` set-up, `Read_*_Data` |
+| `dataset.*` | the data set as written in its files; reading (list-directed input with `fortran_text::ListDirectedReader`), writing, validation | `CRP_Wrapper.f90` set-up, `Read_*_Data` |
 | `units.*`, `constants.hpp`, `errors.hpp` | unit codes and factors, constants (incl. the values gfortran folded), errors | `UnitConversion.f90`, `CRP_Constants.f90` |
 | `spline.*`, `periodic_spline_3d.*`, `fourier_tables.*` | spline kernels, the C4v periodic 3D spline, the Fourier tables | `Spline.f90`, `FOUR6D`, `FOUR3D` |
 | `atom_surface*`, `hexagonal_atom_surface.cpp`, `square_atom_surface.cpp` | atom-surface PES | `CRP_C{3,4,6}v_AtomSurface.f90` |

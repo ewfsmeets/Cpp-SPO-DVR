@@ -1,15 +1,13 @@
-// List-directed reading of the CRP data-set files, as gfortran's READ(unit,*).
-// Fortran: the READ statements of CRP_Wrapper.f90 and CRP_C*v_*Surface.f90.
-#include "crplib/list_directed_reader.hpp"
+// List-directed reading of text files as gfortran's READ(unit,*) does (the subset that the CRP
+// data-set files use). Fortran: the READ statements of CRP_Wrapper.f90 and CRP_C*v_*Surface.f90.
+#include "fortran_text/list_directed_reader.hpp"
 
 #include <cctype>
 #include <charconv>
 #include <fstream>
 #include <system_error>
 
-#include "crplib/errors.hpp"
-
-namespace crplib::detail {
+namespace fortran_text {
 
 namespace {
 
@@ -78,7 +76,7 @@ std::optional<double> parse_fortran_real(std::string_view text) {
 
 void ListStatement::fail(int i, std::string_view expected) const {
   const Item& item = items_[i];
-  throw DataError(file_ + ":" + std::to_string(item.line) + ": '" + item.text + "' is not " + std::string(expected));
+  throw ReadError(file_ + ":" + std::to_string(item.line) + ": '" + item.text + "' is not " + std::string(expected));
 }
 
 double ListStatement::real(int i) const {
@@ -108,13 +106,13 @@ const std::string& ListStatement::text(int i) const { return items_[i].text; }
 
 ListDirectedReader::ListDirectedReader(const std::filesystem::path& file) : file_(file.string()) {
   std::ifstream in(file);
-  if (!in) throw DataError(file_ + ": cannot open the file");
+  if (!in) throw ReadError(file_ + ": cannot open the file");
   std::string line;
   while (std::getline(in, line)) lines_.push_back(line);
 }
 
 void ListDirectedReader::fail(std::size_t line_index, const std::string& message) const {
-  throw DataError(file_ + ":" + std::to_string(line_index + 1) + ": " + message);
+  throw ReadError(file_ + ":" + std::to_string(line_index + 1) + ": " + message);
 }
 
 // Appends the values of record `line_index` until `n_values` are collected; the rest of the
@@ -180,7 +178,7 @@ std::optional<ListStatement> ListDirectedReader::try_read(int n_values) {
 ListStatement ListDirectedReader::read(int n_values) {
   std::optional<ListStatement> statement = try_read(n_values);
   if (!statement) {
-    throw DataError(file_ + ": unexpected end of the file (reading " + std::to_string(n_values) +
+    throw ReadError(file_ + ": unexpected end of the file (reading " + std::to_string(n_values) +
                     " values after line " + std::to_string(next_line_) + ")");
   }
   return std::move(*statement);
@@ -193,4 +191,4 @@ std::optional<std::string> ListDirectedReader::read_line() {
   return line;
 }
 
-}  // namespace crplib::detail
+}  // namespace fortran_text

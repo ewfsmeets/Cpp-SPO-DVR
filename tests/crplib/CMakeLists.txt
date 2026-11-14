@@ -1,12 +1,13 @@
 # Tests of the CRP library (src/crplib/): one program per tests/crplib/test_*.cpp file. They link
-# only spodvr_crplib (and GoogleTest); ctest -R CrpLib runs them. Reference data of the Fortran
-# CRP library (tools/fortran_reference/run_crp_reference.sh) is in tests/crplib/reference/.
+# only spodvr_crplib (with its spodvr_fortran_text) and GoogleTest; ctest -R CrpLib runs them.
+# Reference data of the Fortran CRP library (tools/fortran_reference/run_crp_reference.sh) is in
+# tests/crplib/reference/.
 file(GLOB crplib_test_sources CONFIGURE_DEPENDS test_*.cpp)
 foreach(source IN LISTS crplib_test_sources)
   get_filename_component(name ${source} NAME_WE)
   set(target crplib_${name})
   add_executable(${target} ${source})
-  # Shared test headers: those of tests/crplib, and tests/comparison.hpp.
+  # Shared test headers: those of tests/crplib, tests/comparison.hpp and tests/temporary_directory.hpp.
   target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
   target_link_libraries(${target} PRIVATE spodvr_crplib GTest::gtest_main spodvr_warnings spodvr_crplib_fp)
   target_compile_definitions(${target} PRIVATE CRPLIB_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference"
@@ -14,7 +15,8 @@ foreach(source IN LISTS crplib_test_sources)
   gtest_discover_tests(${target} TEST_PREFIX "CrpLib." DISCOVERY_TIMEOUT 60)
 endforeach()
 
-# The library includes only the standard library and its own headers; only the adapter
+# The library includes only the standard library, its own headers and those of src/fortran_text
+# (which includes only the standard library and its own headers); only the adapter
 # src/potential/crp_potential.cpp includes the library.
 add_test(NAME CrpLib.IncludeBoundary
          COMMAND ${CMAKE_COMMAND} -DSRC=${PROJECT_SOURCE_DIR}/src -P ${CMAKE_CURRENT_SOURCE_DIR}/check_include_boundary.cmake)

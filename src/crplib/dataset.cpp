@@ -8,12 +8,12 @@
 #include <string>
 
 #include "crplib/errors.hpp"
-#include "crplib/list_directed_reader.hpp"
+#include "fortran_text/list_directed_reader.hpp"
 
 namespace crplib {
 
-using detail::ListDirectedReader;
-using detail::ListStatement;
+using fortran_text::ListDirectedReader;
+using fortran_text::ListStatement;
 
 const char* symmetry_name(Symmetry symmetry) {
   switch (symmetry) {
@@ -84,8 +84,11 @@ void read_crpdata(const std::filesystem::path& directory, DataSet& d) {
   ListDirectedReader in(file);
   d.symmetry = parse_symmetry(in.read(1).text(0), file);
   const ListStatement units = in.read(2);
+  // An unreadable or unknown unit code: the message gets the file name in front.
   try {
     d.units = Units{length_unit_from_code(units.integer(0)), energy_unit_from_code(units.integer(1))};
+  } catch (const fortran_text::ReadError& e) {
+    fail(file, e.what());
   } catch (const DataError& e) {
     fail(file, e.what());
   }
@@ -99,7 +102,7 @@ void read_crpdata(const std::filesystem::path& directory, DataSet& d) {
     try {
       d.displacement_1 = disp->real(0);
       d.displacement_2 = disp->real(1);
-    } catch (const DataError&) {
+    } catch (const fortran_text::ReadError&) {
       d.displacement_1 = 0.0;
       d.displacement_2 = 0.0;
     }
@@ -308,9 +311,15 @@ DataSet read_data_set(const std::filesystem::path& directory) {
     throw DataError(header.string() + ": multi-PES data sets (a <data set>.dat file) are not supported");
   }
   DataSet d;
-  read_crpdata(directory, d);
-  read_atom_surface(directory, d);
-  read_molecule_surface(directory, d);
+  // The reader's errors (a file that cannot be opened, malformed text) become DataError, message
+  // unchanged: the library reports every unusable data set with one error type.
+  try {
+    read_crpdata(directory, d);
+    read_atom_surface(directory, d);
+    read_molecule_surface(directory, d);
+  } catch (const fortran_text::ReadError& e) {
+    throw DataError(e.what());
+  }
   validate_data_set(d);
   return d;
 }

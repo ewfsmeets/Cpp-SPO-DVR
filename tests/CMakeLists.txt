@@ -24,8 +24,10 @@ foreach(source IN LISTS test_sources)
   gtest_discover_tests(${name} DISCOVERY_TIMEOUT 60)
 endforeach()
 
-# The CRP library's own tests (they link only spodvr_crplib).
+# The CRP library's own tests (they link only spodvr_crplib, with its spodvr_fortran_text), and
+# those of the Fortran text reader (they link only spodvr_fortran_text).
 add_subdirectory(crplib)
+add_subdirectory(fortran_text)
 
 # The CRP adapter test writes synthetic data sets with the CRP library's test helpers.
 target_include_directories(test_crp_potential PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/crplib)

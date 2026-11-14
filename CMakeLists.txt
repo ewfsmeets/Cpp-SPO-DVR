@@ -119,8 +119,9 @@ endif()
 
 # =============================================================================================
 # spodvr_crplib: the port of the Fortran CRP library (src/crplib/, docs/crp_library.md), a
-# self-contained library (standard library only). It is always built with strict floating point,
-# also in the fast-math build: it is set-up code, and its tests compare with the Fortran bit for bit.
+# self-contained library (the standard library and spodvr_fortran_text only). It is always built
+# with strict floating point, also in the fast-math build: it is set-up code, and its tests compare
+# with the Fortran bit for bit.
 # =============================================================================================
 set(crplib_fp_flags -ffp-contract=off -fno-fast-math -fno-math-errno -fno-trapping-math)
 if(SPODVR_ARCH)
@@ -129,13 +130,21 @@ endif()
 add_library(spodvr_crplib_fp INTERFACE)
 target_compile_options(spodvr_crplib_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${crplib_fp_flags}>")
 
+# spodvr_fortran_text: reading text files as gfortran's list-directed READ(unit,*) does
+# (src/fortran_text/; standard library only). A library of its own, so that readers outside the CRP
+# library can use it too. Built with the CRP library's flags (strict floating point in every build).
+add_library(spodvr_fortran_text
+  src/fortran_text/list_directed_reader.cpp
+)
+target_include_directories(spodvr_fortran_text PUBLIC src)
+target_link_libraries(spodvr_fortran_text PRIVATE spodvr_warnings spodvr_crplib_fp)
+
 add_library(spodvr_crplib
   src/crplib/atom_surface.cpp
   src/crplib/dataset.cpp
   src/crplib/fourier_tables.cpp
   src/crplib/hexagonal_atom_surface.cpp
   src/crplib/hexagonal_interaction.cpp
-  src/crplib/list_directed_reader.cpp
   src/crplib/molecule_surface.cpp
   src/crplib/periodic_spline_3d.cpp
   src/crplib/qd_wrapper.cpp
@@ -147,7 +156,7 @@ add_library(spodvr_crplib
   src/crplib/wrapper.cpp
 )
 target_include_directories(spodvr_crplib PUBLIC src)
-target_link_libraries(spodvr_crplib PRIVATE spodvr_warnings spodvr_crplib_fp)
+target_link_libraries(spodvr_crplib PRIVATE spodvr_fortran_text spodvr_warnings spodvr_crplib_fp)
 
 # =============================================================================================
 # spodvr_core: everything except the program driver and the GPU backend
