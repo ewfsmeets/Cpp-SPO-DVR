@@ -1,7 +1,6 @@
 # Short Dai-Light H2/Cu(111) propagation case with both low-Z absorbers of upstream 5.24 (gates 3/4):
-# identical to ../cu111_dailight_short/DVR.inp apart from the Title, the six low-Z fields at the
-# end and the flux analysis keys there (this case has no flux analysis).
-# The C++ equivalent of this file is input.json in this directory; keep both in sync.
+# identical to ../cu111_dailight_short/DVR.inp apart from the Title and the six low-Z fields
+# at the end. The C++ equivalent of this file is input.json in this directory; keep both in sync.
 
 Title       : STRING  : "Dai-Light H2/Cu(111) short propagation test with low-Z absorbers";
 SystemID    : STRING  : "H2Cu111DaiLight";

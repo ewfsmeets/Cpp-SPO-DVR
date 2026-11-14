@@ -1,6 +1,5 @@
-# Short Dai-Light H2/Cu(111) propagation case (gates 3/4/6, default ctest): identical to
-# ../cu111_dailight_small/DVR.inp except tEnd/nStep (2000 a.u., 1000 steps) and the flux
-# analysis keys at the end.
+# Short Dai-Light H2/Cu(111) propagation case (gates 3/4, default ctest): identical to
+# ../cu111_dailight_small/DVR.inp except tEnd/nStep (2000 a.u., 1000 steps).
 # The C++ equivalent of this file is input.json in this directory; keep both in sync.
 
 Title       : STRING  : "Dai-Light H2/Cu(111) short propagation test";
@@ -86,12 +85,3 @@ writeRDProbs: LOGICAL : TRUE;
 UseSwitching: LOGICAL : TRUE;
 ZminSwitch  : REAL    : 6.0;
 ZmaxSwitch  : REAL    : 8.0;
-
-# Flux analysis (gate 6; the choice of rFluxAnalysis: docs/validation.md), typed: InputNew.f90
-# ReadInput pre-registers none of these keys. The flux analysis only reads the wave function, so
-# the other outputs of this case do not depend on these keys.
-doFluxAnalysis : LOGICAL : TRUE;
-rFluxAnalysis  : REAL    : 1.7;
-EMinFluxAna    : REAL    : 0.2;
-EMaxFluxAna    : REAL    : 0.6;
-DeltaEFluxAna  : REAL    : 0.15;

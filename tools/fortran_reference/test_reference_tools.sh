@@ -19,9 +19,6 @@
 #                      without MANIFEST
 #   regenerate-refusals  regenerate_all.sh refuses an unclean reference tree and a missing install
 #                      before it deletes anything (in a scratch git repository)
-#   flux-outputs       input_has_flux_analysis finds doFluxAnalysis TRUE (typed or not) and nothing
-#                      else; run_propagation_reference.sh refuses a flux case whose run wrote no flux
-#                      files, and copies nothing (in a scratch repository)
 #
 # Usage: tools/fortran_reference/test_reference_tools.sh CASE WORK [CXX]
 #   CASE  one of the cases above;  WORK  scratch directory (recreated);
@@ -229,29 +226,6 @@ case "${test_case}" in
     rm "${repo}/tests/reference/case/stray.txt"
     expect_refusal "is not a reference install" "${repo}/tools/fortran_reference/regenerate_all.sh"
     [[ -z "$(git -C "${repo}" status --porcelain)" ]] || fail "a refused regeneration changed the tree: $(git -C "${repo}" status --porcelain)"
-    ;;
-  flux-outputs)
-    printf 'doFluxAnalysis : LOGICAL : TRUE;\n' > "${work}/typed.inp"
-    printf '  doFluxAnalysis: true;\n' > "${work}/untyped.inp"
-    printf 'doFluxAnalysis : LOGICAL : FALSE;\n# doFluxAnalysis : LOGICAL : TRUE;\n' > "${work}/off.inp"
-    printf 'Title : STRING : "doFluxAnalysis : TRUE;";\n' > "${work}/none.inp"
-    for name in typed untyped; do
-      in_config input_has_flux_analysis "${work}/${name}.inp" || fail "no flux analysis found in ${name}.inp"
-    done
-    for name in off none; do
-      ! in_config input_has_flux_analysis "${work}/${name}.inp" || fail "a flux analysis found in ${name}.inp"
-    done
-    repo="${work}/repo"
-    mkdir -p "${repo}/tools/fortran_reference" "${repo}/tests/reference/case"
-    cp "${tools_dir}/reference_config.sh" "${tools_dir}/run_propagation_reference.sh" "${tools_dir}/refdata.py" \
-      "${repo}/tools/fortran_reference/"
-    cp "${work}/typed.inp" "${repo}/tests/reference/case/DVR.inp"
-    make_install "${work}/install" "touch averages.out fort.21 fort.25; exit 0"
-    export SPODVR_FORTRAN_REF_DIR="${work}/install" SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1
-    expect_refusal "wrote no flux_coeffs\.dat" "${repo}/tools/fortran_reference/run_propagation_reference.sh" case \
-      "${work}/scratch"
-    [[ "$(ls "${repo}/tests/reference/case")" == DVR.inp ]] ||
-      fail "the refused run copied files: $(ls "${repo}/tests/reference/case")"
     ;;
   *)
     echo "usage: test_reference_tools.sh CASE WORK [CXX] (unknown case ${test_case})" >&2

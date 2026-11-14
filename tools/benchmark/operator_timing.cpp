@@ -1,44 +1,35 @@
 // Per-operator timing of the propagator for an input file: the (r, Z) kinetic step, the (x, y)
-// kinetic step, the potential step, the specular grid, one analysis step (all operators), the flux
-// surface (once per analysis step) and, with doFluxAnalysis, the flush of the flux accumulator per
-// slot count and the flux cost as a share of the analysis step.
+// kinetic step, the potential step, the specular grid, and one analysis step (all operators).
 // Usage: spodvr_operator_timing <input.json> [repetitions]   (threads: OMP_NUM_THREADS)
 #include <omp.h>
 
 #include <chrono>
-#include <complex>
 #include <cstdio>
 #include <fstream>
 #include <functional>
 #include <string>
-#include <vector>
 
 #include <nlohmann/json.hpp>
 
-#include "analysis/flux_analysis.hpp"
 #include "fft/fftw_fft.hpp"
-#include "flux_timing.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
-#include "propagation/flux_surface.hpp"
 #include "propagation/propagation.hpp"
 
 using namespace spodvr;
 
 namespace {
 
-// Runs `step` once (warm-up), then `repetitions` times; prints and returns the mean time per call (ms).
-double time_call(const char* name, int repetitions, const std::function<void()>& step) {
+// Runs `step` once (warm-up), then `repetitions` times, and prints the mean time per call.
+void time_call(const char* name, int repetitions, const std::function<void()>& step) {
   step();
   const auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < repetitions; ++i) step();
   const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
-  const double ms = elapsed.count() / repetitions * 1000.0;
-  std::printf("  %-28s %10.1f ms per call\n", name, ms);
-  return ms;
+  std::printf("  %-28s %10.1f ms per call\n", name, elapsed.count() / repetitions * 1000.0);
 }
 
 }  // namespace
@@ -83,22 +74,6 @@ int main(int argc, char** argv) {
   time_call("potential incl. transforms", repetitions, [&] { potential_op.apply(psi); });
   time_call("specular grid", repetitions, [&] { specular.apply(psi.specular, TimeStep::Full, false); });
   const std::string label = "analysis step (" + std::to_string(config.derived.steps_per_analysis) + " steps)";
-  const double analysis_ms = time_call(label.c_str(), repetitions, [&] { propagator.propagate_analysis_step(psi); });
-
-  // At rFluxAnalysis, or in the middle of the r grid without flux analysis: the cost does not depend on r_c.
-  const int ir_flux = grids.ir_flux_analysis.value_or(p.nr / 2);
-  const std::vector<double> flux_weights = flux_derivative_weights(p.nr, grids.r.spacing(), ir_flux);
-  const int n_blocks = psi.scattering.block_size();
-  const int n_planes = grids.nz_potential;
-  FluxSurfaceWave flux_slot(n_blocks, n_planes);
-  const auto fill = [&](FluxSurfaceWave& slot) { flux_surface(psi.scattering, ir_flux, flux_weights, slot); };
-  const double surface_ms = time_call("flux surface (psi, dpsi/dr)", repetitions, [&] { fill(flux_slot); });
-  if (!p.do_flux_analysis) return 0;
-
-  const FluxEnergies energies = make_flux_energies(config, tables.parallel_energy, gas.initial.energy);
-  const std::vector<benchmark::FlushTiming> flushes =
-      benchmark::time_flux_flushes(n_blocks, n_planes, energies, config.derived.analysis_time_step, repetitions, fill);
-  benchmark::print_flux_cost(energies.size(), surface_ms, flushes, analysis_ms,
-                             2 * flux_slot.psi.size() * sizeof(std::complex<double>));
+  time_call(label.c_str(), repetitions, [&] { propagator.propagate_analysis_step(psi); });
   return 0;
 }

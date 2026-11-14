@@ -4,8 +4,6 @@
 #include <array>
 #include <cmath>
 
-#include "core/constants.hpp"
-
 namespace spodvr {
 
 // Fortran: MyFunctions.f90 getACoeffOptPotential
@@ -53,25 +51,6 @@ double wave_packet_average_energy(double low_energy, double high_energy, double 
   const double kmax = -std::sqrt(2.0 * mass * high_energy);
   const double k0 = (kmin + kmax) / 2.0;
   return std::pow(k0, 2) / (2.0 * mass);
-}
-
-// Fortran: MyFunctions.f90 getBkCoeffWavePacket. Bitwise equal to the Fortran for finite values
-// (test_flux_analysis.cpp): gfortran multiplies by the reals as complex numbers (x, 0), which adds
-// only signed zeros.
-std::complex<double> wave_packet_momentum_amplitude(double momentum, double low_energy, double high_energy, double mass,
-                                                    double z0) {
-  const double kmin = std::sqrt(2.0 * mass * low_energy);
-  const double kmax = std::sqrt(2.0 * mass * high_energy);
-  const double k0 = (kmin + kmax) / 2.0;
-  const double alpha = ((k0 - kmin) * (k0 - kmin)) / 4.0;
-  const double delta_k = k0 - momentum;  // Fortran: delk
-  const double xi2 = 1.0 / (4.0 * alpha);
-  const double norm = std::pow((2.0 * xi2) / Constants::pi, 0.25);
-  // -xi2 dk^2 + i dk z0 with dk^2 first, as the Fortran's delk**2: must not change, (xi2 dk) dk rounds
-  // 106 of 401 values differently (against the Fortran, 2026-11-12). std::exp of the complex argument
-  // is glibc cexp, as in the Fortran; std::polar agrees only through glibc's implementation.
-  const std::complex<double> exponent = -(xi2 * (delta_k * delta_k)) + Constants::imaginary_unit * delta_k * z0;
-  return norm * std::exp(exponent);
 }
 
 }  // namespace spodvr

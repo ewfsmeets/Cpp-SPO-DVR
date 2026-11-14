@@ -61,8 +61,8 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 - Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).
-- Flux analysis (`doFluxAnalysis`): the reaction probability from the flux through r = r_c, compared
-  with the Fortran code in gate 6; a restart continues it ([docs/input_schema.md](docs/input_schema.md)).
+- Not yet implemented: the flux analysis. A propagating run with `doFluxAnalysis: true` is refused
+  with a "not implemented yet" error ([docs/input_schema.md](docs/input_schema.md)).
 - Not yet implemented: the other Fortran potentials (their data files are in `potentials/`).
 - Fortran version: the port started from SPO-DVR 5.19 (2023). Every comparison uses upstream 5.24
   at svn r1713 (2026), built with `-O3` ([docs/validation.md](docs/validation.md#reference-data)).
@@ -210,7 +210,7 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   - unit tests, one program per module (`tests/test_<module>.cpp`);
   - regression tests against the original Fortran code (`tests/test_regression_*.cpp`, test names
     `Regression…`/`Gate…`): potential, gas-phase states, propagation (norms and averages),
-    on-the-fly analysis (probabilities, BK coefficients), fine analysis and flux analysis. The Fortran reference
+    on-the-fly analysis (probabilities, BK coefficients) and fine analysis. The Fortran reference
     output is stored in `tests/reference/`;
   - GPU tests (`tests/cuda/`, names `Cuda…`): only in builds with `-DSPODVR_USE_CUDA=ON`. They skip on
     a machine without a GPU.

@@ -19,8 +19,6 @@
 
 namespace spodvr {
 
-struct FluxSurfaceWave;  // analysis/flux_analysis.hpp
-
 // Where the wave packet lives and is propagated: in host memory (OpenMP) or on a GPU (CUDA).
 enum class Device { Cpu, Cuda };
 
@@ -55,12 +53,6 @@ class PropagationBackend {
   // sum |psi|^2 over (irot, ixy) at every (Z, r) point izr, summed in memory order.
   // Fortran: Averages.f90 complexInnerProd(1, izr)
   [[nodiscard]] virtual std::vector<double> block_densities() const = 0;
-  // psi and d psi / dr at the flux surface r = r_c after the last propagate_analysis_step, on the
-  // planes iz < nz_potential, into every element of `out` (caller-owned, a slot of the
-  // FluxAccumulator; host layout (block, iz)). Throws std::logic_error without flux analysis
-  // (doFluxAnalysis) or unless out has nz_potential planes of n_rot nx ny blocks.
-  // Fortran: WaveFunction.f90 getWaveFunctionAtZr, getWaveFuncDerivAtZr
-  virtual void flux_surface(FluxSurfaceWave& out) const = 0;
 };
 
 // Everything a backend is built from. The references must outlive the backend; the potential

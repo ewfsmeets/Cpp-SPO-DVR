@@ -16,12 +16,11 @@ struct StepFactors {
   std::vector<std::complex<double>> half;
 };
 
-// Everything the split-operator propagator multiplies with, precomputed once (plain arrays), and
-// the weights the backends read the flux surface with.
+// Everything the split-operator propagator multiplies with, precomputed once (plain arrays).
 // Layouts: xy index ixy = iy + ny*ix, specular (ir, iz) = ir + nr*iz, rotation (irot, ir).
 // Fortran: GridEnergies.f90 SetupGridEnergies (EXPKinEn), Absorption.f90 SetupAbsorpPot,
 // MomentumShifting.f90 SetupMomentumShift, TwoGrids.f90 SetupTwoGrids, GasPhase.f90 XVGasPhase,
-// KineticOp.f90 SetupScaleFactors, WaveFunction.f90 getWaveFuncDerivAtZr
+// KineticOp.f90 SetupScaleFactors
 struct PropagationTables {
   // --- kinetic and rotational energy factors (Fortran: EXPKinEn%fullStep / %halfStep) -------
   StepFactors z_kinetic;          // nz. Fortran: ZScat
@@ -57,10 +56,6 @@ struct PropagationTables {
   double fft_scale_r = 0.0;
   double fft_scale_x = 0.0;
   double fft_scale_y = 0.0;
-
-  // --- flux analysis: weights D(ir) of d psi / dr at the flux surface r_c (1/bohr) -----------
-  // nr values (flux_derivative_weights); empty without flux analysis. Fortran: ddr(:, irFluxAnalysis)
-  std::vector<double> flux_derivative;
 };
 
 // Kinetic energy of the parallel motion ekinxy (hartree) at every ixy = iy + ny*ix.

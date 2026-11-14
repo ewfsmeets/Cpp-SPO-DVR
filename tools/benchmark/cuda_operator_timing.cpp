@@ -1,14 +1,11 @@
 // Per-operator and per-kernel timing of the GPU backend for an input file: the specular grid,
 // the kinetic stage T, a whole analysis step (as the program runs it), the potential stage kernel
-// by kernel, the per-step copies to the host, and the flux analysis: the flux surface (kernel and
-// chunked copies) and, with doFluxAnalysis, one flush of the accumulator on the host per slot count
-// and the flux cost as a share of the analysis step (with its BK plane).
+// by kernel, and the per-step copies to the host.
 // Every call is followed by cudaDeviceSynchronize, so the times are those of the GPU work.
-// Usage: spodvr_cuda_operator_timing <input.json> [repetitions]   (host threads: OMP_NUM_THREADS)
+// Usage: spodvr_cuda_operator_timing <input.json> [repetitions]
 #include <cuda_runtime_api.h>
 
 #include <chrono>
-#include <complex>
 #include <cstdio>
 #include <fstream>
 #include <functional>
@@ -17,14 +14,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include "analysis/flux_analysis.hpp"
 #include "cuda/cuda_backend.hpp"
-#include "cuda/device_flux_surface.hpp"
 #include "cuda/device_kinetic_operator.hpp"
 #include "cuda/device_potential_operator.hpp"
 #include "cuda/kernels.hpp"
 #include "fft/fftw_fft.hpp"
-#include "flux_timing.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
@@ -168,63 +162,13 @@ int main(int argc, char** argv) {
             }));
 
   std::printf("Per analysis step (host side):\n");
-  // The backend's read-back buffer: the BK plane, or a chunk of nr / 2 planes of the flux surface.
-  DeviceBuffer<Complex> readback(std::size_t(layout.n_rot * layout.n_xy * p.nr));
-  std::vector<std::complex<double>> host_plane(readback.size());
-  const double bk_plane_ms = time_call("BK plane: pack + copy to host", repetitions, [&] {
-    pack_z_plane(psi.scattering.data(), layout, p.nr, grids.iz_analysis, readback.data());
-    readback.download(as_device_complex(std::span<std::complex<double>>(host_plane)));
+  DeviceBuffer<Complex> plane(std::size_t(layout.n_rot * layout.n_xy * p.nr));
+  std::vector<std::complex<double>> host_plane(plane.size());
+  time_call("BK plane: pack + copy to host", repetitions, [&] {
+    pack_z_plane(psi.scattering.data(), layout, p.nr, grids.iz_analysis, plane.data());
+    plane.download(as_device_complex(std::span<std::complex<double>>(host_plane)));
   });
   DeviceBuffer<double> densities(std::size_t(layout.n_zr));
-  // Only with the averages (every dtAve), so not part of the analysis step below.
-  time_call("densities (every dtAve)", repetitions,
-            [&] { block_densities(psi.scattering.data(), layout, densities.data()); });
-
-  // The flux surface at rFluxAnalysis, or in the middle of the r grid without flux analysis (the
-  // cost does not depend on r_c): the whole read, then its kernels and its copies to the host alone.
-  const int ir_flux = grids.ir_flux_analysis.value_or(p.nr / 2);
-  const DeviceBuffer<double> flux_weights(
-      std::span<const double>(flux_derivative_weights(p.nr, grids.r.spacing(), ir_flux)));
-  const int n_blocks = static_cast<int>(layout.n_rot * layout.n_xy);
-  const int n_planes = grids.nz_potential;
-  const int chunk_planes = flux_surface_chunk_planes(readback.size(), n_blocks);
-  FluxSurfaceWave slot(n_blocks, n_planes);
-  std::printf(
-      "Flux surface (per analysis step): %d planes of %.2f MB each for psi and d psi / dr, %d chunks of <= %d "
-      "planes\n",
-      n_planes, 16.0 * n_blocks / 1e6, (n_planes + chunk_planes - 1) / chunk_planes, chunk_planes);
-  const auto fill = [&](FluxSurfaceWave& s) { read_flux_surface(psi, ir_flux, flux_weights, readback, s); };
-  const double surface_ms = time_call("flux surface: kernels + copies to host", repetitions, [&] { fill(slot); });
-  auto over_chunks = [&](const std::function<void(int first, int count)>& part) {
-    return [&, part] {
-      for (int first = 0; first < n_planes; first += chunk_planes)
-        part(first, std::min(chunk_planes, n_planes - first));
-    };
-  };
-  time_call("  of which the kernels", repetitions, over_chunks([&](int first, int count) {
-              flux_surface_chunk(psi.scattering.data(), layout, p.nr, ir_flux, flux_weights.data(), first, count,
-                                 readback.data());
-            }));
-  time_call("  of which the copies to host (cudaMemcpy)", repetitions, over_chunks([&](int first, int count) {
-              const std::size_t values = std::size_t(n_blocks) * count;
-              const auto into = [&](ComplexVector& v) {
-                return as_device_complex(std::span<std::complex<double>>(v).subspan(slot.index(0, first), values));
-              };
-              readback.download(into(slot.psi));
-              readback.download(into(slot.derivative), values);
-            }));
-
-  // The flush of the accumulator (host, OpenMP) per slot count. The slots hold the surface read
-  // above (filling them is the row above); the energies and c_n are the input's.
-  if (!p.do_flux_analysis) {
-    std::printf("Flux flush: skipped (doFluxAnalysis is off)\n");
-    return 0;
-  }
-  const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
-  const FluxEnergies energies = make_flux_energies(config, tables.parallel_energy, gas.initial.energy);
-  const std::vector<benchmark::FlushTiming> flushes =
-      benchmark::time_flux_flushes(n_blocks, n_planes, energies, config.derived.analysis_time_step, repetitions, fill);
-  benchmark::print_flux_cost(energies.size(), surface_ms, flushes, analysis_ms + bk_plane_ms,
-                             2 * slot.psi.size() * sizeof(std::complex<double>));
+  time_call("densities", repetitions, [&] { block_densities(psi.scattering.data(), layout, densities.data()); });
   return 0;
 }

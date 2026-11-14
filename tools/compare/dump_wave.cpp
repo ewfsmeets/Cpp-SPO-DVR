@@ -22,7 +22,6 @@
 #include "io/binary_file.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
-#include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 
 using namespace spodvr;
@@ -84,8 +83,7 @@ void dump_final_wave_packet(const Arguments& arguments) {
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
 
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft,
-                                    backend_factory(arguments.device),
-                                    estimate_memory(config, grids, angular, 1).flux_slot_count());
+                                    backend_factory(arguments.device));
   propagation.run({});
   write_wave_packet(arguments.output, propagation.wave_packet_on_host());
 }

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <optional>
-#include <span>
 
 #include "core/aligned_vector.hpp"
 #include "propagation/angular_transform.hpp"
@@ -28,7 +26,6 @@ class CpuBackend final : public PropagationBackend {
   [[nodiscard]] const SpecularWave& specular() const override { return psi_.specular; }
   [[nodiscard]] std::span<const std::complex<double>> z_plane(int iz) const override;
   [[nodiscard]] std::vector<double> block_densities() const override;
-  void flux_surface(FluxSurfaceWave& out) const override;
 
  private:
   // Declaration order = construction order: the operators reference the members above them.
@@ -39,9 +36,6 @@ class CpuBackend final : public PropagationBackend {
   SpecularOperator specular_;
   SplitOperatorPropagator propagator_;
   WavePacket psi_;
-  int nz_potential_;                      // planes below Z_asymptotic. Fortran: nzpot
-  std::optional<int> ir_flux_;            // r index of the flux surface; empty without flux analysis
-  std::span<const double> flux_weights_;  // PropagationTables::flux_derivative (outlives the backend)
 };
 
 // The CPU backend as a BackendFactory.

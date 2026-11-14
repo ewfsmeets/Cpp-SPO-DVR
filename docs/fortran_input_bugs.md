@@ -107,11 +107,15 @@ Both versions accept it:
   ```
   Input error: EMaxFluxAna: EMaxFluxAna > EMaxWP (0.8 eV > 0.6 eV): the flux analysis energies must lie inside the wave packet's energy range; use EMaxFluxAna <= EMaxWP
   ```
-- Case (a) passes the input checks, and a new run or a restart computes the flux analysis.
+- Case (a) passes the input checks. The flux analysis itself is not ported yet, so a propagating
+  run then stops with exit code 3:
+  ```
+  Not supported: doFluxAnalysis = true: the flux analysis is not implemented yet
+  ```
   Analysis-only and potential-only runs accept the flux keys and ignore them.
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxEMax`,
   `Input.FluxEnergyRangeInsideTheWavePacketIsValid`) and `tests/test_cli.cpp`
-  (`FluxAnalysisRuns.*`).
+  (`FluxAnalysisGuard.*`).
 
 ## flux Q2: a zero DeltaEFluxAna passes the check
 

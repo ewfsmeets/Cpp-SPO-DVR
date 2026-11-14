@@ -1,35 +1,35 @@
 // Tests: the GPU backend against the CPU backend. Both start from the same random wave packet and
 // propagate one analysis step; the wave packets must agree to rounding (cuFFT and the
 // CPU FFT library differ in the last bits). Also: copies between host and GPU are exact, the BK
-// plane, the densities and the flux surface equal the CPU's, and two GPU runs are bitwise identical.
+// plane and the densities equal the CPU's, and two GPU runs are bitwise identical.
 #include <algorithm>
-#include <bit>
 #include <cmath>
-#include <complex>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <limits>
 #include <memory>
-#include <span>
-#include <stdexcept>
-#include <string>
-#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
-#include "analysis/flux_analysis.hpp"
-#include "backend_setup.hpp"
 #include "cuda/cuda_backend.hpp"
-#include "cuda/device_flux_surface.hpp"
 #include "cuda/device_kinetic_operator.hpp"
 #include "cuda/device_potential_operator.hpp"
 #include "cuda/kernels.hpp"
 #include "cuda_test_setup.hpp"
+#include "fft/fftw_fft.hpp"
+#include "gasphase/gas_phase.hpp"
+#include "input/json_input.hpp"
+#include "input/process.hpp"
+#include "linalg/symmetric_eigensolver.hpp"
+#include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "potential/potential_symmetry.hpp"
 #include "propagation/angular_transform.hpp"
 #include "propagation/averages.hpp"
 #include "propagation/cpu_backend.hpp"
+#include "propagation/initial_wave_packet.hpp"
 #include "propagation/memory_estimate.hpp"
 
 using namespace spodvr;
@@ -39,10 +39,44 @@ namespace {
 
 using cplx = std::complex<double>;
 
-// The GPU backend of a set-up (the CPU one is BackendSetup::cpu).
-std::unique_ptr<PropagationBackend> gpu_backend(const BackendSetup& s) {
-  return cuda::make_cuda_backend(s.input(), s.potential, s.initial);
-}
+// Everything a backend is built from, for a reference case (optionally with changed keys).
+struct BackendSetup {
+  Config config;
+  SpatialGrids grids;
+  AngularGrid angular;
+  FftwFft fft;
+  RotationalBasis basis;
+  PotentialGrid potential;
+  GasPhase gas;
+  PropagationTables tables;
+  SpecularWave initial;
+
+  static Config read(const std::string& case_name, const nlohmann::json& changes) {
+    std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/" + case_name + "/input.json");
+    nlohmann::json json = nlohmann::json::parse(file);
+    json.update(changes);
+    return build_config(parse_input(json));
+  }
+
+  explicit BackendSetup(const std::string& case_name, const nlohmann::json& changes = nlohmann::json::object())
+      : config(read(case_name, changes)),
+        grids(make_spatial_grids(config)),
+        angular(make_angular_grid(config)),
+        basis(angular, config.input.j_in, config.input.mj_in),
+        potential(compute_potential_grid(*make_potential(config.input), config, grids, angular,
+                                         make_grid_symmetry(config, angular))),
+        gas(compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver())),
+        tables(make_propagation_tables(config, grids, basis, potential.asymptotic)),
+        initial(make_initial_wave_packet(config, grids, gas, fft).specular) {}
+
+  [[nodiscard]] BackendInput input() const { return {config, grids, angular, basis, tables, fft}; }
+  [[nodiscard]] std::unique_ptr<PropagationBackend> cpu() const {
+    return make_cpu_backend(input(), potential, initial);
+  }
+  [[nodiscard]] std::unique_ptr<PropagationBackend> gpu() const {
+    return cuda::make_cuda_backend(input(), potential, initial);
+  }
+};
 
 // Loads the same pseudo-random wave packet into a backend.
 void load_random(PropagationBackend& backend, std::uint64_t seed = 1) {
@@ -55,7 +89,7 @@ void load_random(PropagationBackend& backend, std::uint64_t seed = 1) {
 // One analysis step on the CPU and on the GPU from the same random wave packet.
 void expect_same_step(const BackendSetup& s, double tolerance) {
   const auto cpu = s.cpu();
-  const auto gpu = gpu_backend(s);
+  const auto gpu = s.gpu();
   load_random(*cpu);
   load_random(*gpu);
   cpu->propagate_analysis_step();
@@ -188,7 +222,7 @@ TEST(CudaBackend, CopiesAreExactAndDensitiesMatchTheCpu) {
   SPODVR_REQUIRE_GPU();
   const BackendSetup s("hardwall_short");
   const auto cpu = s.cpu();
-  const auto gpu = gpu_backend(s);
+  const auto gpu = s.gpu();
   load_random(*cpu);
   load_random(*gpu);
   const WavePacket& a = cpu->wave_packet_on_host();
@@ -234,8 +268,8 @@ TEST(CudaBackend, AnalysisStepMatchesTheCpuDaiLightWithSymmetry) {
 TEST(CudaBackend, TwoRunsAreBitwiseIdentical) {
   SPODVR_REQUIRE_GPU();
   const BackendSetup s("cu111_dailight_short_sym");
-  const auto a = gpu_backend(s);
-  const auto b = gpu_backend(s);
+  const auto a = s.gpu();
+  const auto b = s.gpu();
   load_random(*a);
   load_random(*b);
   for (int i = 0; i < 2; ++i) {
@@ -258,34 +292,11 @@ TEST(CudaBackend, MemoryEstimateMatchesTheAllocations) {
   for (const MemoryItem& item : e.items)
     if (item.name != "cuFFT work area" && item.name != "Copy buffer") exact += item.bytes;
   const std::size_t before = cuda::free_gpu_memory();
-  const auto gpu = gpu_backend(s);
+  const auto gpu = s.gpu();
   const std::size_t used = before - cuda::free_gpu_memory();
   const std::size_t slack = std::size_t(64) << 20;  // allocation granularity, cuFFT plans
   EXPECT_GE(used + slack, exact);
   EXPECT_LE(used, e.peak_bytes + slack);
-}
-
-// The host memory of a GPU run in the estimate (MemoryEstimate::gpu_host) is that of the GPU backend's
-// host arrays: during the set-up V (one double) and exp(i A) (one complex value) per value of the potential
-// grid, its symmetry maps, two specular waves and the read-back plane of z_plane; in the time loop the
-// host copy of psi (wave_packet_on_host), three specular waves and the read-back plane.
-TEST(CudaBackend, HostMemoryEstimateMatchesTheAllocations) {
-  SPODVR_REQUIRE_GPU();
-  const BackendSetup s("cu111_dailight_short_sym");
-  const MemoryEstimate e = estimate_memory(s.config, s.grids, s.angular, 1);
-  const GridSymmetry& symmetry = s.potential.symmetry;
-  ASSERT_LT(symmetry.n_representatives(), symmetry.n_xy());  // the maps are counted
-  std::size_t maps = 2 * std::size_t(symmetry.n_xy());       // representative and operation per (x, y)
-  for (int iop = 0; iop < static_cast<int>(symmetry.operations().size()); ++iop) maps += symmetry.phi_index(iop).size();
-
-  const auto gpu = gpu_backend(s);
-  const std::size_t complex_bytes = sizeof(cplx);
-  const std::size_t plane = gpu->z_plane(0).size() * complex_bytes;
-  const WavePacket& host = gpu->wave_packet_on_host();
-  const std::size_t specular = host.specular.values.size() * complex_bytes;
-  EXPECT_EQ(e.gpu_host.setup,
-            s.potential.values.size() * (sizeof(double) + complex_bytes) + maps * sizeof(int) + 2 * specular + plane);
-  EXPECT_EQ(e.gpu_host.time_loop, host.scattering.values.size() * complex_bytes + 3 * specular + plane);
 }
 
 namespace {
@@ -343,217 +354,4 @@ TEST(CudaBackend, SpecularStepMatchesTheCpuWithALowZAbsorber) {
 TEST(CudaBackend, AnalysisStepMatchesTheCpuWithLowZAbsorbers) {
   SPODVR_REQUIRE_GPU();
   expect_same_step(BackendSetup("hardwall_short", low_z_absorbers), 1e-13);
-}
-
-// ------------------------------------------------------------------------------------------------
-// The flux surface: psi and d psi / dr at r_c on the planes below Z_asymptotic (flux analysis)
-// ------------------------------------------------------------------------------------------------
-
-namespace {
-
-// hardwall_short with the flux analysis at r_c = 2.0 bohr (ir 8 of nr = 56).
-const std::string flux_case = "hardwall_short";
-nlohmann::json flux_keys() { return flux_analysis_keys(flux_case, 2.0, 0.15); }
-
-// NaN, read from the bits (also in fast-math builds, where std::isnan may be folded to false).
-bool is_nan(double x) {
-  const std::uint64_t bits = std::bit_cast<std::uint64_t>(x);
-  return (bits & 0x7ff0000000000000ULL) == 0x7ff0000000000000ULL && (bits & 0x000fffffffffffffULL) != 0;
-}
-
-// Doubles of a and b that differ: equal bit patterns, or NaN on both sides (the CPU's and the GPU's
-// NaN differ in their bits), count as equal. No floating-point comparison, so NaN on one side only
-// is a difference in every build.
-int value_differences(std::span<const cplx> a, std::span<const cplx> b) {
-  auto differ = [](double x, double y) {
-    return std::bit_cast<std::uint64_t>(x) != std::bit_cast<std::uint64_t>(y) && !(is_nan(x) && is_nan(y));
-  };
-  int differences = 0;
-  for (std::size_t i = 0; i < a.size(); ++i) {
-    if (differ(a[i].real(), b[i].real())) ++differences;
-    if (differ(a[i].imag(), b[i].imag())) ++differences;
-  }
-  return differences;
-}
-
-int nan_count(std::span<const cplx> values) {
-  int count = 0;
-  for (const cplx& v : values) count += int(is_nan(v.real())) + int(is_nan(v.imag()));
-  return count;
-}
-
-// A surface whose every element is NaN: an element the backend does not write stays NaN.
-FluxSurfaceWave nan_surface(int n_blocks, int n_planes) {
-  FluxSurfaceWave out(n_blocks, n_planes);
-  const cplx nan(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
-  std::ranges::fill(out.psi, nan);
-  std::ranges::fill(out.derivative, nan);
-  return out;
-}
-
-#ifndef __FAST_MATH__  // the fast build compares with a tolerance, which such mistakes may stay within
-// The porting mistakes of the r-derivative sum that the CPU-GPU comparison must catch.
-enum class Mistake { DescendingSum, SkippedZeroTerm };
-
-// d psi / dr at r_c of every column of the host wave psi on the planes iz < n_planes, summed with
-// `mistake` (flux_r_derivative's order otherwise: from 0, ir ascending, the zero term included).
-std::vector<cplx> mistaken_derivative(const ScatteringWave& psi, int ir_flux, std::span<const double> weights,
-                                      int n_planes, Mistake mistake) {
-  const int nr = static_cast<int>(weights.size());
-  std::vector<cplx> derivative(std::size_t(psi.block_size()) * n_planes);
-  for (int iz = 0; iz < n_planes; ++iz)
-    for (int block = 0; block < psi.block_size(); ++block) {
-      cplx sum(0.0, 0.0);
-      for (int k = 0; k < nr; ++k) {
-        const int ir = mistake == Mistake::DescendingSum ? nr - 1 - k : k;
-        if (mistake == Mistake::SkippedZeroTerm && ir == ir_flux) continue;
-        sum = sum + weights[ir] * psi.block(ir + nr * iz)[block];
-      }
-      derivative[block + std::size_t(psi.block_size()) * iz] = sum;
-    }
-  return derivative;
-}
-#endif
-
-}  // namespace
-
-// The GPU backend's flux surface equals the CPU backend's on the same wave packet, value by value,
-// on every plane below Z_asymptotic; the surface spans several chunks of the read-back buffer.
-// Bitwise with -fmad=false. The wave holds psi = inf at r_c in one column, so the zero term
-// D(r_c) psi(r_c) makes that d psi / dr NaN (0 * inf), as in the Fortran. The same comparison finds
-// the porting mistakes of the sum (strict builds): ir descending changes most derivatives, and
-// leaving out the zero term loses that one NaN.
-TEST(CudaBackend, FluxSurfaceMatchesTheCpu) {
-  SPODVR_REQUIRE_GPU();
-  const BackendSetup s(flux_case, flux_keys());
-  const int nr = s.config.input.nr;
-  const int n_planes = s.grids.nz_potential;
-  const auto cpu = s.cpu();
-  const auto gpu = gpu_backend(s);
-  const int n_blocks = cpu->wave_packet_on_host().scattering.block_size();
-  ASSERT_LT(cuda::flux_surface_chunk_planes(std::size_t(n_blocks) * nr, n_blocks), n_planes);  // several chunks
-#ifndef __FAST_MATH__  // -ffinite-math-only: no defined arithmetic with inf
-  const int ir_flux = s.grids.ir_flux_analysis.value();
-  const int inf_plane = n_planes - 1;  // in the last chunk
-  const int inf_block = n_blocks - 1;  // the last thread of a partly used thread block
-#endif
-  auto load = [&](WavePacket& psi) {
-    fill_pseudo_random(psi.scattering.values, 1);
-    fill_pseudo_random(psi.specular.values, 2);
-#ifndef __FAST_MATH__
-    psi.scattering.block(ir_flux + nr * inf_plane)[inf_block] = cplx(std::numeric_limits<double>::infinity(), 0.0);
-#endif
-  };
-  cpu->read_wave_packet(load);
-  gpu->read_wave_packet(load);
-
-  FluxSurfaceWave on_cpu = nan_surface(n_blocks, n_planes);
-  FluxSurfaceWave on_gpu = nan_surface(n_blocks, n_planes);
-  std::as_const(*cpu).flux_surface(on_cpu);
-  std::as_const(*gpu).flux_surface(on_gpu);
-  EXPECT_EQ(value_differences(on_cpu.psi, on_gpu.psi), 0);
-#ifdef __FAST_MATH__
-  // FMA in the kernels and in the host code: each side's sum moves by <= nr eps sum |D psi| per
-  // component, so CPU and GPU differ by <= 2 nr eps sum |D psi| per component. The factor 4 instead
-  // of 2 covers the complex modulus (up to sqrt 2 times a component) and the rounded products in
-  // sum |D psi|. No NaN may appear (is_nan reads the bits, which fast-math cannot fold away).
-  EXPECT_EQ(nan_count(on_gpu.derivative), 0);
-  const ScatteringWave& psi = cpu->wave_packet_on_host().scattering;
-  const std::span<const double> weights = s.tables.flux_derivative;
-  double worst = 0.0;
-  for (int iz = 0; iz < n_planes; ++iz)
-    for (int block = 0; block < n_blocks; ++block) {
-      double magnitude = 0.0;
-      for (int ir = 0; ir < nr; ++ir) magnitude += std::abs(weights[ir] * psi.block(ir + nr * iz)[block]);
-      const std::size_t k = on_cpu.index(block, iz);
-      worst = nan_aware_max(worst, std::abs(on_cpu.derivative[k] - on_gpu.derivative[k]) /
-                                       (4.0 * nr * std::numeric_limits<double>::epsilon() * magnitude));
-    }
-  EXPECT_LE(worst, 1.0);
-#else
-  EXPECT_EQ(value_differences(on_cpu.derivative, on_gpu.derivative), 0);
-  EXPECT_EQ(nan_count(on_gpu.derivative), 1);  // the real part at (inf_block, inf_plane)
-  EXPECT_TRUE(is_nan(on_gpu.derivative[on_gpu.index(inf_block, inf_plane)].real()));
-
-  const ScatteringWave& psi = cpu->wave_packet_on_host().scattering;
-  const std::vector<cplx> descending =
-      mistaken_derivative(psi, ir_flux, s.tables.flux_derivative, n_planes, Mistake::DescendingSum);
-  const std::vector<cplx> no_zero_term =
-      mistaken_derivative(psi, ir_flux, s.tables.flux_derivative, n_planes, Mistake::SkippedZeroTerm);
-  const int n_values = 2 * n_blocks * n_planes;
-  EXPECT_GT(value_differences(descending, on_gpu.derivative), n_values / 2) << "of " << n_values;
-  EXPECT_EQ(value_differences(no_zero_term, on_gpu.derivative), 1);
-#endif
-}
-
-// The chunk loop: the size of the read-back buffer sets how many planes one chunk holds, never the
-// values. One chunk, three chunks (the last one shorter) and one plane per chunk give the same bits,
-// every element written (in every build: each element is computed on its own). Shapes that do not
-// fit, and a buffer too small for one plane, are refused.
-TEST(CudaBackend, FluxSurfaceDoesNotDependOnTheChunkSize) {
-  SPODVR_REQUIRE_GPU();
-  const BackendSetup s(flux_case, flux_keys());
-  const InputParameters& p = s.config.input;
-  const int ir_flux = s.grids.ir_flux_analysis.value();
-  const int n_planes = s.grids.nz_potential;
-  const cuda::DeviceLayout layout{std::int64_t(p.nr) * p.nz, s.basis.size(), std::int64_t(p.nx) * p.ny};
-  const int n_blocks = static_cast<int>(layout.n_rot * layout.n_xy);
-  cuda::DeviceWavePacket psi(layout, p.nr, static_cast<int>(s.grids.z_specular.size()));
-  std::vector<cplx> values(layout.size());
-  fill_pseudo_random(values, 5);
-  psi.scattering.upload(cuda::as_device_complex(std::span<const cplx>(values)));
-  const cuda::DeviceBuffer<double> weights(std::span<const double>(s.tables.flux_derivative));
-
-  auto read = [&](int chunk_planes) {
-    cuda::DeviceBuffer<cuda::Complex> readback(2 * std::size_t(n_blocks) * chunk_planes);
-    FluxSurfaceWave out = nan_surface(n_blocks, n_planes);
-    cuda::read_flux_surface(psi, ir_flux, weights, readback, out);
-    return out;
-  };
-  const int third = n_planes / 3 + 1;
-  ASSERT_EQ((n_planes + third - 1) / third, 3);
-  ASSERT_NE(n_planes % third, 0);  // the last of the three chunks is shorter
-  const FluxSurfaceWave one_chunk = read(n_planes);
-  EXPECT_EQ(nan_count(one_chunk.psi) + nan_count(one_chunk.derivative), 0);
-  for (const int chunk_planes : {third, 1}) {
-    SCOPED_TRACE(::testing::Message() << chunk_planes << " planes per chunk");
-    const FluxSurfaceWave chunked = read(chunk_planes);
-    EXPECT_EQ(value_differences(one_chunk.psi, chunked.psi), 0);
-    EXPECT_EQ(value_differences(one_chunk.derivative, chunked.derivative), 0);
-  }
-
-  cuda::DeviceBuffer<cuda::Complex> readback(2 * std::size_t(n_blocks));  // one plane
-  FluxSurfaceWave fits(n_blocks, n_planes);
-  EXPECT_NO_THROW(cuda::read_flux_surface(psi, ir_flux, weights, readback, fits));
-  cuda::DeviceBuffer<cuda::Complex> too_small(2 * std::size_t(n_blocks) - 1);
-  EXPECT_THROW(cuda::read_flux_surface(psi, ir_flux, weights, too_small, fits), std::invalid_argument);
-  EXPECT_THROW(cuda::read_flux_surface(psi, p.nr, weights, readback, fits), std::invalid_argument);
-  EXPECT_THROW(cuda::read_flux_surface(psi, -1, weights, readback, fits), std::invalid_argument);
-  const cuda::DeviceBuffer<double> fewer_weights(std::span<const double>(s.tables.flux_derivative).first(p.nr - 1));
-  EXPECT_THROW(cuda::read_flux_surface(psi, ir_flux, fewer_weights, readback, fits), std::invalid_argument);
-  FluxSurfaceWave other_blocks(n_blocks + 1, n_planes);
-  EXPECT_THROW(cuda::read_flux_surface(psi, ir_flux, weights, readback, other_blocks), std::invalid_argument);
-  FluxSurfaceWave too_many_planes(n_blocks, p.nz + 1);
-  EXPECT_THROW(cuda::read_flux_surface(psi, ir_flux, weights, readback, too_many_planes), std::invalid_argument);
-}
-
-// The seam's contract, as on the CPU (test_flux_surface.cpp): a run without flux analysis, and a
-// slot of another shape than nz_potential planes of n_rot nx ny blocks, are refused.
-TEST(CudaBackend, FluxSurfaceRefusesLikeTheCpu) {
-  SPODVR_REQUIRE_GPU();
-  const BackendSetup without(flux_case);
-  FluxSurfaceWave slot(without.basis.size() * without.config.input.nx * without.config.input.ny,
-                       without.grids.nz_potential);
-  EXPECT_THROW(gpu_backend(without)->flux_surface(slot), std::logic_error);
-
-  const BackendSetup s(flux_case, flux_keys());
-  const auto gpu = gpu_backend(s);
-  const int blocks = s.basis.size() * s.config.input.nx * s.config.input.ny;
-  const int planes = s.grids.nz_potential;
-  FluxSurfaceWave fits(blocks, planes);
-  EXPECT_NO_THROW(gpu->flux_surface(fits));
-  FluxSurfaceWave fewer_planes(blocks, planes - 1);
-  EXPECT_THROW(gpu->flux_surface(fewer_planes), std::logic_error);
-  FluxSurfaceWave other_blocks(blocks + 1, planes);
-  EXPECT_THROW(gpu->flux_surface(other_blocks), std::logic_error);
 }

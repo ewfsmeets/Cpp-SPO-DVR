@@ -1,12 +1,10 @@
-// Native checkpoint (wave function), BK coefficient and flux coefficient files.
-// Fortran: WaveFunction.f90 SaveWaveFunc / ReadWaveFunc, AsympInfo.f90 ReadOrWriteAsympInfo,
-// FluxAnalyzor.f90 readWriteFluxCoeffs
+// Native checkpoint (wave function) and BK coefficient files.
+// Fortran: WaveFunction.f90 SaveWaveFunc / ReadWaveFunc, AsympInfo.f90 ReadOrWriteAsympInfo
 #include "io/checkpoint.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,7 +21,6 @@ using Magic = std::array<char, 16>;
 
 constexpr Magic checkpoint_magic = {'S', 'P', 'O', 'D', 'V', 'R', '-', 'C', 'H', 'E', 'C', 'K', 'P', 'N', 'T', '\0'};
 constexpr Magic bk_magic = {'S', 'P', 'O', 'D', 'V', 'R', '-', 'B', 'K', 'C', 'O', 'E', 'F', 'F', 'S', '\0'};
-constexpr Magic flux_magic = {'S', 'P', 'O', 'D', 'V', 'R', '-', 'F', 'L', 'U', 'X', 'C', 'O', 'E', 'F', '\0'};
 constexpr std::uint32_t format_version = 2;  // 2: number of phi points in the parameter list
 constexpr std::uint64_t end_marker = 0x454e44'4f46'4350ULL;  // marks a completely written checkpoint
 
@@ -93,15 +90,6 @@ ParameterList restart_parameters(const Config& config) {
   return list;
 }
 
-// The flux analysis parameters, in input units (bohr, eV), that a restart of it must not change.
-ParameterList flux_parameters(const Config& config) {
-  const InputParameters& p = config.input;
-  return {{"rFluxAnalysis", p.r_flux_analysis},
-          {"EMinFluxAna", p.e_min_flux_analysis},
-          {"EMaxFluxAna", p.e_max_flux_analysis},
-          {"DeltaEFluxAna", p.delta_e_flux_analysis}};
-}
-
 // True if the list has an entry with this name.
 bool has_name(const ParameterList& list, const std::string& name) {
   return std::any_of(list.begin(), list.end(), [&](const auto& entry) { return entry.first == name; });
@@ -134,8 +122,11 @@ ParameterList read_parameter_list(BinaryReader& file, const std::string& where) 
   return stored;
 }
 
-// The list as read_parameter_list reads it: the count, then name and value per entry.
-void write_parameter_list(BinaryWriter& file, const ParameterList& parameters) {
+void write_header(BinaryWriter& file, const Magic& magic, const Config& config) {
+  file.write(magic);
+  file.write(format_version);
+  file.write_string(config.input.system_id);
+  const auto parameters = restart_parameters(config);
   file.write(static_cast<std::uint64_t>(parameters.size()));
   for (const auto& [name, value] : parameters) {
     file.write_string(name);
@@ -143,8 +134,17 @@ void write_parameter_list(BinaryWriter& file, const ParameterList& parameters) {
   }
 }
 
-// A stored list must have the input's names in the same order and exactly the same values.
-void check_parameters(const ParameterList& expected, const ParameterList& stored, const std::string& where) {
+// Reads and checks the header: file type, version and the restart parameters.
+void read_header(BinaryReader& file, const Magic& magic, const std::string& kind, const Config& config) {
+  const std::string where = " in " + kind + " '" + file.path().string() + "'";
+  if (file.read<Magic>() != magic) throw CheckpointError("not a " + kind + ": '" + file.path().string() + "'");
+  if (const auto version = file.read<std::uint32_t>(); version != format_version)
+    throw CheckpointError("unsupported format version " + std::to_string(version) + where);
+  if (const std::string id = file.read_string(); id != config.input.system_id)
+    throw CheckpointError("SystemID is '" + config.input.system_id + "' in the input but '" + id + "'" + where);
+
+  const ParameterList expected = restart_parameters(config);
+  const ParameterList stored = read_parameter_list(file, where);
   const auto same_name = [](const auto& a, const auto& b) { return a.first == b.first; };
   if (!std::equal(expected.begin(), expected.end(), stored.begin(), stored.end(), same_name))
     throw CheckpointError(parameter_list_mismatch(expected, stored) + where +
@@ -157,41 +157,6 @@ void check_parameters(const ParameterList& expected, const ParameterList& stored
   }
 }
 
-void write_header(BinaryWriter& file, const Magic& magic, const Config& config) {
-  file.write(magic);
-  file.write(format_version);
-  file.write_string(config.input.system_id);
-  write_parameter_list(file, restart_parameters(config));
-}
-
-// " in <kind> '<path>'": where a header error was found, for the messages.
-std::string file_description(const BinaryReader& file, const std::string& kind) {
-  return " in " + kind + " '" + file.path().string() + "'";
-}
-
-// Reads and checks the header: file type, version and the restart parameters.
-void read_header(BinaryReader& file, const Magic& magic, const std::string& kind, const Config& config) {
-  const std::string where = file_description(file, kind);
-  if (file.read<Magic>() != magic) throw CheckpointError("not a " + kind + ": '" + file.path().string() + "'");
-  if (const auto version = file.read<std::uint32_t>(); version != format_version)
-    throw CheckpointError("unsupported format version " + std::to_string(version) + where);
-  if (const std::string id = file.read_string(); id != config.input.system_id)
-    throw CheckpointError("SystemID is '" + config.input.system_id + "' in the input but '" + id + "'" + where);
-  check_parameters(restart_parameters(config), read_parameter_list(file, where), where);
-}
-
-// Writes the file as `path`.tmp and then renames it: an interrupted write leaves an existing file intact.
-void write_via_temporary(const std::filesystem::path& path, const std::function<void(BinaryWriter&)>& write) {
-  std::filesystem::path temporary = path;
-  temporary += ".tmp";
-  {
-    BinaryWriter file(temporary);
-    write(file);
-    file.close();
-  }
-  std::filesystem::rename(temporary, path);
-}
-
 void check_size(BinaryReader& file, const std::string& what, std::int32_t expected) {
   if (const auto stored = file.read<std::int32_t>(); stored != expected)
     throw CheckpointError(what + " is " + std::to_string(expected) + " but " + std::to_string(stored) + " in '" +
@@ -202,7 +167,10 @@ void check_size(BinaryReader& file, const std::string& what, std::int32_t expect
 
 void write_checkpoint(const std::filesystem::path& path, const Config& config, double time, const WavePacket& psi,
                       const AnalysisSurfaceState& surface) {
-  write_via_temporary(path, [&](BinaryWriter& file) {
+  std::filesystem::path temporary = path;
+  temporary += ".tmp";
+  {
+    BinaryWriter file(temporary);
     write_header(file, checkpoint_magic, config);
     file.write(time);
     for (const std::size_t n : {psi.scattering.index.n0, psi.scattering.index.n1, psi.scattering.index.n2,
@@ -215,7 +183,9 @@ void write_checkpoint(const std::filesystem::path& path, const Config& config, d
     file.write_array(std::span<const cplx>(psi.specular.values));
     file.write_array(std::span<const cplx>(psi.scattering.values));
     file.write(end_marker);
-  });
+    file.close();
+  }
+  std::filesystem::rename(temporary, path);
 }
 
 CheckpointInfo read_checkpoint(const std::filesystem::path& path, const Config& config, WavePacket& psi) {
@@ -282,37 +252,6 @@ std::optional<double> read_bk_file(const std::filesystem::path& path, const Conf
     last_time = time;
   }
   return last_time;
-}
-
-void write_flux_coefficients(const std::filesystem::path& path, const Config& config, double time,
-                             const FluxCoefficients& coefficients) {
-  write_via_temporary(path, [&](BinaryWriter& file) {
-    write_header(file, flux_magic, config);
-    write_parameter_list(file, flux_parameters(config));
-    file.write(time);
-    for (const int n : {coefficients.n_blocks(), coefficients.n_planes(), coefficients.n_energies()})
-      file.write(static_cast<std::int32_t>(n));
-    file.write_array(std::span<const cplx>(coefficients.phi));
-    file.write_array(std::span<const cplx>(coefficients.phi_derivative));
-    file.write(end_marker);
-  });
-}
-
-double read_flux_coefficients(const std::filesystem::path& path, const Config& config, FluxCoefficients& coefficients) {
-  const std::string kind = "flux coefficient file";
-  BinaryReader file(path);
-  read_header(file, flux_magic, kind, config);
-  const std::string where = file_description(file, kind);
-  check_parameters(flux_parameters(config), read_parameter_list(file, where), where);
-  const auto time = file.read<double>();
-  check_size(file, "the number of (rotational state, x, y) blocks", coefficients.n_blocks());
-  check_size(file, "the number of planes Z < zasymp", coefficients.n_planes());
-  check_size(file, "the number of flux energies", coefficients.n_energies());
-  file.read_array(std::span<cplx>(coefficients.phi));
-  file.read_array(std::span<cplx>(coefficients.phi_derivative));
-  if (file.read<std::uint64_t>() != end_marker || !file.at_end())
-    throw CheckpointError(kind + " '" + path.string() + "' is corrupt (bad end marker)");
-  return time;
 }
 
 }  // namespace spodvr

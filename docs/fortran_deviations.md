@@ -17,73 +17,9 @@ differences are in [validation.md](validation.md).
 - flux Q2: the Fortran rejects only `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passes and
   `FluxAnalyzor.f90 setupFluxAnalyzor` divides by it (a garbage energy count, no flux results).
   C++: error if DeltaEFluxAna ≤ 0 (tolerant). Details: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
-- flux Q3, kept: the number of flux energies is `INT((EMaxFluxAna − EMinFluxAna)/DeltaEFluxAna) + 1`
-  with the energies in hartree (`FluxAnalyzor.f90 setupFluxAnalyzor`), so EMaxFluxAna is dropped for
-  most inputs, by rounding even when DeltaEFluxAna divides the range: 0.2–0.6 eV in steps of 0.1 gives
-  4 energies (0.2–0.5 eV), 0.40–0.95 eV in steps of 0.025 gives 22 (the last 0.925 eV). C++: the same
-  count (`flux_energy_count`); `make_flux_energies` adds a warning when the last energy lies below
-  EMaxFluxAna (`src/analysis/flux_analysis.cpp`; test `FluxEnergies.CountDropsTheEndPointAsTheFortran`).
-- flux Q4, fixed: the Fortran weighs every analysis step of the flux sums with the input dtAna
-  (`FluxAnalyzor.f90 storeTimeIndependentWF`, coeff = … · dtAnalysis), but a step lasts nanspo·dtStep
-  with nanspo = INT(dtAna/dtStep) (`InputNew.f90 ProcessInput`), and nothing checks that dtAna is a
-  multiple of dtStep. C++: the step's own length nanspo·dtStep (`derived.analysis_time_step`), as the
-  S-matrix sums use (`Analyzor.f90 BalintKurtiCoeffs`, dtmul). The two are equal to the bit when
-  nanspo·dtStep rounds to dtAna, as in every gate case (dtStep 2, dtAna 10). They differ otherwise
-  (test `FluxPropagation.FluxQ4WeightIsTheEffectiveAnalysisStep`, the first case):
-  - by a fraction of dtStep when dtAna is not a multiple of it: dtAna = 10.5 at dtStep 2 gives steps
-    of 10 a.u., whose Fortran weights are 1.05 times too large;
-  - by a whole dtStep when the quotient truncates: 0.3/0.1 = 2.9999999999999996, so dtAna 0.3 at
-    dtStep 0.1 gives nanspo = 2, steps of 0.2;
-  - by rounding only: dtAna 0.9 at dtStep 0.3 gives nanspo = 3 and 3 · 0.3 = 0.8999999999999999.
-- flux Q5, kept: `FluxAnalyzor.f90` converts its energies, and the wave packet's EMinWP and EMaxWP
-  for b(k), with `Constants_eV2Ha` = 0.036749308286 (`units::precise`); the initial wave packet and
-  every other energy use chaev = 27.2114 (`units::legacy`). The two differ by 1.27e-7 relative, and
-  |b(k)|² differs from the momentum distribution of the C++ initial packet by 2.9e-7 of its peak
-  (hardwall_small). C++: the same factors (tests `FluxEnergies.FollowTheFortranExpressions` and
-  `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket`).
-- flux Q6: with `onlyAnalysis` (nread = 2) the Fortran sets the flux analysis up
-  (`FluxAnalyzor.f90 setupFluxAnalyzor` allocates φ and φ′ and, when NewCalc is false, reads the
-  flux restart files) but computes and writes nothing (`Main.f90` calls `computeFluxProbability` only
-  without onlyAnalysis). C++: an analysis-only run with `doFluxAnalysis` prints one note and has no
-  flux arrays and no flux files (`src/app/run.cpp`; test
-  `FineAnalysisRuns.FluxQ6AnalysisOnlyRunPrintsANoteAndNoFlux`).
-- flux Q7, kept: the flux analysis leaves out the initial channel at r_c. At every point Z < zasymp,
-  every r included, each potential step moves the wave packet's projection on the initial channel
-  (rotational state J_in, mJ_in times the initial (x, y) plane wave, the specular diffraction order)
-  to the specular grid (`Potential.f90 PerformEXPPotentialOp` calls `TwoGrids.f90 SubSpecFromScat`
-  for every izr ≤ nzpot·nr), so the scattering wave holds none of it there; and
-  `FluxAnalyzor.f90 storeTimeIndependentWF` takes ψ and ∂ψ/∂r at r_c from the scattering wave only
-  (`getWaveFunctionAtZr`, `getWaveFuncDerivAtZr`). After the collision that channel also carries
-  scattered and reacting parts. P(E) misses that channel's own flux (its cross terms with the rest
-  vanish in the (x, y) sum, the plane waves being orthogonal); P(x, y; E) misses its own flux and the
-  cross terms. The incoming packet χ_vin(r)·G(Z) carries no flux in r of its own (χ_vin is real), so
-  of it only cross terms are missed, in P(x, y; E). C++: the same (`PotentialOperator`, its
-  SubSpecFromScat block; gate 6 compares with the Fortran). The FLUX ANALYSIS set-up block prints
-  |χ_vin(r_c)| / max |χ_vin| and warns above 1e-6; this ratio bounds only the incoming packet's part
-  of what is left out. The size of the rest is not measured. Tests
-  `FluxInitialStateRatio.IsTheSizeAtTheFluxSurfaceOverTheLargest`,
-  `FluxReport.SetupBlockShowsTheMemoryRuleAndWarnsAboveTheFluxQ7Limit`.
-- flux Q8, checked: the Fortran's flux restart files `flux_coeffs.dat` (φ) and `flux_coeffs_deriv.dat`
-  (φ′) have no header: one gfortran record φ(:, iz, n) per plane Z < zasymp and flux energy, energy
-  outer (`FluxAnalyzor.f90 writeFluxCoeffs`). `readFluxCoeffs` reads them unchecked: longer records
-  and extra records are read silently, so a file written for another energy grid or rotational
-  basis is read shifted; only too few or too short records stop it (a gfortran run-time error).
-  C++: `read_fortran_flux_coefficients` (`src/io/fortran_files.cpp`) requires exactly
-  nE × nz_potential records of (rotational functions × nX × nY) complex values each, and otherwise
-  stops with an error naming the expected sizes (test
-  `FortranFluxFiles.RecordCountAndLengthMustFitTheInput`). A restart from these files
-  (`RestartFormat` "fortran") therefore reads, as the Fortran does, files written with another
-  rFluxAnalysis, with another EMinFluxAna, EMaxFluxAna or DeltaEFluxAna that gives the same number
-  of energies (EMinFluxAna 0.2 → 0.25 at DeltaEFluxAna 0.15), or at another time; it prints a
-  warning that these are not checked (test `Restart.FluxQ8FortranFluxFilesAreCheckedOnlyByTheirSizes`).
-  The native `flux_coefficients.bin` stores the four keys and the time, and a restart from it
-  refuses any difference (test `Restart.FluxRestartErrorsNameTheCause`).
-- flux Q9, kept: b(k) (`MyFunctions.f90 getBkCoeffWavePacket`) has the phase e^(+i·δk·z0), δk = k0 − k,
-  the initial wave packet's momentum amplitude e^(−i·δk·z0): b is its complex conjugate. P(E) does not
-  depend on it (a phase per energy cancels in conj(φ)·φ′), but the energy-resolved φ and the Fortran's
-  flux restart files do. C++: the same phase (`wave_packet_momentum_amplitude`; test
-  `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket` checks b = conj of the
-  packet's Fourier transform).
+- Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
+  propagating run (new or restart) with exit code 3 once the input checks have passed;
+  analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
 - `InitGenComplexTransform` silently returns on invalid nφ.
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
 - `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.
@@ -158,17 +94,9 @@ differences are in [validation.md](validation.md).
   few ulp from the scalar functions): `angulargrid.f90` acos (θ grid), `legendre.f90`
   AssociatedLegendre exp, and the cos/sin of exp(−iV·dt) in `Potential.f90`
   PerformEXPInteractionOp, and the cos/exp of `PESForCu111Persson.f90` (Dai-Light and the hard
-  wall are scalar; so are b(k) and the r-derivative table of the flux analysis: `pow`, `cexp` and
-  `tan` in the 5.24 objects, where `(-1.0)**distance` is a parity select, ±1 as with `__powidf2`). C++ uses the scalar functions, so these agree only to a few ulp.
+  wall are scalar). C++ uses the scalar functions, so these agree only to a few ulp.
   Real`**`integer is libgcc `__powidf2` (repeated squaring): use `fortran_integer_power`, not
   `std::pow`.
-- Signed zeros, accepted (not reproduced; values equal): gfortran multiplies a complex number by a
-  real x as by the complex number (x, 0); the C++ multiplies its two parts by x. The values are the
-  same; only the sign of an exactly zero part can differ: (−0, −1)·1 has the real part +0 with
-  gfortran 15.2 (bits 0000000000000000) and −0 in the C++ (8000000000000000), 2026-11-12. This holds
-  for every real × complex product of the port, e.g. the FFT scaling (`v = scale_ * v` in
-  `src/fft/fftw_fft.cpp`, `Y = Scale * Y` in `fftw_2_scs.f90`) and b(k), the r-derivative and c_n of
-  the flux analysis. Compare such data by value (==), not by bytes.
 - More quad-precision sites (same policy, plain double in C++): `erot = dfloat(j(j+1))/(...)`
   (GridEnergies.f90; in practice bitwise equal), the CAP profiles `vimag/vimar/vimas` and their
   low-end counterparts (complex × `dfloat(nabpow+1)` → complex(16), Absorption.f90), `scalFacX/Y = sqrt(delx/dfloat(nx))`

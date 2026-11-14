@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261113 at 024843.305 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 182141.165 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -259,7 +259,7 @@ reaches the gas phase, is the new asymptotic Z-value.
      ectmin (ev) =                                     0.200000
      ectmax (ev) =                                     0.600000
 
- Total time for potential initialisation =  0.19280007E-04 secs
+ Total time for potential initialisation =  0.19359002E-04 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -411,7 +411,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  Saving H2Cu111DaiLight PES into file : ./H2Cu111DaiLight_125_-2.000_0.080_56_0.800_0.150_8_8_4.840_4_4.pes
 
- Total time setting up the potential =  0.21564876E+01 secs
+ Total time setting up the potential =  0.17769568E+01 secs
 
 
 
@@ -16923,21 +16923,21 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                         227.6787 (a)
+ Total computation                         154.1501 (a)
 
                ...
 
- Propagating the wavefunction              224.4045 (b)
+ Propagating the wavefunction              151.4114 (b)
 
- Setup time                                  2.3915
+ Setup time                                  1.9758
 
- Saving the wave function for rerun          0.0686
+ Saving the wave function for rerun          0.0796
 
- Calculating averages                        0.1435
+ Calculating averages                        0.1209
 
- Calculating and saving BK-coeffs            0.1428
+ Calculating and saving BK-coeffs            0.1123
 
- Asymptotic analysis                         0.0776
+ Asymptotic analysis                         0.0740
 
  Saving the flux coefficients                0.0000
 
@@ -16945,43 +16945,43 @@ WARNING: Diffractional basis too small to describe all open channels!
 
 -----------------------------------------------------
 
- Sum                                       227.2286 (a)
+ Sum                                       153.7740 (a)
 
                ...
 
- FFTs along X and Y                         13.4779
+ FFTs along X and Y                         10.8954
 
- Kinetic energy operation along Z           48.4284
+ Kinetic energy operation along Z           31.5826
 
- Kinetic energy operation along r           36.0334
+ Kinetic energy operation along r           23.8367
 
- Potential energy multiplication            57.7104
+ Potential energy multiplication            49.6465
 
- Legengre transforms                        28.0038
+ Legengre transforms                        22.4242
 
- Shifting the wavefunction                   7.2441
+ Shifting the wavefunction                   5.2902
 
- Kinetic energy multiplications (xy)         1.9793
+ Kinetic energy multiplications (xy)         1.5879
 
- Absorbing the wavefunction                  2.9712
+ Absorbing the wavefunction                  2.3593
 
- Projection formalism                        0.4568
+ Projection formalism                        0.3406
 
- Operations on specular grid                 0.1011
+ Operations on specular grid                 0.0800
 
 -----------------------------------------------------
 
- Sum                                       196.4064 (b)
+ Sum                                       148.0434 (b)
 
                ...
 
  Potential initialisation time               0.0000
 
- Potential setup time                        2.1565
+ Potential setup time                        1.7770
 
- FFTs along X                                6.2503
+ FFTs along X                                5.0449
 
- FFTs along Y                                7.2277
+ FFTs along Y                                5.8505
 
- Time spent on FGH for asympwf               0.0485
+ Time spent on FGH for asympwf               0.0277
 

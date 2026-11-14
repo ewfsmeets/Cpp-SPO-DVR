@@ -39,8 +39,6 @@ Building, running, benchmarks and the measured optimisations are in
 | slab | a block of consecutive (Z, r) points of the interaction region, processed together (the DVR scratch is sized for one slab) |
 | DVR column | one (Z, r, x, y) point of a slab: one GPU thread in the angular-transform kernels |
 | BK plane | ψ at one Z (`iz_analysis`), the input of the Balint-Kurti (BK) analysis on the host, which projects it onto the asymptotic channels |
-| flux surface | ψ and ∂ψ/∂r at r = r_c (`rFluxAnalysis`) on the planes Z < zasymp, the input of the flux analysis on the host |
-| read-back buffer | the GPU buffer (n_rot·nx·ny·nr values) through which the BK plane, or the flux surface chunk by chunk, is copied to the host |
 | dtAve | the interval of the averages output; `block_densities` runs at this interval |
 | load callback | a device function that cuFFT calls for every value it reads (used to multiply by exp(iA) inside an FFT) |
 
@@ -116,8 +114,7 @@ call launches:
 | 16 | | `project_onto_specular` | initial channel back to the specular grid |
 
 The analysis loop asks for the rest when it needs it: `z_plane(iz)` (`pack_z_plane` and a copy),
-`block_densities()` every dtAve, and with the flux analysis `flux_surface(slot)`
-(`read_flux_surface`: per chunk of nr/2 planes `flux_surface_chunk` and two copies into the slot).
+and `block_densities()` every dtAve.
 
 One stream, no atomics, fixed launch shapes: two runs on the same GPU give bitwise identical
 results, also across a restart.
@@ -206,8 +203,8 @@ code that knows this layout, and both the kernel and the callback use it.
 - **Same order as the CPU twin.** Complex products as in `device_complex.hpp`. No FMA: the
   kernels are built with `-fmad=false`, and the callback uses `__dmul_rn`/`__dadd_rn`.
 - **No atomics, and no reductions whose order depends on scheduling.** A reduction runs in one
-  thread in a fixed order (`project_onto_specular`, `block_densities`, `flux_surface_chunk`).
-  Atomics would make two runs differ in the last bits. `CudaBackend.TwoRunsAreBitwiseIdentical` and
+  thread in a fixed order (`project_onto_specular`, `block_densities`). Atomics would make two
+  runs differ in the last bits. `CudaBackend.TwoRunsAreBitwiseIdentical` and
   `CudaRestart.SplitGpuRunIsBitwiseIdenticalToTheUnsplitGpuRun` would catch that.
 - **Limits:** at most 64 values of J per mJ block. The DVR scratch of one slab must stay below
   2³¹ values (the kernels and the callback use 32-bit indices within a slab). Both are checked
@@ -248,7 +245,6 @@ index in y), not the coordinates x, y.
 | `spodvr_exp_potential_load` (callback) | one call per value the φ FFT reads | × exp(iA) |
 | `block_densities` | one thread per izr | Σ \|ψ\|² over (irot, ixy), in host order |
 | `pack_z_plane` | one thread per value of the plane | BK plane in host layout |
-| `flux_surface_chunk` | `.x`: block (irot, ixy), `.y`: plane of the chunk; each thread walks its r column | ψ at r_c and ∂ψ/∂r = Σ_ir D(ir) ψ(ir), from ir = 0 up, in host layout (reads not coalesced) |
 | `host_chunk_to_device`, `device_to_host_chunk` | one thread per value | layout conversion via a staging buffer |
 
 (Every kernel above is launched through the function of that name in `kernels.hpp`; the
@@ -261,7 +257,6 @@ index in y), not the coordinates x, y.
 ```
 CudaBackend                      cuda_backend.{hpp,cpp}
 ├── DeviceWavePacket             device_wave_packet.hpp      (scattering + specular ψ)
-├── read-back buffer             cuda_backend.cpp            (BK plane; flux surface chunks: read_flux_surface)
 ├── DeviceSpecularOperator       device_kinetic_operator.*   (2D FFT pair)
 ├── DeviceKineticOperator        device_kinetic_operator.*   ((Z, r) and (x, y) FFT pairs)
 └── DevicePotentialOperator      device_potential_operator.* (φ FFT pair, DVR scratch, exp(iA) table)
@@ -274,7 +269,6 @@ CudaBackend                      cuda_backend.{hpp,cpp}
 | `kinetic_kernels.cu`, `specular_kernels.cu`, `potential_kernels.cu`, `wave_function_kernels.cu` | the kernels |
 | `fft_callbacks.{hpp,cu,cpp}` | the exp(iA) load callback (built separately: docs/cuda.md, Building → "cuFFT callback") |
 | `device_complex.hpp` | `Complex`, `DeviceLayout` |
-| `device_flux_surface.*` | `read_flux_surface`: the flux surface chunk by chunk through the read-back buffer (host loop) |
 | `device_buffer.*`, `launch.cuh`, `cuda_error.*` | device memory, launch helpers, error checks |
 
 Kernels and launchers are in `.cu` files; all host logic (tables, plans, loops) is in `.cpp`
@@ -295,4 +289,3 @@ code and uploaded once, so the GPU multiplies by bitwise the same numbers.
 | `project_onto_specular` | `apply_block` (projection) | TwoGrids.f90 SubSpecFromScat |
 | `block_densities` | `CpuBackend::block_densities` | Averages.f90 complexInnerProd |
 | `pack_z_plane` | `CpuBackend::z_plane` | Analyzor.f90 (BK input) |
-| `flux_surface_chunk` | `flux_surface` (propagation/flux_surface.cpp) | WaveFunction.f90 getWaveFunctionAtZr, getWaveFuncDerivAtZr |

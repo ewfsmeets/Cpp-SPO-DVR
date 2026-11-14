@@ -130,12 +130,6 @@ void project_onto_specular(const PotentialArgs& args, Complex* psi, Complex* spe
 void block_densities(const Complex* psi, const DeviceLayout& layout, double* densities);
 // The nr (Z, r) blocks of Z index iz in host layout (irot, ixy, ir) (BK input).
 void pack_z_plane(const Complex* psi, const DeviceLayout& layout, int nr, int iz, Complex* plane);
-// psi and d psi / dr = sum_ir weights[ir] psi(ir) at the flux surface r = r(ir_flux) on the planes
-// iz = first_plane .. first_plane + n_planes - 1. chunk (2 n_rot n_xy n_planes values) = [psi_c | d psi / dr],
-// each in host layout (irot, ixy, iz - first_plane). The sum per element in the CPU twin's order
-// (flux_surface in propagation/flux_surface.cpp): bitwise equal to it with -fmad=false.
-void flux_surface_chunk(const Complex* psi, const DeviceLayout& layout, int nr, int ir_flux, const double* weights,
-                        int first_plane, int n_planes, Complex* chunk);
 // Host layout <-> device layout for the points izr_first .. izr_first + n_points - 1: `chunk`
 // holds them in host layout (irot, ixy, izr - izr_first).
 void host_chunk_to_device(const Complex* chunk, const DeviceLayout& layout, std::int64_t izr_first,

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generates the Fortran reference data for the propagation gates (3, 4, and 6 for a flux case).
+# Generates the Fortran reference data for the propagation gate (gate 3).
 #
 # Runs the reference executable (reference_config.sh) on tests/reference/<case>/DVR.inp unchanged
 # (a full new run: setup, propagation, analysis) in a scratch directory and copies into
@@ -8,11 +8,6 @@
 #   fortran_averages.out   averages.out (time, norm, <Z>, <r>, rest norm)
 #   fortran_fort21.bin     fort.21, the BK coefficients of every analysis step (gate 4)
 #   fortran_fort25.txt     fort.25, the state-resolved S-matrix elements and probabilities
-# and, for a case with doFluxAnalysis in its DVR.inp (gate 6; a run without them is refused):
-#   fortran_flux_coeffs.bin        flux_coeffs.dat, phi(E) at the flux surface (gfortran unformatted)
-#   fortran_flux_coeffs_deriv.bin  flux_coeffs_deriv.dat, phi'(E), its r-derivative
-#   fortran_flux_reaction.dat      flux_reaction.dat, the reaction probability P(E)
-#   fortran_flux_density.dat       flux_density.dat, the probability density P(x, y; E)
 # and their lines in the case's MANIFEST.tsv. All other Fortran output files stay in the scratch
 # directory.
 #
@@ -30,25 +25,14 @@ case_dir="${FORTRAN_REPO_DIR}/tests/reference/${1:-hardwall_short}"
 scratch_dir="$(new_scratch_dir "${2:-}")"
 
 stage_inputs "${case_dir}" "${scratch_dir}"
-# A case with doFluxAnalysis must also get its four flux files: run_fortran refuses a run without them.
-flux_outputs=()
-if input_has_flux_analysis "${scratch_dir}/DVR.inp"; then flux_outputs=("${FLUX_OUTPUTS[@]}"); fi
 start=$(date +%s)
-run_fortran "${scratch_dir}" fortran_stdout.txt averages.out fort.21 fort.25 "${flux_outputs[@]}"
+run_fortran "${scratch_dir}" fortran_stdout.txt averages.out fort.21 fort.25
 echo "* Run time: $(($(date +%s) - start)) s"
 
 cp "${scratch_dir}/fortran_stdout.txt" "${case_dir}/fortran_stdout.txt"
 cp "${scratch_dir}/averages.out" "${case_dir}/fortran_averages.out"
 cp "${scratch_dir}/fort.21" "${case_dir}/fortran_fort21.bin"
 cp "${scratch_dir}/fort.25" "${case_dir}/fortran_fort25.txt"
-flux_files=()
-if ((${#flux_outputs[@]} > 0)); then
-  cp "${scratch_dir}/flux_coeffs.dat" "${case_dir}/fortran_flux_coeffs.bin"
-  cp "${scratch_dir}/flux_coeffs_deriv.dat" "${case_dir}/fortran_flux_coeffs_deriv.bin"
-  cp "${scratch_dir}/flux_reaction.dat" "${case_dir}/fortran_flux_reaction.dat"
-  cp "${scratch_dir}/flux_density.dat" "${case_dir}/fortran_flux_density.dat"
-  flux_files=(fortran_flux_coeffs.bin fortran_flux_coeffs_deriv.bin fortran_flux_reaction.dat fortran_flux_density.dat)
-fi
 record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" DVR.inp -- \
-  fortran_stdout.txt fortran_averages.out fortran_fort21.bin fortran_fort25.txt "${flux_files[@]}"
+  fortran_stdout.txt fortran_averages.out fortran_fort21.bin fortran_fort25.txt
 echo "* Reference files written to ${case_dir}"

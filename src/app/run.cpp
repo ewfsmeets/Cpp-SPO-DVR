@@ -41,8 +41,6 @@
 #include "report/analysis_report.hpp"
 #include "report/crp_report.hpp"
 #include "report/fine_analysis_report.hpp"
-#include "report/flux_files.hpp"
-#include "report/flux_report.hpp"
 #include "report/propagation_report.hpp"
 #include "report/sections.hpp"
 
@@ -51,15 +49,11 @@ namespace spodvr {
 namespace {
 
 // Checkpoint file names in an output / restart directory: native, and as written by the
-// Fortran code (fort.9, fort.21; a Fortran restart reads them as fort.8, fort.22). The flux
-// coefficient files have the same name for writing and reading in the Fortran code.
+// Fortran code (fort.9, fort.21; a Fortran restart reads them as fort.8, fort.22).
 constexpr std::string_view checkpoint_file = "checkpoint.bin";
 constexpr std::string_view bk_file = "bk_coefficients.bin";
-constexpr std::string_view flux_file = "flux_coefficients.bin";
 constexpr std::string_view fortran_wave_function_file = "fort.9";
 constexpr std::string_view fortran_bk_file = "fort.21";
-constexpr std::string_view fortran_flux_file = "flux_coeffs.dat";                   // phi
-constexpr std::string_view fortran_flux_derivative_file = "flux_coeffs_deriv.dat";  // phi'
 
 // BK coefficients of the earlier runs, in time order.
 using BkRecords = std::vector<std::pair<double, BkCoefficients>>;
@@ -80,45 +74,10 @@ std::filesystem::path first_existing(const std::filesystem::path& dir, std::stri
   throw CheckpointError("neither " + std::string(a) + " nor " + std::string(b) + " found in '" + dir.string() + "'");
 }
 
-// A restart with the flux analysis continues that of the earlier run, which must have had it: the
-// Fortran stops too when the file is missing (readFluxCoeffs opens it with STATUS = 'old').
-void require_flux_file(const std::filesystem::path& path) {
-  if (!std::filesystem::exists(path))
-    throw CheckpointError(
-        "doFluxAnalysis is true but '" + path.string() +
-        "' does not exist: a restart continues the flux analysis of the run in RestartDir, which "
-        "must have had it with the same flux keys (set doFluxAnalysis to false to restart without it)");
-}
-
-// Restart with the flux analysis: phi and phi' of the earlier run, in place into the accumulator, from
-// the files of RestartFormat. The native file must have the input's flux keys and the checkpoint's
-// time; the Fortran files hold neither, only their sizes are checked (flux Q8).
-// Fortran: FluxAnalyzor.f90 setupFluxAnalyzor (readWriteFluxCoeffs "read" when NewCalc is false)
-void restore_flux_coefficients(const Config& config, double checkpoint_time, WavePacketPropagation& propagation) {
-  const std::filesystem::path dir = config.input.restart_dir;
-  if (config.input.restart_format == "native") {
-    require_flux_file(dir / flux_file);
-    double time = 0.0;
-    propagation.read_flux_coefficients(
-        [&](FluxCoefficients& c) { time = read_flux_coefficients(dir / flux_file, config, c); });
-    if (time != checkpoint_time)  // exact: the earlier run wrote both from its tEnd
-      throw CheckpointError(
-          "the flux coefficients in '" + (dir / flux_file).string() + "' are at t = " + full_precision(time) +
-          ", the checkpoint at t = " + full_precision(checkpoint_time) + ": the two files come from different runs");
-    return;
-  }
-  require_flux_file(dir / fortran_flux_file);
-  require_flux_file(dir / fortran_flux_derivative_file);
-  propagation.read_flux_coefficients([&](FluxCoefficients& c) {
-    read_fortran_flux_coefficients(dir / fortran_flux_file, dir / fortran_flux_derivative_file, c);
-  });
-}
-
 // Restart (nread = 1): reads the wave packet and analysis surface of the earlier run and its BK
-// coefficients, which are added to the S-matrix and returned (to be copied into the new BK files),
-// and with the flux analysis its flux coefficients.
+// coefficients, which are added to the S-matrix and returned (to be copied into the new BK files).
 // Fortran: WaveFunction.f90 ReadWaveFunc, AsympInfo.f90 ReadOrWriteAsympInfo (nread = 1),
-// Analyzor.f90 GetSMatrixElemsOfOldRun, FluxAnalyzor.f90 setupFluxAnalyzor
+// Analyzor.f90 GetSMatrixElemsOfOldRun
 BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WavePacketPropagation& propagation) {
   const InputParameters& p = config.input;
   const std::filesystem::path dir = p.restart_dir;
@@ -153,15 +112,8 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
   if (fortran_compare::rne(checkpoint_time, p.t_start))
     throw CheckpointError("tStart = " + full_precision(p.t_start) + " but the checkpoint in '" + dir.string() +
                           "' is at t = " + full_precision(checkpoint_time));
-  // A restart without the flux analysis ignores the flux files of the earlier run, as the Fortran.
-  if (propagation.flux()) restore_flux_coefficients(config, checkpoint_time, propagation);
   out << "\n  Restarted from " << dir.string() << " (" << p.restart_format
-      << " files) at t = " << fixed(checkpoint_time, 2) << " a.u."
-      << (propagation.flux() ? ", with the flux coefficients" : "") << '\n';
-  if (propagation.flux() && p.restart_format != "native")
-    out << "  Warning: the Fortran flux coefficient files have no header: the flux keys (rFluxAnalysis, "
-           "EMinFluxAna, EMaxFluxAna, DeltaEFluxAna) and the time of the earlier run are not checked, only "
-           "the sizes (flux Q8)\n";
+      << " files) at t = " << fixed(checkpoint_time, 2) << " a.u.\n";
   return records;
 }
 
@@ -186,27 +138,15 @@ struct BkOutput {
   }
 };
 
-// The FLUX ANALYSIS set-up block of a propagation with the flux analysis, from its memory rule.
-void report_flux_setup(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
-                       const GasPhase& gas, const FluxAccumulator& flux, const FluxMemoryCheck& memory) {
-  const double ratio =
-      flux_initial_state_ratio(gas.states.wave_function(config.input.v_in, config.input.j_in), *grids.ir_flux_analysis);
-  print_flux_analysis_setup(out, style, config, grids, flux.energies(), ratio, memory);
-}
-
-// A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis and,
-// with doFluxAnalysis, the flux analysis with the slot count and memory rule of `estimate`.
-// Fortran: Main.f90 from SetupRDBasis to StateToStateProbs, computeFluxProbability
+// A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis.
+// Fortran: Main.f90 from SetupRDBasis to StateToStateProbs
 void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                      const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
-                     const std::filesystem::path& output_dir, Device device, const MemoryEstimate& estimate) {
+                     const std::filesystem::path& output_dir, Device device) {
   check_restart_directory(config, output_dir);
-  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device),
-                                    estimate.flux_slot_count());
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device));
   print_propagation_setup(out, style, grids, propagation);
   print_analysis_setup(out, style, config, propagation.analysis_basis(), propagation.analysis_energies());
-  if (propagation.flux())
-    report_flux_setup(out, style, config, grids, gas, *propagation.flux(), estimate.flux_memory.value());
 
   const BkRecords earlier =
       config.derived.run_mode == 1 ? restore_from_checkpoint(out, config, propagation) : BkRecords{};
@@ -246,36 +186,18 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
                      surface);
   if (write_fortran)
     write_fortran_wave_function(output_dir / fortran_wave_function_file, propagation.wave_packet_on_host(), surface);
-  // The flux coefficients for a restart of the flux analysis. Fortran: readWriteFluxCoeffs ("write")
-  if (propagation.flux()) {
-    const FluxCoefficients& coefficients = propagation.flux()->coefficients();
-    if (write_native) write_flux_coefficients(output_dir / flux_file, config, config.input.t_end, coefficients);
-    if (write_fortran)
-      write_fortran_flux_coefficients(output_dir / fortran_flux_file, output_dir / fortran_flux_derivative_file,
-                                      coefficients);
-  }
 
   // Asymptotic analysis: S-matrix and probabilities at the analysis energies.
   const ScatteringResults results = propagation.scattering_results();
   print_scattering_results(out, style, config, propagation.analysis_basis(), results);
 
   write_averages_file(output_dir / "averages.dat", averages);
-  std::vector<std::filesystem::path> files =
-      write_scattering_files(output_dir, config, propagation.analysis_basis(), results);
-  // The reaction probability from the flux. Fortran: computeFluxProbability
-  if (propagation.flux()) {
-    const FluxResults flux = propagation.flux_results();
-    print_flux_results(out, style, flux);
-    for (std::filesystem::path& f : write_flux_files(output_dir, config, grids, flux)) files.push_back(std::move(f));
-  }
+  const auto files = write_scattering_files(output_dir, config, propagation.analysis_basis(), results);
   out << "\n  Data files written to " << output_dir.string() << ": averages.dat";
   for (const auto& f : files) out << ", " << f.filename().string();
   out << ", " << bk_file;
-  const bool flux = propagation.flux().has_value();
   if (write_native) out << ", " << checkpoint_file;
-  if (write_native && flux) out << ", " << flux_file;
   if (write_fortran) out << ", " << fortran_bk_file << ", " << fortran_wave_function_file;
-  if (write_fortran && flux) out << ", " << fortran_flux_file << ", " << fortran_flux_derivative_file;
   out << '\n';
 }
 
@@ -337,15 +259,15 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (device == Device::Cuda && !propagates)
       out << "  Note: --device cuda has no effect in this run mode (no propagation).\n";
     if (device == Device::Cuda && propagates) out << "  " << prepare_device(device) << '\n';
-    // flux Q6: an analysis-only run reads BK coefficients, not the wave packet the flux needs.
-    if (config.input.do_flux_analysis && config.derived.run_mode == 2)
-      out << "  Note: doFluxAnalysis has no effect in an analysis-only run (onlyAnalysis): the flux analysis "
-             "needs the propagation.\n";
     print_input_summary(out, style, config);
 
     const auto potential = make_potential(config.input);
     const AngularGrid angular = make_angular_grid(config);
     const SpatialGrids grids = make_spatial_grids(config);
+    // The flux analysis is not ported: a propagating run refuses it once its input checks have
+    // passed. The developer tools and the tests' run_cpp_propagation bypass this on purpose.
+    if (config.input.do_flux_analysis && propagates)
+      throw NotSupportedError("doFluxAnalysis = true: the flux analysis is not implemented yet");
     print_grids(out, style, config, grids, angular);
 
     // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.
@@ -354,7 +276,6 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       report_crp_data_set(out, style, dynamic_cast<const CrpPotential&>(*potential), grids, analysis_only);
     std::optional<PotentialGrid> potential_grid;
     std::vector<double> asymptotic;
-    std::optional<MemoryEstimate> estimate;  // the run's memory (slot count and rule of the flux analysis)
     if (analysis_only) {
       asymptotic = compute_asymptotic_potential(*potential, config, grids);
     } else {
@@ -365,11 +286,8 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
         print_surface_symmetry(out, style, symmetry, check);
         require_symmetric_potential(check, config, symmetry);
       }
-      const std::optional<std::size_t> physical = physical_memory_bytes();
-      estimate = estimate_memory(config, grids, angular, symmetry, omp_get_max_threads(),
-                                 propagates ? device : Device::Cpu, physical);
-      print_memory_estimate(out, style, *estimate, physical);
-      if (estimate->flux_memory) require_flux_memory(*estimate->flux_memory);  // before the long set-up
+      print_memory_estimate(out, style, estimate_memory(config, grids, angular, symmetry, omp_get_max_threads()),
+                            physical_memory_bytes());
       check_device_memory(out, style, propagates ? device : Device::Cpu, config, grids, angular,
                           symmetry.n_representatives());
       // Written per (Z, r) group of the propagator (first touch, core/loop_schedule.hpp).
@@ -405,7 +323,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     }
 
     run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir,
-                    device, *estimate);
+                    device);
     // alsoAnalysis: the fine analysis of the BK file this run has just written (the
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)

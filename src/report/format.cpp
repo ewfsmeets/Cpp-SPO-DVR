@@ -57,10 +57,6 @@ std::string format_bytes(std::size_t bytes) {
 }
 std::string scientific(double x, int decimals) { return format("%.*e", decimals, x); }
 
-int energy_stride(int n_energies) {
-  return std::max(1, (n_energies + max_printed_energies - 1) / max_printed_energies);
-}
-
 void print_section(std::ostream& out, const Style& style, std::string_view title) {
   const std::string rule(80, '=');
   out << '\n'

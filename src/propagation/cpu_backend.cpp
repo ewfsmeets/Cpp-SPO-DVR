@@ -1,11 +1,9 @@
-// The wave packet in host memory, propagated by the OpenMP operator stages; the analysis reads
-// its pieces (specular wave, Zana plane, densities, flux surface). Fortran: SplitOperator.f90
+// The wave packet in host memory, propagated by the OpenMP operator stages. Fortran: SplitOperator.f90
 #include "propagation/cpu_backend.hpp"
 
 #include <utility>
 
 #include "propagation/averages.hpp"
-#include "propagation/flux_surface.hpp"
 
 namespace spodvr {
 
@@ -37,10 +35,7 @@ CpuBackend::CpuBackend(const BackendInput& in, PotentialGrid potential, Specular
       psi_{ScatteringWave(in.basis.size(), in.config.input.nx * in.config.input.ny,
                           in.config.input.nr * in.config.input.nz,
                           xy_group_points(scattering_shape(in.config, in.basis))),
-           std::move(initial)},
-      nz_potential_(in.grids.nz_potential),
-      ir_flux_(in.grids.ir_flux_analysis),
-      flux_weights_(in.tables.flux_derivative) {
+           std::move(initial)} {
   // With precomputed exp(-i V dt) the real potential is no longer needed.
   if (potential_.uses_precomputed_exponentials()) {
     premultiplied_potential_.clear();
@@ -54,11 +49,6 @@ std::span<const std::complex<double>> CpuBackend::z_plane(int iz) const {
 }
 
 std::vector<double> CpuBackend::block_densities() const { return spodvr::block_densities(psi_.scattering); }
-
-void CpuBackend::flux_surface(FluxSurfaceWave& out) const {
-  require_flux_surface_slot("CpuBackend", ir_flux_.has_value(), out, psi_.scattering.block_size(), nz_potential_);
-  spodvr::flux_surface(psi_.scattering, *ir_flux_, flux_weights_, out);
-}
 
 std::unique_ptr<PropagationBackend> make_cpu_backend(const BackendInput& input, PotentialGrid potential,
                                                      SpecularWave initial) {

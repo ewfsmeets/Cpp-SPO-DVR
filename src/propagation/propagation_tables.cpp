@@ -1,5 +1,5 @@
 // Precomputed propagation factors: kinetic and rotational exponentials, absorbing potentials,
-// momentum shift and grid projection phases, the r-derivative weights at the flux surface.
+// momentum shift and grid projection phases.
 // Fortran: GridEnergies.f90, Absorption.f90, MomentumShifting.f90, TwoGrids.f90, KineticOp.f90
 #include "propagation/propagation_tables.hpp"
 
@@ -7,7 +7,6 @@
 #include <optional>
 #include <stdexcept>
 
-#include "analysis/flux_analysis.hpp"
 #include "core/constants.hpp"
 #include "core/fortran_math.hpp"
 
@@ -198,10 +197,6 @@ PropagationTables make_propagation_tables(const Config& config, const SpatialGri
   t.fft_scale_r = p.dr / sqrt_two_pi;
   t.fft_scale_x = std::sqrt(d.dx / p.nx);
   t.fft_scale_y = std::sqrt(d.dy / p.ny);
-
-  // d psi / dr at the flux surface: one table for both backends. Fortran: getWaveFuncDerivAtZr (ddr)
-  if (grids.ir_flux_analysis)
-    t.flux_derivative = flux_derivative_weights(p.nr, grids.r.spacing(), *grids.ir_flux_analysis);
   return t;
 }
 

@@ -8,12 +8,16 @@ namespace spodvr {
 
 namespace {
 
+constexpr int max_printed_energies = 50;  // longer energy lists are thinned on screen
 constexpr int max_rovib_columns = 12;
 
 std::string state_label(int v, int j, int mj, int n, int m) {
   return "v=" + std::to_string(v) + " j=" + std::to_string(j) + " mJ=" + std::to_string(mj) + " (n,m)=(" +
          std::to_string(n) + "," + std::to_string(m) + ")";
 }
+
+// Every k-th energy, so that at most max_printed_energies rows are printed.
+int energy_stride(int n_energies) { return (n_energies + max_printed_energies - 1) / max_printed_energies; }
 
 // Rovibrational state (v, j), summed over mJ and diffraction.
 struct RovibColumn {
