@@ -171,10 +171,13 @@ target_link_libraries(spodvr_crplib PRIVATE spodvr_fortran_text spodvr_warnings 
 # also the fast-math one. The SCM distorted-surface correction (src/potential/scm/): its readers
 # match the Fortran's bit for bit (checked with a one-off gfortran driver), and which slab atoms lie
 # inside the cut-off sphere must not depend on the build (no contraction or reassociation of the
-# squared distance; test ScmPositionFile.CutoffUsesTheFortranExpression).
+# squared distance; test ScmPositionFile.CutoffUsesTheFortranExpression); the correction ΔV equals
+# the Fortran's bit for bit, also in the fast-math build (tests/scm/test_scm_correction_reference.cpp;
+# compiled with -ffast-math, most reference points differ).
 # =============================================================================================
 add_library(spodvr_strict_objects OBJECT
   src/potential/scm/scm_files.cpp
+  src/potential/scm/scm_correction.cpp
 )
 target_include_directories(spodvr_strict_objects PRIVATE src)
 # Of spodvr_core's definitions only this one changes a header today (AlignedVector's allocator);

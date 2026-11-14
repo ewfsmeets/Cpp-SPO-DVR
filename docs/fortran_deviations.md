@@ -207,10 +207,13 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
 
 The port of the Fortran's distorted-surface correction (`DistortedSurfacePES.dir/`). Ported so far:
 the readers of its two data files, the parameter file and the slab position file
-(`scm_files.*`, tests `tests/test_scm_io.cpp`); the potential itself cannot be selected yet
+(`scm_files.*`, tests `tests/test_scm_io.cpp`), and the correction ΔV itself (`scm_correction.*`,
+tests `tests/test_scm_correction.cpp`); the potential itself cannot be selected yet
 ([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files and from
-synthetic multi-configuration files are bitwise equal to what the reference's `SCM_IO.f90` reads
-(checked 2026-11-14 with a one-off gfortran driver against the r1713-dce0ecc objects).
+synthetic multi-configuration files, and ΔV at every point of the four reference runs (the example
+slab with rescaling on and off, synthetic slabs of versions 3 and 2), are bitwise equal to the
+reference's (the r1713-dce0ecc objects driven by `tools/fortran_reference/scm_driver/`; tests
+`tests/scm/`), also in the fast-math build. ΔV has no deviation from the Fortran.
 Open physics questions: [scm_open_questions.md](scm_open_questions.md).
 
 - SCM D5: position-file versions. The Fortran reads versions 1, 2 and 3 (`SCM_IO.f90 ReadSCMSlab`);

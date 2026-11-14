@@ -6,56 +6,28 @@
 #include <algorithm>
 #include <bit>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <format>
-#include <fstream>
 #include <iterator>
 #include <string>
 #include <vector>
 
 #include "potential/scm/scm_files.hpp"
 #include "scm_driver_output.hpp"
+#include "scm_reference_runs.hpp"
 
 using namespace spodvr;
+using scm_test::reference_directory;
+using scm_test::reference_runs;
+using scm_test::ReferenceRun;
 using scm_test::ScmDriverOutput;
 
 namespace {
 
-// tests/scm/reference: the driver outputs and the synthetic inputs.
-const std::filesystem::path reference_directory = SPODVR_SCM_REFERENCE_DIR;
-// potentials/H2Cu111SRP_C3v.dir: the example params.dat and examplePosfile.dat.
-const std::filesystem::path example_directory = SPODVR_SCM_EXAMPLE_DIR;
-
-// One driver run of run_scm_reference.sh: its output and the files it read.
-struct ReferenceRun {
-  std::filesystem::path output;      // relative to tests/scm/reference
-  std::filesystem::path parameters;  // params.dat as run
-  std::filesystem::path slab;        // the position file as run
-};
-
-const std::vector<ReferenceRun>& reference_runs() {
-  static const std::vector<ReferenceRun> runs = {
-      {"example/rescaling_on.out", example_directory / "params.dat", example_directory / "examplePosfile.dat"},
-      {"example/rescaling_off.out", example_directory / "params.dat", example_directory / "examplePosfile.dat"},
-      {"synthetic/v3_slab3_rescaling_on.out", reference_directory / "synthetic/params.in",
-       reference_directory / "synthetic/slab_v3.in"},
-      {"synthetic/v2_slab2_rescaling_off.out", reference_directory / "synthetic/params.in",
-       reference_directory / "synthetic/slab_v2.in"},
-  };
-  return runs;
-}
-
 // The bit pattern of a double: bitwise comparisons with EXPECT_EQ.
 std::uint64_t bits(double x) { return std::bit_cast<std::uint64_t>(x); }
-
-// The number on the first line of a point list.
-int point_count(const std::filesystem::path& file) {
-  std::ifstream in(file);
-  int count = -1;
-  in >> count;
-  return count;
-}
 
 // The driver output of a run; a missing file fails (it would otherwise hide an incomplete tree).
 ScmDriverOutput read_run(const ReferenceRun& run) {
@@ -72,7 +44,7 @@ TEST(ReferenceFiles, DriverRunsAreComplete) {
     SCOPED_TRACE(run.output.string());
     const ScmDriverOutput output = read_run(run);
     EXPECT_TRUE(output.done);
-    const int points = point_count(reference_directory / run.output.parent_path() / "points.in");
+    const std::ptrdiff_t points = std::ssize(scm_test::read_points(scm_test::points_file(run)));
     EXPECT_GT(points, 0);
     EXPECT_EQ(output.text.at("points"), std::to_string(points));
     for (const char* tag : {"x", "y", "delta_v", "v_crp", "v_total"})
