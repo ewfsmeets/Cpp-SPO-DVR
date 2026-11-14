@@ -2,16 +2,16 @@
 # Keys: tools/fortran_reference/README.md; "-" = not recorded.
 key	value
 commit	dce0ecc44a401098528e9ef94c54e1086d393ebb
-date	2026-11-12
+date	2026-11-14
 defines	-DX86 -DGNU -DNO_SCSL -DNO_ESSL -DFFTWL -DNO_MKL -DUSE_OMP -DNO_USE_MPI -D__COMP__=\"GNU\" -D__PROGRAM_VERSION__=\"5.24\"
 exe.sha256	3b2fb98bf9bd8115fc392dc82b99fa4e2a9b608c7aee0bd180b330601e84bcda
 flags	-fdefault-real-8 -ffree-line-length-none -fopenmp -O3 -I/usr/include
 id	r1713-dce0ecc
 package.build.cpp-15	15.2.0-16ubuntu1
 package.build.gfortran-15	15.2.0-16ubuntu1
-package.build.libc6-dev	2.43-2ubuntu2.4
+package.build.libc6-dev	2.43-2ubuntu2.7
 package.build.libfftw3-dev	3.3.10-2fakesync1build3
-package.runtime.libc6	2.43-2ubuntu2.4
+package.runtime.libc6	2.43-2ubuntu2.7
 package.runtime.libfftw3-double3	3.3.10-2fakesync1build3
 package.runtime.libgfortran5	16-20260322-1ubuntu1
 package.runtime.libgomp1	16-20260322-1ubuntu1
