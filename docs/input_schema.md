@@ -108,9 +108,12 @@ checkpoint or BK file written with a low-Z absorber that the input does not have
 round) is refused with a message naming that absorber. Files written without low-Z absorbers have
 the same contents as before these keys existed.
 The checkpoint records the `SystemID` but not the CRP data set: a restart with SystemID
-`CRPlibrary` must use the same `CRPlibDataSet` (not checked). Likewise a restart with
-`CRPDistrtSurface` must use the same data set, SCM files, `PosFileSlabNum`, `SCMCutoff` and
-`EnableSurfExpan` (not checked yet).
+`CRPlibrary` must use the same `CRPlibDataSet` (not checked). With `CRPDistrtSurface` the native
+files also record `PosFileSlabNum`, `SCMCutoff`, `EnableSurfExpan`, the slab's a_T, atom count and
+position statistics (rms displacement, mean shift of layer 1, highest atom) and the 36 values of the
+parameter file, and a restart or analysis-only run with others is refused naming them. Positions are
+compared through these statistics, not atom by atom; the data set is not checked. The Fortran-format files (fort.8/fort.9, fort.21/fort.22)
+hold no parameters, so a restart from them checks none of this.
 
 ## Not supported
 These keys give a "not supported" error. Logical keys are accepted when set to `false`. The list

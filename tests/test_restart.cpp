@@ -5,11 +5,14 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <span>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <unistd.h>
@@ -18,8 +21,12 @@
 
 #include "app/cli.hpp"
 #include "app/run.hpp"
+#include "input/json_input.hpp"
+#include "input/process.hpp"
 #include "io/binary_file.hpp"
 #include "io/fortran_unformatted.hpp"
+#include "scm_example_input.hpp"
+#include "temporary_directory.hpp"
 
 using namespace spodvr;
 namespace fs = std::filesystem;
@@ -385,8 +392,9 @@ TEST(Restart, LowZAbsorberMismatchIsAnError) {
       << err;
 }
 
-// Files written without low-Z absorbers keep the parameter list of format version 2 (35 entries,
-// no low-Z names), so checkpoints and BK files of earlier versions of the program stay readable.
+// Files written without low-Z absorbers and without SCM keep the parameter list of format version 2
+// (35 entries, no low-Z or SCM names), so checkpoints and BK files of earlier versions of the program
+// stay readable.
 TEST(Restart, CheckpointWithoutLowZAbsorbersKeepsItsParameterList) {
   const FirstRun& r = first_run();
   ASSERT_EQ(r.code, 0) << r.err;
@@ -436,6 +444,189 @@ TEST(Restart, CheckpointWithoutLowZAbsorbersKeepsItsParameterList) {
       (void)file.read<double>();
     }
   }
+}
+
+namespace {
+
+// The SCM example (SystemID CRPDistrtSurface) on 2 × 2 (x, y) points, from a position file with two
+// identical snapshots: the first part of a run (0 .. 10, 4 steps) and the input of the second part.
+struct ScmRuns {
+  test_support::TemporaryDirectory dir{"restart_scm"};
+  fs::path two_snapshots = dir.path() / "two_snapshots.dat";
+  int code_first;
+  std::string err;
+
+  // The example position file with its snapshot twice (line 2: 2 snapshots).
+  void write_two_snapshots() const {
+    std::ifstream in(test_support::scm_example_directory / "examplePosfile.dat");
+    std::vector<std::string> lines;
+    for (std::string line; std::getline(in, line);) lines.push_back(line);
+    ASSERT_EQ(lines.size(), 3u + 343u);
+    std::ofstream out(two_snapshots);
+    out << lines[0] << "\n 7 7 7 2 3 343\n" << lines[2] << '\n';
+    for (int copy = 0; copy < 2; ++copy)
+      for (std::size_t k = 3; k < lines.size(); ++k) out << lines[k] << '\n';
+  }
+  nlohmann::json json(double t_start, double t_end) const {
+    nlohmann::json j = test_support::scm_example_json(two_snapshots);
+    j.update({{"nX", 2}, {"nY", 2}, {"dtAna", 5.0}, {"dtAve", 5.0}});
+    return with_times(j, t_start, t_end, static_cast<int>((t_end - t_start) / 2.5 + 0.5));
+  }
+  nlohmann::json second(const nlohmann::json& changes = nlohmann::json::object()) const {
+    nlohmann::json j = restart_from(json(10.0, 20.0), dir.path() / "first");
+    j.update(changes);
+    return j;
+  }
+
+  ScmRuns() {
+    write_two_snapshots();
+    code_first = run(json(0.0, 10.0), dir.path() / "first", err);
+  }
+};
+
+const ScmRuns& scm_runs() {
+  static const ScmRuns r;
+  return r;
+}
+
+}  // namespace
+
+// A restart of an SCM run with the same input continues it; one with another snapshot
+// (PosFileSlabNum), cut-off, rescaling (EnableSurfExpan), parameter file (a changed P7 of layer 1) or
+// position file (one atom moved by 0.01 bohr: the same a_T and atom count) is refused naming it (exit
+// code 4). A Fortran-format restart has no parameters to check.
+TEST(Restart, ScmIdentityMismatchIsAnError) {
+  const ScmRuns& r = scm_runs();
+  ASSERT_EQ(r.code_first, 0) << r.err;
+  std::string err;
+  EXPECT_EQ(run(r.second(), r.dir.path() / "same", err), 0) << err;
+  EXPECT_EQ(run(r.second({{"PosFileSlabNum", 2}}), r.dir.path() / "slab_2", err), 4);
+  EXPECT_NE(err.find("PosFileSlabNum is 2.0000000000000000e+00 in the input but 1.0000000000000000e+00 in checkpoint"),
+            std::string::npos)
+      << err;
+  EXPECT_EQ(run(r.second({{"SCMCutoff", 15.0}}), r.dir.path() / "cutoff", err), 4);
+  EXPECT_NE(err.find("SCMCutoff is"), std::string::npos) << err;
+  EXPECT_EQ(run(r.second({{"EnableSurfExpan", false}}), r.dir.path() / "no_rescaling", err), 4);
+  EXPECT_NE(err.find("EnableSurfExpan is 0.0000000000000000e+00 in the input"), std::string::npos) << err;
+
+  std::ifstream original(test_support::scm_example_directory / "params.dat");
+  const std::string text{std::istreambuf_iterator<char>(original), std::istreambuf_iterator<char>()};
+  const std::string p7 = "7.44024869632";  // P7 of layer 1, the first of the two lines
+  ASSERT_NE(text.find(p7), std::string::npos);
+  std::string changed = text;
+  changed.replace(text.find(p7), p7.size(), "7.44024869633");
+  std::ofstream(r.dir.path() / "params.dat") << changed;
+  EXPECT_EQ(run(r.second({{"SCMParFilepath", (r.dir.path() / "params.dat").string()}}), r.dir.path() / "params", err),
+            4);
+  EXPECT_NE(err.find("SCMParFilepath (layer 1, P7) is 7.4402486963300"), std::string::npos) << err;
+
+  // The atom at the origin (ideal (0, 0, 0)) of snapshot 1 moved by 0.01 bohr in x.
+  std::ifstream two(r.two_snapshots);
+  std::vector<std::string> lines;
+  for (std::string line; std::getline(two, line);) lines.push_back(line);
+  for (std::size_t k = 3; k < lines.size(); ++k) {
+    std::istringstream fields(lines[k]);
+    double x, y, z, xi, yi, zi;
+    std::string rest;
+    if (!(fields >> x >> y >> z >> xi >> yi >> zi) || xi != 0.0 || yi != 0.0 || zi != 0.0) continue;
+    std::getline(fields, rest);
+    lines[k] = std::format("{} {} {} {} {} {}{}", x + 0.01, y, z, xi, yi, zi, rest);
+    break;
+  }
+  std::ofstream moved(r.dir.path() / "moved.dat");
+  for (const std::string& line : lines) moved << line << '\n';
+  moved.close();
+  EXPECT_EQ(run(r.second({{"PosFilepath", (r.dir.path() / "moved.dat").string()}}), r.dir.path() / "moved", err), 4);
+  EXPECT_NE(err.find("PosFilepath (rms displacement) is"), std::string::npos) << err;
+}
+
+// The header of an SCM checkpoint: the 35 parameters of every file, then the SCM identity (snapshot,
+// cut-off, rescaling, the slab's a_T, atom count and position statistics, P1–P18 of both layers).
+TEST(Restart, ScmCheckpointHasTheScmIdentity) {
+  const ScmRuns& r = scm_runs();
+  ASSERT_EQ(r.code_first, 0) << r.err;
+  BinaryReader file(r.dir.path() / "first" / "checkpoint.bin");
+  (void)file.read<std::array<char, 16>>();  // magic
+  EXPECT_EQ(file.read<std::uint32_t>(), 2u);
+  EXPECT_EQ(file.read_string(), "CRPDistrtSurface");
+  ASSERT_EQ(file.read<std::uint64_t>(), 35u + 10u + 36u);
+  for (int k = 0; k < 35; ++k) {
+    (void)file.read_string();
+    (void)file.read<double>();
+  }
+  const std::pair<std::string, double> identity[] = {{"PosFileSlabNum", 1.0},
+                                                     {"SCMCutoff", 16.0},
+                                                     {"EnableSurfExpan", 1.0},
+                                                     {"PosFilepath (a_T)", 4.8896663475},
+                                                     {"PosFilepath (atoms used)", 73.0}};
+  for (const auto& [name, value] : identity) {
+    EXPECT_EQ(file.read_string(), name);
+    EXPECT_EQ(file.read<double>(), value) << name;
+  }
+  // The position statistics: the values of the run's identity, bitwise.
+  const ScmIdentity scm = *build_config(parse_input(r.json(0.0, 10.0))).derived.scm;
+  const std::pair<std::string_view, double> statistics[] = {
+      {"PosFilepath (rms displacement)", scm.rms_displacement},
+      {"PosFilepath (layer 1 mean shift x)", scm.top_layer_shift[0]},
+      {"PosFilepath (layer 1 mean shift y)", scm.top_layer_shift[1]},
+      {"PosFilepath (layer 1 mean shift z)", scm.top_layer_shift[2]},
+      {"PosFilepath (highest atom)", scm.highest_atom}};
+  for (const auto& [name, value] : statistics) {
+    EXPECT_EQ(file.read_string(), name);
+    EXPECT_EQ(file.read<double>(), value) << name;
+  }
+  for (int layer = 1; layer <= 2; ++layer)
+    for (int k = 1; k <= 18; ++k) {
+      EXPECT_EQ(file.read_string(), "SCMParFilepath (layer " + std::to_string(layer) + ", P" + std::to_string(k) + ")");
+      const double value = file.read<double>();
+      if (k == 17) {
+        EXPECT_EQ(value, 0.725);  // the r clamp range of params.dat
+      }
+      if (k == 18) {
+        EXPECT_EQ(value, 1.847);
+      }
+    }
+}
+
+// analysis.json of an SCM run holds its whole identity, bitwise the values of the run's configuration;
+// that of another PES has no "scm" entry.
+TEST(AnalysisFiles, ScmIdentityRoundTrip) {
+  const ScmRuns& r = scm_runs();
+  ASSERT_EQ(r.code_first, 0) << r.err;
+  std::ifstream file(r.dir.path() / "first" / "analysis.json");
+  const nlohmann::json json = nlohmann::json::parse(file);
+  ASSERT_TRUE(json.contains("scm"));
+  const nlohmann::json& scm = json["scm"];
+  const Config config = build_config(parse_input(r.json(0.0, 10.0)));
+  ASSERT_TRUE(config.derived.scm.has_value());
+  const ScmIdentity& identity = *config.derived.scm;
+  EXPECT_EQ(scm["crp_data_set"], config.input.crp_dataset);
+  EXPECT_EQ(scm["parameter_file"], config.input.scm.parameter_file);
+  EXPECT_EQ(scm["position_file"], r.two_snapshots.string());
+  EXPECT_EQ(scm["slab_tag"], "Multiseedv3_New");
+  EXPECT_EQ(scm["slab_tag"], identity.slab_tag);
+  EXPECT_EQ(scm["position_file_version"], 3);
+  EXPECT_EQ(scm["slab_number"], 1);
+  EXPECT_EQ(scm["cutoff"].get<double>(), 16.0);
+  EXPECT_EQ(scm["rescaling"], true);
+  EXPECT_EQ(scm["slab_lattice_constant"].get<double>(), identity.slab_lattice_constant);
+  EXPECT_EQ(scm["slab_atoms"], 73);
+  EXPECT_EQ(scm["rms_displacement"].get<double>(), identity.rms_displacement);
+  ASSERT_EQ(scm["top_layer_shift"].size(), 3u);
+  for (int k = 0; k < 3; ++k) EXPECT_EQ(scm["top_layer_shift"][k].get<double>(), identity.top_layer_shift[k]);
+  EXPECT_EQ(scm["highest_atom"].get<double>(), identity.highest_atom);
+  EXPECT_NEAR(identity.highest_atom, 0.936367, 1e-6);  // the report's value
+  ASSERT_EQ(scm["parameters"].size(), 2u);
+  for (int layer = 0; layer < 2; ++layer) {
+    ASSERT_EQ(scm["parameters"][layer].size(), 18u);
+    for (int k = 0; k < 18; ++k)
+      EXPECT_EQ(scm["parameters"][layer][k].get<double>(), identity.parameters[layer][k]) << layer << ", " << k;
+  }
+
+  const FirstRun& plain = first_run();
+  ASSERT_EQ(plain.code, 0) << plain.err;
+  std::ifstream plain_file(plain.root / "first" / "analysis.json");
+  EXPECT_FALSE(nlohmann::json::parse(plain_file).contains("scm"));
 }
 
 // A file written by gfortran with -fmax-subrecord-length=16 (tests/reference/fortran_unformatted).

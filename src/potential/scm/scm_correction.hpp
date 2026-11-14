@@ -9,6 +9,7 @@
 // ΔV at the centre of mass (X, Y) (Cartesian), Z, bond length r and orientation (θ, φ), bitwise as
 // the Fortran computes it (the comments in scm_correction.cpp give each operation order):
 // 1. H positions h₁,₂ = (X, Y, Z) ∓ ½r (sin θ cos φ, sin θ sin φ, cos θ), with the unclamped r and Z.
+//    Below the CRP's Zmin, where the CRP clamps Z, this gives deep holes in V (SCM D15).
 // 2. With rescaling (EnableSurfExpan), the ideal-frame positions h′: the bond centre's x and y are
 //    divided by s = a_T/a₀ and the atoms rebuilt from centre and bond (z changes by rounding);
 //    without rescaling h′ = h.

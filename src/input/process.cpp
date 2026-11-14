@@ -3,12 +3,15 @@
 #include "input/process.hpp"
 
 #include <cmath>
+#include <memory>
 
 #include "core/constants.hpp"
+#include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "input/validate.hpp"
 #include "input/wave_packet_params.hpp"
 #include "potential/potential_factory.hpp"
+#include "potential/scm/scm_crp_potential.hpp"
 #include "symmetry/point_group.hpp"
 
 namespace spodvr {
@@ -133,7 +136,11 @@ Config build_config(const InputParameters& input) {
   DerivedParameters& d = config.derived;
 
   // Fortran: InputNew.f90 SetupInput
-  d.system = make_potential(input)->system_parameters();
+  const std::unique_ptr<Potential> potential = make_potential(input);
+  d.system = potential->system_parameters();
+  // What identifies an SCM run in its restart files and analysis.json.
+  if (fortran_compare::seq(potential->name(), "CRPDistrtSurface"))
+    d.scm = dynamic_cast<const ScmCrpPotential&>(*potential).identity();
   d.z_asymptotic_unswitched = d.system.z_asymptotic;
   d.z_asymptotic = input.use_switching ? input.z_max_switch : d.system.z_asymptotic;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <optional>
 #include <string>
 
@@ -30,6 +31,19 @@ struct ScmInput {
   int configuration = 1;        // PosFileSlabNum / SurfNumb: the snapshot used, 1-based
   bool rescale = true;          // EnableSurfExpan / EnabSCMExpan: lattice constants a = a_T, CRP at (u/s, v/s)
   double cutoff = 16.0;         // SCMCutoff (bohr): slab atoms farther from the origin are left out
+};
+
+// What identifies an SCM run beyond its keys, from its two files (restart parameters, analysis.json).
+// The atom positions enter through their statistics (scm_diagnostics.hpp slab_statistics).
+struct ScmIdentity {
+  std::string slab_tag;                                // first field of line 1. Fortran: SlabFileTag
+  int position_file_version = 0;                       // Fortran: PosFileVersion
+  double slab_lattice_constant = 0.0;                  // a_T (bohr). Fortran: DistLatticeConstant
+  int slab_atoms = 0;                                  // the atoms of layers 1–2 that ΔV uses
+  double rms_displacement = 0.0;                       // bohr, of those atoms
+  std::array<double, 3> top_layer_shift{};             // bohr: the mean displacement (x, y, z) of layer 1
+  double highest_atom = 0.0;                           // bohr: the largest distorted z
+  std::array<std::array<double, 18>, 2> parameters{};  // P1–P18 of layers 1 and 2 (params.dat)
 };
 
 // The input parameters as read from the JSON input file, in input units (bohr, eV, amu, a.u. of
@@ -159,6 +173,7 @@ struct InputParameters {
 // Setup.f90 MiscellaneousSetup. Atomic units unless stated otherwise.
 struct DerivedParameters {
   SystemParameters system;          // from the PES (Fortran: setupParametersH2SurfaceSystem)
+  std::optional<ScmIdentity> scm;   // SystemID CRPDistrtSurface only
   double z_asymptotic_unswitched;   // Fortran: zasymp_unswitched
   double z_asymptotic;              // = ZmaxSwitch if switching is used. Fortran: zasymp
 

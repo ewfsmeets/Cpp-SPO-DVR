@@ -295,7 +295,7 @@ Output:
 | `s_matrix.tsv` | per energy and open final state (v, j, mJ, n, m): S-matrix element, probability, phase |
 | `probabilities_rovib.tsv` | per energy and (v, j, mJ), summed over diffraction |
 | `probabilities_diffraction.tsv` | per energy, (v, j, mJ) and diffraction order |
-| `analysis.json` | run metadata: basis sizes, initial state, energy grid, file list |
+| `analysis.json` | run metadata: basis sizes, initial state, energy grid, file list; the SCM identity of a `CRPDistrtSurface` run |
 | `averages.dat` | time, norm, ⟨Z⟩, ⟨r⟩, rest norm during the propagation |
 | `checkpoint.bin`, `bk_coefficients.bin` | final wave packet and Balint-Kurti coefficients, for a restart |
 | `asymptotic_potential.dat`, `gas_phase_states.dat` | set-up data |

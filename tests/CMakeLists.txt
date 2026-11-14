@@ -40,6 +40,8 @@ target_compile_definitions(test_scm_io PRIVATE SPODVR_SCM_EXAMPLE_DIR="${PROJECT
 # The SCM potential test computes expected values bit for bit and tests for NaN: strict floating
 # point in every build (spodvr_strict_fp after the loop's spodvr_fp overrides -ffast-math).
 target_link_libraries(test_scm_potential PRIVATE spodvr_strict_fp)
+# So do the SCM diagnostics tests (their stub potentials' values, NaN, bitwise comparisons).
+target_link_libraries(test_scm_diagnostics PRIVATE spodvr_strict_fp)
 
 # The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
 # command-line options, and negative tests that show the checker fails on a planted fault.

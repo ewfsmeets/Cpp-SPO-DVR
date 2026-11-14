@@ -7,7 +7,6 @@
 #include <chrono>
 #include <filesystem>
 #include <optional>
-#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -30,7 +29,6 @@
 #include "io/checkpoint.hpp"
 #include "io/fortran_files.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
-#include "potential/crp_potential.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
@@ -39,8 +37,8 @@
 #include "propagation/propagation.hpp"
 #include "report/analysis_files.hpp"
 #include "report/analysis_report.hpp"
-#include "report/crp_report.hpp"
 #include "report/fine_analysis_report.hpp"
+#include "report/potential_report.hpp"
 #include "report/propagation_report.hpp"
 #include "report/sections.hpp"
 
@@ -57,14 +55,6 @@ constexpr std::string_view fortran_bk_file = "fort.21";
 
 // BK coefficients of the earlier runs, in time order.
 using BkRecords = std::vector<std::pair<double, BkCoefficients>>;
-
-// The CRP data set and the grid points outside its range: the whole r grid and the Z points of the
-// 6D potential (none in analysis-only runs).
-void report_crp_data_set(std::ostream& out, const Style& style, const CrpPotential& crp, const SpatialGrids& grids,
-                         bool analysis_only) {
-  const std::span<const double> z_6d = grids.z_scattering.points().first(analysis_only ? 0 : grids.nz_potential);
-  print_crp_data_set(out, style, crp.summary(), crp.range_report(z_6d, grids.r.points()));
-}
 
 // The first of the files that exists in dir (the Fortran input names fort.8 / fort.22 or the
 // output names fort.9 / fort.21).
@@ -272,8 +262,8 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
 
     // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.
     const bool analysis_only = config.derived.run_mode == 2;
-    if (fortran_compare::seq(potential->name(), "CRPlibrary"))
-      report_crp_data_set(out, style, dynamic_cast<const CrpPotential&>(*potential), grids, analysis_only);
+    // The PES's own report (CRP data set, SCM diagnostics); SCM D3 can stop the run here.
+    report_potential(out, style, *potential, config, grids, angular);
     std::optional<PotentialGrid> potential_grid;
     std::vector<double> asymptotic;
     if (analysis_only) {

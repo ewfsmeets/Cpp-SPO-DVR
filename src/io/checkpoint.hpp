@@ -15,8 +15,8 @@ namespace spodvr {
 
 // Native checkpoint and BK coefficient files (versioned binary formats, see
 // docs/output_files.md). Both start with the input parameters that a restart must not change
-// (grids, masses, time step, wave packet, absorbers, ...); reading them with a different input
-// is a CheckpointError naming the parameter.
+// (grids, masses, time step, wave packet, absorbers, the SCM identity, ...); reading them with a
+// different input is a CheckpointError naming the parameter.
 // Fortran: WaveFunction.f90 SaveWaveFunc / ReadWaveFunc (fort.9 / fort.8), AsympInfo.f90 and
 // Analyzor.f90 (fort.21 / fort.22)
 

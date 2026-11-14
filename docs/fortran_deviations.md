@@ -209,10 +209,12 @@ The port of the Fortran's distorted-surface correction (`DistortedSurfacePES.dir
 the readers of its two data files, the parameter file and the slab position file
 (`scm_files.*`, tests `tests/test_scm_io.cpp`), the correction ΔV itself (`scm_correction.*`,
 tests `tests/test_scm_correction.cpp`), and the potential, SystemID `CRPDistrtSurface`
-(`scm_crp_potential.*`: V = CRP(u/s, v/s) + ΔV, with its set-up checks in `scm_diagnostics.*`;
-tests `tests/test_scm_potential.cpp`), with its input keys ([input_schema.md](input_schema.md)).
-Not yet ported: the SCM set-up report, the SCM identity in the restart files and a regression gate
-of the program ([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files
+(`scm_crp_potential.*`: V = CRP(u/s, v/s) + ΔV; tests `tests/test_scm_potential.cpp`), with its
+input keys ([input_schema.md](input_schema.md)), its set-up checks and report (`scm_diagnostics.*`,
+`report/potential_report.*`; tests `tests/test_scm_diagnostics.cpp`, `tests/test_report.cpp`) and
+its identity in the restart files and analysis.json ([output_files.md](output_files.md); tests
+`Restart.Scm*`, `AnalysisFiles.ScmIdentityRoundTrip`). Not yet ported: a regression gate of the
+program ([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files
 and from synthetic multi-configuration files, and ΔV at every point of the four reference runs (the
 example slab with rescaling on and off, synthetic slabs of versions 3 and 2), are bitwise equal to
 the reference's (the r1713-dce0ecc objects driven by `tools/fortran_reference/scm_driver/`; tests
@@ -240,6 +242,25 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
   symmetrise the distorted potential of a C6v data set (a latent bug: the distorted slab has no
   symmetry). The C++ keeps the CRP's point group (input checks, report) and rejects
   `UseSymmetry: true` with `CRPDistrtSurface`, naming it. Test: `Input.ScmD2UseSymmetryRejected`.
+- SCM D3: ΔV in the gas-phase potential V_asy. The Fortran evaluates V_asy at (0, 0, z_asymptotic, r,
+  π/2, 0) with ΔV in the runs that compute the potential, but without it in an analysis-only run
+  (`onlyAnalysis`, nread = 2), which skips `SetupDistPESModule` (`Potential.f90`); its `.pes` cache is
+  never read (SCM D11). The C++ includes ΔV in V_asy in every run mode, and stops with an error
+  naming `PosFilepath` (exit code 2, after the set-up report and before the 6D potential) when ΔV
+  changes V_asy at any of its points (V ≠ V_CRP there): a slab atom that reaches the gas phase would
+  make the gas-phase states depend on the slab. So every run the C++ accepts has the same V_asy in
+  both codes and in every run mode. With `UseSwitching` the same check covers the points where the
+  switch takes its V_gas, at the PES's own zasymp (`Potential.f90 switchPotentialToGasPhase`; ΔV is
+  in it in both codes, but it must not depend on the slab either). The set-up report also gives the
+  largest |V − V_CRP| on the plane Z = z_asymptotic over the grid's (x, y, θ, φ) and its
+  r < ROptStart, with a warning above 1 meV. The example slab on the grid of `crp_cu111_srp48_small`
+  from Z = 0.5 bohr: unchanged at all 96 points (48 at z_asymptotic = ZmaxSwitch = 11.9 bohr, 48 at the
+  data set's zasymp = 12.28 bohr; the highest kept atom lies at 0.94 bohr, the pair functions reach
+  10.46 bohr), 4.841e-05 eV on the plane (potential-only run, 2026-11-14). Tests:
+  `ScmDiagnostics.ScmD3ChangedAsymptoticPointsAreAnError`, `.ScmD3SwitchGasPhasePointsAreChecked`,
+  `.ScmD3NanIsAnError`,
+  `.ScmD3ExampleLeavesTheAsymptoticPotentialUnchanged`, `.ScmD3RaisedAtomIsAnError` (the example's
+  origin atom raised to z = 2 bohr), `.ScmD3RaisedAtomStopsEveryRunMode`.
 - SCM D4: the units of ΔV, kept. The Fortran converts ΔV from hartree with the precise factor
   (`/ Constants_eV2Ha`, 0.036749308286; `DistortedSurfaceWrapper.f90 GetCRPDistSurfPotential`) and
   the program then converts V back to hartree with the legacy 27.2114 (`Potential.f90`), so ΔV
@@ -288,13 +309,31 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
   hollows in the subtracted term); a C6v data set describes one layer, so only the top layer is
   checked. The distance of each ideal atom from its site is computed when the potential is built
   (`scm_diagnostics.*`, kept for the report): above 1e-5 bohr a warning, above 1e-3 bohr an error
-  naming `PosFilepath`. The warning belongs to the SCM set-up report, which is not ported yet: it is
-  not printed yet. The example slab lies within 1.2e-6 bohr of the SRP48 lattice (its file
+  naming `PosFilepath`; the set-up report prints the largest deviation and the warning. The example slab lies within 1.2e-6 bohr of the SRP48 lattice (its file
   uses bohr = 0.529177210903 Å, the CRP library 0.529177249 Å: 7.2e-8 relative, at 15.8 bohr from
   the origin). The synthetic slabs of the Fortran reference runs have their ideal atoms on their own
   lattices (4.95 and 4.85 bohr): the Fortran accepted them with the SRP48 data set, the C++ refuses
   them. Tests: `ScmLatticeCheck.*`, `ScmCrpPotential.ScmD9ExampleSlabIsOnTheSrp48Lattice`,
   `Input.ScmD9IdealAtomsOnTheCrpLattice`, `ScmPotentialReference.SyntheticSlabsAreNotOnTheCrpLattice`.
+- SCM D10: the jump of V at the cell edges, reproduced. The x, y grid repeats one distorted cell, so
+  V steps where the periodic copies meet ([scm_open_questions.md](scm_open_questions.md) Q2). The C++
+  computes V as the Fortran does and its set-up report gives the jump |V(t·a, 0) − V(t·a, a)| and
+  |V(0, t·a) − V(a, t·a)| at Z = 2.25, 3 and 4 bohr, r = 1.95 and 1.4 bohr, θ = 90°, 12 points t per
+  edge and 12 φ (15° steps): the largest, and the largest where both sides lie below min V_asy +
+  EMaxWP + 0.5 eV (accessible). The example on the grid of `crp_cu111_srp48_small` (EMaxWP 0.9 eV)
+  at (2.25, 1.95) bohr: 1.10 eV, 0.61 eV where accessible (potential-only run, 2026-11-14). Q2's
+  0.68 eV is the jump with both sides below the gas phase + 1.5 eV on its own sampling; with that
+  margin over min V_asy and its 15° φ steps the C++ finds 0.700 eV, and the jump of Q2's figure pair
+  ((2a/3, 0) | (2a/3, a), φ = 0) is 0.68 eV within 0.005 eV (test). Tests:
+  `ScmDiagnostics.ScmD10JumpOfAKnownRamp`, `.ScmD10ExampleJumpNearTheBarrier`.
+- SCM D11: no `.pes` cache. The Fortran writes the PES of an SCM run to a `.pes` file with six extra
+  SCM records, and looks for it in a later run, but in 5.24 never reads it: the lookup name uses
+  `ParameterVersion` 0, which `SetupSCMModule` sets only later (an upstream bug), and a renamed copy
+  is refused too (version 2 ≠ 0). The C++ has no `.pes` cache: every run computes the potential.
+  `tools/fortran_reference/extract_pes.py`, which reads the Fortran's `.pes` for gate 1, is to skip
+  the six records when the SCM regression gate is added; any future `.pes` import must refuse SCM
+  files whose six records do not match the input. Test:
+  `ScmDiagnostics.ScmD11PotentialOnlyRunWritesNoPesCache`.
 - SCM D12: `SCMParFilepath` and `PosFilepath` are required. The Fortran defaults to
   `./params.dat` and `./SlabPos.dat` (`globaldata.f90`); a stray file in the working directory
   would be picked up without a message. Paths are relative to the working directory, as
@@ -309,6 +348,27 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
   Fortran: an FCC111 slab with a CRP data set that is not hexagonal; the C++ requires a C3v or C6v
   data set with `CRPDistrtSurface`, naming `CRPlibDataSet`. Tests:
   `ScmPositionFileErrors.ScmD14NzAtLeast2NxNyAtLeast1`, `Input.ScmD14HexagonalDataSet`.
+- SCM D15: deep holes where the CRP clamps Z or r, reproduced. The CRP library clamps Z below its
+  Zmin and r outside Rmin .. Rmax (0.47, 0.76 and 4.35 bohr for SRP48; it evaluates Z < Zmin + 1e-12
+  at Zmin + 1e-12, r < Rmin + 1e-12 at Rmin + 1e-12 and r > Rmax − 1e-12 at Rmax − 1e-12), while ΔV
+  uses the true Z and r (`SCM_Wrapper.f90 GetSCMPotential`), so V has holes of hundreds of eV in both
+  regions ([scm_open_questions.md](scm_open_questions.md) Q3). The C++ computes the same V, and its
+  set-up report gives the lowest V − V_CRP over the grid points of the 6D potential in two disjoint
+  sets that together hold every point where the CRP clamps (with the library's own comparisons):
+  - the Z planes below Zmin, at the r the CRP does not clamp: a warning when the Z grid starts below
+    Zmin; advice: ZStart ≥ Zmin, or `ImposeVMin`. The example on the grid of
+    `crp_cu111_srp48_small` from ZStart = −0.55 bohr (7 planes): −335 eV at Z = −0.55 bohr, r = 2.0
+    bohr, θ = 57.4° (potential-only run, 2026-11-14);
+  - every Z plane at the r the CRP clamps (below Rmin or beyond Rmax): one report line, with whether
+    a point beyond Rmax lies inside the r absorber (the grid points where it is applied:
+    ROptStart ≤ r ≤ ROptEnd, none with nR = 1), but no warning, because grids usually reach beyond
+    Rmax: the r absorber lies at large r (the example's at 4.2–9.8 bohr). Only the grid's first φ is
+    scanned (every (x, y) and θ): all φ would cost about as much as the 6D potential. The example
+    from ZStart = 0.5 bohr: −232 eV at Z = 1.55 bohr, r = 5.8 bohr, θ = 57.4°, beyond Rmax inside
+    the r absorber (potential-only run, 2026-11-14).
+
+  Tests: `ScmDiagnostics.ScmD15LowestBelowZminOfAKnownHole`, `.ScmD15ScansSplitAtTheLibrarysClamp`,
+  `.ScmD15LowestOutsideTheRRangeOfAKnownHole`, `.ScmD15EmptyRAbsorber`, `.ScmD15ExampleHolesBelowZmin`.
 - Reader differences without an ID (tests in `ScmPositionFile.*` and `ScmParameterFileErrors.*`):
   - Not reproduced: version 3's temporary arrays in the Fortran hold nx·ny·2 atoms, so a file with
     more atoms of layers 1–2 inside the cut-off overflows them; the C++ has no such limit.

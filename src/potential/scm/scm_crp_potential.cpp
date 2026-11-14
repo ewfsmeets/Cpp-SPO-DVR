@@ -1,5 +1,5 @@
 // The SCM distorted-surface PES (SystemID CRPDistrtSurface): the CRP potential plus ΔV, its set-up
-// checks and its system parameters. Fortran: DistortedSurfacePES.dir/DistortedSurfaceWrapper.f90
+// checks, its system parameters and its identity. Fortran: DistortedSurfacePES.dir/DistortedSurfaceWrapper.f90
 // (GetCRPDistSurfParams, GetCRPDistSurfPotential), SCM_Wrapper.f90 (SetSCMCRPParameters)
 #include "potential/scm/scm_crp_potential.hpp"
 
@@ -64,8 +64,8 @@ ScmCrpPotential::ScmCrpPotential(const std::filesystem::path& data_set, const Sc
       rescaling_factor_(rescaling_factor_of(input, slab_, crp_.system_parameters())),
       crp_scale_(rescaling_factor_.value_or(1.0)),
       lattice_check_(checked_lattice(crp_, slab_)),
-      correction_(read_scm_parameters(input.parameter_file), slab_, rescaling_factor_,
-                  crp_.system_parameters().skewing_angle),
+      scm_parameters_(read_scm_parameters(input.parameter_file)),
+      correction_(scm_parameters_, slab_, rescaling_factor_, crp_.system_parameters().skewing_angle),
       parameters_(system_parameters_of(crp_.system_parameters(), slab_, rescaling_factor_.has_value())) {}
 
 double ScmCrpPotential::value(double u, double v, double z, double r, double theta, double phi, int iz, int ir) const {
@@ -73,6 +73,29 @@ double ScmCrpPotential::value(double u, double v, double z, double r, double the
   const double v_crp_ev = crp_.value(u / crp_scale_, v / crp_scale_, z, r, theta, phi, iz, ir);
   // ΔV in eV with Constants_eV2Ha (a division), added to the CRP's eV (SCM D4).
   return v_crp_ev + units::precise.hartree_to_ev(correction_.value_hartree(xy.x, xy.y, z, r, theta, phi));
+}
+
+ScmIdentity ScmCrpPotential::identity() const {
+  const ScmSlabStatistics statistics = slab_statistics(slab_);
+  ScmIdentity identity;
+  identity.slab_tag = slab_.header.tag;
+  identity.position_file_version = slab_.header.version;
+  identity.slab_lattice_constant = slab_.header.lattice_constant;
+  identity.slab_atoms = static_cast<int>(slab_.atoms.size());
+  identity.rms_displacement = statistics.rms_displacement;
+  identity.top_layer_shift = {statistics.top_layer_shift.x, statistics.top_layer_shift.y, statistics.top_layer_shift.z};
+  identity.highest_atom = statistics.highest_atom;
+  for (int layer = 0; layer < 2; ++layer) {
+    const ScmLayerParameters& p = scm_parameters_.layers[layer];
+    std::array<double, 18>& values = identity.parameters[layer];  // P1–P8, P9–P16, P17, P18
+    for (int k = 0; k < 8; ++k) {
+      values[k] = p.intercept[k];
+      values[k + 8] = p.slope[k];
+    }
+    values[16] = p.r_clamp_min;
+    values[17] = p.r_clamp_max;
+  }
+  return identity;
 }
 
 }  // namespace spodvr

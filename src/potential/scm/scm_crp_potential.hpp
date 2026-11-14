@@ -42,6 +42,11 @@ class ScmCrpPotential final : public Potential {
   [[nodiscard]] std::optional<double> rescaling_factor() const { return rescaling_factor_; }
   // SCM D9: how far the slab's ideal atoms lie from the CRP lattice.
   [[nodiscard]] const ScmLatticeCheck& lattice_check() const { return lattice_check_; }
+  // The pair-function parameters (params.dat) the correction is built from.
+  [[nodiscard]] const ScmParameters& scm_parameters() const { return scm_parameters_; }
+  // What identifies the run (restart parameters, analysis.json): the slab, its statistics and the
+  // parameters as used here.
+  [[nodiscard]] ScmIdentity identity() const;
 
  private:
   CrpPotential crp_;
@@ -49,6 +54,7 @@ class ScmCrpPotential final : public Potential {
   std::optional<double> rescaling_factor_;
   double crp_scale_;  // s with rescaling, else 1 (an exact division). Fortran: thermExpansion
   ScmLatticeCheck lattice_check_;
+  ScmParameters scm_parameters_;  // params.dat, read after the lattice check (SCM D9 errors come first)
   ScmCorrection correction_;
   SystemParameters parameters_;
 };

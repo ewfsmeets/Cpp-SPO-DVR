@@ -27,7 +27,7 @@ constexpr std::uint64_t end_marker = 0x454e44'4f46'4350ULL;  // marks a complete
 // (name, value) pairs of the restart parameters, in file order.
 using ParameterList = std::vector<std::pair<std::string, double>>;
 
-// A sanity bound on the stored count of a corrupt file (the lists below have at most 41 entries).
+// A sanity bound on the stored count of a corrupt file (the lists below have at most 87 entries).
 constexpr std::uint64_t max_stored_parameters = 1000;
 
 // The parameters every file has (format version 2).
@@ -82,11 +82,35 @@ void add_low_z_absorber(ParameterList& list, const std::string& prefix, const Lo
   list.emplace_back(prefix + "Factor (effective)", strength);
 }
 
+// The numeric SCM identity (SystemID CRPDistrtSurface only): the snapshot, cut-off and rescaling, the
+// slab's a_T, atom count and position statistics, and the values of the parameter file. Files of
+// other PESs keep their list.
+void add_scm_identity(ParameterList& list, const Config& config) {
+  if (!config.derived.scm) return;
+  const ScmInput& input = config.input.scm;
+  const ScmIdentity& identity = *config.derived.scm;
+  list.emplace_back("PosFileSlabNum", input.configuration);
+  list.emplace_back("SCMCutoff", input.cutoff);
+  list.emplace_back("EnableSurfExpan", input.rescale ? 1.0 : 0.0);
+  list.emplace_back("PosFilepath (a_T)", identity.slab_lattice_constant);
+  list.emplace_back("PosFilepath (atoms used)", identity.slab_atoms);
+  list.emplace_back("PosFilepath (rms displacement)", identity.rms_displacement);
+  list.emplace_back("PosFilepath (layer 1 mean shift x)", identity.top_layer_shift[0]);
+  list.emplace_back("PosFilepath (layer 1 mean shift y)", identity.top_layer_shift[1]);
+  list.emplace_back("PosFilepath (layer 1 mean shift z)", identity.top_layer_shift[2]);
+  list.emplace_back("PosFilepath (highest atom)", identity.highest_atom);
+  for (int layer = 0; layer < 2; ++layer)
+    for (int k = 0; k < 18; ++k)
+      list.emplace_back("SCMParFilepath (layer " + std::to_string(layer + 1) + ", P" + std::to_string(k + 1) + ")",
+                        identity.parameters[layer][k]);
+}
+
 // Input parameters that a restart must not change, with their JSON key names.
 ParameterList restart_parameters(const Config& config) {
   ParameterList list = fixed_restart_parameters(config);
   add_low_z_absorber(list, "ZOptLow", config.input.z_opt_low, config.derived.z_opt_low_factor);
   add_low_z_absorber(list, "ZSpOptLow", config.input.zsp_opt_low, config.derived.zsp_opt_low_factor);
+  add_scm_identity(list, config);
   return list;
 }
 

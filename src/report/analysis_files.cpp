@@ -118,6 +118,26 @@ void write_diffraction(const std::filesystem::path& path, const AnalysisBasis& b
         }
 }
 
+// The SCM identity of a CRPDistrtSurface run: its keys and files, and the slab and parameter values
+// read from them, so that the runs of an ensemble can be told apart.
+nlohmann::json scm_metadata(const InputParameters& p, const ScmIdentity& identity) {
+  const ScmInput& input = p.scm;
+  return {{"crp_data_set", p.crp_dataset},
+          {"parameter_file", input.parameter_file},
+          {"position_file", input.position_file},
+          {"slab_tag", identity.slab_tag},
+          {"position_file_version", identity.position_file_version},
+          {"slab_number", input.configuration},
+          {"cutoff", input.cutoff},
+          {"rescaling", input.rescale},
+          {"slab_lattice_constant", identity.slab_lattice_constant},
+          {"slab_atoms", identity.slab_atoms},
+          {"rms_displacement", identity.rms_displacement},
+          {"top_layer_shift", identity.top_layer_shift},
+          {"highest_atom", identity.highest_atom},
+          {"parameters", identity.parameters}};
+}
+
 void write_metadata(const std::filesystem::path& path, const Config& config, const AnalysisBasis& basis,
                     const ScatteringResults& results, const std::vector<std::filesystem::path>& files) {
   const InputParameters& p = config.input;
@@ -126,6 +146,7 @@ void write_metadata(const std::filesystem::path& path, const Config& config, con
   j["program"] = {{"name", "spodvr"}, {"version", SPODVR_VERSION}};
   j["title"] = p.title;
   j["system_id"] = p.system_id;
+  if (config.derived.scm) j["scm"] = scm_metadata(p, *config.derived.scm);
   j["units"] = {{"energy", "eV"}, {"length", "bohr"}, {"time", "atomic units"}, {"phase", "rad"}};
   j["initial_state"] = {{"v", p.v_in}, {"j", p.j_in}, {"mJ", p.mj_in}, {"n", 0}, {"m", 0}};
   j["analysis"] = {{"z_analysis", p.z_analysis},

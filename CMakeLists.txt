@@ -248,6 +248,7 @@ add_library(spodvr_core
   src/report/format.cpp
   src/report/sections.cpp
   src/report/crp_report.cpp
+  src/report/potential_report.cpp
   src/report/propagation_report.cpp
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp

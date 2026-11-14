@@ -28,10 +28,31 @@ in the summed tables they contribute 0. The diffraction order depends on the sur
 `analysis.json` holds the run metadata: program version, title, SystemID, units, initial state,
 basis sizes (`n_vibrational_levels` = nviba, `j_max` = jana, `max_diffraction_order` = mdifa,
 `n_rotational_states` = nana, `n_diffraction_channels` = ndifa, `n_states` = nstata), the
-analysis surface, the energy range and the list of result files.
+analysis surface, the energy range and the list of result files. A `CRPDistrtSurface` run adds
+`scm`, its SCM identity, so that the runs of an ensemble can be told apart:
+
+| Field | Content |
+|---|---|
+| `crp_data_set`, `parameter_file`, `position_file` | the keys `CRPlibDataSet`, `SCMParFilepath`, `PosFilepath` as given |
+| `slab_tag`, `position_file_version` | the first field of line 1 of the position file; its version (3 or 2) |
+| `slab_number`, `cutoff`, `rescaling` | `PosFileSlabNum`, `SCMCutoff` (bohr), `EnableSurfExpan` |
+| `slab_lattice_constant`, `slab_atoms` | a_T (bohr, line 3 of the position file); the atoms of layers 1–2 that ΔV uses |
+| `rms_displacement`, `top_layer_shift`, `highest_atom` | of those atoms (bohr): the rms of distorted − ideal, its mean [x, y, z] over layer 1, the largest distorted z |
+| `parameters` | P1–P18 of layer 1, then of layer 2, as read from the parameter file |
 
 Set-up files: `asymptotic_potential.dat` (vasy(r)) and `gas_phase_states.dat` (rovibrational
 energies and wave functions).
+
+The set-up output of a `CRPDistrtSurface` run has, after the CRP data set, the block "SCM DISTORTED
+SURFACE": the files, the snapshot and its atoms per layer, the lattice constants a_T and a0 and the
+rescaling s, the displacements (rms, largest, the mean shift of layer 1, the highest atom), and the
+checks of [fortran_deviations.md](fortran_deviations.md#scm-distorted-surface-pes-srcpotentialscm-systemid-crpdistrtsurface):
+the ideal atoms against the CRP lattice (SCM D9), V − V_CRP at the gas-phase points (V_asy and,
+with switching, the switch's V_gas) and on the plane Z = z_asymptotic (SCM D3; a changed gas-phase
+point stops the run), a table of the jump of V across the cell edges (SCM D10), the lowest V − V_CRP
+on the Z planes below the CRP's Zmin at Rmin ≤ r ≤ Rmax (SCM D15), each with its warning, and the
+lowest V − V_CRP at r outside Rmin .. Rmax on every Z plane, with whether it lies below Rmin or
+inside the r absorber (SCM D15, no warning). An analysis-only run checks only the gas-phase points.
 
 ## Correspondence with the Fortran output
 | Fortran | C++ |
@@ -61,7 +82,11 @@ Native files are in host byte order (little-endian on x86-64). Both start with a
 16-byte magic string (`SPODVR-CHECKPNT` / `SPODVR-BKCOEFFS`), a `uint32` format version (2; version 1
 lacked the number of phi points), the
 SystemID (`uint64` length + characters) and the list of restart parameters (`uint64` count, then
-name and `double` value per entry). A restart compares this list with its own input.
+name and `double` value per entry). A restart compares this list with its own input. A
+`CRPDistrtSurface` run appends its SCM identity: `PosFileSlabNum`, `SCMCutoff`, `EnableSurfExpan`
+(0 or 1), `PosFilepath (a_T)`, `PosFilepath (atoms used)`, `PosFilepath (rms displacement)`,
+`PosFilepath (layer 1 mean shift x)` (and `y`, `z`), `PosFilepath (highest atom)` and
+`SCMParFilepath (layer L, Pk)` for L = 1, 2 and k = 1 … 18; the files of other PESs keep their list.
 
 `checkpoint.bin` (written to `checkpoint.bin.tmp`, then renamed):
 | Field | Type |

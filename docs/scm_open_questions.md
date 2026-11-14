@@ -390,7 +390,9 @@ were used?).
 **In your own runs:** start the Z grid at or above Zmin, and set `ImposeVMin` at least 0.1 eV below
 the ideal surface's lowest V on your grid (SCM legitimately lowers minima by up to 55 meV at
 Z ≥ 1 bohr). **The C++ port:** reproduces the holes, warns when an SCM
-grid reaches below Zmin or beyond Rmax, and reports the lowest V_SCM − V_ideal there.
+grid reaches below Zmin and reports the lowest V_SCM − V_CRP there (Rmin ≤ r ≤ Rmax); where r lies
+outside Rmin .. Rmax it reports, without a warning, the lowest V_SCM − V_CRP over every Z plane, the
+grid's (x, y) and θ and only φ = 0, and whether that point lies inside the r absorber.
 
 ## Q6, Q5, Q9. The data: production snapshots, parameters, provenance
 
