@@ -28,6 +28,8 @@ endforeach()
 # those of the Fortran text reader (they link only spodvr_fortran_text).
 add_subdirectory(crplib)
 add_subdirectory(fortran_text)
+# The SCM correction against its Fortran reference data (tests/scm/reference/).
+add_subdirectory(scm)
 
 # The CRP adapter test writes synthetic data sets with the CRP library's test helpers.
 target_include_directories(test_crp_potential PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/crplib)

@@ -1,0 +1,5 @@
+# Provenance of the Fortran reference files of this case, written by
+# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
+path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
+rescaling_off.out	5b27e3803749f722e0d4210bf357dd8ab65eea25d116ed5e8c2f47ba471eb3a3	run_scm_reference.sh	7c36eee	r1713-dce0ecc scm_reference_driver:7ae0ecf6685c	points.in:34199fa630f2,params.dat:792d993e7f29,slab.dat:9ee5516e2262,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-14
+rescaling_on.out	c9d8a9099fef39650e15281fd888ffede2e23932580392976fb9548fa2d62774	run_scm_reference.sh	7c36eee	r1713-dce0ecc scm_reference_driver:7ae0ecf6685c	points.in:34199fa630f2,params.dat:792d993e7f29,slab.dat:9ee5516e2262,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-14
