@@ -203,6 +203,65 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   (r, Z); the C++ uses the final grid values for both. Identical for consistent files.
 - Not ported: the C4v 1D splines of the atom cuts (computed but never evaluated by the Fortran).
 
+## SCM distorted-surface PES (`src/potential/scm/`, SystemID `CRPDistrtSurface`)
+
+The port of the Fortran's distorted-surface correction (`DistortedSurfacePES.dir/`). Ported so far:
+the readers of its two data files, the parameter file and the slab position file
+(`scm_files.*`, tests `tests/test_scm_io.cpp`); the potential itself cannot be selected yet
+([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files and from
+synthetic multi-configuration files are bitwise equal to what the reference's `SCM_IO.f90` reads
+(checked 2026-11-14 with a one-off gfortran driver against the r1713-dce0ecc objects).
+Open physics questions: [scm_open_questions.md](scm_open_questions.md).
+
+- SCM D5: position-file versions. The Fortran reads versions 1, 2 and 3 (`SCM_IO.f90 ReadSCMSlab`);
+  version 1 generates the ideal lattice from the order of the atoms, with bugs (an INTEGER bulk
+  layer spacing, `uCelly` used for `uCellx`, two layers hard-coded). The C++ reads version 3 (the
+  example file) and version 2; version 1 is an error naming `PosFilepath` that advises version 3.
+  Test: `ScmPositionFileErrors.ScmD5OnlyVersions3And2`.
+- SCM D6: where the Fortran continues silently, the C++ stops with an error or does not cut:
+  - a configuration number (`PosFileSlabNum`) ≤ 0: the Fortran reads configuration 1 (its skip
+    loop in `ReadSCMSlab` runs zero times). Test: `ScmPositionFileErrors.ScmD6ConfigurationAtLeast1`;
+  - `MaxNumSurfAtoms` ≤ 0 in a version 2 file: the Fortran uses no atom, ΔV = 0 everywhere. Test:
+    `ScmPositionFileErrors.ScmD6MaxNumSurfAtomsAtLeast1`;
+  - a version 2 configuration without an atom of layers 1–2: the Fortran's `ReadSCMSlab` (CASE(2))
+    has no zero-atom check, so ΔV = 0 (version 3 stops in both, "No atoms in SCM range"). Test:
+    `ScmPositionFileErrors.ScmD6Version2ConfigurationWithoutLayer1Or2Atom`;
+  - a layer index ≤ 0: the Fortran keeps the atom and indexes `Pars(0)`, out of bounds. The C++
+    checks every atom of the configuration read, also one outside the cut-off. Test:
+    `ScmPositionFileErrors.ScmD6LayerAtLeast1`;
+  - P17 ≥ P18 in the parameter file: `SCM_Types.f90 Setup_3Body_Rydberg_Par` clamps r with
+    IF/ELSE IF and no check, so every r ≥ P17 becomes P18. Test:
+    `ScmParameterFileErrors.ScmD6ClampRangeMustBeIncreasing`;
+  - the file paths: the Fortran cuts them at 100 characters (the `CHARACTER(100)` arguments of
+    `InitialiseSCMModule`); the C++ uses them in full. Test: `ScmFiles.ScmD6LongPathsAreNotTruncated`.
+- SCM D8: the Fortran's checks of the parameter file's first line, kept. It must start with
+  `VERSION` in columns 1–7 (case-sensitive); the version is read list-directed from column 8.
+  Without the tag the Fortran assumes version 1 and rejects it ("not (yet) supported"), as every
+  version other than 2. The C++ rejects the same files, naming `SCMParFilepath`. Tests:
+  `ScmParameterFileErrors.ScmD8VersionTag`, `.ScmD8OnlyVersion2`.
+- SCM D14: slab size. The Fortran requires nz ≥ 2 (`UsedLayers .GT. SlabAtomSize(3)` in
+  `ReadSCMSlab`); so does the C++, which also requires nx, ny ≥ 1 in version 3 (the Fortran
+  multiplies the three sizes: two negative ones give a positive atom count). Not checked by the
+  Fortran either, and needing the CRP data set: an FCC111 slab with a CRP set that is not C3v or
+  C6v; that check belongs to the set-up of the potential, not ported yet. Test:
+  `ScmPositionFileErrors.ScmD14NzAtLeast2NxNyAtLeast1`.
+- Reader differences without an ID (tests in `ScmPositionFile.*` and `ScmParameterFileErrors.*`):
+  - Not reproduced: version 3's temporary arrays in the Fortran hold nx·ny·2 atoms, so a file with
+    more atoms of layers 1–2 inside the cut-off overflows them; the C++ has no such limit.
+  - Version 2: the Fortran keeps atoms of layers below the second and skips them in the potential
+    loop (`SCM_Potential.f90 SCM_SurfInteract_3Body`, before any arithmetic); the C++ drops them
+    while reading. The same ΔV; only the atom count differs.
+  - Kept: the atoms start on line 4 even when a header statement spans lines (the Fortran reads
+    the header, re-opens the file and skips three records); the cut-off test is
+    ((x² + y²) + z²) < c² on the distorted position, as in the Fortran (other forms, among them
+    the FMA contractions of a fast-math build, decide boundary atoms differently).
+  - The shared list-directed reader (`src/fortran_text/`) rejects input that gfortran accepts:
+    repeat counts, null values, `/`, NaN and Infinity, and an exponent without its letter
+    (`1.0+3`, which gfortran reads as 1000). It cuts neither line 1 of the parameter file at 100
+    characters nor `SlabFileTag` and `SlabSurfStruct` at 80 (`CHARACTER(80)`), and compares the
+    structure without blank padding: a quoted `'FCC111 '` passes the Fortran's check
+    (`GetSurfaceParameters`) but not the C++ one.
+
 ## Upstream changes after 5.19
 
 The port started from 5.19; the reference is now 5.24 at svn r1713. The port status of every

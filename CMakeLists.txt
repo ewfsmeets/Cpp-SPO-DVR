@@ -82,15 +82,19 @@ endif()
 #                       vectorise complex multiplications
 #   -fno-math-errno     math functions need not set errno (sqrt is inlined)
 #   -fno-trapping-math  no floating-point traps (more vectorisation)
+# SPODVR_FAST_MATH replaces these strict flags by -ffast-math, except in spodvr_strict_objects
+# (below), which is compiled with strict_fp_flags in every build.
+set(strict_fp_flags -ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math)
 if(SPODVR_FAST_MATH)
   set(fp_flags -ffast-math -fcx-fortran-rules)
 else()
-  set(fp_flags -ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math)
+  set(fp_flags ${strict_fp_flags})
 endif()
 
 # Target instruction set. With -ffp-contract=off our results do not depend on it.
 if(SPODVR_ARCH)
   list(APPEND fp_flags -march=${SPODVR_ARCH})
+  list(APPEND strict_fp_flags -march=${SPODVR_ARCH})
 endif()
 
 # Profile-guided optimisation: GENERATE builds a program that writes profile data to
@@ -109,6 +113,10 @@ target_compile_options(spodvr_warnings INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${wa
 add_library(spodvr_fp INTERFACE)
 target_compile_options(spodvr_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${fp_flags}>")
 target_link_options(spodvr_fp INTERFACE ${pgo_link_flags})
+# The strict flags in every build; spodvr_strict_objects uses them. A target that links this after
+# spodvr_fp gets them after spodvr_fp's flags on the command line, where they override -ffast-math.
+add_library(spodvr_strict_fp INTERFACE)
+target_compile_options(spodvr_strict_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${strict_fp_flags}>")
 
 # Link-time optimisation in Release builds.
 include(CheckIPOSupported)
@@ -159,9 +167,28 @@ target_include_directories(spodvr_crplib PUBLIC src)
 target_link_libraries(spodvr_crplib PRIVATE spodvr_fortran_text spodvr_warnings spodvr_crplib_fp)
 
 # =============================================================================================
+# spodvr_strict_objects: sources of spodvr_core compiled with strict floating point in every build,
+# also the fast-math one. The SCM distorted-surface correction (src/potential/scm/): its readers
+# match the Fortran's bit for bit (checked with a one-off gfortran driver), and which slab atoms lie
+# inside the cut-off sphere must not depend on the build (no contraction or reassociation of the
+# squared distance; test ScmPositionFile.CutoffUsesTheFortranExpression).
+# =============================================================================================
+add_library(spodvr_strict_objects OBJECT
+  src/potential/scm/scm_files.cpp
+)
+target_include_directories(spodvr_strict_objects PRIVATE src)
+# Of spodvr_core's definitions only this one changes a header today (AlignedVector's allocator);
+# copy any other that does. No PGO flags: these objects are compiled the same with any SPODVR_PGO.
+if(SPODVR_POISON_UNINITIALISED)
+  target_compile_definitions(spodvr_strict_objects PRIVATE SPODVR_POISON_UNINITIALISED)
+endif()
+target_link_libraries(spodvr_strict_objects PRIVATE OpenMP::OpenMP_CXX spodvr_warnings spodvr_strict_fp)
+
+# =============================================================================================
 # spodvr_core: everything except the program driver and the GPU backend
 # =============================================================================================
 add_library(spodvr_core
+  $<TARGET_OBJECTS:spodvr_strict_objects>
   src/core/loop_schedule.cpp
   src/core/machine_epsilon.cpp
   src/core/numerical_libraries.cpp
@@ -227,7 +254,7 @@ if(SPODVR_POISON_UNINITIALISED)
 endif()
 target_link_libraries(spodvr_core
   PUBLIC nlohmann_json::nlohmann_json OpenMP::OpenMP_CXX
-  PRIVATE spodvr_crplib spodvr_warnings spodvr_fp)
+  PRIVATE spodvr_crplib spodvr_fortran_text spodvr_warnings spodvr_fp)
 
 # The FFTs. The real FFTW must come before oneMKL in the link line: oneMKL also defines the
 # fftw_* functions, and the first library that defines a symbol wins.
