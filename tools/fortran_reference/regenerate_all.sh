@@ -4,7 +4,8 @@
 #   1. deletes the files the MANIFEST.tsv of each case lists, and the MANIFESTs;
 #   2. setup runs (gates 1, 2), 3. propagation (gates 3, 4), 4. the Fortran restart,
 #   5. fine analysis (gate 5, on the fortran_fort21.bin just regenerated),
-#   6. the CRP driver on the committed point lists;
+#   6. the CRP driver on the committed point lists, 7. the SCM driver on the committed point lists
+#   and slab files;
 # each through its run_*.sh script, which writes the MANIFEST lines. Each step then checks its
 # required outputs, and the end runs the ReferenceManifest check. The steps below ARE the list of
 # reference cases: a new case adds its step here in the commit that adds the case.
@@ -17,14 +18,14 @@
 # Environment: SPODVR_FORTRAN_REF_DIR, SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT (reference_config.sh);
 # TMPDIR (where the scratch directory is made).
 # Run time: about 45 min on 4 threads (2381–2538 s with the r1713 install, 2026-11-12, plus 158 s
-# for the case cu111_dailight_short_lowz added later).
+# for the case cu111_dailight_short_lowz and about 2 s for the SCM cases, added later).
 # Docs: tools/fortran_reference/README.md.
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${tools_dir}/reference_config.sh"
 
 (($# == 0)) || { echo "usage: regenerate_all.sh (no arguments)" >&2; exit 2; }
-reference_trees=(tests/reference tests/crplib/reference)
+reference_trees=(tests/reference tests/crplib/reference tests/scm/reference)
 
 # Untracked or modified files would be deleted or mixed with the regenerated ones.
 dirty="$(git -C "${FORTRAN_REPO_DIR}" status --porcelain -- "${reference_trees[@]}")"
@@ -82,6 +83,14 @@ driver() {
   for input in "${dir}"/*.in; do require_outputs "${dir}" "$(basename "${input}" .in).out"; done
 }
 
+# scm CASE OUTPUT...: the SCM driver runs of the case; OUTPUT... are their files (<run>.out).
+scm() {
+  local case_name="$1"
+  shift
+  "${tools_dir}/run_scm_reference.sh" "${case_name}"
+  require_outputs "${FORTRAN_REPO_DIR}/tests/scm/reference/${case_name}" "$@"
+}
+
 export TMPDIR
 TMPDIR="$(mktemp -d)"
 echo "* Scratch directories in ${TMPDIR}"
@@ -89,7 +98,8 @@ start=$(date +%s)
 
 # 1. The generated files of the previous generation, as their MANIFESTs list them.
 shopt -s nullglob
-manifests=("${FORTRAN_REPO_DIR}"/tests/reference/*/MANIFEST.tsv "${FORTRAN_REPO_DIR}"/tests/crplib/reference/*/MANIFEST.tsv)
+manifests=("${FORTRAN_REPO_DIR}"/tests/reference/*/MANIFEST.tsv "${FORTRAN_REPO_DIR}"/tests/crplib/reference/*/MANIFEST.tsv
+  "${FORTRAN_REPO_DIR}"/tests/scm/reference/*/MANIFEST.tsv)
 shopt -u nullglob
 ((${#manifests[@]} > 0)) || refuse "no MANIFEST.tsv in ${reference_trees[*]}; restore them from git"
 python3 -I -B "${tools_dir}/refdata.py" manifest delete "${manifests[@]%/MANIFEST.tsv}"
@@ -142,6 +152,10 @@ driver c6v_impulse_5
 driver c6v_pairwise
 driver c6v_pairwise_angstrom
 driver cu111_srp48
+
+# 7. The SCM driver (the correction alone, the CRP and their sum) on the committed inputs.
+scm example rescaling_on.out rescaling_off.out
+scm synthetic v3_slab3_rescaling_on.out v2_slab2_rescaling_off.out
 
 # Every MANIFEST line names an existing file with the recorded sha256 (ctest ReferenceManifest.FilesMatch).
 cmake -DROOT="${FORTRAN_REPO_DIR}" -P "${tools_dir}/ReferenceManifest.cmake"

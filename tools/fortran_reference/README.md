@@ -1,7 +1,7 @@
 # Fortran reference tools
 
 The scripts here run the Fortran SPO-DVR code to produce the reference data of the regression
-tests (`tests/reference/`, `tests/crplib/reference/`; the gates are described in
+tests (`tests/reference/`, `tests/crplib/reference/`, `tests/scm/reference/`; the gates are described in
 [docs/validation.md](../../docs/validation.md)). They write straight into those directories: run
 them in a scratch clone or worktree when you only want to experiment. Which Fortran the reference
 is, and why it is built with `-O3`: [docs/validation.md](../../docs/validation.md#reference-data).
@@ -19,6 +19,7 @@ strings the three together.
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
 | `run_fine_analysis_reference.sh [case] [variant ...]` | Analysis-only runs on the committed `fortran_fort21.bin`: `fine_<variant>/` (gate 5) |
 | `run_crp_reference.sh [--generate] kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the committed point lists and data sets of `tests/crplib/reference/`; `--generate` first rewrites them (needs the C++ build) |
+| `run_scm_reference.sh [--generate] example\|synthetic` | The SCM driver ([scm_driver/](scm_driver/)) on the committed inputs of `tests/scm/reference/` ([below](#the-scm-driver)); `--generate` first rewrites them |
 | [regenerate_all.sh](regenerate_all.sh) | Regenerates every reference file, in dependency order ([below](#regenerating-all-references)) |
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
 | [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1713.tsv](expected/r1713.tsv) ([below](#comparing-two-reference-trees)) |
@@ -80,8 +81,9 @@ is committed in [buildinfo/](buildinfo/).
   must not exist yet (a stale `.pes` or `pesmorphparameters.dat` would be read).
 - **The run** (`run_fortran`): exit status 0 and every required output file present (a Fortran
   `STOP` on bad input exits with status 0).
-- **The CRP driver build** (`build_fortran_driver`): the install as above, and the installed
-  gfortran equal to `package.build.gfortran-15` (its `.mod` files are compiler-version specific).
+- **The CRP and SCM driver builds** (`build_fortran_driver`): the install as above, and the
+  installed gfortran equal to `package.build.gfortran-15` (its `.mod` files are compiler-version
+  specific).
 
 Every refusal prints `error: <what>; <how to fix>` and exits with status 1.
 
@@ -108,7 +110,8 @@ those checks, e.g. on a build made elsewhere.
 ## MANIFEST.tsv
 
 Each reference case directory has a `MANIFEST.tsv`: one line per file a Fortran run generated
-there (not the inputs: the case's `DVR.inp` and `input.json`, the CRP `dataset/` and `*.in`).
+there (not the inputs: the case's `DVR.inp` and `input.json`, the CRP `dataset/`, the driver
+inputs `*.in`).
 The run scripts write it through `refdata.py manifest record`, which replaces the lines of the
 files it records and refuses the inputs (and `fortran_unformatted/`, hand-made test records), so
 that a regeneration can never delete one. It is a TSV file: `#` writer lines, a header row, `-` for a value that was not
@@ -131,23 +134,60 @@ recorded, rows sorted by path. Hashes other than the file's own are shortened to
 columns not recorded then, and the script that made them. Since the data were regenerated with
 5.24 r1713, every line names that install.
 
+When a run-time package of the install is upgraded and the rebuilt install is byte-identical
+(as for libc6 2.43-2ubuntu2.7 on 2026-11-14), its `BUILDINFO.tsv` and the tracked copy in
+[buildinfo/](buildinfo/) are re-recorded with the new version, so new reference data need no
+drift flag. The run-time packages of an older MANIFEST line are then those of the copy at the
+commit its `commit` column names (git history).
+
 `ctest -R ReferenceManifest` checks that every case directory has a `MANIFEST.tsv` and that every
 listed file exists with its recorded sha256: a missing or edited reference, or a case left without
 MANIFEST by an interrupted regeneration, fails there, where the regression tests would skip
 (`FilesMatch`; `ChangedOrMissingFileFails` shows that it catches one changed byte, one deleted file
 and a deleted MANIFEST).
 
+## The SCM driver
+
+[scm_driver/scm_reference_driver.f90](scm_driver/scm_reference_driver.f90) calls the SCM
+distorted-surface correction of the reference build in SPO-DVR's order for SystemID
+`CRPDistrtSurface` (`Set_PES_DataSet`, `InitialiseDistPESModule`, `GetCRPDistSurfParams`,
+`InitializeCRPDistSurfModule`, `SetupDistPESModule`), one case per process (the Fortran sets its
+module state up only once), and
+prints per point the Cartesian centre of mass, the correction ΔV alone (Hartree), the CRP at the
+ideal-lattice position and SPO-DVR's total (eV), plus the parameters and slab atoms the Fortran
+read; every double as its 16 hex digits and in decimal. It stops with status 1 unless the total
+equals CRP + ΔV / `Constants_eV2Ha` bitwise at every point (then its x, y and u/s, v/s are the
+module's). [scm_driver/build.sh](scm_driver/build.sh) links it against the install's SCM and CRP
+objects; [scm_driver/make_scm_inputs.py](scm_driver/make_scm_inputs.py) writes the inputs
+(`--generate`). All runs use the CRP data set `potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v`.
+
+| Case | Inputs | Runs (`<run>.out`) |
+|---|---|---|
+| `example` | `points.in` (384 points); `params.dat` and `examplePosfile.dat` of `potentials/H2Cu111SRP_C3v.dir/` | `rescaling_on`, `rescaling_off`: configuration 1, cut-off 16 bohr |
+| `synthetic` | `points.in` (284 points); `params.in` (layer 2 unlike layer 1); `slab_v3.in`, `slab_v2.in` (three configurations each, random displacements; three version-3 atoms at the cut-off: 3 ulp of c² inside, on it, 1 ulp outside) | `v3_slab3_rescaling_on`: configuration 3, cut-off 9.5 bohr; `v2_slab2_rescaling_off`: configuration 2, cut-off 4 bohr (the Fortran applies none in version 2; a reader that does would keep 1 atom of layers 1–2 instead of 10) |
+
+The points cover the four sites from Z = −1 bohr (below the CRP's Zmin, where only the correction
+sees the unclamped Z) to 6 bohr in four orientations, an r sweep through P17 and P18, H atoms
+1e-3 and 1e-9 bohr either side of p7 and p8 (the switch), the V_asy points
+(0, 0, zasymp, r, π/2, 0), random points, and 20 random points from Z = 8 bohr up to the plane
+Z = zasymp (6 on it). `ctest -R Scm.ReferenceFiles` checks that every run
+is complete and that the C++ readers read the parameter and slab files bit for bit as the Fortran
+did. `ReferenceManifest.FilesMatch` hashes the files the SCM MANIFESTs list; its check for a case
+without MANIFEST, and `refdata.py compare`, cover only `tests/reference/` and
+`tests/crplib/reference/` so far: after a regeneration, compare the SCM files with `git diff` (a
+rerun is byte-identical).
+
 ## Regenerating all references
 
 ```bash
 tools/fortran_reference/regenerate_all.sh      # about 45 min on 4 threads (see below)
-git status --short tests/reference tests/crplib/reference
+git status --short tests/reference tests/crplib/reference tests/scm/reference
 ```
 
 The script refuses unless the reference trees are clean in git, checks the install, then deletes
 every file the MANIFESTs list and the MANIFESTs themselves, so that nothing stale survives. It
 runs the steps in dependency order: setup, propagation, the restart, fine analysis (on the
-regenerated `fortran_fort21.bin`) and the CRP driver on the committed point lists. Each step
+regenerated `fortran_fort21.bin`), the CRP driver and the SCM driver on the committed inputs. Each step
 checks its required outputs; the end runs the `ReferenceManifest` check. Its list of steps is the
 list of reference cases: a new case adds its step in the commit that adds the case. The scratch
 directories of all runs stay in one new `mktemp -d` directory, printed at the start. The whole

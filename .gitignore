@@ -19,4 +19,5 @@ fort.*
 # reference and PES data are tracked
 !tests/reference/**
 !tests/crplib/reference/**
+!tests/scm/**
 !potentials/**
