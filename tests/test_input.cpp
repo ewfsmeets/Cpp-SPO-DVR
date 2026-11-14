@@ -3,9 +3,12 @@
 
 #include <cmath>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <functional>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -15,6 +18,7 @@
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "input/wave_packet_params.hpp"
+#include "temporary_directory.hpp"
 
 using namespace spodvr;
 using Json = nlohmann::json;
@@ -28,15 +32,17 @@ Json reference_json() {
 
 Config build(const Json& json) { return build_config(parse_input(json)); }
 
-// Expects an InputError naming `parameter` for the modified input.
-void expect_input_error(const Json& json, const std::string& parameter) {
+// Expects an InputError naming `parameter` for the modified input; returns its message ("" if none).
+std::string expect_input_error(const Json& json, const std::string& parameter) {
   try {
     const Config config = build(json);
     (void)make_spatial_grids(config);
     ADD_FAILURE() << "expected an InputError for " << parameter << " with input " << json.dump();
   } catch (const InputError& e) {
     EXPECT_EQ(e.parameter(), parameter) << e.what();
+    return e.what();
   }
+  return "";
 }
 
 }  // namespace
@@ -123,6 +129,213 @@ TEST(Input, CrpDataSetKey) {
   EXPECT_EQ(config.input.crp_dataset, json["CRPlibDataSet"].get<std::string>());
   EXPECT_EQ(config.derived.system.point_group, "C6v");
   EXPECT_EQ(config.derived.z_asymptotic_unswitched, 10.0);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The SCM PES (SystemID CRPDistrtSurface): its keys and checks, each with a valid and a violating
+// case. The potential is built in build_config, so the file, slab number, cut-off and lattice
+// checks of the potential appear here as input errors too.
+// ---------------------------------------------------------------------------------------------
+
+namespace {
+
+const std::filesystem::path example_directory =
+    std::filesystem::path(SPODVR_REFERENCE_DIR).parent_path().parent_path() / "potentials/H2Cu111SRP_C3v.dir";
+const std::string example_slab = (example_directory / "examplePosfile.dat").string();
+
+const std::vector<std::string> scm_keys = {"DistortedPESMode", "PosFileSlabNum", "EnableSurfExpan",
+                                           "SCMCutoff",        "SCMParFilepath", "PosFilepath"};
+
+// The CRP gate case on the SRP48 data set (crp_cu111_srp48_small) as an SCM input with the example
+// files of the data set (all keys given, paths absolute).
+Json scm_json() {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/crp_cu111_srp48_small/input.json");
+  Json json = Json::parse(file);
+  json["SystemID"] = "CRPDistrtSurface";
+  json["CRPlibDataSet"] = (example_directory / "H2Cu111SRP_C3v").string();
+  json["DistortedPESMode"] = 1;
+  json["SCMParFilepath"] = (example_directory / "params.dat").string();
+  json["PosFilepath"] = example_slab;
+  json["PosFileSlabNum"] = 1;
+  json["EnableSurfExpan"] = true;
+  json["SCMCutoff"] = 16.0;
+  return json;
+}
+
+// The example slab file with `edit` applied to each line (1-based numbers), written to `directory`.
+std::string edited_example_slab(const test_support::TemporaryDirectory& directory,
+                                const std::function<std::string(int, const std::string&)>& edit) {
+  std::ifstream in(example_slab);
+  std::string text, line;
+  for (int number = 1; std::getline(in, line); ++number) text += edit(number, line) + "\n";
+  return directory.write("slab.dat", text).string();
+}
+
+}  // namespace
+
+// The SCM input with every key, and with only the required ones (the Fortran's defaults: mode 1,
+// configuration 1, rescaling on, cut-off 16 bohr). With rescaling the lattice constants are the
+// slab's a_T, without them the CRP's.
+TEST(Input, ScmKeysValid) {
+  Config c = build(scm_json());
+  EXPECT_EQ(c.input.scm.parameter_file, (example_directory / "params.dat").string());
+  EXPECT_EQ(c.input.scm.position_file, example_slab);
+  EXPECT_EQ(c.derived.system.point_group, "C3v");
+  EXPECT_EQ(c.derived.system.lattice_constant_x, 4.8896663475);  // a_T, line 3 of the slab file
+
+  Json json = scm_json();
+  for (const char* key : {"DistortedPESMode", "PosFileSlabNum", "EnableSurfExpan", "SCMCutoff"}) json.erase(key);
+  c = build(json);
+  EXPECT_EQ(c.input.scm.mode, 1);
+  EXPECT_EQ(c.input.scm.configuration, 1);
+  EXPECT_TRUE(c.input.scm.rescale);
+  EXPECT_EQ(c.input.scm.cutoff, 16.0);
+
+  json["EnableSurfExpan"] = false;
+  EXPECT_NEAR(build(json).derived.system.lattice_constant_x, 2.601516559 / 0.529177249, 1e-14);  // a₀ of SRP48
+}
+
+// SCM D1: SystemID is case-insensitive, as for every PES; the SCM keys are an error with any other
+// SystemID (the Fortran ignores them there).
+TEST(Input, ScmD1KeysOnlyWithCrpDistrtSurface) {
+  Json json = scm_json();
+  json["SystemID"] = "crpdistrtsurface";
+  EXPECT_EQ(build(json).derived.system.point_group, "C3v");
+
+  for (const std::string& key : scm_keys) {
+    SCOPED_TRACE(key);
+    json = scm_json();
+    json["SystemID"] = "CRPlibrary";
+    for (const std::string& other : scm_keys)
+      if (other != key) json.erase(other);
+    expect_input_error(json, key);
+    json.erase(key);
+    EXPECT_EQ(build(json).derived.system.point_group, "C3v");  // the plain CRP input
+  }
+  json = reference_json();  // hard wall
+  json["SCMCutoff"] = 16.0;
+  expect_input_error(json, "SCMCutoff");
+}
+
+// CRPlibDataSet is required with CRPDistrtSurface: the CRP potential the correction is added to.
+TEST(Input, ScmCrpDataSetRequired) {
+  Json json = scm_json();
+  json.erase("CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet");
+  json["CRPlibDataSet"] = "";
+  expect_input_error(json, "CRPlibDataSet");
+  json["CRPlibDataSet"] = "no/such/data/set";
+  expect_input_error(json, "CRPlibDataSet");
+}
+
+// SCM D7: only DistortedPESMode 1 (SCM) exists, as in the Fortran.
+TEST(Input, ScmD7OnlyMode1) {
+  for (const int mode : {0, 2, -1}) {
+    Json json = scm_json();
+    json["DistortedPESMode"] = mode;
+    expect_input_error(json, "DistortedPESMode");
+  }
+  Json json = scm_json();
+  json["DistortedPESMode"] = 1;
+  EXPECT_EQ(build(json).input.scm.mode, 1);
+}
+
+// SCM D12: both paths are required (the Fortran defaults to ./params.dat and ./SlabPos.dat); a path
+// that does not name a readable file is an error naming its key.
+TEST(Input, ScmD12PathsRequired) {
+  for (const char* key : {"SCMParFilepath", "PosFilepath"}) {
+    SCOPED_TRACE(key);
+    Json json = scm_json();
+    json.erase(key);
+    expect_input_error(json, key);
+    json[key] = "";
+    expect_input_error(json, key);
+    json[key] = "no/such/file.dat";
+    expect_input_error(json, key);
+  }
+  EXPECT_NO_THROW((void)build(scm_json()));
+}
+
+// SCM D2: UseSymmetry is an error with CRPDistrtSurface (the distorted slab has no symmetry; the
+// Fortran switches it off for C3v data sets and would wrongly apply it for C6v ones).
+TEST(Input, ScmD2UseSymmetryRejected) {
+  Json json = scm_json();
+  json["UseSymmetry"] = true;
+  expect_input_error(json, "UseSymmetry");
+  json["UseSymmetry"] = false;
+  EXPECT_FALSE(build(json).input.use_symmetry);
+}
+
+// SCM D13: HomoNuc false (HD) is an error with CRPDistrtSurface; the Fortran places the atoms
+// symmetrically about the grid point.
+TEST(Input, ScmD13HomoNucFalseRejected) {
+  Json json = scm_json();
+  json["HomoNuc"] = false;
+  json["Mass2"] = 2.0141;
+  expect_input_error(json, "HomoNuc");
+  json["HomoNuc"] = true;
+  json["Mass2"] = json["Mass1"];
+  EXPECT_TRUE(build(json).input.homonuclear);
+}
+
+// SCM D14: the slab is FCC111, so the CRP data set must be hexagonal (C3v or C6v); a C4v one is an
+// error naming CRPlibDataSet (the message tells it from a data set that fails to load). Valid: SRP48.
+TEST(Input, ScmD14HexagonalDataSet) {
+  Json json = scm_json();
+  json["CRPlibDataSet"] =
+      (std::filesystem::path(SPODVR_REFERENCE_DIR).parent_path() / "crplib/reference/c4v_pairwise/dataset").string();
+  const std::string message = expect_input_error(json, "CRPlibDataSet");
+  EXPECT_NE(message.find("C3v or C6v"), std::string::npos) << message;
+}
+
+// The slab number must be 1 … NumSlabConfigs (1 in the example; the Fortran reads configuration 1
+// for 0, SCM D6) and the cut-off positive (as in the Fortran).
+TEST(Input, ScmSlabNumberAndCutoff) {
+  for (const int configuration : {0, -1, 2}) {
+    Json json = scm_json();
+    json["PosFileSlabNum"] = configuration;
+    expect_input_error(json, "PosFileSlabNum");
+  }
+  for (const double cutoff : {0.0, -16.0}) {
+    Json json = scm_json();
+    json["SCMCutoff"] = cutoff;
+    expect_input_error(json, "SCMCutoff");
+  }
+  Json json = scm_json();
+  json["SCMCutoff"] = 8.0;
+  EXPECT_EQ(build(json).input.scm.cutoff, 8.0);
+}
+
+// SCM D6: with EnableSurfExpan the slab's lattice constant a_T (line 3) must be positive: it
+// becomes the grid's lattice constant and s = a_T/a₀. Without rescaling it is not used.
+TEST(Input, ScmD6SlabLatticeConstantPositiveWhenRescaling) {
+  const test_support::TemporaryDirectory directory("scm_input");
+  for (const char* lattice_constant : {"0.0", "-4.8896663475"}) {
+    SCOPED_TRACE(lattice_constant);
+    Json json = scm_json();
+    json["PosFilepath"] = edited_example_slab(
+        directory, [&](int number, const std::string& line) { return number == 3 ? lattice_constant : line; });
+    expect_input_error(json, "PosFilepath");
+    json["EnableSurfExpan"] = false;
+    EXPECT_FALSE(build(json).input.scm.rescale);
+  }
+}
+
+// SCM D9: the slab's ideal atoms must lie on the CRP lattice. Moving every ideal position by
+// 0.01 bohr in x is an error naming PosFilepath; the example slab (within 1.2e-6 bohr) is valid.
+TEST(Input, ScmD9IdealAtomsOnTheCrpLattice) {
+  const test_support::TemporaryDirectory directory("scm_input");
+  Json json = scm_json();
+  json["PosFilepath"] = edited_example_slab(directory, [](int number, const std::string& line) {
+    if (number <= 3) return line;
+    std::istringstream fields(line);
+    std::string xd, yd, zd, layer;
+    double xi = 0.0, yi = 0.0, zi = 0.0;
+    fields >> xd >> yd >> zd >> xi >> yi >> zi >> layer;
+    return std::format("{} {} {} {:.17g} {:.17g} {:.17g} {}", xd, yd, zd, xi + 0.01, yi, zi, layer);
+  });
+  expect_input_error(json, "PosFilepath");
+  EXPECT_NO_THROW((void)build(scm_json()));
 }
 
 // UseSymmetry, nPhisOptimal and SymmetryTolerance (eV, default 1e-5, must be > 0). With both

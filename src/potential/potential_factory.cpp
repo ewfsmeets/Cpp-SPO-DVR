@@ -9,6 +9,7 @@
 #include "potential/dai_light_cu111_potential.hpp"
 #include "potential/hard_wall_potential.hpp"
 #include "potential/persson_cu111_potential.hpp"
+#include "potential/scm/scm_crp_potential.hpp"
 
 namespace spodvr {
 
@@ -18,10 +19,11 @@ constexpr const char* hard_wall_id = "HardWallPES";
 constexpr const char* dai_light_id = "H2Cu111DaiLight";
 constexpr const char* persson_id = "H2Cu111Persson";
 constexpr const char* crp_id = "CRPlibrary";  // a CRP data set (CRPlibDataSet)
+constexpr const char* scm_id = "CRPDistrtSurface";  // a CRP data set plus the SCM correction (upstream 5.24)
 }  // namespace
 
 bool potential_is_implemented(std::string_view system_id) {
-  for (const char* id : {hard_wall_id, dai_light_id, persson_id, crp_id})
+  for (const char* id : {hard_wall_id, dai_light_id, persson_id, crp_id, scm_id})
     if (fortran_compare::seq(system_id, id)) return true;
   return false;
 }
@@ -32,8 +34,11 @@ std::unique_ptr<Potential> make_potential(const InputParameters& input) {
   if (fortran_compare::seq(system_id, dai_light_id)) return std::make_unique<DaiLightCu111Potential>();
   if (fortran_compare::seq(system_id, persson_id)) return std::make_unique<PerssonCu111Potential>();
   if (fortran_compare::seq(system_id, crp_id)) return std::make_unique<CrpPotential>(input.crp_dataset);
+  // Case-insensitive like every SystemID; the Fortran reads the SCM keys only for this exact
+  // spelling (SCM D1). Fortran: H2SurfaceSystem.f90 (CRPDistrtSurface branch)
+  if (fortran_compare::seq(system_id, scm_id)) return std::make_unique<ScmCrpPotential>(input.crp_dataset, input.scm);
   throw InputError("SystemID", "unknown system ID '" + std::string(system_id) + "' (implemented: " + hard_wall_id +
-                                   ", " + dai_light_id + ", " + persson_id + ", " + crp_id + ")");
+                                   ", " + dai_light_id + ", " + persson_id + ", " + crp_id + ", " + scm_id + ")");
 }
 
 }  // namespace spodvr

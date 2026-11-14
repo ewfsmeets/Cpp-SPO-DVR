@@ -37,6 +37,9 @@ target_link_libraries(test_crp_potential PRIVATE spodvr_crplib)
 
 # The SCM file readers read the example files of the repository's SRP48 data set.
 target_compile_definitions(test_scm_io PRIVATE SPODVR_SCM_EXAMPLE_DIR="${PROJECT_SOURCE_DIR}/potentials/H2Cu111SRP_C3v.dir")
+# The SCM potential test computes expected values bit for bit and tests for NaN: strict floating
+# point in every build (spodvr_strict_fp after the loop's spodvr_fp overrides -ffast-math).
+target_link_libraries(test_scm_potential PRIVATE spodvr_strict_fp)
 
 # The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
 # command-line options, and negative tests that show the checker fails on a planted fault.

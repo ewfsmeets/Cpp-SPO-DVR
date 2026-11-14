@@ -19,6 +19,19 @@ struct LowZAbsorberInput {
   [[nodiscard]] bool enabled() const { return start.has_value() && end.has_value(); }
 };
 
+// The SCM distorted-surface correction (SystemID CRPDistrtSurface, upstream 5.24). Defaults are the
+// Fortran's (globaldata.f90), except that the two paths are required (SCM D12); paths are relative
+// to the working directory. Fortran: InputNew.f90 ReadInput (DistPESMode, ParamFile, SlabPosFile,
+// SurfNumb, EnabSCMExpan, SCMCutoff)
+struct ScmInput {
+  int mode = 1;                 // DistortedPESMode / DistPESMode: 1 = SCM, the only mode (SCM D7)
+  std::string parameter_file;   // SCMParFilepath / ParamFile: the pair-function parameters (params.dat)
+  std::string position_file;    // PosFilepath / SlabPosFile: the slab position file (snapshots)
+  int configuration = 1;        // PosFileSlabNum / SurfNumb: the snapshot used, 1-based
+  bool rescale = true;          // EnableSurfExpan / EnabSCMExpan: lattice constants a = a_T, CRP at (u/s, v/s)
+  double cutoff = 16.0;         // SCMCutoff (bohr): slab atoms farther from the origin are left out
+};
+
 // The input parameters as read from the JSON input file, in input units (bohr, eV, amu, a.u. of
 // time, degrees). Defaults are those of the Fortran code (globaldata.f90 SetupGlobalDataModule);
 // keys that the Fortran code requires have no meaningful default here and must be present.
@@ -103,8 +116,12 @@ struct InputParameters {
   bool use_symmetry = false;            // UseSymmetry / usePotSymmetry: V on the symmetry-reduced (x, y) grid
   bool phis_optimal = false;            // nPhisOptimal: nphi a multiple of the point group's multiple
   double symmetry_tolerance = 1e-5;     // SymmetryTolerance (eV): allowed asymmetry of the PES (C++ only)
-  std::string crp_dataset;              // CRPlibDataSet: directory of the CRP data set (SystemID CRPlibrary),
-                                        // relative to the working directory
+  // CRPlibDataSet: directory of the CRP data set (SystemID CRPlibrary or CRPDistrtSurface), relative
+  // to the working directory
+  std::string crp_dataset;
+
+  // --- SCM correction (SystemID CRPDistrtSurface: CRPlibDataSet plus these) ---------------
+  ScmInput scm;
 
   // --- complex absorbing potentials (exactly one of energy / factor per CAP) --------------
   double z_opt_start = 7.0;             // ZOptStart / zsplmi

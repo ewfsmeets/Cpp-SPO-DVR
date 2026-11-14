@@ -211,6 +211,13 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("nPhisOptimal", p.phis_optimal, optional);
   in.read("SymmetryTolerance", p.symmetry_tolerance, optional);
   in.read("CRPlibDataSet", p.crp_dataset, optional);
+  // The SCM keys (SystemID CRPDistrtSurface; checked in check_scm_keys).
+  in.read("DistortedPESMode", p.scm.mode, optional);
+  in.read("SCMParFilepath", p.scm.parameter_file, optional);
+  in.read("PosFilepath", p.scm.position_file, optional);
+  in.read("PosFileSlabNum", p.scm.configuration, optional);
+  in.read("EnableSurfExpan", p.scm.rescale, optional);
+  in.read("SCMCutoff", p.scm.cutoff, optional);
 
   in.read("ZOptEnergy", p.z_opt_energy);
   in.read("ZOptFactor", p.z_opt_factor);
@@ -279,6 +286,35 @@ void require_low_z_absorber(const JsonReader& in, const InputParameters& p, cons
     throw InputError(keys.energy, std::format("{} < 0 ({} eV)", keys.energy, *absorber.energy));
 }
 
+// The SCM keys (SCM D1, D7, D12) and the inputs SCM rejects (SCM D2, D13), checked here since the
+// potential is built before validate_input; ScmCrpPotential checks the files. Fortran: InputNew.f90 ReadInput
+void check_scm_keys(const JsonReader& in, const InputParameters& p, bool scm) {
+  if (!scm) {
+    for (const char* key :
+         {"DistortedPESMode", "SCMParFilepath", "PosFilepath", "PosFileSlabNum", "EnableSurfExpan", "SCMCutoff"})
+      if (in.contains(key)) throw InputError(key, std::string(key) + " is only used with SystemID CRPDistrtSurface");
+    return;
+  }
+  // SCM D7: the Fortran stops for every other mode too ("Unknown mode for distorted PES").
+  if (p.scm.mode != 1)
+    throw InputError("DistortedPESMode", std::format("DistortedPESMode = {}: only mode 1 (SCM) exists", p.scm.mode));
+  if (p.scm.parameter_file.empty())
+    throw InputError("SCMParFilepath",
+                     "SystemID CRPDistrtSurface needs SCMParFilepath (the SCM parameter file, e.g. params.dat); "
+                     "there is no default");
+  if (p.scm.position_file.empty())
+    throw InputError("PosFilepath",
+                     "SystemID CRPDistrtSurface needs PosFilepath (the slab position file); there is no default");
+  if (p.use_symmetry)
+    throw InputError("UseSymmetry",
+                     "UseSymmetry = true is not supported with SystemID CRPDistrtSurface: the distorted slab "
+                     "breaks the symmetry of the CRP data set");
+  if (!p.homonuclear)
+    throw InputError("HomoNuc",
+                     "HomoNuc = false is not supported with SystemID CRPDistrtSurface: the SCM correction puts "
+                     "the two atoms symmetrically about the grid point, the centre of mass only for equal masses");
+}
+
 // The ERROR calls of the Fortran reader. Fortran: InputNew.f90 ReadInput
 void check_while_reading(const JsonReader& in, const InputParameters& p) {
   using fortran_compare::rlt;
@@ -289,12 +325,15 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
   if (p.projection_operator == 1)
     throw InputError("ProjOp", "ProjOp = 1 is a legacy option and not supported; use ProjOp = 2.");
 
-  // The CRP data set: required by the CRP PES, meaningless for any other.
-  const bool crp = fortran_compare::seq(p.system_id, "CRPlibrary");
+  // The CRP data set: required by the CRP PES and by the SCM PES built on it, meaningless for any other.
+  const bool scm = fortran_compare::seq(p.system_id, "CRPDistrtSurface");
+  const bool crp = scm || fortran_compare::seq(p.system_id, "CRPlibrary");
   if (crp && p.crp_dataset.empty())
-    throw InputError("CRPlibDataSet", "SystemID CRPlibrary needs CRPlibDataSet (the directory of the data set)");
+    throw InputError("CRPlibDataSet",
+                     "SystemID " + p.system_id + " needs CRPlibDataSet (the directory of the CRP data set)");
   if (!crp && in.contains("CRPlibDataSet"))
-    throw InputError("CRPlibDataSet", "CRPlibDataSet is only used with SystemID CRPlibrary");
+    throw InputError("CRPlibDataSet", "CRPlibDataSet is only used with SystemID CRPlibrary or CRPDistrtSurface");
+  check_scm_keys(in, p, scm);
 
   if (p.do_flux_analysis) {
     for (const char* key : {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"})

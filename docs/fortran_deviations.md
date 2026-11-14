@@ -207,15 +207,46 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
 
 The port of the Fortran's distorted-surface correction (`DistortedSurfacePES.dir/`). Ported so far:
 the readers of its two data files, the parameter file and the slab position file
-(`scm_files.*`, tests `tests/test_scm_io.cpp`), and the correction ΔV itself (`scm_correction.*`,
-tests `tests/test_scm_correction.cpp`); the potential itself cannot be selected yet
-([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files and from
-synthetic multi-configuration files, and ΔV at every point of the four reference runs (the example
-slab with rescaling on and off, synthetic slabs of versions 3 and 2), are bitwise equal to the
-reference's (the r1713-dce0ecc objects driven by `tools/fortran_reference/scm_driver/`; tests
-`tests/scm/`), also in the fast-math build. ΔV has no deviation from the Fortran.
+(`scm_files.*`, tests `tests/test_scm_io.cpp`), the correction ΔV itself (`scm_correction.*`,
+tests `tests/test_scm_correction.cpp`), and the potential, SystemID `CRPDistrtSurface`
+(`scm_crp_potential.*`: V = CRP(u/s, v/s) + ΔV, with its set-up checks in `scm_diagnostics.*`;
+tests `tests/test_scm_potential.cpp`), with its input keys ([input_schema.md](input_schema.md)).
+Not yet ported: the SCM set-up report, the SCM identity in the restart files and a regression gate
+of the program ([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files
+and from synthetic multi-configuration files, and ΔV at every point of the four reference runs (the
+example slab with rescaling on and off, synthetic slabs of versions 3 and 2), are bitwise equal to
+the reference's (the r1713-dce0ecc objects driven by `tools/fortran_reference/scm_driver/`; tests
+`tests/scm/`), also in the fast-math build. ΔV has no deviation from the Fortran. On the example
+runs (768 points), the system parameters are bitwise the Fortran's, V is the Fortran's within the
+CRP's tolerance (the few-ulp difference of the CRP library, scalar cos against libmvec, see "CRP
+library" above; 4.4e-14 of max(|V_CRP|, 1 eV), tolerance 3e-13), and V − V_CRP within 0.91 of its
+rounding bound, ε/2·(|V| + |V − V_CRP|) summed over both codes
+(`tests/scm/test_scm_potential_reference.cpp`).
 Open physics questions: [scm_open_questions.md](scm_open_questions.md).
 
+- SCM D1: the SystemID's spelling. The Fortran selects the PES case-insensitively
+  (`H2SurfaceSystem.f90`, `.SEQ.`) but reads the SCM keys, and sets `EnabDistSurfPES` (default
+  false, `globaldata.f90`), only for the exact spelling `CRPDistrtSurface`
+  (`InputNew.f90 ReadInput`, `.EQ.`). With another spelling `Potential.f90` never calls
+  `SetupDistPESModule`: the parameter file and the slab's atoms are never read, and ΔV = 0 (its
+  atom loop runs zero times). Only the header of the default slab file `./SlabPos.dat` is read
+  (`InitialiseDistPESModule`; the run stops if that file is missing or not FCC111), and its a_T
+  still rescales the grid and the CRP's (u, v) (`EnableSurfExpan` defaults to true); there is no
+  message. The C++ matches the SystemID case-insensitively everywhere, and an SCM key with any
+  other SystemID is an error naming it. Tests: `Input.ScmD1KeysOnlyWithCrpDistrtSurface`,
+  `ScmCrpPotential.ScmD1FactoryIsCaseInsensitive`.
+- SCM D2: surface symmetry. The potential's point group is the CRP data set's, which the Fortran
+  also uses for `UseSymmetry`: it switches the symmetry off for C3v ("not implemented") and would
+  symmetrise the distorted potential of a C6v data set (a latent bug: the distorted slab has no
+  symmetry). The C++ keeps the CRP's point group (input checks, report) and rejects
+  `UseSymmetry: true` with `CRPDistrtSurface`, naming it. Test: `Input.ScmD2UseSymmetryRejected`.
+- SCM D4: the units of ΔV, kept. The Fortran converts ΔV from hartree with the precise factor
+  (`/ Constants_eV2Ha`, 0.036749308286; `DistortedSurfaceWrapper.f90 GetCRPDistSurfPotential`) and
+  the program then converts V back to hartree with the legacy 27.2114 (`Potential.f90`), so ΔV
+  carries a net factor 1 − 1.27e-7; the CRP term leaves the CRP library in eV with its own
+  27.2113961. The C++ does the same, bitwise (`units::precise.hartree_to_ev`, a division). Tests:
+  `ScmPotentialReference.ScmD4ValueIsCrpPlusDeltaVInEvBitwise`, `.DeltaVTermWithinItsRoundingBound`
+  (with the legacy factor instead, 354 of the 384 points of each example run fail).
 - SCM D5: position-file versions. The Fortran reads versions 1, 2 and 3 (`SCM_IO.f90 ReadSCMSlab`);
   version 1 generates the ideal lattice from the order of the atoms, with bugs (an INTEGER bulk
   layer spacing, `uCelly` used for `uCellx`, two layers hard-coded). The C++ reads version 3 (the
@@ -236,18 +267,48 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
     IF/ELSE IF and no check, so every r ≥ P17 becomes P18. Test:
     `ScmParameterFileErrors.ScmD6ClampRangeMustBeIncreasing`;
   - the file paths: the Fortran cuts them at 100 characters (the `CHARACTER(100)` arguments of
-    `InitialiseSCMModule`); the C++ uses them in full. Test: `ScmFiles.ScmD6LongPathsAreNotTruncated`.
+    `InitialiseSCMModule`); the C++ uses them in full. Test: `ScmFiles.ScmD6LongPathsAreNotTruncated`;
+  - the slab's lattice constant a_T (line 3 of the position file) ≤ 0 with `EnableSurfExpan`: the
+    Fortran uses it unchecked as the lattice constant of the grid and in s = a_T/a₀
+    (`SCM_Wrapper.f90 SetSCMCRPParameters`); the C++ stops, naming `PosFilepath` (without
+    rescaling a_T is not used). Test: `Input.ScmD6SlabLatticeConstantPositiveWhenRescaling`.
+- SCM D7: `DistortedPESMode` 1 (SCM) only, as in the Fortran, which stops for any other value
+  ("Unknown mode for distorted PES", `InputNew.f90 ReadInput`, exit status 0); the C++ names the
+  key. Test: `Input.ScmD7OnlyMode1`.
 - SCM D8: the Fortran's checks of the parameter file's first line, kept. It must start with
   `VERSION` in columns 1–7 (case-sensitive); the version is read list-directed from column 8.
   Without the tag the Fortran assumes version 1 and rejects it ("not (yet) supported"), as every
   version other than 2. The C++ rejects the same files, naming `SCMParFilepath`. Tests:
   `ScmParameterFileErrors.ScmD8VersionTag`, `.ScmD8OnlyVersion2`.
-- SCM D14: slab size. The Fortran requires nz ≥ 2 (`UsedLayers .GT. SlabAtomSize(3)` in
+- SCM D9: the slab against the CRP lattice, a check the Fortran does not have. ΔV subtracts the
+  pair energies of the slab's ideal atoms, so they must be the lattice the CRP potential describes.
+  The C++ requires the ideal top layer on the CRP lattice (a₀, skew angle γ, a site at the origin,
+  z = 0) and, with a C3v data set, the ideal second layer one interlayer spacing lower under the
+  site (1/3, 1/3) of the CRP's fcc stacking (a mirrored stacking would swap the fcc and hcp
+  hollows in the subtracted term); a C6v data set describes one layer, so only the top layer is
+  checked. The distance of each ideal atom from its site is computed when the potential is built
+  (`scm_diagnostics.*`, kept for the report): above 1e-5 bohr a warning, above 1e-3 bohr an error
+  naming `PosFilepath`. The warning belongs to the SCM set-up report, which is not ported yet: it is
+  not printed yet. The example slab lies within 1.2e-6 bohr of the SRP48 lattice (its file
+  uses bohr = 0.529177210903 Å, the CRP library 0.529177249 Å: 7.2e-8 relative, at 15.8 bohr from
+  the origin). The synthetic slabs of the Fortran reference runs have their ideal atoms on their own
+  lattices (4.95 and 4.85 bohr): the Fortran accepted them with the SRP48 data set, the C++ refuses
+  them. Tests: `ScmLatticeCheck.*`, `ScmCrpPotential.ScmD9ExampleSlabIsOnTheSrp48Lattice`,
+  `Input.ScmD9IdealAtomsOnTheCrpLattice`, `ScmPotentialReference.SyntheticSlabsAreNotOnTheCrpLattice`.
+- SCM D12: `SCMParFilepath` and `PosFilepath` are required. The Fortran defaults to
+  `./params.dat` and `./SlabPos.dat` (`globaldata.f90`); a stray file in the working directory
+  would be picked up without a message. Paths are relative to the working directory, as
+  `CRPlibDataSet`. Test: `Input.ScmD12PathsRequired`.
+- SCM D13: `HomoNuc: false` is an error with `CRPDistrtSurface`. The Fortran places the two atoms
+  symmetrically about the grid point (`SCM_Wrapper.f90 ConvertCoMToXYZ`), the centre of mass only
+  for equal masses; whether HD is meant this way is an open question to the authors. (The same
+  question applies to `CRPlibrary` with HD.) Test: `Input.ScmD13HomoNucFalseRejected`.
+- SCM D14: slab size and surface. The Fortran requires nz ≥ 2 (`UsedLayers .GT. SlabAtomSize(3)` in
   `ReadSCMSlab`); so does the C++, which also requires nx, ny ≥ 1 in version 3 (the Fortran
   multiplies the three sizes: two negative ones give a positive atom count). Not checked by the
-  Fortran either, and needing the CRP data set: an FCC111 slab with a CRP set that is not C3v or
-  C6v; that check belongs to the set-up of the potential, not ported yet. Test:
-  `ScmPositionFileErrors.ScmD14NzAtLeast2NxNyAtLeast1`.
+  Fortran: an FCC111 slab with a CRP data set that is not hexagonal; the C++ requires a C3v or C6v
+  data set with `CRPDistrtSurface`, naming `CRPlibDataSet`. Tests:
+  `ScmPositionFileErrors.ScmD14NzAtLeast2NxNyAtLeast1`, `Input.ScmD14HexagonalDataSet`.
 - Reader differences without an ID (tests in `ScmPositionFile.*` and `ScmParameterFileErrors.*`):
   - Not reproduced: version 3's temporary arrays in the Fortran hold nx·ny·2 atoms, so a file with
     more atoms of layers 1–2 inside the cut-off overflows them; the C++ has no such limit.

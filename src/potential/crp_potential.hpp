@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -34,6 +35,12 @@ struct CrpDataSetSummary {
   int cluster_atoms = 0;                   // atoms of the repulsive sum. Fortran: MURII, MURO
   int cluster_atoms_within_reach = 0;      // of these, the ones the corrugation function can reach
   std::vector<std::string> warnings;       // conditions the Fortran accepts that are probably not intended
+  // Distances between adjacent surface layers (bohr), the top one first (surface_layers − 1 values).
+  // Fortran: Get_CRP_QD_Wrapper_Additional_Parameters (Geometry%InterlayerSpacings)
+  std::vector<double> interlayer_spacings;
+  // C3v: where the second layer's atoms sit, in skewed lattice units (u, v). Empty for C6v (its
+  // atom-surface PES has one layer) and C4v (a square lattice, which no SCM slab matches).
+  std::optional<std::array<double, 2>> second_layer_site;
 };
 
 // How the grid points relate to the range of the data (see crplib::RangeReport).

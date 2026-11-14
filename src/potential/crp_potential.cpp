@@ -62,6 +62,11 @@ CrpDataSetSummary make_summary(const std::filesystem::path& directory, const crp
   s.cluster_atoms = cluster.atoms;
   s.cluster_atoms_within_reach = cluster.within_reach;
   s.warnings = surface.warnings();
+  for (double spacing : data.interlayer_spacings)  // as the atom-surface PES converts them
+    s.interlayer_spacings.push_back(crplib::convert_length(spacing, data.units.length, crplib::LengthUnit::bohr));
+  // The fcc(111) ABC stacking of the C3v atom-surface PES puts layer 2 under the hcp hollow (1/3, 1/3)
+  // (crplib hexagonal_atom_surface.cpp murii_cluster; Fortran CRP_C3v_AtomSurface.f90 MURII).
+  if (data.symmetry == crplib::Symmetry::c3v) s.second_layer_site = std::array<double, 2>{1.0 / 3.0, 1.0 / 3.0};
   return s;
 }
 
