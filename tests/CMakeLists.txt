@@ -62,7 +62,7 @@ add_test(NAME Docs.UpstreamPinMismatchFails
          COMMAND ${check_docs_negative} -DCASE=upstream-pin
                  -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/upstream-pin -P ${check_docs_negative_script})
 
-# The refusals of the Fortran reference tools (tools/fortran_reference/test_reference_tools.sh,
+# The refusals and the input staging of the Fortran reference tools (test_reference_tools.sh,
 # tools/fortran_reference/README.md): stub installs and synthetic build logs, no Fortran run.
 set(reference_tools_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_reference_tools.sh)
 function(add_reference_tools_test name test_case)
@@ -79,6 +79,20 @@ add_reference_tools_test(BuildLogAllowLists check-log)
 add_reference_tools_test(InstructionCheck check-binary)
 add_reference_tools_test(ManifestRecordAndDelete manifest)
 add_reference_tools_test(RegenerateRefusesBeforeDeleting regenerate-refusals)
+add_reference_tools_test(ScmInputsStagedUnderShortNames stage-scm)
+add_reference_tools_test(StagingOfTheCasesUnchanged staged-cases)
+
+# extract_pes.py (tools/fortran_reference/test_extract_pes.py) on synthetic .pes files: files without
+# SCM records give the output of before, the six SCM records are detected, wrong files refused.
+set(extract_pes_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_extract_pes.py)
+function(add_extract_pes_test name test_case)
+  add_test(NAME FortranReference.ExtractPes${name}
+           COMMAND ${Python3_EXECUTABLE} -I -B ${extract_pes_test} ${test_case}
+                   ${CMAKE_CURRENT_BINARY_DIR}/extract_pes/${test_case})
+endfunction()
+add_extract_pes_test(WithoutScmUnchanged without-scm)
+add_extract_pes_test(ScmRecords scm)
+add_extract_pes_test(Refusals refusals)
 
 # refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1713.tsv is valid and
 # matches the committed files, every class it allows passes, each fault and each refusal fails.

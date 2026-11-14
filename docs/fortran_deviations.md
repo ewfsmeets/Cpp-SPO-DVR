@@ -330,10 +330,10 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
   SCM records, and looks for it in a later run, but in 5.24 never reads it: the lookup name uses
   `ParameterVersion` 0, which `SetupSCMModule` sets only later (an upstream bug), and a renamed copy
   is refused too (version 2 ≠ 0). The C++ has no `.pes` cache: every run computes the potential.
-  `tools/fortran_reference/extract_pes.py`, which reads the Fortran's `.pes` for gate 1, is to skip
-  the six records when the SCM regression gate is added; any future `.pes` import must refuse SCM
-  files whose six records do not match the input. Test:
-  `ScmDiagnostics.ScmD11PotentialOnlyRunWritesNoPesCache`.
+  `tools/fortran_reference/extract_pes.py`, which reads the Fortran's `.pes` for gate 1, detects the
+  six records by counting records and copies them into `#` lines of `pes_reference.txt`; any future
+  `.pes` import must refuse SCM files whose six records do not match the input. Tests:
+  `ScmDiagnostics.ScmD11PotentialOnlyRunWritesNoPesCache`, `FortranReference.ExtractPesScmRecords`.
 - SCM D12: `SCMParFilepath` and `PosFilepath` are required. The Fortran defaults to
   `./params.dat` and `./SlabPos.dat` (`globaldata.f90`); a stray file in the working directory
   would be picked up without a message. Paths are relative to the working directory, as

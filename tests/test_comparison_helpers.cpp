@@ -1,6 +1,7 @@
 // Tests: the NaN-aware maximum of the test comparisons (tests/comparison.hpp) and the gate
-// comparisons built on it: a NaN on either side fails gate 3 (averages) and gate 4 (printed
-// probabilities, BK coefficients); for finite values the maximum is std::max, bit for bit.
+// comparisons built on it: a NaN on either side fails gate 1b (the 6D potential, pes_gate.hpp),
+// gate 3 (averages) and gate 4 (printed probabilities, BK coefficients); for finite values the
+// maximum is std::max, bit for bit.
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
@@ -10,10 +11,13 @@
 #include <complex>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <vector>
 
 #include "analysis_reference.hpp"
 #include "comparison.hpp"
+#include "core/unit_conversion.hpp"
+#include "pes_gate.hpp"
 #include "propagation_reference.hpp"
 #include "setup_reference.hpp"
 
@@ -82,6 +86,22 @@ PropagationRun run_with_bk() {
   return run;
 }
 
+// Four points of a pes_reference.txt (hartree): the second lies above VMax and is clipped, the
+// fourth (2.7 meV) below the 1 eV floor of the scaled difference.
+test::PesReference pes_reference() {
+  test::PesReference ref;
+  ref.ntheta = 2;
+  ref.nphi = 2;
+  ref.points = {{0, 0, 0, 0, 0, 0, -0.1}, {0, 1, 0, 0, 0, 0, 0.5}, {1, 0, 0, 0, 0, 0, 0.2}, {1, 1, 0, 0, 0, 0, 1e-4}};
+  return ref;
+}
+
+// The C++ potential at those points: the reference clipped to VMax = 0.3 hartree.
+const PotentialLimits pes_limits{std::nullopt, 0.3};
+std::vector<double> pes_values() { return {-0.1, 0.3, 0.2, 1e-4}; }
+constexpr double pes_floor = units::legacy.ev_to_hartree(1.0);
+constexpr double pes_tolerance = 1e-13;  // the 6D gate's (potential_tolerance, test_regression_pes.cpp)
+
 }  // namespace
 
 // --- the maximum ------------------------------------------------------------------------------
@@ -123,6 +143,85 @@ TEST(GateComparisons, SetupRelativeDifferenceIsNaNWithANaNValue) {
   EXPECT_TRUE(std::isnan(spodvr::test::relative_difference(not_a_number, 1.0)));
   EXPECT_TRUE(std::isnan(spodvr::test::relative_difference(1.0, not_a_number)));
   EXPECT_TRUE(std::isnan(spodvr::test::relative_difference(not_a_number, not_a_number)));
+}
+
+// --- gate 1b: the 6D potential ------------------------------------------------------------------
+
+TEST(GateComparisons, PesGatePassesWhenEqual) {
+  expect_pes_gate("synthetic", pes_reference(), pes_values(), pes_limits, pes_floor, pes_tolerance);
+  const PesGateResult result = compare_pes_values(pes_reference(), pes_values(), pes_limits, pes_floor, pes_tolerance);
+  EXPECT_EQ(result.clipped, 1);
+  EXPECT_EQ(result.max_difference, 0.0);
+  EXPECT_TRUE(result.failing.empty());
+}
+
+// Below 1 eV the difference is scaled by the floor: 1e-15 hartree at V = 1e-4 hartree is 1e-11
+// relative but 2.7e-14 of 1 eV, so it passes, and fails without the floor (only that point).
+TEST(GateComparisons, PesGateScalesSmallValuesByTheFloor) {
+  std::vector<double> values = pes_values();
+  values[3] += 1e-15;
+  const PesGateResult result = compare_pes_values(pes_reference(), values, pes_limits, pes_floor, pes_tolerance);
+  EXPECT_TRUE(result.failing.empty());
+  EXPECT_LT(result.max_difference, 0.5 * pes_tolerance);
+  const PesGateResult without_floor = compare_pes_values(pes_reference(), values, pes_limits, 0.0, pes_tolerance);
+  EXPECT_EQ(without_floor.failing, std::vector<std::size_t>{3});
+  EXPECT_GT(without_floor.max_difference, 50.0 * pes_tolerance);
+}
+
+// With VMin the reference is clipped from below too: the clipped C++ value passes, the unclipped
+// one fails at that point only.
+TEST(GateComparisons, PesGateClipsTheReferenceToVMin) {
+  const PotentialLimits limits{-0.05, 0.3};
+  std::vector<double> values = pes_values();
+  values[0] = -0.05;
+  const PesGateResult result = compare_pes_values(pes_reference(), values, limits, pes_floor, pes_tolerance);
+  EXPECT_EQ(result.clipped, 2);
+  EXPECT_TRUE(result.failing.empty());
+  EXPECT_NONFATAL_FAILURE(expect_pes_gate("synthetic", pes_reference(), pes_values(), limits, pes_floor, pes_tolerance),
+                          "itheta 0 iphi 0");
+  EXPECT_EQ(compare_pes_values(pes_reference(), pes_values(), limits, pes_floor, pes_tolerance).failing,
+            std::vector<std::size_t>{0});
+}
+
+// A known-wrong finite value fails, and only its point (the comparison is live); the largest of
+// two deviations is the worst point.
+TEST(GateComparisons, PesGateFailsOnAWrongValue) {
+  std::vector<double> values = pes_values();
+  values[0] *= 1.0 + 5e-13;
+  values[2] *= 1.0 + 5e-14;
+  EXPECT_NONFATAL_FAILURE(expect_pes_gate("synthetic", pes_reference(), values, pes_limits, pes_floor, pes_tolerance),
+                          "itheta 0 iphi 0");
+  const PesGateResult result = compare_pes_values(pes_reference(), values, pes_limits, pes_floor, pes_tolerance);
+  EXPECT_EQ(result.failing, std::vector<std::size_t>{0});
+  EXPECT_EQ(result.worst, 0U);
+  EXPECT_GT(result.max_difference, pes_tolerance);
+}
+
+TEST(GateComparisons, PesGateFailsOnACppNaN) {
+  std::vector<double> values = pes_values();
+  values[2] = not_a_number;
+  EXPECT_NONFATAL_FAILURE(expect_pes_gate("synthetic", pes_reference(), values, pes_limits, pes_floor, pes_tolerance),
+                          "itheta 1 iphi 0");
+  const PesGateResult result = compare_pes_values(pes_reference(), values, pes_limits, pes_floor, pes_tolerance);
+  EXPECT_TRUE(std::isnan(result.max_difference));
+  EXPECT_EQ(result.failing, std::vector<std::size_t>{2});
+  EXPECT_EQ(result.worst, 2U);
+  EXPECT_EQ(result.clipped, 1);
+}
+
+// A NaN in the reference fails too, also where VMax would have clipped it, and does not count as
+// clipped; with two NaN points both fail and the worst point is the first.
+TEST(GateComparisons, PesGateFailsOnAFortranNaN) {
+  test::PesReference ref = pes_reference();
+  ref.points[1].v = not_a_number;
+  EXPECT_NONFATAL_FAILURE(expect_pes_gate("synthetic", ref, pes_values(), pes_limits, pes_floor, pes_tolerance),
+                          "itheta 0 iphi 1");
+  ref.points[2].v = not_a_number;
+  const PesGateResult result = compare_pes_values(ref, pes_values(), pes_limits, pes_floor, pes_tolerance);
+  EXPECT_TRUE(std::isnan(result.max_difference));
+  EXPECT_EQ(result.failing, (std::vector<std::size_t>{1, 2}));
+  EXPECT_EQ(result.worst, 1U);
+  EXPECT_EQ(result.clipped, 0);
 }
 
 // --- gate 3: initial wave packet block and averages ---------------------------------------------

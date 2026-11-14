@@ -30,6 +30,7 @@
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
 #include "propagation/propagation.hpp"
+#include "reference_case_input.hpp"
 
 namespace spodvr::testing {
 
@@ -133,11 +134,11 @@ struct PropagationRun {
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
 };
 
-// input: the JSON input of the run; backend: the propagation backend (CPU by default; the GPU
-// tests pass the CUDA backend).
+// input: the JSON input of the run (a reference case's: case_config, reference_case_input.hpp);
+// backend: the propagation backend (CPU by default; the GPU tests pass the CUDA backend).
 inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
                                           const BackendFactory& backend = make_cpu_backend) {
-  const Config config = build_config(parse_input(input));
+  const Config config = case_config(input);
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
   PotentialGrid potential = compute_potential_grid(*make_potential(config.input), config, grids, angular);

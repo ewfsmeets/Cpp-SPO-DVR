@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Generates the Fortran reference data for the propagation gate (gate 3).
 #
-# Runs the reference executable (reference_config.sh) on tests/reference/<case>/DVR.inp unchanged
-# (a full new run: setup, propagation, analysis) in a scratch directory and copies into
-# tests/reference/<case>/:
+# Runs the reference executable (reference_config.sh) on tests/reference/<case>/DVR.inp, unchanged
+# except the data-file paths (reference_config.sh stage_inputs), as a full new run (setup,
+# propagation, analysis) in a scratch directory and copies into tests/reference/<case>/:
 #   fortran_stdout.txt     stdout of the run (initial wave packet info, averages vs time, ...)
 #   fortran_averages.out   averages.out (time, norm, <Z>, <r>, rest norm)
 #   fortran_fort21.bin     fort.21, the BK coefficients of every analysis step (gate 4)
 #   fortran_fort25.txt     fort.25, the state-resolved S-matrix elements and probabilities
-# and their lines in the case's MANIFEST.tsv. All other Fortran output files stay in the scratch
-# directory.
+# and their lines in the case's MANIFEST.tsv (inputs: the DVR.inp and the staged data files of CRP
+# and SCM cases, reference_config.sh stage_inputs). All other Fortran output files stay in the
+# scratch directory.
 #
 # Usage: tools/fortran_reference/run_propagation_reference.sh [case] [scratch_dir]
 #   case         reference case directory name (default: hardwall_short)
@@ -33,6 +34,7 @@ cp "${scratch_dir}/fortran_stdout.txt" "${case_dir}/fortran_stdout.txt"
 cp "${scratch_dir}/averages.out" "${case_dir}/fortran_averages.out"
 cp "${scratch_dir}/fort.21" "${case_dir}/fortran_fort21.bin"
 cp "${scratch_dir}/fort.25" "${case_dir}/fortran_fort25.txt"
-record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" DVR.inp -- \
+mapfile -t inputs < <(staged_inputs "${scratch_dir}")
+record_manifest "${scratch_dir}" "${case_dir}" "${FORTRAN_REF_EXE}" "${inputs[@]}" -- \
   fortran_stdout.txt fortran_averages.out fortran_fort21.bin fortran_fort25.txt
 echo "* Reference files written to ${case_dir}"

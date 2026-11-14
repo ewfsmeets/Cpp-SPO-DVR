@@ -174,21 +174,53 @@ new_scratch_dir() {
   (cd "$1" && pwd)
 }
 
-# stage_inputs CASE_DIR DIR: copies the case's DVR.inp into DIR and, for a CRP library case (key
-# CRPlibDataSet of its input.json, relative to the repository), the data set as DIR/dataset: the
-# short relative path its DVR.inp names (the Fortran fails on paths above 50 characters).
+# The data files of a case that stage_inputs stages, one KEY NAME MEMBER triple each: the key of
+# the case's input.json that names the file (relative to the repository), its short name in the
+# scratch directory, and the file a directory must hold ("-": the key names a file).
+STAGED_DATA=(
+  CRPlibDataSet dataset CRPData  # the CRP data set
+  SCMParFilepath params.dat -    # the SCM parameter file
+  PosFilepath slab.dat -         # the SCM slab position file
+)
+
+# stage_inputs CASE_DIR DIR: copies the case's DVR.inp into DIR, and each data file of STAGED_DATA
+# that its input.json names to DIR/<short name>, with that DVR.inp field set to the short name: the
+# CRP library fails on paths above 50 characters, the SCM module reads at most 100.
 stage_inputs() {
-  local case_dir="$1" dir="$2" data_set=""
+  local case_dir="$1" dir="$2" i
   [[ -f "${case_dir}/DVR.inp" ]] || refuse "${case_dir}/DVR.inp not found; name a case of tests/reference"
   cp "${case_dir}/DVR.inp" "${dir}/DVR.inp"
+  for ((i = 0; i < ${#STAGED_DATA[@]}; i += 3)); do
+    stage_data "${case_dir}" "${dir}" "${STAGED_DATA[i]}" "${STAGED_DATA[i + 1]}" "${STAGED_DATA[i + 2]}"
+  done
+}
+
+# stage_data CASE_DIR DIR KEY NAME MEMBER: when the case's input.json has KEY, copies the file it
+# names (relative to the repository; unless MEMBER is "-", a directory holding the file MEMBER) to
+# DIR/NAME and sets the field KEY of DIR/DVR.inp to "NAME".
+stage_data() {
+  local case_dir="$1" dir="$2" key="$3" name="$4" member="$5" path="" required
   if [[ -f "${case_dir}/input.json" ]]; then
-    data_set="$(python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get("CRPlibDataSet", ""))' \
-      "${case_dir}/input.json")"
+    path="$(python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' \
+      "${case_dir}/input.json" "${key}")"
   fi
-  [[ -n "${data_set}" ]] || return 0
-  [[ -f "${FORTRAN_REPO_DIR}/${data_set}/CRPData" ]] ||
-    refuse "CRP data set ${data_set} (CRPlibDataSet of ${case_dir}/input.json) not found; restore it"
-  cp -r "${FORTRAN_REPO_DIR}/${data_set}" "${dir}/dataset"
+  [[ -n "${path}" ]] || return 0
+  required="${path}"
+  [[ "${member}" == - ]] || required="${path}/${member}"
+  [[ -f "${FORTRAN_REPO_DIR}/${required}" ]] ||
+    refuse "${key} ${required} (${case_dir}/input.json) not found; restore it"
+  cp -r "${FORTRAN_REPO_DIR}/${path}" "${dir}/${name}"
+  set_field "${dir}/DVR.inp" "${key}" "\"${name}\""
+}
+
+# staged_inputs DIR [PREFIX]: the inputs stage_inputs put into DIR, one per line as PREFIX<name>:
+# DVR.inp, then the staged data files in the order of STAGED_DATA (the inputs of record_manifest).
+staged_inputs() {
+  local i
+  echo "${2:-}DVR.inp"
+  for ((i = 1; i < ${#STAGED_DATA[@]}; i += 3)); do
+    [[ ! -e "$1/${STAGED_DATA[i]}" ]] || echo "${2:-}${STAGED_DATA[i]}"
+  done
 }
 
 # set_field FILE NAME VALUE: sets the value of the line "NAME : TYPE : value;" of a DVR.inp,

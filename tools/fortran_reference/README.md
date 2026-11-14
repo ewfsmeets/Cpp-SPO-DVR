@@ -15,6 +15,7 @@ strings the three together.
 | [reference_config.sh](reference_config.sh) | The one home of the pins, paths, thread count and environment, and the functions the scripts share (sourced, not run) |
 | [build_fortran_reference.sh](build_fortran_reference.sh) | Builds the pinned upstream commit into a read-only reference install |
 | `run_setup_reference.sh [case]` | Potential-only run: `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` (gates 1, 2) |
+| [extract_pes.py](extract_pes.py) | Writes `pes_reference.txt` from the Fortran's binary `.pes` file (run by `run_setup_reference.sh`): the angular grid and a subsample of V; the six extra records of an SCM run, detected by counting records, become `#` lines |
 | `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4) |
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
 | `run_fine_analysis_reference.sh [case] [variant ...]` | Analysis-only runs on the committed `fortran_fort21.bin`: `fine_<variant>/` (gate 5) |
@@ -24,7 +25,7 @@ strings the three together.
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
 | [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1713.tsv](expected/r1713.tsv) ([below](#comparing-two-reference-trees)) |
 | [ReferenceManifest.cmake](ReferenceManifest.cmake) | Checks every file a `MANIFEST.tsv` lists against its sha256 (`ctest -R ReferenceManifest`) |
-| `test_reference_tools.sh`, `test_refdata.py` | The negative tests of these tools (`ctest -R FortranReference`; no Fortran run) |
+| `test_reference_tools.sh`, `test_refdata.py`, `test_extract_pes.py` | The tests of these tools (`ctest -R FortranReference`; no Fortran run) |
 
 Each script's header gives its arguments, outputs, environment and run time. Every run script
 records the files it writes in the case's `MANIFEST.tsv`.
@@ -79,6 +80,14 @@ is committed in [buildinfo/](buildinfo/).
   `OMP_NUM_THREADS=4` (`FORTRAN_REF_THREADS`), whatever the caller's environment holds.
 - **The scratch directory** (`new_scratch_dir`): a new `mktemp -d` directory, or a named one that
   must not exist yet (a stale `.pes` or `pesmorphparameters.dat` would be read).
+- **The inputs** (`stage_inputs`): the case's `DVR.inp`, and the data files that the keys
+  `CRPlibDataSet`, `SCMParFilepath` and `PosFilepath` of its `input.json` name (relative to the
+  repository root, read with Python `json`), copied to `dataset`, `params.dat` and `slab.dat` in
+  the scratch directory, with those `DVR.inp` fields set to the short names: the Fortran CRP
+  library fails on paths above 50 characters, the SCM module reads at most 100. A missing data
+  file, and a `DVR.inp` without the field, refuse. Every run script records the staged files as
+  inputs in `MANIFEST.tsv` (`staged_inputs`). The C++ regression tests read the same keys
+  relative to the repository root (`tests/reference_case_input.hpp`).
 - **The run** (`run_fortran`): exit status 0 and every required output file present (a Fortran
   `STOP` on bad input exits with status 0).
 - **The CRP and SCM driver builds** (`build_fortran_driver`): the install as above, and the
@@ -124,7 +133,7 @@ recorded, rows sorted by path. Hashes other than the file's own are shortened to
 | `script` | The script that generated it |
 | `commit` | `git describe --always` of this repository, with `-dirty` when a tracked file outside the reference trees (`tests/**/reference/`) differs from it: those change in every regeneration |
 | `fortran_ref` | The install id (`BUILDINFO.tsv`) and `<program>:<sha256>` of the program that ran: `spodvr.x`, or the CRP driver linked against the install's objects |
-| `input_sha` | `<input>:<sha256>` of each input as run, comma-separated: the `DVR.inp` with the script's changes, a staged CRP data set (`dataset`, hashed as a tree: the sha256 of its sorted `sha256sum` lines), the fine analysis's `fort.22` (equal to the case's `fortran_fort21.bin`), the driver's `*.in` |
+| `input_sha` | `<input>:<sha256>` of each input as run, comma-separated: the `DVR.inp` with the script's changes, the staged data files (a CRP data set `dataset`, hashed as a tree: the sha256 of its sorted `sha256sum` lines; the SCM files `params.dat`, `slab.dat`), the fine analysis's `fort.22` (equal to the case's `fortran_fort21.bin`), the driver's `*.in` |
 | `runtime_drift` | The run-time packages whose installed version differs from `BUILDINFO.tsv` (`package=version`), when `SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1` let the run go ahead |
 | `cpu` | The CPU model and `flags:<sha256>` of its feature flags (libm picks code by CPU feature) |
 | `date` | The UTC date of the run |

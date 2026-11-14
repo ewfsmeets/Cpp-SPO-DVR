@@ -9,6 +9,11 @@ layout vdvr(itp, ixy, izr) with itp = iphi + nphi*(itheta-1), izr = ir + nr*(iz-
 With surface symmetry (UseSymmetry) only the (x, y) points of a fundamental region are stored
 and symmetryIndex maps every full-grid point to its stored equivalent; the script expands it.
 
+An SCM run (SystemID CRPDistrtSurface) writes six more records between symmetryIndex and the
+potential (DistortedSurfaceWrapper.f90 WriteDistPESSetup, SCM_Wrapper.f90 SetPESVariables_SCM).
+They are detected by counting records, checked against their formats and copied into '#' lines.
+The C++ has no .pes cache (SCM D11, docs/fortran_deviations.md): only this script reads them.
+
 Output (text, full precision):
   header line with nzpot nr nx ny ntheta nphi
   for a potential that depends only on (Z, r) (the hard wall, no symmetry): the theta and phi
@@ -19,33 +24,76 @@ Output (text, full precision):
   first point of every (Z, r) block.
 
 Usage: extract_pes.py <file.pes> <output.txt>
+Exit status: 0 written, 1 a file of another layout or one that cannot be read or written
+(error: <what>; <fix>), 2 bad arguments.
+Environment: none read. Run time: seconds (the reference cases). Called by run_setup_reference.sh;
+docs: tools/fortran_reference/README.md.
 """
 import math
 import struct
 import sys
 
+# The records before the potential: dimensions, angular sizes, Z/r and x/y grid ends, thetas,
+# phis, the switching function, the symmetry flag and size, symmetryIndex.
+HEADER_RECORDS = 9
+
+# The six records of an SCM run, in file order: the names SetPESVariables_SCM writes and their
+# formats (logicals as 4-byte integers 0/1).
+SCM_RECORDS = (
+    ("ParameterVersion", "<i"),
+    ("EnableExpansion EnabReadPosFile", "<2i"),
+    ("IdLatticeConstant DistLatticeConstant", "<2d"),
+    ("CutOff UsedLayers NumSlabConfigs", "<d2i"),
+    ("SlabAtomSize(1:3)", "<3i"),
+    ("SCMSlabRefocusMethod", "<i"),
+)
+
+
+class FormatError(Exception):
+    """The file is not a .pes file of the layout above."""
+
 
 def read_records(path):
-    """Yield the payload of every record of a gfortran unformatted sequential file."""
+    """The payloads of the records of a gfortran unformatted sequential file."""
     with open(path, "rb") as f:
         data = f.read()
-    pos = 0
+    records, pos = [], 0
     while pos < len(data):
         (length,) = struct.unpack_from("<i", data, pos)
         if length < 0:
-            raise ValueError("subrecords (records > 2 GiB) are not supported")
+            raise FormatError("subrecords (records > 2 GiB) are not supported")
+        if pos + length + 8 > len(data):
+            raise FormatError(f"truncated record at byte {pos}")
         payload = data[pos + 4 : pos + 4 + length]
         (trailer,) = struct.unpack_from("<i", data, pos + 4 + length)
         if trailer != length:
-            raise ValueError(f"corrupt record at byte {pos}")
-        yield payload
+            raise FormatError(f"corrupt record at byte {pos}")
+        records.append(payload)
         pos += length + 8
+    return records
 
 
 def unpack(fmt, payload):
     if struct.calcsize(fmt) != len(payload):
-        raise ValueError(f"record size {len(payload)} does not match format {fmt}")
+        raise FormatError(f"record size {len(payload)} does not match format {fmt}")
     return struct.unpack(fmt, payload)
+
+
+def format_value(value):
+    """A value of an SCM record as text: a REAL as the potential values (.17e: 18 significant
+    digits), an INTEGER as is."""
+    return f"{value:.17e}" if isinstance(value, float) else str(value)
+
+
+def scm_lines(records):
+    """The six SCM records as '#' lines (empty for a file without them)."""
+    if not records:
+        return ""
+    lines = ["# SCM records (SCM_Wrapper.f90 SetPESVariables_SCM; logicals as 0/1):\n"]
+    for (names, fmt), payload in zip(SCM_RECORDS, records):
+        values = " ".join(format_value(v) for v in unpack(fmt, payload))
+        lines.append(f"#   {names}: {values}\n")
+    return "".join(lines)
 
 
 def expand_symmetric(block, symmetry_index):
@@ -62,10 +110,11 @@ def sample_indices(n_values, block_size):
     return set(range(0, n_values, stride))
 
 
-def write_zr_only(out, header, thetas, phis, values, nr):
+def write_zr_only(out, header, thetas, phis, values, nr, scm):
     """Hard wall format: V(iz, ir), the potential being constant over (x, y, theta, phi)."""
     out.write("# Extracted by tools/fortran_reference/extract_pes.py from the Fortran .pes file.\n")
     out.write("# V in Hartree (before the -dt premultiplication); constant over (x, y, theta, phi).\n")
+    out.write(scm)
     out.write("# nzpot nr nx ny ntheta nphi\n")
     out.write(header)
     out.write("# theta points\n")
@@ -78,7 +127,7 @@ def write_zr_only(out, header, thetas, phis, values, nr):
         out.write(f"{iz + 1} {ir + 1} {block[0]:.17e}\n")
 
 
-def write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_computed):
+def write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_computed, scm):
     """6D format: a deterministic subsample of V(itheta, iphi, ix, iy, iz, ir) plus the whole
     (Z, r) table at the first (x, y, theta, phi) point."""
     nzpot, nr, nx, ny, ntheta, nphi = dims
@@ -86,6 +135,7 @@ def write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_compute
     samples = sample_indices(block_size * nzpot * nr, block_size)
     out.write("# Extracted by tools/fortran_reference/extract_pes.py from the Fortran .pes file.\n")
     out.write("# V in Hartree (before the -dt premultiplication); 6D subsample (format 6d).\n")
+    out.write(scm)
     out.write("# nzpot nr nx ny ntheta nphi\n")
     out.write(header)
     out.write("# use_symmetry (0/1) and the number of (x, y) points for which V was computed\n")
@@ -105,38 +155,56 @@ def write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_compute
                 out.write(f"{itheta + 1} {iphi + 1} {ix + 1} {iy + 1} {iz + 1} {ir + 1} {v:.17e}\n")
 
 
-def main():
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    records = read_records(sys.argv[1])
-    nzpot, nr, nx, ny = unpack("<4i", next(records))
-    ntheta, nphi = unpack("<2i", next(records))
-    next(records)  # zgrid(1), rgrid(1), zgrid(nzpot), rgrid(nr)
-    next(records)  # xgrid(1), ygrid(1), xgrid(nx), ygrid(ny)
-    thetas = unpack(f"<{ntheta}d", next(records))
-    phis = unpack(f"<{nphi}d", next(records))
-    next(records)  # lswitch, zmin_switch, zmax_switch
-    use_symmetry, n_xy_computed = unpack("<2i", next(records))
+def extract(pes_path, output_path):
+    records = read_records(pes_path)
+    if not records:
+        raise FormatError("the file holds no records")
+    nzpot, nr, nx, ny = unpack("<4i", records[0])
+    # Records beyond the header and the nzpot * nr potential blocks: none, or the six of SCM.
+    n_extra = len(records) - HEADER_RECORDS - nzpot * nr
+    if n_extra not in (0, len(SCM_RECORDS)):
+        raise FormatError(f"{len(records)} records, not {HEADER_RECORDS} + {nzpot * nr} (nzpot * nr) "
+                          f"or {len(SCM_RECORDS)} more (SCM)")
+    ntheta, nphi = unpack("<2i", records[1])
+    # records[2]: zgrid(1), rgrid(1), zgrid(nzpot), rgrid(nr); records[3]: the x, y grid ends
+    thetas = unpack(f"<{ntheta}d", records[4])
+    phis = unpack(f"<{nphi}d", records[5])
+    # records[6]: lswitch, zmin_switch, zmax_switch
+    use_symmetry, n_xy_computed = unpack("<2i", records[7])
     full_size = ntheta * nphi * nx * ny
-    symmetry_index = unpack(f"<{full_size}i", next(records))
+    symmetry_index = unpack(f"<{full_size}i", records[8])
+    scm = scm_lines(records[HEADER_RECORDS : HEADER_RECORDS + n_extra])
 
     stored_size = ntheta * nphi * n_xy_computed
     values = []
-    for _ in range(nzpot * nr):
-        block = unpack(f"<{stored_size}d", next(records))
+    for payload in records[HEADER_RECORDS + n_extra :]:
+        block = unpack(f"<{stored_size}d", payload)
         values.append(expand_symmetric(block, symmetry_index) if use_symmetry else list(block))
-    if next(records, None) is not None:
-        sys.exit("error: unexpected trailing records")
 
     header = f"{nzpot} {nr} {nx} {ny} {ntheta} {nphi}\n"
     zr_only = not use_symmetry and all(v == block[0] for block in values for v in block)
-    with open(sys.argv[2], "w") as out:
+    with open(output_path, "w") as out:
         if zr_only:
-            write_zr_only(out, header, thetas, phis, values, nr)
+            write_zr_only(out, header, thetas, phis, values, nr, scm)
         else:
             dims = (nzpot, nr, nx, ny, ntheta, nphi)
-            write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_computed)
+            write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_computed, scm)
+
+
+def main(argv):
+    if len(argv) != 2:
+        print("usage: extract_pes.py <file.pes> <output.txt>", file=sys.stderr)
+        return 2
+    try:
+        extract(argv[0], argv[1])
+    except (FormatError, struct.error) as error:
+        print(f"error: {argv[0]}: {error}; name a .pes file written by the reference install", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"error: {error}; name a .pes file that exists and an output path that can be written", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv[1:]))

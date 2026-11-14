@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Negative tests of the Fortran reference tools (reference_config.sh, build_fortran_reference.sh,
-# the run scripts): each refusal fires, exits 1 and prints "error: <what>; <fix>". They use stub
-# installs (bin/spodvr.x a shell script) and synthetic build logs: no Fortran runs.
+# Tests of the Fortran reference tools (reference_config.sh, build_fortran_reference.sh, the run
+# scripts): each refusal fires, exits 1 and prints "error: <what>; <fix>"; the run scripts stage a
+# case's inputs as the Fortran reads them. They use stub installs (bin/spodvr.x a shell script) and
+# synthetic build logs: no Fortran runs.
 #   retired-variables  each retired variable (FORTRAN_RETIRED_VARS) set: a run script refuses
 #   existing-scratch   a run script given an existing scratch directory refuses
 #   changed-install    a file changed after SHA256SUMS; an executable other than BUILDINFO's
@@ -19,11 +20,19 @@
 #                      without MANIFEST
 #   regenerate-refusals  regenerate_all.sh refuses an unclean reference tree and a missing install
 #                      before it deletes anything (in a scratch git repository)
+#   stage-scm          run_propagation_reference.sh on an SCM case whose three data files have paths
+#                      of over 100 characters (in a scratch git repository): the run finds them as
+#                      dataset, params.dat and slab.dat, the DVR.inp as run names them so and is
+#                      otherwise the case's, the MANIFEST and staged_inputs (with a prefix) list them
+#                      as inputs; a missing data file and a DVR.inp without the field refuse
+#   staged-cases       stage_inputs on every case of tests/reference without SCM keys: the DVR.inp
+#                      byte for byte, the CRP data set unchanged, nothing else staged, and
+#                      staged_inputs lists exactly what was staged
 #
 # Usage: tools/fortran_reference/test_reference_tools.sh CASE WORK [CXX]
 #   CASE  one of the cases above;  WORK  scratch directory (recreated);
 #   CXX   C++ compiler for check-binary (default: c++)
-# Environment: none read (the tested scripts get theirs set here). Run time: about a second.
+# Environment: none read (the tested scripts get theirs set here). Run time: about a second each.
 # ctest: FortranReference.*. Docs: tools/fortran_reference/README.md.
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -65,6 +74,11 @@ expect_success() {
 # in_config FUNCTION ARGS...: a function of reference_config.sh in a fresh bash.
 in_config() {
   bash -c 'set -euo pipefail; source "$0"; "$@"' "${config}" "$@"
+}
+
+# json_value FILE KEY: the value of KEY in the JSON file FILE ("" when absent).
+json_value() {
+  python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$1" "$2"
 }
 
 # make_install DIR EXE_BODY: a stub install whose executable is a shell script with EXE_BODY and
@@ -226,6 +240,80 @@ case "${test_case}" in
     rm "${repo}/tests/reference/case/stray.txt"
     expect_refusal "is not a reference install" "${repo}/tools/fortran_reference/regenerate_all.sh"
     [[ -z "$(git -C "${repo}" status --porcelain)" ]] || fail "a refused regeneration changed the tree: $(git -C "${repo}" status --porcelain)"
+    ;;
+  stage-scm)
+    repo="${work}/repo"
+    mkdir -p "${repo}/tools/fortran_reference"
+    cp "${config}" "${tools_dir}/refdata.py" "${tools_dir}/run_propagation_reference.sh" "${repo}/tools/fortran_reference/"
+    data="potentials/$(printf 'a_directory_of_forty_characters_number_%d/' 1 2 3)"
+    ((${#data} > 100)) || fail "the data directory ${data} has ${#data} characters, not over 100"
+    case_dir="${repo}/tests/reference/scm_case"
+    mkdir -p "${repo}/${data}dataset" "${case_dir}"
+    echo "CRP data" > "${repo}/${data}dataset/CRPData"
+    echo "SCM parameters" > "${repo}/${data}params.dat"
+    echo "slab positions" > "${repo}/${data}positions.dat"
+    printf '%s\n' '# An SCM case' 'SystemID : STRING : "CRPDistrtSurface";' \
+      "CRPlibDataSet : STRING : \"${data}dataset\";" "SCMParFilepath : STRING : \"${data}params.dat\";" \
+      "PosFilepath : STRING : \"${data}positions.dat\";" 'PosFileSlabNum : INTEGER : 1;' > "${case_dir}/DVR.inp"
+    printf '{"SystemID": "CRPDistrtSurface", "CRPlibDataSet": "%s", "SCMParFilepath": "%s", "PosFilepath": "%s"}\n' \
+      "${data}dataset" "${data}params.dat" "${data}positions.dat" > "${case_dir}/input.json"
+    git -C "${repo}" init -q
+    git -C "${repo}" add -A
+    git -C "${repo}" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm scratch
+    # The stub runs only where it finds the staged files under their short names.
+    make_install "${work}/install" "[ -f dataset/CRPData ] && [ -f params.dat ] && [ -f slab.dat ] || exit 3
+touch averages.out fort.21 fort.25"
+    export SPODVR_FORTRAN_REF_DIR="${work}/install" SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1
+    run="${work}/run"
+    expect_success "${repo}/tools/fortran_reference/run_propagation_reference.sh" scm_case "${run}"
+    cmp -s "${repo}/${data}params.dat" "${run}/params.dat" && cmp -s "${repo}/${data}positions.dat" "${run}/slab.dat" &&
+      diff -r "${repo}/${data}dataset" "${run}/dataset" > /dev/null || fail "the staged data files differ from the case's"
+    for line in 'CRPlibDataSet : STRING : "dataset";' 'SCMParFilepath : STRING : "params.dat";' \
+      'PosFilepath : STRING : "slab.dat";'; do
+      grep -qxF "${line}" "${run}/DVR.inp" || fail "the DVR.inp as run has no line ${line}: $(cat "${run}/DVR.inp")"
+    done
+    paths='^(CRPlibDataSet|SCMParFilepath|PosFilepath) :'
+    diff <(grep -vE "${paths}" "${case_dir}/DVR.inp") <(grep -vE "${paths}" "${run}/DVR.inp") > /dev/null ||
+      fail "the DVR.inp as run differs from the case's in other lines"
+    grep -qP '^fortran_stdout\.txt\t.*\tDVR\.inp:[0-9a-f]{12},dataset:[0-9a-f]{12},params\.dat:[0-9a-f]{12},slab\.dat:[0-9a-f]{12}\t' \
+      "${case_dir}/MANIFEST.tsv" || fail "the MANIFEST does not list the staged inputs: $(cat "${case_dir}/MANIFEST.tsv")"
+    in_repo() { bash -c 'set -euo pipefail; source "$0"; "$@"' "${repo}/tools/fortran_reference/reference_config.sh" "$@"; }
+    # The input list with a prefix, as the restart script records its two runs.
+    listed="$(in_repo staged_inputs "${run}" part1/ | paste -sd ' ')"
+    [[ "${listed}" == "part1/DVR.inp part1/dataset part1/params.dat part1/slab.dat" ]] ||
+      fail "staged_inputs with a prefix lists ${listed}"
+    # stage_inputs alone: a data file missing, then a DVR.inp without a field its input.json names.
+    mkdir "${work}/stage1" "${work}/stage2"
+    mv "${repo}/${data}positions.dat" "${work}/positions.dat"
+    expect_refusal "PosFilepath .*positions\.dat .*not found" in_repo stage_inputs "${case_dir}" "${work}/stage1"
+    mv "${work}/positions.dat" "${repo}/${data}positions.dat"
+    sed -i '/^PosFilepath /d' "${case_dir}/DVR.inp"
+    expect_refusal "field PosFilepath not found" in_repo stage_inputs "${case_dir}" "${work}/stage2"
+    ;;
+  staged-cases)
+    count=0
+    for case_dir in "${FORTRAN_REPO_DIR}"/tests/reference/*; do
+      [[ -f "${case_dir}/DVR.inp" ]] || continue
+      [[ -z "$(json_value "${case_dir}/input.json" SCMParFilepath)" ]] || continue
+      name="$(basename "${case_dir}")"
+      mkdir "${work}/${name}"
+      expect_success in_config stage_inputs "${case_dir}" "${work}/${name}"
+      cmp -s "${case_dir}/DVR.inp" "${work}/${name}/DVR.inp" || fail "${name}: the staged DVR.inp differs from the case's"
+      data_set="$(json_value "${case_dir}/input.json" CRPlibDataSet)"
+      staged="DVR.inp"
+      if [[ -n "${data_set}" ]]; then
+        diff -r "${FORTRAN_REPO_DIR}/${data_set}" "${work}/${name}/dataset" > /dev/null ||
+          fail "${name}: the staged data set differs from ${data_set}"
+        staged="DVR.inp dataset"
+      fi
+      listing=("${work}/${name}"/*)
+      [[ "${listing[*]##*/}" == "${staged}" ]] || fail "${name}: staged ${listing[*]##*/}, expected ${staged}"
+      listed="$(in_config staged_inputs "${work}/${name}" | paste -sd ' ')"
+      [[ "${listed}" == "${staged}" ]] || fail "${name}: staged_inputs lists ${listed}, expected ${staged}"
+      count=$((count + 1))
+    done
+    ((count >= 11)) || fail "only ${count} cases staged; tests/reference has at least 11"
+    echo "${count} cases staged as before"
     ;;
   *)
     echo "usage: test_reference_tools.sh CASE WORK [CXX] (unknown case ${test_case})" >&2

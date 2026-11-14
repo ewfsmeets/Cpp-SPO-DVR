@@ -5,11 +5,13 @@
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
 // SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing.
 // LowZGateFailsWithoutTheScatteringAbsorberLong (also SPODVR_LONG_TESTS=1) is the negative test of
-// the low-Z case.
+// the low-Z case. RegressionHarness: the data-file paths of a case's input (reference_case_input.hpp).
 #include <cstdlib>
 #include <fstream>
+#include <string>
 
 #include "regression_gate.hpp"
+#include "scm_example_input.hpp"
 
 using namespace spodvr;
 using namespace spodvr::testing;
@@ -101,4 +103,38 @@ TEST(RegressionPropagation, ParsesTheFortranOutputFormats) {
   ASSERT_EQ(ref->averages.size(), 2u);
   EXPECT_EQ(ref->averages[1].time, 100.0);
   EXPECT_EQ(ref->averages[1].rest_norm, 0.99999945);
+}
+
+// --- the data-file paths of a case's input.json ---------------------------------------------------
+
+// They are relative to the repository root; the key absent (empty) and an absolute path stay.
+TEST(RegressionHarness, DataPathsResolveAgainstTheRepositoryRoot) {
+  InputParameters input;
+  resolve_repository_paths(input);
+  EXPECT_TRUE(input.crp_dataset.empty());
+  EXPECT_TRUE(input.scm.parameter_file.empty());
+  EXPECT_TRUE(input.scm.position_file.empty());
+  input.crp_dataset = "potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v";
+  input.scm.parameter_file = "potentials/H2Cu111SRP_C3v.dir/params.dat";
+  input.scm.position_file = "/an/absolute/slab.dat";
+  resolve_repository_paths(input);
+  EXPECT_EQ(input.crp_dataset, (repository_root() / "potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v").string());
+  EXPECT_EQ(input.scm.parameter_file, (repository_root() / "potentials/H2Cu111SRP_C3v.dir/params.dat").string());
+  EXPECT_EQ(input.scm.position_file, "/an/absolute/slab.dat");
+}
+
+// An SCM case whose input.json names the CRP data set and both SCM files relative to the repository
+// root (the SCM example) builds through the harness of the gates (case_config, used by
+// run_cpp_propagation and so by run_gate): its potential reads all three from the resolved paths.
+TEST(RegressionHarness, ScmCaseInputBuildsWithRepositoryRelativePaths) {
+  nlohmann::json json = test_support::scm_example_json(test_support::scm_example_directory / "examplePosfile.dat");
+  for (const char* key : {"CRPlibDataSet", "SCMParFilepath", "PosFilepath"})
+    json[key] = fs::relative(json[key].get<std::string>(), repository_root()).string();
+  ASSERT_EQ(json["SCMParFilepath"], "potentials/H2Cu111SRP_C3v.dir/params.dat");
+  const Config config = case_config(json);
+  EXPECT_EQ(config.input.crp_dataset, (repository_root() / "potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v").string());
+  EXPECT_EQ(config.input.scm.parameter_file, (repository_root() / "potentials/H2Cu111SRP_C3v.dir/params.dat").string());
+  EXPECT_EQ(config.input.scm.position_file,
+            (repository_root() / "potentials/H2Cu111SRP_C3v.dir/examplePosfile.dat").string());
+  EXPECT_TRUE(config.derived.scm.has_value());
 }

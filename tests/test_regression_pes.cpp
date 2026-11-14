@@ -25,27 +25,25 @@
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
+#include "pes_gate.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "reference_case_input.hpp"
 #include "setup_reference.hpp"
 
 using namespace spodvr;
+using namespace spodvr::testing;
 using spodvr::test::relative_difference;
-using spodvr::testing::nan_aware_max;
 namespace fs = std::filesystem;
 
 namespace {
 
 // The Fortran grids are evaluated in quad precision and differ from the C++ grids by up to 1 ulp
-// (accepted, see docs/fortran_deviations.md). The potential is compared with an absolute floor of 1 eV: near
-// V = 0 the LEPS cancellation makes a pure relative test meaningless.
+// (accepted, see docs/fortran_deviations.md). The potential is compared with an absolute floor of 1 eV
+// (scaled_difference, pes_gate.hpp).
 constexpr double grid_tolerance = 4e-16;        // relative, ~2 ulp
 constexpr double vasy_tolerance = 1e-14;        // relative to max(|V|, 1 eV)
 constexpr double potential_tolerance = 1e-13;   // relative to max(|V|, 1 eV), full 6D potential
-
-double scaled_difference(double a, double b, double floor) {
-  return std::abs(a - b) / std::max({std::abs(a), std::abs(b), floor});
-}
 
 struct Calculation {
   Config config;
@@ -69,7 +67,6 @@ double potential_tolerance_of(const std::string& name) {
 }
 
 fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / directory_of(name); }
-fs::path repository_root() { return fs::path(SPODVR_REFERENCE_DIR).parent_path().parent_path(); }
 
 const Calculation& calculation(const std::string& name) {
   static std::map<std::string, std::unique_ptr<Calculation>> cache;
@@ -77,8 +74,7 @@ const Calculation& calculation(const std::string& name) {
   if (!entry) {
     std::ifstream file(case_dir(name) / "input.json");
     InputParameters input = parse_input(nlohmann::json::parse(file));
-    // CRP cases: the data set path in input.json is relative to the repository root.
-    if (!input.crp_dataset.empty()) input.crp_dataset = (repository_root() / input.crp_dataset).string();
+    resolve_repository_paths(input);
     if (with_symmetry(name)) input.use_symmetry = true;
     Config config = build_config(input);
     SpatialGrids grids = make_spatial_grids(config);
@@ -147,32 +143,8 @@ TEST_P(RegressionPes, Gate1FullPotentialAndAngularGrid) {
     EXPECT_EQ(ref.n_xy_computed, ref.nx * ref.ny);
   }
   ASSERT_GT(ref.points.size(), 10000U);
-  const double one_ev = units::legacy.ev_to_hartree(1.0);
-  // The Fortran writes the .pes file before it imposes VMin / VMax (Potential.f90 setupThePES);
-  // its potential in memory, like the C++ grid, is the reference clipped as below.
-  const InputParameters& input = c.config.input;
-  auto with_limits = [&](double v) {
-    if (input.impose_v_min && v < c.config.derived.v_min) v = c.config.derived.v_min;
-    if (input.impose_v_max && v > c.config.derived.v_max) v = c.config.derived.v_max;
-    return v;
-  };
-  int clipped = 0;
-  double max_difference = 0.0;
-  for (const test::PesReference::Point& p : ref.points) {
-    const std::size_t itp = p.iphi + ref.nphi * p.itheta;
-    const std::size_t ixy = p.iy + ref.ny * p.ix;
-    const std::size_t izr = p.ir + ref.nr * p.iz;
-    const double v = c.potential(itp, ixy, izr);
-    const double expected = with_limits(p.v);
-    if (expected != p.v) ++clipped;
-    const double difference = scaled_difference(v, expected, one_ev);
-    max_difference = nan_aware_max(max_difference, difference);
-    EXPECT_LE(difference, potential_tolerance_of(GetParam()))
-        << "itheta " << p.itheta << " iphi " << p.iphi << " ix " << p.ix << " iy " << p.iy << " iz " << p.iz << " ir "
-        << p.ir << ": " << v << " vs " << expected;
-  }
-  std::cout << "  " << GetParam() << ": " << ref.points.size() << " points (" << clipped
-            << " clipped to VMin/VMax), max scaled difference " << max_difference << '\n';
+  expect_pes_gate(GetParam(), ref, potential_at_points(c.potential, ref), potential_limits(c.config),
+                  units::legacy.ev_to_hartree(1.0), potential_tolerance_of(GetParam()));
 }
 
 // Gate 2: rovibrational energies and eigenvectors vs debug_asyp.dat.
