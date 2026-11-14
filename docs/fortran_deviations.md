@@ -20,6 +20,9 @@ differences are in [validation.md](validation.md).
 - Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
   propagating run (new or restart) with exit code 3 once the input checks have passed;
   analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
+  A port was validated against the Fortran and reverted (2026-11-14): with ProjOp 2 the Fortran's
+  flux leaves out the initial channel. Findings, tests and what was tried:
+  [flux_analysis_findings.md](flux_analysis_findings.md).
 - `InitGenComplexTransform` silently returns on invalid nφ.
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
 - `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.

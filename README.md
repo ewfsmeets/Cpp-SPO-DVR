@@ -62,7 +62,8 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).
 - Not yet implemented: the flux analysis. A propagating run with `doFluxAnalysis: true` is refused
-  with a "not implemented yet" error ([docs/input_schema.md](docs/input_schema.md)).
+  with a "not implemented yet" error ([docs/input_schema.md](docs/input_schema.md)). Why, and what a
+  reverted port found: [docs/flux_analysis_findings.md](docs/flux_analysis_findings.md).
 - Not yet implemented: the other Fortran potentials (their data files are in `potentials/`).
 - Fortran version: the port started from SPO-DVR 5.19 (2023). Every comparison uses upstream 5.24
   at svn r1713 (2026), built with `-O3` ([docs/validation.md](docs/validation.md#reference-data)).
@@ -383,7 +384,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker |
-| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), performance notes, GPU backend |
+| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), the flux analysis findings (`flux_analysis_findings.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |
 
