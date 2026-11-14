@@ -113,6 +113,8 @@ setup crp_c3v_synthetic_small
 setup crp_c4v_synthetic_small
 setup crp_c6v_synthetic_small
 setup crp_cu111_srp48_small
+setup scm_cu111_srp48_small
+setup scm_cu111_srp48_small_rescaling_off
 
 # 3. Propagation runs.
 propagation hardwall_short
@@ -121,6 +123,7 @@ propagation cu111_dailight_short
 propagation cu111_dailight_short_sym
 propagation cu111_dailight_short_lowz
 propagation cu111_dailight_small
+propagation scm_cu111_srp48_small
 
 # 4. The Fortran restart (hardwall_small in two parts).
 restart

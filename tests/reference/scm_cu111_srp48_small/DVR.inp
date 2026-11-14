@@ -1,0 +1,112 @@
+# SCM regression case (gates 1 to 4): crp_cu111_srp48_small (H2/Cu(111) SRP48, C3v, small grids) plus
+# the SCM correction of a distorted slab (SystemID CRPDistrtSurface, upstream 5.24): the example files
+# potentials/H2Cu111SRP_C3v.dir/params.dat and examplePosfile.dat (snapshot 1), the slab rescaled to the
+# CRP lattice (EnableSurfExpan). Changes from crp_cu111_srp48_small:
+# - ZStart -1.0 -> 0.5, the first point of the same Z grid at or above the CRP's Zmin (0.47 bohr): below
+#   it the CRP clamps Z while the SCM correction does not (SCM D15, docs/fortran_deviations.md);
+# - nZ 120 -> 110 (the same last point 16.85) and nZSpecular 210 -> 198 (200 is not a valid FFT size),
+#   so the specular grid and ZSpOptEnd end at 30.05;
+# - tEnd 7500, nStep 3000 and dtAve 250 (gates 3 and 4; by t = 7500 the wave reflected by the
+#   surface has reached Zana) instead of the upstream 45000, 18000 and 500.
+# tools/fortran_reference/reference_config.sh stage_inputs copies the data set, the parameter file and
+# the position file into the scratch directory under the short names below (the CRP library fails for
+# paths longer than 50 characters, the SCM module reads at most 100). Every field carries an explicit
+# type ("Name : TYPE : value;"): 5.24's ReadInput pre-registers none of the SCM keys.
+# The C++ equivalent of this file is input.json in this directory; keep both in sync.
+
+Title       : STRING  : "SCM, SRP48 H2/Cu(111) plus the example slab (rescaled), small grid";
+SystemID    : STRING  : "CRPDistrtSurface";
+CRPlibDataSet : STRING : "dataset";
+NewCalc     : LOGICAL : TRUE;
+
+ZDoF        : LOGICAL : TRUE;
+RDoF        : LOGICAL : TRUE;
+XDoF        : LOGICAL : TRUE;
+YDoF        : LOGICAL : TRUE;
+ThetaDoF    : LOGICAL : TRUE;
+PhiDoF      : LOGICAL : TRUE;
+
+# H2
+Mass1       : REAL    : 1.0078;
+Mass2       : REAL    : 1.0078;
+HomoNuc     : LOGICAL : TRUE;
+
+# Grid in Z (scattering and specular share ZStart and dZ)
+ZStart      : REAL    : 0.5;
+dZ          : REAL    : 0.15;
+nZ          : INTEGER : 110;
+nZSpecular  : INTEGER : 198;
+
+# Grid in r
+RStart      : REAL    : 0.4;
+dR          : REAL    : 0.2;
+nR          : INTEGER : 48;
+
+# Grid in x, y (C3v: nX = nY; u = k/6 includes the top, bridge, hcp, fcc, t2h and t2f sites)
+nX          : INTEGER : 6;
+nY          : INTEGER : 6;
+
+# Rotational basis (reduced). MJMax is set explicitly equal to JMax.
+JMax        : INTEGER : 4;
+MJMax       : INTEGER : 4;
+
+ProjOp      : INTEGER : 2;
+
+# Propagation
+tStart      : REAL    : 0.0;
+tEnd        : REAL    : 7500.0;
+dtStep      : REAL    : 2.5;
+nStep       : INTEGER : 3000;
+
+# Analysis
+dtAna       : REAL    : 50.0;
+dtAve       : REAL    : 250.0;
+DynamZSpAna : LOGICAL : TRUE;
+Zana        : REAL    : 12.05;
+NrOfEs      : INTEGER : 11;
+
+# Initial wave packet and state
+EMinWP      : REAL    : 0.5;
+EMaxWP      : REAL    : 0.9;
+Z0          : REAL    : 17.0;
+VIn         : INTEGER : 0;
+JIn         : INTEGER : 0;
+MJIn        : INTEGER : 0;
+EParallel   : REAL    : 0.0;
+PhiParallel : REAL    : 0.0;
+
+# Potential maximum (as upstream)
+ImposeVMax  : LOGICAL : TRUE;
+VMax        : REAL    : 10.0;
+
+# Complex absorbing potentials
+ZOptStart   : REAL    : 12.2;
+ZOptEnd     : REAL    : 16.85;
+ZOptEnergy  : REAL    : 0.3;
+ZSpOptStart : REAL    : 21.65;
+ZSpOptEnd   : REAL    : 30.05;
+ZSpOptEnergy: REAL    : 0.3;
+ROptStart   : REAL    : 4.2;
+ROptEnd     : REAL    : 9.8;
+ROptEnergy  : REAL    : 0.1;
+
+# No default exists in the Fortran code for TolSp; must be given.
+TolSp       : REAL    : 5.0E-09;
+
+writeSMatrix: LOGICAL : FALSE;
+writeProbs  : LOGICAL : TRUE;
+writeRDProbs: LOGICAL : TRUE;
+
+# Switching to the gas phase (Potential.f90 switchPotentialToGasPhase), as upstream
+UseSwitching: LOGICAL : TRUE;
+ZminSwitch  : REAL    : 11.3;
+ZmaxSwitch  : REAL    : 11.9;
+
+# SCM correction (DistortedSurfacePES.dir): mode 1 = SCM; snapshot 1 of the position file; the slab
+# rescaled to the CRP lattice; atoms of layers 1 and 2 within 16 bohr of the origin.
+DistortedPESMode : INTEGER : 1;
+SCMParFilepath   : STRING  : "params.dat";
+PosFilepath      : STRING  : "slab.dat";
+PosFileSlabNum   : INTEGER : 1;
+EnableSurfExpan  : LOGICAL : TRUE;
+SCMCutoff        : REAL    : 16.0;

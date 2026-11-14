@@ -129,6 +129,8 @@ derived from exactly the same parameters.
    1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: decision D4
    on data up to 72 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
    clips the reference at VMin/VMax: the Fortran writes its .pes file before it imposes them.
+   SCM distorted-surface PES (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (gates 1–4)
+   and `scm_cu111_srp48_small_rescaling_off` (gates 1 and 2).
 4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
    Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
    values) to half a unit in the last printed digit (values below 1e-20 are noise and compared
