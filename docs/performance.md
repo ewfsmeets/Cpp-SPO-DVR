@@ -77,10 +77,11 @@ header line.
 - The flux analysis (`doFluxAnalysis`) adds its coefficients φ, φ′ and K slots, each slot holding
   ψ and ∂ψ/∂r at r_c of one analysis step; a flush adds the K steps to φ and φ′ in one pass. K is
   what `flux_slot_budget_bytes` (2 GiB) holds, at most `max_flux_slots` = 8 (`plan_flux_memory`,
-  `src/propagation/memory_estimate.*`). Chosen from the DZ measurement in [cuda.md](cuda.md#flux-surface-and-flush):
-  one flush took 387 ms per analysis step with 1 slot and 79.6 ms with 8; one DZ slot is 250.56 MB,
-  so 2 GiB holds those 8 (test `MemoryEstimate.FluxSlotsOfTheDzGrid`). The results do not depend on
-  K (`FluxPropagation.CoefficientsDoNotDependOnTheSlotCount`).
+  `src/propagation/memory_estimate.*`). Chosen from the DZ measurement in
+  [Flux analysis cost on the DZ grid](#flux-analysis-cost-on-the-dz-grid): with 8 threads the flush
+  took 390–408 ms per analysis step with 1 slot, 60–75 ms with 8 and 43–56 ms with 16. One DZ slot is
+  250.56 MB, so 2 GiB holds those 8 (test `MemoryEstimate.FluxSlotsOfTheDzGrid`). The results do not
+  depend on K (`FluxPropagation.CoefficientsDoNotDependOnTheSlotCount`).
 - The flux arrays exist only in the time loop. Their memory rule (`check_flux_memory`): if the run
   fits in the physical memory without them (the larger of its set-up and time loop), K shrinks to
   what is left next to the time loop and φ, φ′; if not even one slot fits, the run stops with an
@@ -133,7 +134,9 @@ header line.
   (792 s vs 764 s): different clocks; compare like with like only.
 - Compare the printed "Propagation time", not the wall time (which includes set-up and the
   potential grid).
-- `spodvr_operator_timing <input.json>` (built in `build/tools/`) shows where the time goes.
+- `spodvr_operator_timing <input.json> [repetitions]` (built in `build/tools/`) shows where the time
+  goes; with `doFluxAnalysis` it also times the flush per slot count and prints the flux cost as a
+  share of the analysis step.
 - Check the results of every change: `tools/check_bitwise_refactor.sh` (must be bitwise identical)
   or `tools/compare_propagation.sh` (rounding-level changes, ≤ 1e-13), then the gates
   (`ctest`, and `SPODVR_LONG_TESTS=1 ctest -R Long` for the full 7000-step run).
@@ -158,10 +161,52 @@ measured 2026-11-12 with the commit that added it, parent d4ad897): on the mediu
 (cpus 8–15), 39.8 ms per call in both operator-timing runs (3 and 5 repetitions: the one of
 `tools/benchmark/run_benchmark.sh build 4 20`, then `spodvr_operator_timing` alone), against 7176
 and 6934 ms per analysis step of 5 time steps: 0.6 %. It reads ψ once on the planes below
-Z_asymptotic; the r-derivative sum runs in tiles of 1024 blocks (chosen from cache sizes, not
-measured), with the same order per element as without tiles. The GPU twin, and one flush of the flux
-accumulator on the host (1 and 8 slots), measured with `spodvr_cuda_operator_timing`: [cuda.md](cuda.md),
-"Flux surface and flush".
+Z_asymptotic; the r-derivative sum runs in tiles of 1024 blocks, with the same order per element as
+without tiles. On DZ the tiles gain 4 %; that, and the cost on the DZ grid with the flush, CPU and
+GPU: next section.
+
+### Flux analysis cost on the DZ grid
+Measured 2026-11-14 with the commit that added this section (parent 43fe8e4) on an otherwise idle
+machine:
+- builds: the plain Release builds `build` and `build-cuda` (strict, no PGO);
+- input: `inputs/thesis_fig5_3_dz` plus `doFluxAnalysis`, r_c = 3.1 bohr, 0.40–0.95 eV by 0.025 eV
+  (22 energies; one slot 250.6 MB);
+- tools: `spodvr_operator_timing <input> 5` (4 runs) and `spodvr_cuda_operator_timing <input> 5`
+  (3 runs), 8 OpenMP threads, unpinned;
+- machine: Ryzen 7 5800X; RTX 4070 Ti at 2760 MHz, Windows driver 617.42 (CUDA 13.4), toolkit
+  13.3, cuFFT 12.3.0, oneMKL 2026.2; libc6 2.43-2ubuntu2.4, upgraded to 2.7 during the first CPU run
+  (the two tiled CPU runs, one on either side of it, agree to 0.2 ms).
+
+Per analysis step of 8 time steps, ranges over the runs; the percentages are of the analysis step:
+
+| | CPU | GPU |
+|---|---|---|
+| analysis step | 33.1–34.2 s (propagation) | 5891–5894 ms (propagation, BK plane 4.5–4.7 ms) |
+| flux surface | 187.4–187.6 ms (0.56 %) | 70.9–71.4 ms (1.20 %): kernels 45.3–45.7, copies 24.8–25.0 |
+| flush, 1 slot | 390–408 ms | 392–393 ms |
+| flush, 8 slots (the program's on DZ) | 66–75 ms | 60–66 ms |
+| flush, 16 slots | 49–56 ms | 43–47 ms |
+| **flux in all, 8 slots** | **0.76 %** | **2.23–2.32 %** |
+| flux in all, 16 slots | 0.72–0.73 % | 1.94–2.00 % |
+
+The CPU's "in all" rows use its two tiled runs. The flush is the same host code in both tools.
+- **Against the target of 2 % of an analysis step** (the summed per-operation cost, 22 energies):
+  met on the CPU, not on the GPU, where the step is 5.6 times shorter. The GPU's surface (1.2 %)
+  and its flush (1.0–1.1 %) cost about the same. In a GPU run the flush also lowers the GPU clock,
+  which these per-operation numbers miss: a trace gives 3.8–3.9 % in all
+  ([cuda.md](cuda.md#flux-surface-and-flush)). The GPU cost was accepted as it is (2026-11-14).
+- **Flush:** per analysis step 392 ms with 1 slot, 200–203 with 2, 105–116 with 4, 60–66 with 8 and
+  43–47 with 16 (GPU tool). That is about 390/K plus a part that grows from 5 to 22 ms with the slot
+  count K. The 390 ms are one read and write of all of φ and φ′ per flush (22 energies × 2 × 125 MB
+  = 5.5 GB each way, so about 28 GB/s: memory-bound; inferred, not profiled).
+- **Slot budget kept at 2 GiB** (`flux_slot_budget_bytes`, 8 slots on DZ). 16 slots would cost
+  2.0 GB more host memory and still miss 2 % on the GPU: 1.94–2.00 % per operation, ≈ 2.8 % in a run.
+  They would save 14–20 ms per analysis step in the operation timing, ≈ 57 ms in a run (one flush
+  traced). More slots and a flush that overlaps the GPU are both design changes, not made: the GPU
+  cost was accepted as it is (2026-11-14; the options are listed in [cuda.md](cuda.md#flux-surface-and-flush)).
+- **Tiles of the CPU surface:** tiled 187.6 and 187.4 ms, untiled 194.2 and 195.5 ms (interleaved
+  runs; untiled means one tile per 1.0 MB plane, a scratch build). The tiles gain 7–8 ms (4 %) and
+  stay.
 
 ## Fortran vs C++ (full Dai–Light run, 8 threads, 2026-11-05)
 Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8 grid (nZ × nR × nX × nY)

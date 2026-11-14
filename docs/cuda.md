@@ -131,7 +131,7 @@ The tables are the CPU's. `potential_step_factors`, `specular_gas_phase_factors`
   (`cudaFree` would synchronise). The values do not depend on the chunk size
   (`CudaBackend.FluxSurfaceDoesNotDependOnTheChunkSize`).
 - **Reads not coalesced:** neighbouring threads read columns n_zr·16 B apart. The cost is under
-  "Flux surface and flush" below (DZ: 1.2 % of a slow analysis step, about 1.4–1.6 % of a normal one).
+  "Flux surface and flush" below (DZ: 71 ms, 1.2 % of an analysis step).
 - Both backends enforce the same contract (`require_flux_surface_slot`).
 
 ### One method, two executions
@@ -228,7 +228,10 @@ Measure with `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [repetit
 - each stage and each kernel of the potential stage;
 - a whole analysis step as the program runs it. That step has one kinetic stage more than n
   time steps (`T/2 V (T V)^(n-1) T/2`), so its time per step is what the full program reaches
-  (DZ: 625 ms against 588 ms for the sum of the stages).
+  (DZ: 625 ms against 588 ms for the sum of the stages);
+- the flux surface (kernels and copies) and, with `doFluxAnalysis`, the host flush per slot count
+  (1 to 16) with the flux cost as a share of the analysis step (`tools/benchmark/flux_timing.hpp`,
+  shared with `spodvr_operator_timing`).
 
 Profiling:
 - **Nsight Systems 2026.1** (`/usr/local/cuda/bin/nsys`) works on this WSL2 machine, for CUDA
@@ -237,8 +240,9 @@ Profiling:
   nsys profile --trace=cuda --sample=none --cpuctxsw=none -o trace ./build-cuda/spodvr in.json --device cuda
   nsys stats --report cuda_gpu_kern_sum trace.nsys-rep
   ```
-  A DZ trace showed the GPU idle for less than 1 ms per time step, so the host analysis never
-  holds up the GPU.
+  A DZ trace without the flux analysis showed the GPU idle for less than 1 ms per time step, so
+  the host analysis never holds up the GPU. With the flux analysis, the host flush does, and the GPU
+  clock drops while it waits ("Flux surface and flush" below).
 - **ncu** needs access to the GPU performance counters, which this WSL2 machine does not grant.
 
 DZ benchmark (`inputs/thesis_fig5_3_dz` as of 3c1d91b; the input now has a 160-point Z grid: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
@@ -324,40 +328,53 @@ Considered and not done (2026-11-06):
   - a single scratch formula in the GPU memory estimate.
 - **Overlapping the host analysis with the GPU** (start the next analysis step before the BK
   analysis of the previous one). Skipped: an nsys trace of DZ showed the GPU idle for less than
-  1 ms per time step.
+  1 ms per time step (without the flux analysis; its flush: "Flux surface and flush").
 
 ### Flux surface and flush
-Measured 2026-11-12 with the commit that added this section, parent c6b89f9 (strict build, host 4
-threads on cpus 8–15), with `spodvr_cuda_operator_timing` and the flux keys added to the input (r_c =
-2.0 bohr on the medium grid of `tools/benchmark/run_benchmark.sh`, 2.5 bohr on DZ; energies EMinWP …
-EMaxWP by 0.02 and 0.025 eV), 5 and 3 repetitions. Per analysis step:
+The cost on DZ next to the CPU's, with the build, threads, GPU and driver, and the ranges over the
+runs: [performance.md](performance.md#flux-analysis-cost-on-the-dz-grid) (2026-11-14, 8 host threads).
+Per analysis step of 8 time steps (≈ 5.9 s):
+- **Flux surface,** ≈ 71 ms (1.2 %): 125 planes of 1.0 MB in 7 chunks of ≤ 20 planes.
+  - **Kernel** `flux_surface_chunk`, ≈ 45 ms: it reads ψ at every r of the nzpot planes (5.0 GB) at
+    ≈ 110 GB/s, a quarter of a full pass (400 GB/s above). Probably because its reads are not
+    coalesced and each thread sums one serial chain of nr terms with few loads in flight (inferred,
+    not profiled: ncu has no counters under WSL2; half-used sectors alone would predict about twice
+    the rate). `__restrict__` on its pointers changed nothing (medium grid: 10.6 → 10.7 ms).
+  - **Copies,** ≈ 25 ms for one slot (two arrays of 125 planes): pageable `cudaMemcpy`, ≈ 10 GB/s.
+- **Flush** on the host while the GPU waits: ≈ 1 % of the step with the 8 slots of DZ
+  ([performance.md](performance.md#memory-and-numa)), ≈ 6.7 % with 1 slot.
+- **Sum: ≈ 2.2–2.3 %** of the analysis step, above the target of 2 % (16 slots: ≈ 1.9–2.0 %). The
+  medium grid of `tools/benchmark/run_benchmark.sh` (2026-11-12, 4 host threads): surface 15.6–15.7 ms,
+  flush 11.6–13.7 ms with 8 slots, 3.0–3.3 % of 898 ms.
+- The time step on the current DZ grid (160 Z points) is 736 ms. The 571–625 ms above were measured on
+  the earlier 128-point grid.
 
-| | medium (`run_benchmark.sh` grid) | DZ (`inputs/thesis_fig5_3_dz`) |
-|---|---|---|
-| planes below zasymp, chunks | 113 of 0.18 MB, 5 chunks of ≤ 28 | 125 of 1.0 MB, 7 chunks of ≤ 20 |
-| `flux_surface_chunk` kernels | 10.6 ms (2 runs) | 45.2 ms |
-| copies to the host (pageable `cudaMemcpy`) | 4.6–4.7 ms for 41.7 MB | 25.5 ms for 250 MB |
-| flux surface in all | 15.6–15.7 ms: 1.7 % of 898 ms (5 time steps) | 70.9 ms: 1.2 % of 5885 ms (8 time steps) |
-| flush on the host (21 / 22 energies), 1 slot | 60.5–61.0 ms | 387 ms |
-| flush, 8 slots, per analysis step | 11.6–13.7 ms | 79.6 ms |
+**Nsight Systems trace of a run with the flux analysis** (the input above with tEnd 200 and 360 a.u.:
+10 and 18 analysis steps, 3 flushes; and the 10 steps without flux). GPU gaps from
+`nsys stats --report cuda_gpu_trace`, SM clock sampled every 100 ms with `nvidia-smi -lms 100`:
+- **Without the flux analysis** the GPU idles 2–7 ms per analysis step (the host BK analysis), under 1 ms
+  per time step. The flux analysis keeps that gap and adds ≈ 1.7 ms of small gaps between the chunks.
+- **The flush idles the GPU** for 479–514 ms every 8 analysis steps. Meanwhile the SM clock falls from
+  2760 to 780 MHz (memory clock unchanged, P2), and it takes 2.7–2.9 s to climb back. So the GPU work of
+  the next analysis step takes 680–725 ms longer.
+  - A flush therefore costs 1.18–1.21 s of propagation time, ≈ 150 ms per analysis step, not the
+    60–66 ms of the operation timing.
+- **The flux analysis in the run:** steps without a flush take 5975–5984 ms, against 5903 ms without the
+  flux analysis (+72–81 ms, the surface). With the flushes it costs 222–231 ms per analysis step,
+  **3.8–3.9 %**.
+- **16 slots** (a scratch build, one 18-step run, one flush): the flush idled the GPU 844 ms and cost
+  1.49 s, 93 ms per analysis step; ≈ 2.8 % in all. This is inferred: that run's GPU was ≈ 2 % slower
+  throughout, so its flush is measured against its own steps.
 
-- **Kernel:** it reads ψ at every r of the nzpot planes (DZ: 5.0 GB) at ≈ 110 GB/s, a quarter of a full
-  pass (400 GB/s above). Probably because its reads are not coalesced and each thread sums one serial
-  chain of nr terms with few loads in flight (inferred, not profiled: ncu has no counters under WSL2;
-  half-used sectors alone would predict about twice the rate). `__restrict__` on its pointers changed
-  nothing (medium: 10.6 → 10.7 ms). Not done: a kernel that loads each group of columns into shared
-  memory with coalesced reads, then sums each column in the same order.
-- **Flush:** it runs on the host while the GPU waits. With one slot per flush it costs more than the
-  flux surface; several slots per flush make it small. A run uses the slots its host memory budget
-  holds, 8 on DZ ([performance.md](performance.md#memory-and-numa)).
-- **Flux surface + flush (8 slots), summed:**
-  - DZ: (70.9 + 79.6) ms = 2.6 % of the measured 5885 ms. That step is slow: the time step of this
-    run was 736 ms, against 571–625 ms above (the GPU also drives the desktop). Against 8 time steps
-    of 571–625 ms the sum is ≈ 3.0–3.3 %, the flux surface alone ≈ 1.4–1.6 %.
-  - Medium: 3.0–3.3 %.
-  - So the sum is above 2 % of an analysis step. The flush ran on 4 host threads; a production run
-    may use 8. A re-measurement with the production thread count on an otherwise idle GPU is still
-    to be done.
+**Accepted as it is** (2026-11-14): 2.2–2.3 % per operation, 3.8–3.9 % in a run. Options for later, not
+done (each changes the design):
+- the flush on a host thread while the GPU propagates the next steps, with two sets of slots: the GPU
+  then waits only for the flux surface, and its clock stays up;
+- more slots per flush (16: above; 2 GB more host memory on DZ);
+- for the surface's 1.2 %: a kernel that loads each group of columns into shared memory with coalesced
+  reads, then sums each column in the same order (≈ 13 ms at the full-pass rate; inferred), and pinned
+  copies, which need their own buffer (the read-back relies on synchronous copies);
+- locked GPU clocks (administrator rights; this machine only).
 
 ### Fast build (`build-cuda-fast`: FMA in the kernels)
 ```bash
@@ -413,4 +430,4 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 | `src/cuda/fft_callbacks.{hpp,cu,cpp}`, `cmake/embed_binary.cmake` | the exp(iA) load callback (LTO-IR, embedded at build time) |
 | `src/cuda/device_buffer.{hpp,cpp}`, `device_complex.hpp`, `cuda_error.{hpp,cpp}`, `launch.cuh` | device memory, complex arithmetic, layout, errors, launch helpers |
 | `tests/cuda/` | cuFFT vs FFTW, CPU vs GPU per analysis step, flux surface and flux coefficients of a run, determinism, memory estimate, restart, gates 3/4 |
-| `tools/benchmark/cuda_operator_timing.cpp` | per-stage and per-kernel timing |
+| `tools/benchmark/cuda_operator_timing.cpp` | per-stage and per-kernel timing, and the flux cost (`flux_timing.hpp`) |

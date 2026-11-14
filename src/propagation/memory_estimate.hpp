@@ -86,12 +86,14 @@ struct MemoryEstimate {
 
 // Host memory for the slots of the flux accumulator, which collect the flux surfaces of that many
 // analysis steps before they are added to the coefficients. More slots, fewer passes over the
-// coefficients: on the DZ grid (one slot 250.6 MB) one flush of 22 energies took 387 ms per analysis
-// step with 1 slot and 79.6 ms with 8 (docs/cuda.md, "Flux surface and flush"). 2 GiB holds those 8.
+// coefficients: on the DZ grid (one slot 250.6 MB, 22 energies, 8 threads) the flush took 390-408 ms
+// per analysis step with 1 slot, 60-75 ms with 8 and 43-56 ms with 16 (docs/performance.md, "Flux
+// analysis cost on the DZ grid"). 2 GiB holds those 8; 16 would take 2 GB more and still not bring a
+// GPU run's flux analysis below 2 % of its time.
 inline constexpr std::size_t flux_slot_budget_bytes = std::size_t(2) << 30;
 
-// At most this many slots, the most measured above: the budget alone would allow thousands on small
-// grids (hardwall_small: 0.87 MB per slot), where one flush per step costs little anyway.
+// At most this many slots, what the budget holds on DZ: the budget alone would allow thousands on
+// small grids (hardwall_small: 0.87 MB per slot), where one flush per step costs little anyway.
 inline constexpr int max_flux_slots = 8;
 
 // The slots for coefficients of coefficient_bytes (phi and phi') and slots of slot_bytes (> 0) each,
