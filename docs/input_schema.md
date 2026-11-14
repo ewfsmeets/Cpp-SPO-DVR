@@ -54,7 +54,7 @@ absorption (absorber D1: the Fortran silently keeps a default strength instead).
 | `Potential` | bool | false | potential-only run (nread = 6) |
 | `JAna` `VAna` `DifOrdAna` | int | determined by the program | analysis limits |
 | `ZAnaSp` | real | none | fixed analysis line on the specular grid |
-| `doFluxAnalysis` | bool | false | doFluxAnalysis; needs the four keys below. A new run computes the flux analysis (`FluxAnalyzor.f90`; its files: [output_files.md](output_files.md)). Its restart is **not implemented yet**: a restart with `true` stops with "doFluxAnalysis = true in a restart: restarting the flux analysis is not implemented yet" (exit code 3) once the input checks have passed. An analysis-only run prints a note and computes no flux (flux Q6); a potential-only run ignores the keys |
+| `doFluxAnalysis` | bool | false | doFluxAnalysis; needs the four keys below. A propagation computes the flux analysis (`FluxAnalyzor.f90`; its files: [output_files.md](output_files.md)); a restart continues it from the flux coefficient files in `RestartDir` (see the restart rules below). An analysis-only run prints a note and computes no flux (flux Q6); a potential-only run ignores the keys |
 | `rFluxAnalysis` `EMinFluxAna` `EMaxFluxAna` `DeltaEFluxAna` | real | none (required with `doFluxAnalysis`) | rFluxAnalysis, EMinFluxAna, EMaxFluxAna, deltaEFluxAna. rFluxAnalysis (bohr): a point of the r grid, ≤ ROptStart. Energies (eV): EMinWP ≤ EMinFluxAna < EMaxFluxAna ≤ EMaxWP and 0 < DeltaEFluxAna ≤ EMaxFluxAna − EMinFluxAna. Two of these rules differ from the Fortran checks: EMaxFluxAna ≤ EMaxWP (flux Q1) and DeltaEFluxAna > 0 (flux Q2); see [fortran_input_bugs.md](fortran_input_bugs.md). Memory during the time loop: 32 bytes (φ and φ′) per flux energy, rotational function, (x, y) point and Z point of the stored 6D potential (the scattering-grid points with Z < zasymp − 1e-12, Fortran nzpot), plus up to 8 slots of 32 bytes (ψ and ∂ψ/∂r at r_c) per rotational function, (x, y) point and such Z point, fewer if the physical memory is short. If the run fits in the physical memory without the flux analysis but not with its coefficients and one slot, it stops before the potential is computed with an input error naming DeltaEFluxAna and the most energies that fit (exit code 2; the rule: [performance.md](performance.md#memory-and-numa)). This rule applies to propagating runs |
 | `ImposeVMin` `VMin` | bool, real | false, −5.5 eV | clamp the potential from below |
 | `ImposeVMax` `VMax` | bool, real | false, 10.0 eV | clamp the potential from above |
@@ -73,8 +73,8 @@ absorption (absorber D1: the Fortran silently keeps a default strength instead).
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `RestartDir` | string | — | output directory of the run to continue; required if `NewCalc` is false. It must differ from `--output-dir`. For `onlyAnalysis`: the directory with the BK file to analyse (required; it may equal `--output-dir`) |
-| `RestartFormat` | string | `"native"` | `"native"`: checkpoint.bin + bk_coefficients.bin; `"fortran"`: fort.8 (or fort.9) + fort.22 (or fort.21) written by the Fortran code or by this program. `onlyAnalysis` reads only the BK file |
-| `CheckpointFormat` | string | `"native"` | files written for a later restart: `"native"`, `"fortran"` (fort.9, fort.21) or `"both"`. bk_coefficients.bin is always written |
+| `RestartFormat` | string | `"native"` | `"native"`: checkpoint.bin + bk_coefficients.bin; `"fortran"`: fort.8 (or fort.9) + fort.22 (or fort.21) written by the Fortran code or by this program. With `doFluxAnalysis` also flux_coefficients.bin (native) or flux_coeffs.dat + flux_coeffs_deriv.dat (fortran). `onlyAnalysis` reads only the BK file |
+| `CheckpointFormat` | string | `"native"` | files written for a later restart: `"native"` (checkpoint.bin; with `doFluxAnalysis` also flux_coefficients.bin), `"fortran"` (fort.9, fort.21; with `doFluxAnalysis` also flux_coeffs.dat, flux_coeffs_deriv.dat) or `"both"`. bk_coefficients.bin is always written |
 
 The fine analysis checks the BK file in the same way (the Fortran code ignores the header of
 fort.22). Its records must lie every dtAna from t = 0.
@@ -86,6 +86,12 @@ of φ points, which `nPhisOptimal` with `UseSymmetry` can change, and the low-Z 
 checkpoint or BK file written with a low-Z absorber that the input does not have (or the other way
 round) is refused with a message naming that absorber. Files written without low-Z absorbers have
 the same contents as before these keys existed.
+A restart with `doFluxAnalysis` continues the flux analysis of the earlier run, which must have
+had it: without its flux coefficient files the restart stops with an error naming doFluxAnalysis
+(the Fortran stops too). flux_coefficients.bin must hold the same four flux keys (compared exactly)
+and the checkpoint's time; the Fortran pair holds neither, so only its sizes are checked and the
+restart prints a warning (flux Q8).
+A restart may switch the flux analysis off; its files in `RestartDir` are then ignored.
 The checkpoint records the `SystemID` but not the CRP data set: a restart with SystemID
 `CRPlibrary` must use the same `CRPlibDataSet` (not checked).
 

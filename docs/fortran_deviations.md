@@ -71,18 +71,19 @@ differences are in [validation.md](validation.md).
   C++: `read_fortran_flux_coefficients` (`src/io/fortran_files.cpp`) requires exactly
   nE × nz_potential records of (rotational functions × nX × nY) complex values each, and otherwise
   stops with an error naming the expected sizes (test
-  `FortranFluxFiles.RecordCountAndLengthMustFitTheInput`).
+  `FortranFluxFiles.RecordCountAndLengthMustFitTheInput`). A restart from these files
+  (`RestartFormat` "fortran") therefore reads, as the Fortran does, files written with another
+  rFluxAnalysis, with another EMinFluxAna, EMaxFluxAna or DeltaEFluxAna that gives the same number
+  of energies (EMinFluxAna 0.2 → 0.25 at DeltaEFluxAna 0.15), or at another time; it prints a
+  warning that these are not checked (test `Restart.FluxQ8FortranFluxFilesAreCheckedOnlyByTheirSizes`).
+  The native `flux_coefficients.bin` stores the four keys and the time, and a restart from it
+  refuses any difference (test `Restart.FluxRestartErrorsNameTheCause`).
 - flux Q9, kept: b(k) (`MyFunctions.f90 getBkCoeffWavePacket`) has the phase e^(+i·δk·z0), δk = k0 − k,
   the initial wave packet's momentum amplitude e^(−i·δk·z0): b is its complex conjugate. P(E) does not
   depend on it (a phase per energy cancels in conj(φ)·φ′), but the energy-resolved φ and the Fortran's
   flux restart files do. C++: the same phase (`wave_packet_momentum_amplitude`; test
   `FluxMomentumAmplitude.IsTheMomentumDistributionOfTheInitialWavePacket` checks b = conj of the
   packet's Fourier transform).
-- Not ported (yet): the restart of the flux analysis (`FluxAnalyzor.f90 readWriteFluxCoeffs`). A
-  restart with `doFluxAnalysis = true` stops with exit code 3 once the input checks have passed; a
-  new run computes the flux analysis (gate 6, [validation.md](validation.md));
-  analysis-only (`onlyAnalysis`) runs accept the keys and print a note (flux Q6), potential-only
-  (`Potential`) runs accept them and ignore them.
 - `InitGenComplexTransform` silently returns on invalid nφ.
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
 - `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.

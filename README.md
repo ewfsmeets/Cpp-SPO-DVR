@@ -62,7 +62,7 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
   [docs/cuda.md](docs/cuda.md)).
 - Flux analysis (`doFluxAnalysis`): the reaction probability from the flux through r = r_c, compared
-  with the Fortran code in gate 6; its restart is not implemented yet ([docs/input_schema.md](docs/input_schema.md)).
+  with the Fortran code in gate 6; a restart continues it ([docs/input_schema.md](docs/input_schema.md)).
 - Not yet implemented: the other Fortran potentials (their data files are in `potentials/`).
 - Fortran version: the port started from SPO-DVR 5.19 (2023). Every comparison uses upstream 5.24
   at svn r1713 (2026), built with `-O3` ([docs/validation.md](docs/validation.md#reference-data)).

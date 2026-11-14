@@ -51,11 +51,15 @@ namespace spodvr {
 namespace {
 
 // Checkpoint file names in an output / restart directory: native, and as written by the
-// Fortran code (fort.9, fort.21; a Fortran restart reads them as fort.8, fort.22).
+// Fortran code (fort.9, fort.21; a Fortran restart reads them as fort.8, fort.22). The flux
+// coefficient files have the same name for writing and reading in the Fortran code.
 constexpr std::string_view checkpoint_file = "checkpoint.bin";
 constexpr std::string_view bk_file = "bk_coefficients.bin";
+constexpr std::string_view flux_file = "flux_coefficients.bin";
 constexpr std::string_view fortran_wave_function_file = "fort.9";
 constexpr std::string_view fortran_bk_file = "fort.21";
+constexpr std::string_view fortran_flux_file = "flux_coeffs.dat";                   // phi
+constexpr std::string_view fortran_flux_derivative_file = "flux_coeffs_deriv.dat";  // phi'
 
 // BK coefficients of the earlier runs, in time order.
 using BkRecords = std::vector<std::pair<double, BkCoefficients>>;
@@ -76,10 +80,45 @@ std::filesystem::path first_existing(const std::filesystem::path& dir, std::stri
   throw CheckpointError("neither " + std::string(a) + " nor " + std::string(b) + " found in '" + dir.string() + "'");
 }
 
+// A restart with the flux analysis continues that of the earlier run, which must have had it: the
+// Fortran stops too when the file is missing (readFluxCoeffs opens it with STATUS = 'old').
+void require_flux_file(const std::filesystem::path& path) {
+  if (!std::filesystem::exists(path))
+    throw CheckpointError(
+        "doFluxAnalysis is true but '" + path.string() +
+        "' does not exist: a restart continues the flux analysis of the run in RestartDir, which "
+        "must have had it with the same flux keys (set doFluxAnalysis to false to restart without it)");
+}
+
+// Restart with the flux analysis: phi and phi' of the earlier run, in place into the accumulator, from
+// the files of RestartFormat. The native file must have the input's flux keys and the checkpoint's
+// time; the Fortran files hold neither, only their sizes are checked (flux Q8).
+// Fortran: FluxAnalyzor.f90 setupFluxAnalyzor (readWriteFluxCoeffs "read" when NewCalc is false)
+void restore_flux_coefficients(const Config& config, double checkpoint_time, WavePacketPropagation& propagation) {
+  const std::filesystem::path dir = config.input.restart_dir;
+  if (config.input.restart_format == "native") {
+    require_flux_file(dir / flux_file);
+    double time = 0.0;
+    propagation.read_flux_coefficients(
+        [&](FluxCoefficients& c) { time = read_flux_coefficients(dir / flux_file, config, c); });
+    if (time != checkpoint_time)  // exact: the earlier run wrote both from its tEnd
+      throw CheckpointError(
+          "the flux coefficients in '" + (dir / flux_file).string() + "' are at t = " + full_precision(time) +
+          ", the checkpoint at t = " + full_precision(checkpoint_time) + ": the two files come from different runs");
+    return;
+  }
+  require_flux_file(dir / fortran_flux_file);
+  require_flux_file(dir / fortran_flux_derivative_file);
+  propagation.read_flux_coefficients([&](FluxCoefficients& c) {
+    read_fortran_flux_coefficients(dir / fortran_flux_file, dir / fortran_flux_derivative_file, c);
+  });
+}
+
 // Restart (nread = 1): reads the wave packet and analysis surface of the earlier run and its BK
-// coefficients, which are added to the S-matrix and returned (to be copied into the new BK files).
+// coefficients, which are added to the S-matrix and returned (to be copied into the new BK files),
+// and with the flux analysis its flux coefficients.
 // Fortran: WaveFunction.f90 ReadWaveFunc, AsympInfo.f90 ReadOrWriteAsympInfo (nread = 1),
-// Analyzor.f90 GetSMatrixElemsOfOldRun
+// Analyzor.f90 GetSMatrixElemsOfOldRun, FluxAnalyzor.f90 setupFluxAnalyzor
 BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WavePacketPropagation& propagation) {
   const InputParameters& p = config.input;
   const std::filesystem::path dir = p.restart_dir;
@@ -114,8 +153,15 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
   if (fortran_compare::rne(checkpoint_time, p.t_start))
     throw CheckpointError("tStart = " + full_precision(p.t_start) + " but the checkpoint in '" + dir.string() +
                           "' is at t = " + full_precision(checkpoint_time));
+  // A restart without the flux analysis ignores the flux files of the earlier run, as the Fortran.
+  if (propagation.flux()) restore_flux_coefficients(config, checkpoint_time, propagation);
   out << "\n  Restarted from " << dir.string() << " (" << p.restart_format
-      << " files) at t = " << fixed(checkpoint_time, 2) << " a.u.\n";
+      << " files) at t = " << fixed(checkpoint_time, 2) << " a.u."
+      << (propagation.flux() ? ", with the flux coefficients" : "") << '\n';
+  if (propagation.flux() && p.restart_format != "native")
+    out << "  Warning: the Fortran flux coefficient files have no header: the flux keys (rFluxAnalysis, "
+           "EMinFluxAna, EMaxFluxAna, DeltaEFluxAna) and the time of the earlier run are not checked, only "
+           "the sizes (flux Q8)\n";
   return records;
 }
 
@@ -200,6 +246,14 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
                      surface);
   if (write_fortran)
     write_fortran_wave_function(output_dir / fortran_wave_function_file, propagation.wave_packet_on_host(), surface);
+  // The flux coefficients for a restart of the flux analysis. Fortran: readWriteFluxCoeffs ("write")
+  if (propagation.flux()) {
+    const FluxCoefficients& coefficients = propagation.flux()->coefficients();
+    if (write_native) write_flux_coefficients(output_dir / flux_file, config, config.input.t_end, coefficients);
+    if (write_fortran)
+      write_fortran_flux_coefficients(output_dir / fortran_flux_file, output_dir / fortran_flux_derivative_file,
+                                      coefficients);
+  }
 
   // Asymptotic analysis: S-matrix and probabilities at the analysis energies.
   const ScatteringResults results = propagation.scattering_results();
@@ -217,8 +271,11 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   out << "\n  Data files written to " << output_dir.string() << ": averages.dat";
   for (const auto& f : files) out << ", " << f.filename().string();
   out << ", " << bk_file;
+  const bool flux = propagation.flux().has_value();
   if (write_native) out << ", " << checkpoint_file;
+  if (write_native && flux) out << ", " << flux_file;
   if (write_fortran) out << ", " << fortran_bk_file << ", " << fortran_wave_function_file;
+  if (write_fortran && flux) out << ", " << fortran_flux_file << ", " << fortran_flux_derivative_file;
   out << '\n';
 }
 
@@ -289,11 +346,6 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     const auto potential = make_potential(config.input);
     const AngularGrid angular = make_angular_grid(config);
     const SpatialGrids grids = make_spatial_grids(config);
-    // A restart cannot continue the flux analysis yet (its coefficients are not saved): refused once
-    // the input checks have passed.
-    if (config.input.do_flux_analysis && config.derived.run_mode == 1)
-      throw NotSupportedError(
-          "doFluxAnalysis = true in a restart: restarting the flux analysis is not implemented yet");
     print_grids(out, style, config, grids, angular);
 
     // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.
