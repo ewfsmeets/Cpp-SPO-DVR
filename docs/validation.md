@@ -30,7 +30,8 @@ same grid, the potential and the first 40 steps of 5.24 built with `-O3` are bit
 
 ## Reference data
 
-The Fortran output in `tests/reference/` and `tests/crplib/reference/` comes from one build, the
+The Fortran output in `tests/reference/`, `tests/crplib/reference/` and `tests/scm/reference/` (the
+CRP and SCM driver outputs) comes from one build, the
 reference install `r1713-dce0ecc`: upstream 5.24 plus the fine-analysis sign fix (git `dce0ecc`,
 svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream_sync.md)).
 - **Why `-O3`:** the upstream default (`-Ofast -mtune=native -march=native`) brings fast-math and
@@ -60,7 +61,8 @@ Status on the 5.24 r1713 reference data (measured 2026-11-12 at 5cbbcf4; the mar
 it): the full ctest, 665 tests = 660 passed + 5 skipped (the long tests); the long tests
 (`SPODVR_LONG_TESTS=1 ctest -R Long`), 4 of 4; the CUDA tests including the long ones, 23 of 23
 (gates 3 and 4 on the GPU; 7000-step BK within 8.5e-13 (hard wall) and 9.3e-13 (Dai–Light) of the
-scale).
+scale). Since then the SCM cases and more negative tests were added: 801 tests registered on
+2026-11-15 (`ctest --test-dir build -N`).
 
 Main reference case: `tests/reference/hardwall_small/DVR.inp` (Fortran input), with the Fortran
 output next to it; the corrugated Cu(111) cases are in their own directories.
@@ -73,11 +75,13 @@ derived from exactly the same parameters.
    reproduced to ~1e-14 relative (full 6D potential ~1e-13, see the quad-precision sites in
    fortran_deviations.md). Sanity: V(r = 1.4) = 0 exactly. With GCC 15 the fast-math builds
    (`SPODVR_FAST_MATH`) fail the V(r) table by 1.6e-14 (at r index 5); the default build passes.
-2. **Gas-phase rovibrational states** (same test; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): energies
-   e(v,j) for v = 0,1 and j = 0…4 (Fortran "INFO FROM SETTING UP THE ASYMPTOTIC ROVIBRATIONAL
-   STATES"), e.g. e(0,0) = 0.258378 eV, e(1,0) = 0.762842 eV; also ⟨r⟩, psi(1), psi(nr), norms.
-   The printed Fortran values have only 6 digits — dump full precision from Fortran when a tighter
-   gate is needed.
+2. **Gas-phase rovibrational states** (same test; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): the
+   energy and wave function of every (v, j) level against the Fortran's full-precision dump
+   `debug_asyp.dat` (`run_setup_reference.sh` sets `DoDump`): the analysed levels to 1e-12 relative
+   (energy) and 1e-10 absolute (ψ), the other levels to 1e-10 relative (energy); LAPACK against
+   the Fortran's Jacobi ([fortran_deviations.md](fortran_deviations.md)). Measured on hardwall_small
+   (2026-11-15): 1.3e-14 and 8.7e-15. The 6-digit printed table (e.g. e(0,0) = 0.258378 eV,
+   e(1,0) = 0.762842 eV) is checked by the unit test `GasPhase.ReferenceCaseSixDigitValues`.
 3. **Propagation** (`tests/test_regression_propagation.cpp`): initial wave-packet block
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
@@ -136,8 +140,8 @@ derived from exactly the same parameters.
    against the full Fortran potential: 6D ≤ 5.7e-14.
    On the real CRP data set (H₂/Cu(111) SRP48, `potentials/H2Cu111SRP_C3v.dir`):
    `crp_cu111_srp48_small` (the upstream input on coarse grids, VMax imposed): vasy 7.7e-16, 6D
-   1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: decision D4
-   on data up to 72 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
+   1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: CRP D4
+   on data up to 77 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
    clips the reference at VMin/VMax: the Fortran writes its .pes file before it imposes them.
    SCM distorted-surface PES (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (gates 1–4;
    `crp_cu111_srp48_small` from ZStart 0.5 bohr ≥ the CRP's Zmin, plus the example slab of

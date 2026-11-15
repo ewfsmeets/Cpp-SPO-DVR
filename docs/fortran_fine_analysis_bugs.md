@@ -86,7 +86,7 @@ unreliable, and the run should be propagated longer.
 The reference data comes from the unmodified Fortran binary. It runs as an analysis-only run on
 the BK coefficients of its own full hardwall_small run:
 `tools/fortran_reference/run_fine_analysis_reference.sh`, variants `full`, `truncated`, `nen95`,
-`small` and `empty`. The C++ analyses the same file, so both programs start from identical
+`small` and `empty`, and of its cu111_dailight_small run (variant `full`). The C++ analyses the same file, so both programs start from identical
 input.
 
 1. **The fine-grid S agrees with the Fortran, and the bug model is what the Fortran does**
@@ -134,6 +134,6 @@ The hardwall_small row counts only pairs with |S| > 1e-3 of the largest at both 
 The C++ error there is the interpolation error of |S|² (9.8e-4 relative), which the Fortran
 shares.
 
-For hardwall_small the phase of the elastic channel advances only about 0.13 rad per grid point
-(6.17 meV). Re S and Im S therefore rarely change sign between neighbours, and only the typo
+For hardwall_small the phase of the elastic channel advances only 0.05–0.13 rad per grid point
+(6.17 meV; fil10 of the `full` variant). Re S and Im S therefore rarely change sign between neighbours, and only the typo
 (class 1) occurs. The synthetic case has a fast phase, so all three classes occur.

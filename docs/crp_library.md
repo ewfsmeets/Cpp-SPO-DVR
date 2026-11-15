@@ -2,8 +2,9 @@
 
 A C++ port of the Fortran CRP library of M. Wijzenbroek (`CRPlibrary.dir/` of the Fortran code):
 potential energy surfaces of a diatomic molecule at a surface from ab-initio data, interpolated
-with the Corrugation Reducing Procedure (CRP). In SPO-DVR it is the PES of `SystemID` `CRPlibrary`;
-the input key `CRPlibDataSet` names the data set ([input_schema.md](input_schema.md)).
+with the Corrugation Reducing Procedure (CRP). In SPO-DVR it is the PES of `SystemID` `CRPlibrary`
+and the ideal-surface part of `CRPDistrtSurface` ([scm.md](scm.md)); in both the input key
+`CRPlibDataSet` names the data set ([input_schema.md](input_schema.md)).
 
 - **Scope:** the atom-surface PES and the molecule-surface PES of C3v, C4v and C6v surfaces, with
   V and analytic gradients; the general entry points with unit conversion (`CRP_Wrapper.f90`); the
@@ -13,8 +14,8 @@ the input key `CRPlibDataSet` names the data set ([input_schema.md](input_schema
   and the routines no active code path calls (`CHECKR`, `DPL2D`, `DPLCOFT`, the C4v 1D splines).
 - **Self-contained:** CMake target `spodvr_crplib`, namespace `crplib`, standard library only,
   apart from the reader of its text files, `src/fortran_text/` (target `spodvr_fortran_text`,
-  namespace `fortran_text`, standard library only; a library of its own, so that other readers of
-  Fortran text files can use it). It keeps the Fortran library's own constants and unit factors
+  namespace `fortran_text`, standard library only; a library of its own, also used by the SCM file
+  readers, `src/potential/scm/scm_files.cpp`). It keeps the Fortran library's own constants and unit factors
   (below). A CTest (`CrpLib.IncludeBoundary`) checks that the library includes only its own
   headers, those of `src/fortran_text/` and the standard library, that `src/fortran_text/`
   includes only its own headers and the standard library, and that only the adapter
@@ -164,7 +165,7 @@ the tests compare with them switched off, `tools/benchmark/crp_timing.cpp` times
   values (tested).
 
 One thread, per QD-wrapper evaluation (`spodvr_crp_timing`, synthetic data sets; every V bitwise
-equal):
+equal; 2026-11-09):
 
 | Data set | plain | S2 | S3 | S4 | all |
 |---|---|---|---|---|---|
@@ -172,8 +173,8 @@ equal):
 | C3v | 4.46 µs | 3.05 | 3.52 | 3.65 | 1.77 (2.5×) |
 | C4v | 1.97 µs | 1.79 | 1.47 | 1.54 | 1.03 (1.9×) |
 
-With 8 threads on a 12 × 12 grid the potential of the C3v set took 38.6 s in the Fortran, 11.6 s
-here, 2.5 s with `UseSymmetry` ([performance.md](performance.md) "CRP library").
+With 8 threads on a 12 × 12 grid the potential of the C3v set took 38.6 s in the Fortran (5.19), 11.6 s
+here, 2.5 s with `UseSymmetry` (2026-11-09) ([performance.md](performance.md) "CRP library").
 
 ## Testing without a real data set
 
@@ -199,7 +200,7 @@ files is tested in `tests/fortran_text/`, CTest prefix `FortranText.`) use:
 `tools/crp_mutation_check/run.sh` applies deliberate bugs to a git worktree and runs the library
 tests and those of its text reader (`ctest -R "CrpLib|FortranText"`); each must make a test fail,
 except the removal of a redundant safety margin (marked in `mutations.py`). Result (2026-11-14,
-245 tests: 232 of the library, 13 of the reader; the numbers are the failing tests):
+246 tests: 233 of the library, 13 of the reader; the numbers are the failing tests):
 
 | Mutation | Caught by (number of failing tests) |
 |---|---|
@@ -230,7 +231,7 @@ except the removal of a redundant safety margin (marked in `mutations.py`). Resu
 | S2 safety margins removed: both; the relative one; the cell enlargement; `<` for `≤` | survive, as expected |
 
 Three mutations first survived and led to new tests. The skew constant: the pairwise data sets
-have CutsInterpolation = F, whose Fortran comparison allows a few ulp (decision D4), so the impulse
+have CutsInterpolation = F, whose Fortran comparison allows a few ulp (CRP D4), so the impulse
 sets (compared bitwise) got QD-wrapper points too, including centres with u = 0, where
 x = cos(π/3)·v alone. The S2 fallback: no fold output left the cell by more than the margin, so a
 test now evaluates points outside the cell directly. The S4 cell of the first group: the test cut
@@ -244,7 +245,7 @@ rounding; no test case can tell them apart.
 `potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v`, a copy of upstream `potential.dir` (A. Mondal et
 al., J. Phys. Chem. A 117, 8770 (2013); upstream input `input.dir/v0j0_WPC_H2Cu111SRP_C3v_01.inp`):
 C3v, Å and eV, a = 2.6015 Å, 4 layers, 10 atom cuts, CutsInterpolation = F (the cuts hold V, up to
-1950 eV at the wall). `CRPData.6D` lists 31 molecular cuts, 29 used; the two extra ones have no file
+2091 eV (77 Hartree) at the wall). `CRPData.6D` lists 31 molecular cuts, 29 used; the two extra ones have no file
 and are skipped, as in the Fortran (two warnings). Checked 2026-11-11 against Fortran 5.19; the
 current reference, 5.24 r1713, gives bitwise the same driver outputs and potential on these cases
 ([validation.md](validation.md#reference-data)):
@@ -255,11 +256,11 @@ current reference, 5.24 r1713, gives bitwise the same driver outputs and potenti
   finite differences; S2, S3, S4 bitwise; 118 of the 256 cluster atoms in reach.
 - **Against the Fortran library** (reference case `cu111_srp48`, driver on the reference
   install's objects; the point lists follow the data set's ranges): atom PES bitwise in bohr/Hartree and Å/eV; molecule
-  PES, QD wrapper, gas phase and CAMBCORD within D4 (≤ 1.9e-14 Hartree); with libmvec's cos the
+  PES, QD wrapper, gas phase and CAMBCORD within CRP D4 (≤ 1.9e-14 Hartree); with libmvec's cos the
   molecule PES is bitwise equal too.
 - **Against the Fortran program** (gates 1/2, `tests/reference/crp_cu111_srp48_small`, the upstream
   input on coarse grids with VMax imposed): V_asy 7.7e-16, 6D 1.5e-13 of max(|V|, 1 eV) with and
-  without `UseSymmetry` (D4; 1.5e-14 with libmvec's cos), rovibrational states pass.
+  without `UseSymmetry` (CRP D4; 1.5e-14 with libmvec's cos), rovibrational states pass.
 - **On the upstream production grid** (C++, potential only, `UseSymmetry` + `nPhisOptimal`;
   nX = nY = 20, JMax 18, MJMax 12): 77 of 400 (x, y) points computed, self-check 9.2e-14 eV,
   40 of 64 r points beyond Rmax = 2.3 Å (clamped), no (Z, r) point without data; 82 s on 4
@@ -273,8 +274,10 @@ current reference, 5.24 r1713, gives bitwise the same driver outputs and potenti
 2. With `UseSymmetry` the PES is compared with its symmetry images at 1000 points before use
    (`SymmetryTolerance`); a data set that is not symmetric fails there.
 3. For a comparison with the Fortran, run `tools/fortran_reference/run_setup_reference.sh` on a
-   case whose `input.json` names the data set (it is copied as `dataset`: the Fortran fails for
-   data-set paths longer than 50 characters).
+   case directory under `tests/reference/` (a `DVR.inp`, and an `input.json` whose `CRPlibDataSet`
+   names the data set), in a scratch clone or worktree: the script writes its outputs and their
+   `MANIFEST.tsv` lines there. The data set is copied as `dataset` (the Fortran fails for data-set
+   paths longer than 50 characters).
 
 ## Appendix: cuts, sites and orientations
 

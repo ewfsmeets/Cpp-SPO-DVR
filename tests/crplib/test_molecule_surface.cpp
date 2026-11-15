@@ -6,7 +6,7 @@
 // Data sets with CutsInterpolation = F (total energies) are compared to 4e-15 max(u, |value|), u the
 // atomic unit (Hartree, Hartree/bohr) in the output units:
 // the Fortran reduces their cuts with gfortran's vectorised libmvec cos, the C++ with std::cos
-// (decision D4, docs/fortran_deviations.md); measured on the reference cases: |dV| <= 4.4e-16,
+// (CRP D4, docs/fortran_deviations.md); measured on the reference cases: |dV| <= 4.4e-16,
 // |dF| <= 2.7e-15 at under 12 % of the points. A scratch build calling _ZGVbN2v_cos instead was
 // bitwise equal everywhere. CutsInterpolation = T data sets are compared bit for bit.
 #include <gtest/gtest.h>
@@ -40,7 +40,7 @@ using spodvr::testing::nan_aware_max;
 namespace {
 
 // The largest |V| of the cut data in Hartree, at least 1. With CutsInterpolation = F the data are
-// reduced by the atom-surface PES with cos theta, cos phi from libmvec in the Fortran (decision D4):
+// reduced by the atom-surface PES with cos theta, cos phi from libmvec in the Fortran (CRP D4):
 // a few ulp of the data values, which the interpolation carries into every result.
 double data_scale(const DataSet& data) {
   double largest = 1.0;
@@ -237,7 +237,7 @@ class FortranImpulse : public testing::TestWithParam<std::string> {};
 
 TEST_P(FortranImpulse, BitwiseEqual) { compare_molecule_points(GetParam(), "molecule_0_2", internal_units); }
 
-// The QD wrapper bitwise (with CutsInterpolation = F the comparison allows a few ulp, decision D4,
+// The QD wrapper bitwise (with CutsInterpolation = F the comparison allows a few ulp, CRP D4,
 // which would hide e.g. a wrong skew constant).
 TEST_P(FortranImpulse, QdWrapper) { compare_qd_wrapper_points(GetParam()); }
 

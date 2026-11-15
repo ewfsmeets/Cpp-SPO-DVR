@@ -141,14 +141,14 @@ The specular wave meets the scattering grid only in the potential stage (steps 1
 ### 4.3 Potential stage V
 
 - **Z ≥ zasymp:** V depends on r only, so the step is diagonal in irot: one elementwise kernel
-  (`gas_phase_step`).
+  (`apply_gas_phase_step`).
 - **Z < zasymp:** V couples the rotational states. ψ goes FBR → DVR, is multiplied by exp(iA),
   and goes back DVR → FBR. This is done slab by slab, so that the DVR scratch has a fixed size
   (at most 1 GiB).
 
 ```mermaid
 flowchart TB
-  G["gas_phase_step<br/>Z ≥ zasymp"] --> S{"next slab"}
+  G["apply_gas_phase_step<br/>Z ≥ zasymp"] --> S{"next slab"}
   S --> A["absorb_and_transform_to_dvr<br/>FBR → DVR in θ"]
   A --> F1["cuFFT φ<br/>mJ → φ"]
   F1 --> F2["cuFFT φ + callback<br/>× exp(iA), φ → mJ"]
@@ -221,7 +221,7 @@ code that knows this layout, and both the kernel and the callback use it.
 | change a kinetic or rotational table | change it where `PropagationTables` is built (`src/propagation/propagation_tables.cpp`). The GPU uploads the same table; check that the device layout still matches |
 | add a kernel | add the kernel and its launcher to a `.cu` file, declare the launcher in `kernels.hpp`, and call it from the operator's `.cpp`. Name its CPU twin and Fortran origin in a comment |
 | change what a stage computes | change both backends in one commit, or document a methodology exception with a test (docs/cuda.md) |
-| test | `ctest --test-dir build-cuda -R Cuda`; long gates with `SPODVR_LONG_TESTS=1` |
+| test | `OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda`; long gates with `SPODVR_LONG_TESTS=1` |
 | time | `build-cuda/tools/spodvr_cuda_operator_timing <input.json>`, compared in interleaved A/B runs (docs/cuda.md) |
 
 ---
@@ -248,7 +248,8 @@ index in y), not the coordinates x, y.
 | `host_chunk_to_device`, `device_to_host_chunk` | one thread per value | layout conversion via a staging buffer |
 
 (Every kernel above is launched through the function of that name in `kernels.hpp`; the
-`__global__` functions carry a `_kernel` suffix.)
+`__global__` functions carry a `_kernel` suffix, and the two `apply_…` launchers drop `apply_`:
+`gas_phase_step_kernel`, `specular_gas_phase_and_absorbers_kernel`.)
 
 ---
 
@@ -279,7 +280,7 @@ code and uploaded once, so the GPU multiplies by bitwise the same numbers.
 
 | Kernel | CPU twin | Fortran |
 |---|---|---|
-| `multiply_by_kinetic_factors` | `ScatteringKineticOperator::apply_zr` + `apply_xy` | KineticOp.f90 MultByEXPKinEnergy |
+| `multiply_by_kinetic_factors` | `ScatteringKineticOperator::apply_zr` + `apply_xy` | KineticOp.f90 PerformEXPKinOpZScat (Z, r), GridEnergies.f90 MultByEXPKinEnergy (x, y) |
 | `multiply_by_blocked_factors` | `apply_xy_group` (shift) | MomentumShifting.f90 |
 | `multiply_by_periodic_factors`, `apply_specular_gas_phase_and_absorbers` | `SpecularOperator` | KineticOp.f90, GasPhase.f90 PerformEXPGasPhaseOnSpecGrid, Absorption.f90 PerformEXPOpticalOpSpec |
 | `apply_gas_phase_step` | `PotentialOperator::apply_block` (Z ≥ zasymp) | Absorption.f90, GasPhase.f90 PerformEXPGasPhaseOnScatGrid |

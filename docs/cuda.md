@@ -19,7 +19,7 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 | Option | Default | Meaning |
 |---|---|---|
 | `SPODVR_USE_CUDA` | `OFF` | build the backend. Without it nothing CUDA-related is compiled, and `--device cuda` stops with a clear error |
-| `CMAKE_CUDA_COMPILER` | nvcc from `PATH`, else `/usr/local/cuda/bin/nvcc` | the CUDA compiler |
+| `CMAKE_CUDA_COMPILER` | `/usr/local/cuda/bin/nvcc` if it exists, else nvcc from `PATH` | the CUDA compiler |
 | `CMAKE_CUDA_ARCHITECTURES` | `native` (the GPU of the build machine) | set e.g. `89-real` (RTX 40xx), `80-real` (A100), `90-real` (H100), or a list, for a build that runs elsewhere |
 | `CMAKE_CUDA_HOST_COMPILER` | `$CUDAHOSTCXX`, else the C++ compiler of the build | host compiler of nvcc. Each CUDA release accepts GCC only up to a limit (`crt/host_config.h`) |
 | `SPODVR_CUDA_SYNC_DEBUG` | `OFF` | wait for and check every kernel right after its launch (errors are reported where they happen) |
@@ -172,7 +172,8 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
 - **What remains is the FFT library:** cuFFT rounds differently from oneMKL/FFTW. After 1000 steps
   of hardwall_short, the CPU and GPU averages differ by ≤ 1.0e-13 relative (norm), against
   1.2e-13 between the CPU with oneMKL and the CPU with FFTW. This is the same level the CPU build
-  already accepts between FFT libraries (docs/validation.md: within ~1e-13, all gates pass).
+  already accepts between FFT libraries (docs/performance.md: rounding-level changes within ~1e-13,
+  all gates pass).
 - **Densities** use CUDA's `hypot`, which can differ from glibc's by an ulp.
 - **Determinism:** no atomics, fixed launch shapes, everything on the default stream, so two GPU
   runs are bitwise identical. That holds for the same GPU model and library versions only, so no
@@ -181,24 +182,32 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
   unsplit GPU run.
 
 ## Memory
-GPU memory estimate for the DZ benchmark (below):
+GPU memory estimate for the DZ input (`inputs/thesis_fig5_3_dz`, nZ 160), as printed by its strict
+GPU run of 2026-11-08 ([validation record](validation_thesis_fig5_3_dz/README.md), log
+`data/logs/cleaned_cuda_strict.txt`):
 
 | Array | Size |
 |---|---|
-| ψ | 4.8 GiB |
-| exp(−iV dt) table (19 symmetry representatives of 144 (x, y) points) | 1.0 GiB |
+| ψ | 6.0 GiB |
+| exp(−iV dt) table (19 symmetry representatives of 144 (x, y) points) | 1.3 GiB |
 | DVR scratch (slab of 500 points) | 1.0 GiB |
-| cuFFT work area (limit; the DZ grid needs < 1 MiB with cuFFT 12.3 / CUDA 13.3) | ≤ 0.5 GiB |
-| BK plane, copy buffer | small |
+| cuFFT work area (limit; the DZ grid of 2026-11-06, nZ 128, needed < 1 MiB with cuFFT 12.3 / CUDA 13.3) | ≤ 0.5 GiB |
+| BK plane, copy buffer | 0.1 GiB |
+| total | 8.8 GiB of the card's 12.0 GiB |
 
 The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is set at start-up).
 - **Host memory:** the host allocates ψ only to read a restart or to write the checkpoint at the end.
   The host MEMORY ESTIMATE block still describes a CPU run.
 - **Production grids** (> 64 GB) do not fit on one GPU of this class. The options are surface
-  symmetry (C6v: the potential ~12× smaller), a data-centre GPU (80–141 GB), or a multi-GPU version
+  symmetry (C6v: the potential up to 12× smaller; 7.6× on the DZ grid), a data-centre GPU (80–141 GB), or a multi-GPU version
   (not implemented).
 
 ## Performance
+The DZ figures of this section were measured on 2026-11-05/06, on the input as of 3c1d91b (nZ 128,
+ψ 4.8 GiB, 8 potential slabs), unless another date is given; the input now has nZ 160 (ψ 6.0 GiB,
+10 slabs). Run times on the current input:
+[validation record](validation_thesis_fig5_3_dz/README.md#performance-as-run).
+
 Measure with `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [repetitions]`. It times:
 - each stage and each kernel of the potential stage;
 - a whole analysis step as the program runs it. That step has one kinetic stage more than n
@@ -216,8 +225,8 @@ Profiling:
   holds up the GPU.
 - **ncu** needs access to the GPU performance counters, which this WSL2 machine does not grant.
 
-DZ benchmark (`inputs/thesis_fig5_3_dz` as of 3c1d91b; the input now has a 160-point Z grid: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
-19 C6v representatives), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step
+DZ benchmark (`inputs/thesis_fig5_3_dz` as of 3c1d91b: 435 rotational states, 128 × 40 × 12 × 12, ψ 4.8 GiB,
+19 C6v representatives; the input now has 160 Z points), RTX 4070 Ti against 8 threads of a Ryzen 7 5800X, per full time step
 (10 repetitions; single runs on this WSL2 GPU vary by up to ~30%, it also drives the desktop;
 measured before the kinetic stages were merged, see "Measured optimisations" below):
 
@@ -239,8 +248,8 @@ GPU potential stage by kernel, summed over the 8 slabs:
 | gas phase + projection | 6 ms |
 
 Whole program, 80 steps: 52.1 s of propagation time (CPU: 305.0 s; the averages of the two runs
-agree to 1.0e-14 relative, the BK coefficients to 1.8e-15 absolute) (0.65 s per step) against ≈ 3.6 s per step on
-the CPU: **5.5×**. The 10 000 steps of the benchmark would take ≈ 1.8 h instead of ≈ 10 h.
+agree to 1.0e-14 relative, the BK coefficients to 1.8e-15 absolute) (0.65 s per step) against 3.8 s per step on
+the CPU (305.0 s / 80): **5.9×** (against the CPU stage sum above, 3.57 s: 5.5×). The 10 000 steps of the benchmark would take ≈ 1.8 h instead of ≈ 10 h.
 
 What limits the speed on this card:
 - **Memory passes:** one pass over ψ (read + write) takes 25.5 ms (400 GB/s). A 2D (Z, r) cuFFT
@@ -290,7 +299,7 @@ Considered and not done (2026-11-06):
   - each Legendre kernel is one wave of 282 blocks × 256 threads (48/46 registers, ≈ 94% of the
     GPU), which leaves little room for the other stream;
   - the exp(iA) callback already removed the most memory-bound step of the slab;
-  - it only helps grids with several slabs (DZ: 8; the cu111 test cases: 1).
+  - it only helps grids with several slabs (DZ as of 3c1d91b: 8, now 10; the cu111 test cases: 1).
 
   What it would need:
   - two created (blocking) streams;
@@ -347,6 +356,7 @@ to the last bits; use the strict build when comparing with the CPU or the Fortra
 |---|---|
 | `src/cuda/README.md` | guide to the kernels: vocabulary, memory layout, everything one time step launches, the stages with diagrams, rules and recipes for changing a kernel |
 | `src/cuda/cuda_backend.{hpp,cpp}` | `CudaBackend`, the factory, device info, GPU memory estimate |
+| `src/cuda/device_wave_packet.hpp` | `DeviceWavePacket`: the scattering and specular waves in GPU memory |
 | `src/cuda/device_kinetic_operator.{hpp,cpp}` | the kinetic stage T (merged) and the specular grid (plans, tables, launch order) |
 | `src/cuda/device_potential_operator.{hpp,cpp}` | the potential stage (tables, exp(iA), slab loop) |
 | `src/cuda/*_kernels.cu`, `kernels.hpp` | the kernels and their launch functions |

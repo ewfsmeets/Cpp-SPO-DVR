@@ -20,7 +20,7 @@ strings the three together.
 | `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4) |
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
 | `run_fine_analysis_reference.sh [case] [variant ...]` | Analysis-only runs on the committed `fortran_fort21.bin`: `fine_<variant>/` (gate 5) |
-| `run_crp_reference.sh [--generate] kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the committed point lists and data sets of `tests/crplib/reference/`; `--generate` first rewrites them (needs the C++ build) |
+| `run_crp_reference.sh [--generate] kernels\|<case>` | The CRP library driver ([crp_driver/](crp_driver/)) on the committed point lists and data sets of `tests/crplib/reference/`; `--generate` first rewrites them (a case needs the C++ build; `kernels` only Python) |
 | `run_scm_reference.sh [--generate] example\|synthetic` | The SCM driver ([scm_driver/](scm_driver/)) on the committed inputs of `tests/scm/reference/` ([below](#the-scm-driver)); `--generate` first rewrites them |
 | [regenerate_all.sh](regenerate_all.sh) | Regenerates every reference file, in dependency order ([below](#regenerating-all-references)) |
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
@@ -55,7 +55,8 @@ An install is a directory `~/work/SPO-DVR_ref/<id>/` with a fixed layout:
 | `build.log`, `sources.tar` | The DoBuild log and the exact sources (installs made by the build script) |
 
 `v5.19` is the 5.19 archive (`~/work/SPO-DVR_v5.19`, symlinked; it must never be rebuilt or
-deleted). Installs are read-only; to rebuild one: `chmod -R u+w <install> && rm -r <install>`.
+deleted). Since the libc6 upgrade of 2026-11-14 a run against it needs
+`SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1`: its `BUILDINFO.tsv` records libc6 2.43-2ubuntu2.4. Installs are read-only; to rebuild one: `chmod -R u+w <install> && rm -r <install>`.
 
 `BUILDINFO.tsv` is a TSV file: `#` comment lines, the header `key<TAB>value`, rows sorted by key,
 `-` for a value that was not recorded. It is parsed, never sourced. A copy of each install's file
@@ -169,7 +170,7 @@ one differs.
 [scm_driver/scm_reference_driver.f90](scm_driver/scm_reference_driver.f90) calls the SCM
 distorted-surface correction of the reference build in SPO-DVR's order for SystemID
 `CRPDistrtSurface` (`Set_PES_DataSet`, `InitialiseDistPESModule`, `GetCRPDistSurfParams`,
-`InitializeCRPDistSurfModule`, `SetupDistPESModule`), one case per process (the Fortran sets its
+`InitializeCRPDistSurfModule`, `SetupDistPESModule`), one run per process (the Fortran sets its
 module state up only once), and
 prints per point the Cartesian centre of mass, the correction ΔV alone (Hartree), the CRP at the
 ideal-lattice position and SPO-DVR's total (eV), plus the parameters and slab atoms the Fortran

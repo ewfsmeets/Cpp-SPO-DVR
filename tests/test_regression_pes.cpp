@@ -82,7 +82,7 @@ const std::set<std::string> required_reference_cases = {"scm_cu111_srp48_small",
 bool references_required(const std::string& name) { return required_reference_cases.contains(directory_of(name)); }
 
 // The 6D tolerance of a case. The real CRP data set (crp_cu111_srp48_small) holds total energies
-// up to 72 Hartree (CutsInterpolation = F): decision D4 (scalar cos where gfortran uses libmvec in
+// up to 77 Hartree (CutsInterpolation = F): CRP D4 (scalar cos where gfortran uses libmvec in
 // the reduction of the cuts) gives up to 1.5e-13 there; with libmvec's cos it is 1.5e-14
 // (2026-11-11), the level of the other cases. docs/fortran_deviations.md "CRP library".
 double potential_tolerance_of(const std::string& name) {

@@ -161,6 +161,16 @@ differences are in [validation.md](validation.md).
 - Reference-case property (not a bug, same in Fortran): the FGH grid is periodic, so the decay of
   ψ_v below r_min wraps around to r_max (ψ_00(r_max) ≈ 7e-4, a ~1e-7 plateau in between). The r
   absorber (ROptStart = 4.55) removes this tail, ≈ 5e-8 of norm per 10 a.u. of propagation.
+- Gas-phase eigensolver: the Fortran diagonalises the FGH Hamiltonian with its own Jacobi rotations
+  (`jacobi.f90 JacobiTransformMatrix`, called from `FourierGridHamiltonian.f90
+  GetEigenvaluesAndEigenvectors`), the C++ with LAPACK `dsyevd` (`src/linalg/lapack_eigensolver.cpp`,
+  behind the `SymmetricEigensolver` interface). Both then take the states in order of energy, give
+  each the Fortran's sign (the first local maximum of |ψ| seen from the last grid point is positive)
+  and normalise it (`src/gasphase/fourier_grid_hamiltonian.cpp`). The two algorithms round
+  differently: gate 2 allows 1e-12 relative on the energies and 1e-10 on ψ of the analysed levels
+  (1e-10 on the energies of the others); measured on hardwall_small: 1.3e-14 and 8.7e-15
+  (2026-11-15). On the thesis grid the initial-state energy differs by 1.2e-15 hartree
+  ([validation_thesis_fig5_3_dz](validation_thesis_fig5_3_dz/README.md)).
 
 ## CRP library (`src/crplib/`, SystemID `CRPlibrary`)
 
@@ -194,11 +204,11 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
 - Kept on purpose: a listed extra cut (beyond the ones the interpolation uses) may lack its file.
   The Fortran skips it (`INQUIRE EXIST`): no data, no limit on Rmin, Rmax, Zmin; so does the C++,
   with a warning. The real SRP48 data set (`potentials/H2Cu111SRP_C3v.dir`) lists two such cuts.
-- Few-ulp difference (decision D4): with CutsInterpolation = F the Fortran subtracts the atom
+- CRP D4: a few-ulp difference. With CutsInterpolation = F the Fortran subtracts the atom
   potentials from the cuts using cos θ, cos φ computed by gfortran's vectorised libmvec
   (`_ZGVbN2v_cos`); the C++ uses `std::cos`. That is a few ulp of the data values, carried into
   every result. On the synthetic reference sets: |ΔV| ≤ 4.4e-16 Hartree, |ΔF| ≤ 2.7e-15
-  Hartree/bohr at under 12 % of the points; on the real SRP48 data set (data up to 72 Hartree)
+  Hartree/bohr at under 12 % of the points; on the real SRP48 data set (data up to 77 Hartree)
   up to 1.9e-14 at a few points. The tests compare to 4e-15·max(unit·S, |value|), S the largest
   |data| in Hartree (at least 1). A scratch build calling `_ZGVbN2v_cos` was bitwise equal
   everywhere, also on the real data set (2026-11-11). CutsInterpolation = T data sets are bitwise
@@ -209,10 +219,14 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
   other file through the `CHARACTER(50)` `PES%DataSet`, so it fails there. The library's STOPs
   (exit status 0 in the Fortran) and data-set errors are input errors naming `CRPlibDataSet`
   (exit status 2); an evaluation error names the grid point. The setup output reports the clamped
-  r and Z grid points and the (Z, r) points where the library silently returns V = 0 (shifted to
-  −VH2(r_last) by the wrapper; reproduced, decision D2). With `UseSymmetry` the potential of C3v and C4v data sets
+  r and Z grid points and the (Z, r) points where the library silently returns V = 0 (CRP D2). With `UseSymmetry` the potential of C3v and C4v data sets
   is computed on the symmetry-reduced grid (the Fortran switches the symmetry off for them); it
   differs from the full potential by rounding (docs/crp_library.md "Speed").
+- CRP D2: the silent V = 0 outside the data, reproduced and reported. Where the molecule's (r, Z)
+  lies outside a cut grid below ZsoMax, or r outside `VH2.dat` above it, and where a C4v atom lies
+  above the last z of its cuts, the library returns V = 0 (and F = 0) without a message; the QD
+  wrapper then gives −VH2(r_last). The C++ computes the same values, and the setup output counts
+  these (Z, r) points (docs/crp_library.md "Outside the data"; inputs/README.md: keep the count 0).
 - Kept on purpose: for a vertical molecule (θ = 0 exactly) RRINTII/RRINT set dθ/dX = dθ/dY = 0,
   but the sin 2θ terms of the hollow and t2 site functions give V a lateral slope there; the x and
   y gradient components miss it (z is right). Irrelevant for SPO-DVR (V only; no θ grid point is 0).

@@ -75,9 +75,11 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
 
 ## Cost (this machine)
 6.0 GiB wave function, 1.3 GiB exp(−iV dt) table (`UseSymmetry`, C6v: 19 of 144 (x, y) points).
-CPU (8 threads): 7.3 GiB during the propagation, about 1.25× the time of the 128-point grid
-(~5.5 s per step, ~11 h). GPU (`--device cuda`): 8.8 GiB estimated plus the CUDA context; fits
-the 12 GB RTX 4070 Ti.
+CPU (8 threads): 7.3 GiB during the propagation. GPU (`--device cuda`): 8.8 GiB estimated plus the
+CUDA context; fits the 12 GB RTX 4070 Ti. Measured on this input (7000 steps, 2026-11-07/08,
+[validation record](../../docs/validation_thesis_fig5_3_dz/README.md#performance-as-run)): CPU
+4.24 s per step, 8.24 h (a fast-math, `-march=native` build); GPU 0.73 s per step, 1.43 h
+(strict build).
 
 ## Fortran reference run
 `DVR.inp` is the same input for the Fortran executable (keep it in sync with `input.json`; the

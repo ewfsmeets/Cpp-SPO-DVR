@@ -1,9 +1,10 @@
 # Tests of the CRP library (`src/crplib/`)
 
 The library's own tests: one program per `test_*.cpp`, linked only against `spodvr_crplib`, run
-by CTest with the prefix `CrpLib.` (`ctest --test-dir build -R CrpLib`). No real data set is
-needed; [docs/crp_library.md](../../docs/crp_library.md) "Testing without a real data set"
-explains the approach. The reader of the data files (`src/fortran_text/`: the subset of Fortran
+by CTest with the prefix `CrpLib.` (`ctest --test-dir build -R CrpLib`). The approach needs no
+real data set ([docs/crp_library.md](../../docs/crp_library.md) "Testing without a real data set");
+the real data set in `potentials/` is tested in addition (`test_real_data_set.cpp`, reference case
+`cu111_srp48`). The reader of the data files (`src/fortran_text/`: the subset of Fortran
 list-directed input the files use, and the rejected forms) is tested in
 [`tests/fortran_text/`](../fortran_text/) (prefix `FortranText.`).
 
@@ -23,8 +24,9 @@ list-directed input the files use, and the rejected forms) is tested in
 Shared headers: `crp_synthetic.hpp` (cut geometry, the pairwise model, synthetic data sets),
 `reference_basis.hpp` (the Fourier bases and site positions, written down independently of the
 library),
-`fortran_reference.hpp` (reading the driver output, `EXPECT_BITS`); and
-`tests/temporary_directory.hpp` (a directory removed when the test ends; shared with the program's tests).
+`fortran_reference.hpp` (reading the driver output, `EXPECT_BITS`); and, from `tests/`,
+`comparison.hpp` (the NaN-aware comparison helpers) and `temporary_directory.hpp` (a directory
+removed when the test ends; shared with `tests/fortran_text/` and the program's tests).
 The program-side adapter is tested in `tests/test_crp_potential.cpp`.
 
 ## Reference data (`reference/`)
@@ -40,7 +42,7 @@ The program-side adapter is tested in `tests/test_crp_potential.cpp`.
 | `cu111_srp48` | the real data set in `potentials/` (only the point lists and the results; no `dataset/` copy) |
 
 Each case holds the data set (`dataset/`), the point lists (`*.in`, written by
-`crplib_make_dataset`) and the Fortran driver's results (`*.out`, hexadecimal and decimal), with
+`crplib_make_dataset`; for `kernels` by `crp_driver/make_kernel_inputs.py`) and the Fortran driver's results (`*.out`, hexadecimal and decimal), with
 their provenance in `MANIFEST.tsv` (the install and driver that made each file, its inputs, the
 CPU). The `*_pairwise` data sets are also used by the gate cases
 `tests/reference/crp_*_synthetic_small`.

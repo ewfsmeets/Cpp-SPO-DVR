@@ -46,9 +46,12 @@ one of:
   [fortran_deviations.md](fortran_deviations.md);
 - **partly ported**: the last column says which parts the C++ has and which not yet;
 - **not ported**: the last column says what such an input does in the C++ today, or why the
-  change does not concern the C++ ("not relevant").
+  change does not concern the C++ ("not relevant");
+- **not planned**: decided not to port; the README "Status" table gives the reason.
 
-The last two rows are 5.19 features the port lacks; they are listed because later work ports them.
+The last two rows are 5.19 features the port lacks, listed for completeness: the flux analysis
+waits for a new design ([flux_analysis_findings.md](flux_analysis_findings.md)); the README
+"Status" table gives the status of each of the others.
 
 | Upstream change | Commit, date | Status | In the C++ today |
 |---|---|---|---|
@@ -68,7 +71,7 @@ The last two rows are 5.19 features the port lacks; they are listed because late
 | Stdout labels and columns (absorber lines, lattice "U/V" labels, grid start and end indices, the NAG and MKL lines) | 293f410 and others, 2025-09 | **not ported** | not relevant: the gates read none of the changed lines; the reference comparison maps them (`LABELS_519_TO_524` in `tools/fortran_reference/refdata.py`) |
 | Dead code removed (`MyFunctions.f90 LengthOfVectorSquared`, `TransToCoordSystem`) | ab47c48, 2026-10-25 | **not ported** | not relevant |
 | Flux analysis (`FluxAnalyzor.f90`: reaction probability at r_c, its (x, y) density, flux restart files); already in 5.19 | — | **not ported** (its input checks: **deviations** flux Q1, flux Q2) | a propagating run (new or restart) with `doFluxAnalysis: true` stops with exit code 3 once the input checks have passed; analysis-only and potential-only runs ignore the flux keys. A port was validated and reverted (2026-11-14): with ProjOp 2 the Fortran's flux leaves out the initial channel ([flux_analysis_findings.md](flux_analysis_findings.md)) |
-| Other 5.19 features: the `.pes` potential cache, write2DPES, ProjOp 1, MPI, the data-file PESes | — | **not ported** | the potential is always computed (a `.pes` file is ignored); write2DPES and ProjOp 1 are rejected ([fortran_deviations.md](fortran_deviations.md)); OpenMP only; the other PESes are unknown system IDs (their data files are in `potentials/`) |
+| Other 5.19 features: the `.pes` potential cache, write2DPES, ProjOp 1, MPI, the data-file PESes | — | **not ported** (ProjOp 1 and MPI: **not planned**) | the potential is always computed (a `.pes` file is ignored); write2DPES and ProjOp 1 are rejected ([fortran_deviations.md](fortran_deviations.md)); OpenMP only; the other PESes are unknown system IDs (their data files are in `potentials/`) |
 
 <details>
 <summary>Details of the new upstream features (keys, defaults, quirks)</summary>

@@ -308,7 +308,9 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   - regression tests against the original Fortran code (`tests/test_regression_*.cpp`, test names
     `Regression…`/`Gate…`): potential, gas-phase states, propagation (norms and averages),
     on-the-fly analysis (probabilities, BK coefficients) and fine analysis. The Fortran reference
-    output is stored in `tests/reference/`;
+    output is stored in `tests/reference/` (the CRP and SCM driver outputs in
+    `tests/crplib/reference/` and `tests/scm/reference/`). The gates, their tolerances and cases:
+    [docs/validation.md](docs/validation.md);
   - GPU tests (`tests/cuda/`, names `Cuda…`): only in builds with `-DSPODVR_USE_CUDA=ON`. They skip on
     a machine without a GPU.
 - **Selecting tests** (ctest `-R`/`-E` take a regular expression on the test name;
@@ -319,8 +321,9 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   ./build/tests/test_input --gtest_filter='Input.*'   # one test program directly (GoogleTest)
   ```
 - **Long tests:** the full 7000-step regression runs (hard wall and Dai–Light; the latter alone takes
-  about 13 minutes on 8 cores) and the negative tests of the low-Z and the SCM gates (1000- and
-  3000-step runs) are skipped unless `SPODVR_LONG_TESTS` is set:
+  about 13 minutes on 8 cores), the negative tests of the low-Z and the SCM gates (1000- and
+  3000-step runs) and the CRP cluster-pruning check on ten million points
+  (`CrpLib.ClusterPruningLong.TenMillionPoints`) are skipped unless `SPODVR_LONG_TESTS` is set:
   ```bash
   SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build -R Long --output-on-failure
   SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R 'Cuda.*Long' --output-on-failure
@@ -370,7 +373,8 @@ spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda
 - `--device cpu|cuda`: propagate on the CPU (default) or on an NVIDIA GPU, where the wave packet
   stays in GPU memory (needs a build with `-DSPODVR_USE_CUDA=ON`; see [docs/cuda.md](docs/cuda.md)).
   The results agree with the CPU's to rounding (≈1e-13, the level of a different FFT library).
-- `--threads N`: number of OpenMP threads (default: all). The results do not depend on it. Use the
+- `--threads N`: number of OpenMP threads (default: the OpenMP default, i.e. `OMP_NUM_THREADS` or
+  all hardware threads). The results do not depend on it. Use the
   number of physical cores: hyperthreads do not speed up these memory- and FFT-bound loops.
 - `--schedule dynamic|static`: how the (Z, r) points are shared out over the threads. `dynamic`
   balances the uneven work best (one NUMA node, i.e. one CPU socket); `static` keeps every thread on
@@ -448,7 +452,8 @@ vector extensions (see docs/performance.md).
 ## Benchmark
 Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps on a 176 × 56 × 8 × 8
 (Z, r, x, y) grid with 15 rotational states, plus the on-the-fly analysis. AMD Ryzen 7 5800X
-(8 cores), 8 threads, the three runs one after another:
+(8 cores), 8 threads, the three runs one after another; measured 2026-11-05 (GCC 13, Fortran 5.19),
+not re-run since:
 
 | Binary | Wall time | CPU time | Threads busy on average |
 |---|---|---|---|
@@ -456,8 +461,9 @@ Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps o
 | C++, current flags | 764 s | 5040 s | 6.6 |
 | C++, fast-math + native + PGO | 675 s | 4489 s | 6.7 |
 
-The C++ code needs less CPU time than the Fortran code, but keeps the threads less busy, so it is
-slower in wall time; this is still being investigated. The fast-math build passes the regression
+The C++ code needed less CPU time than the Fortran code, but kept the threads less busy, so it was
+slower in wall time: load imbalance in the fused T_xy + V loop, which has since been scheduled
+dynamically (−9 to −13 % on the thesis grids; docs/performance.md). The fast-math build passes the regression
 gates except the hard-wall V<sub>asy</sub> table (by 1.6e-14, with GCC 15), and its results differ from the
 default build: by ~1e-12 on the gate grids, by 7.8e-12 on the thesis grid (GPU builds)
 ([validation report](docs/validation_thesis_fig5_3_dz/README.md#strict-build-gpu-run-added-2026-11-08)).
@@ -465,7 +471,7 @@ It is therefore not the default.
 Details in [docs/performance.md](docs/performance.md).
 
 GPU (`--device cuda`), DZ case of `inputs/thesis_fig5_3_dz` as of 3c1d91b (128 × 40 × 12 × 12 grid, 435 rotational
-states, 4.8 GiB wave function), NVIDIA RTX 4070 Ti (a GeForce card: FP64 at 1/64 rate) against
+states, 4.8 GiB wave function; the input now has 160 Z points and a 6.0 GiB wave function), NVIDIA RTX 4070 Ti (a GeForce card: FP64 at 1/64 rate) against
 8 threads of the Ryzen 7 5800X, per time step:
 
 | Build | Time per step | Speed-up |
@@ -474,16 +480,19 @@ states, 4.8 GiB wave function), NVIDIA RTX 4070 Ti (a GeForce card: FP64 at 1/64
 | GPU, `build-cuda` (no FMA; agrees with the CPU to ≈1e-14 here) | 0.61 s | 5.9× |
 | GPU, `build-cuda-fast` (FMA; S matrix of the thesis run 7.8e-12 from `build-cuda`) | 0.54–0.57 s | 6.3–6.7× |
 
-The 10 000 steps of the benchmark take about 1.5–1.8 h on the GPU instead of about 10 h. Details
+The 10 000 steps of the benchmark take about 1.5–1.8 h on the GPU instead of about 10 h. On the
+current 160-point grid the validation record's 7000-step runs took 0.73 s per step on the GPU
+(strict build) and 4.24 s on the CPU (fast-math build)
+([timing table](docs/validation_thesis_fig5_3_dz/README.md#performance-as-run)). Details
 and the limits of this card in [docs/cuda.md](docs/cuda.md).
 
 ## Repository layout
 | Path | Content |
 |---|---|
-| `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
-| `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
+| `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend), `crplib/` (the CRP library port), `fortran_text/` (the Fortran list-directed reader shared by `crplib/` and the SCM code) |
+| `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`, `tests/crplib/reference/`, `tests/scm/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker |
-| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), the flux analysis findings (`flux_analysis_findings.md`), the SCM potential (`scm.md`, `scm_open_questions.md`), performance notes, GPU backend |
+| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), the flux analysis findings (`flux_analysis_findings.md`), the SCM potential (`scm.md`, `scm_open_questions.md`), the CRP library (`crp_library.md`), the Fortran bugs found (`fortran_input_bugs.md`, `fortran_fine_analysis_bugs.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |
 

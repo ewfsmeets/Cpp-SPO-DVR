@@ -21,8 +21,8 @@ total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
   the asymptotic channels at every analysis step (Balint-Kurti (BK) analysis).
 - **Specular analysis line** (`DynamZSpAna: true`): analysis line of the initial channel on the
   specular grid. It moves with the packet (section 6).
-- **`TolSp`**: norm tolerance of the specular grid (default 1e-7): initial norm outside the allowed
-  region, and the threshold that stops the specular analysis line.
+- **`TolSp`**: norm tolerance of the specular grid (required, no default; 1e-7 in the examples):
+  initial norm outside the allowed region, and the threshold that stops the specular analysis line.
 - **Absorber** (complex absorbing potential, CAP): −iV_opt over [start, end]; removes outgoing
   waves. R and T: the fractions of a 1D plane wave that it reflects and transmits.
 - **Wrap-around**: the grids are periodic (FFT). A wave leaving one end of a grid re-enters at the

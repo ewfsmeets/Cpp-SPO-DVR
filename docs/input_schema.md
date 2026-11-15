@@ -54,7 +54,7 @@ absorption (absorber D1: the Fortran silently keeps a default strength instead).
 | `Potential` | bool | false | potential-only run (nread = 6) |
 | `JAna` `VAna` `DifOrdAna` | int | determined by the program | analysis limits |
 | `ZAnaSp` | real | none | fixed analysis line on the specular grid |
-| `doFluxAnalysis` | bool | false | doFluxAnalysis; needs the four keys below. The flux analysis (`FluxAnalyzor.f90`) is **not implemented yet**: a propagating run (new or restart) with `true` stops with "doFluxAnalysis = true: the flux analysis is not implemented yet" (exit code 3) once the input checks have passed. Analysis-only and potential-only runs accept the keys and ignore them |
+| `doFluxAnalysis` | bool | false | doFluxAnalysis; needs the four keys below. The flux analysis (`FluxAnalyzor.f90`) is **not ported** ([flux_analysis_findings.md](flux_analysis_findings.md)): a propagating run (new or restart) with `true` stops with "doFluxAnalysis = true: the flux analysis is not implemented yet" (exit code 3) once the input checks have passed. Analysis-only and potential-only runs accept the keys and ignore them |
 | `rFluxAnalysis` `EMinFluxAna` `EMaxFluxAna` `DeltaEFluxAna` | real | none (required with `doFluxAnalysis`) | rFluxAnalysis, EMinFluxAna, EMaxFluxAna, deltaEFluxAna. rFluxAnalysis (bohr): a point of the r grid, ≤ ROptStart. Energies (eV): EMinWP ≤ EMinFluxAna < EMaxFluxAna ≤ EMaxWP and 0 < DeltaEFluxAna ≤ EMaxFluxAna − EMinFluxAna. Two of these rules differ from the Fortran checks: EMaxFluxAna ≤ EMaxWP (flux Q1) and DeltaEFluxAna > 0 (flux Q2); see [fortran_input_bugs.md](fortran_input_bugs.md) |
 | `ImposeVMin` `VMin` | bool, real | false, −5.5 eV | clamp the potential from below |
 | `ImposeVMax` `VMax` | bool, real | false, 10.0 eV | clamp the potential from above |
@@ -123,8 +123,10 @@ is: `SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`,
 ## Validation
 All checks of `InputNew.f90` ReadInput/ValidateInput are reproduced, with the same tolerant real
 comparisons (absolute tolerance 1e-12). So are the grid checks of `Setup.f90` and `setupdvr.f90`
-and the nφ checks of `transform.f90` (which are hard errors here). Every check has a unit test in
-`tests/test_input.cpp`. Deviations are listed in [fortran_deviations.md](fortran_deviations.md).
+and the nφ checks of `transform.f90` (which are hard errors here). Every check has a unit test,
+most of them in `tests/test_input.cpp`; the initial norm outside the allowed region (`TolSp`) in
+`tests/test_initial_wave_packet.cpp`, the `RestartDir` checks in `tests/test_restart.cpp`.
+Deviations are listed in [fortran_deviations.md](fortran_deviations.md).
 Two Fortran flux analysis checks are wrong and are fixed here (flux Q1, flux Q2), and so are
 the silent cases of the low-Z absorber keys (low-Z D1–D3) and the default strength the Fortran
 keeps for an absorber energy of 0 (absorber D1):

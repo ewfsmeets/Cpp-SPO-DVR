@@ -17,8 +17,10 @@ code and independent of the CPU), plus `-fcx-fortran-rules -fno-math-errno -fno-
 change no result but let GCC vectorise (complex multiplication without the C99 NaN-recovery call is
 exactly the gfortran semantics). Never use `-ffast-math`/`-Ofast` or FMA contraction in production
 builds: they change the results (measured below; `SPODVR_FAST_MATH` exists only for experiments).
+The CRP library, its list-directed reader and the SCM sources keep the strict flags in every build,
+also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`).
 
-### Profile-guided optimisation (about 15% faster)
+### Profile-guided optimisation (11–16 % less time on the medium grid, 2026-10-26)
 ```
 cmake -S . -B build-pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_PGO=GENERATE -DSPODVR_PGO_DIR=$PWD/pgo
 cmake --build build-pgo
@@ -26,7 +28,8 @@ cmake --build build-pgo
 cmake -S . -B build-pgo -DSPODVR_PGO=USE
 cmake --build build-pgo
 ```
-Results are bitwise identical to the normal build.
+Results are bitwise identical to the normal build. After changing sources, generate a new profile:
+GCC treats a profile that no longer matches a function as an error (`-Wcoverage-mismatch`).
 
 ### Running a oneMKL build
 Inside the build tree the oneMKL library path is in the executable's RPATH. An installed or copied
@@ -43,8 +46,10 @@ header line.
   run on the same machine, but may differ in the last bits between machines with different vector
   extensions. For identical results across machines set `MKL_CBWR=AVX2` (or `COMPATIBLE`), at some
   cost in speed on AVX-512 machines. The active branch is printed in the program header.
-- Builds with different FFT libraries (oneMKL vs FFTW) or LAPACK libraries differ at the level of
-  1e-14 relative; all regression gates pass with every combination.
+- Builds with different FFT libraries (oneMKL vs FFTW) or LAPACK libraries differ in the last
+  digits: ≤ 1e-14 relative in short runs (table at the end), 1.2e-13 in the norm after the 1000
+  steps of hardwall_short ([cuda.md](cuda.md) "Numerics"); all regression gates pass with every
+  combination.
 
 ## Memory and NUMA
 - Large arrays (`AlignedVector`: wave function, potential grid, exp(−iV dt) table) are 64-byte aligned
@@ -62,7 +67,8 @@ header line.
   (`propagation/memory_estimate.*`): the size of each large array, the total while the propagation
   is set up (potential and exp(−iV dt) table exist together) and during the time loop, and the
   physical memory, with a warning if the run does not fit. Small tables and FFT plans are not
-  counted; the medium grid estimate (5.0 GiB) matches the measured peak resident size (4.99 GiB).
+  counted; the medium grid estimate (5.0 GiB) matches the measured peak resident size (4.99 GiB,
+  2026-10-26).
 
 ## Threads and loop scheduling
 - **Single NUMA node** (one socket, e.g. the Ryzen 5800X): dynamic schedule, and only as many threads
@@ -88,7 +94,6 @@ header line.
   it reads memory of every socket whatever the schedule.
 - To be investigated: the group size, larger chunks (the Fortran uses (nZ − nzpot)·nR/threads
   points), `static,1` vs `dynamic,1` on one node, and a default thread count of the physical cores.
-  Plan: `~/work/loop_scheduling_optimization.md`.
 
 ## Benchmarking checklist
 - Use a realistic grid: `tools/benchmark/run_benchmark.sh [build-dir] [threads] [steps]` (the
@@ -116,6 +121,8 @@ header line.
   either file fails, naming the first such element).
 
 ## Measurements (AMD Ryzen 7 5800X, 16 threads, WSL2; propagation time only)
+Measured 2026-10-26 (GCC 13, static schedule); not re-measured since.
+
 | Case | Baseline (faithful port) | Optimised, oneMKL FFT | Optimised, FFTW | Optimised + PGO (oneMKL) |
 |---|---|---|---|---|
 | hardwall_short grid (nx = ny = 4, JMax = 4; 100 steps) | 2.8 s | 2.4 s | 2.0 s | |
@@ -143,13 +150,15 @@ re-measured since.
   less busy (6.6 of 8 against 7.7): it loses on wall time through load imbalance, not through slower
   kernels. At the Fortran's parallel efficiency the default build would take about 650 s.
 - Main cause (from the code, not yet measured per thread): the fused T_xy + V loop
-  (`apply_xy_and_potential`) runs over (Z, r) groups with `schedule(static)`. Here one group is a
+  (`apply_xy_and_potential`) ran over (Z, r) groups with `schedule(static)`. Here one group is a
   whole Z row, and only rows iz < nzpot (125 of 176; medium grid 113 of 176) do the angular transform
   and exp(−iV dt); the others are one scalar multiply. A static contiguous split gives threads 6–7
   almost only cheap rows. The Fortran (`SplitOperator.f90` KineticAndPotentialOp) uses
   `SCHEDULE(DYNAMIC, chunkSize)` for exactly this reason. Minor: the specular grid operator is serial.
-- Since then this loop uses `schedule(dynamic, 1)` (bitwise identical results). On the grids of
-  `inputs/thesis_fig5_3_*` (JMax 28, 435 rotational functions, 8 threads, 40 steps of 5 a.u.) the
+- Since 3c1d91b this loop uses `schedule(runtime)`: dynamic,1 by default on one NUMA node, static,1
+  on several ("Threads and loop scheduling"); bitwise identical results. On the grids of
+  `inputs/thesis_fig5_3_*` as of 3c1d91b (DZ: nZ 128; JMax 28, 435 rotational functions, 8 threads,
+  40 steps) the
   propagation time went from 176.9 to 154.5 s (DZ, −13%) and from 230.3 to 208.6 s (ER, −9%). The full
   Dai–Light benchmark above has not been re-run yet.
 - fast-math + native + PGO: −12% wall, −11% CPU time against the default build. `-march=native` adds
@@ -176,7 +185,8 @@ re-measured since.
 ## CRP library (SystemID `CRPlibrary`, 2026-11-09)
 Setting up the potential of a CRP data set costs microseconds per point, and it dominates the
 set-up. Measurements on the synthetic data sets of the library tests: the gate cases
-`tests/reference/crp_*_synthetic_small` with nX = nY = 12 and JMax = MJMax = 8 (nθ = 5, nφ = 18;
+`tests/reference/crp_*_synthetic_small` enlarged to nX = nY = 12 and JMax = MJMax = 8 (committed: 6 × 6, C4v
+8 × 8, JMax 4) (nθ = 5, nφ = 18;
 C4v with `nPhisOptimal` nφ = 20). That is 80 × 32 × 144 × 90 = 3.3·10⁷ PES evaluations, in
 potential-only runs with 8 threads on an otherwise idle machine (GCC 15 / gfortran 15). The Fortran
 (5.19) time is the wall time of the whole run (two runs differed by up to 15 %); the C++ time is the

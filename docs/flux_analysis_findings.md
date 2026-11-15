@@ -333,7 +333,7 @@ b(k), the r-derivative, c_n): such data must be compared by value, not by bytes.
 A_n = k / (2πM·b(k)) is the one complex division of the flux analysis. gfortran uses Smith's
 algorithm; GCC's `-fcx-fortran-rules` gives the same for `std::complex` division. k·conj(d)/|d|²
 differs by an ulp (3 of 48 values bitwise equal in section 5.1;
-test `FluxTransformFactor.IsSmithsComplexDivision`).
+test `FluxTransformFactor.IsSmithsComplexDivision` of the reverted port).
 
 ### 7.3 Strict floating point, no FMA or libmvec in the Fortran's flux routines
 The 13 flux routines of the reference executable, `getWaveFuncDerivAtZr` and `getBkCoeffWavePacket`
