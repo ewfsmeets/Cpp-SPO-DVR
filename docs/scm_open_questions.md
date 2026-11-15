@@ -8,12 +8,13 @@ explains each one for a reader who knows SPO-DVR and the CRP potentials but not 
 does, why it is questionable, how large the effect is, what to do in your own runs meanwhile, and
 what the C++ code does. It is also the basis of our message to the authors.
 
-**Status.** The C++ code does not implement SCM yet: it rejects `SystemID: CRPDistrtSurface` as an
-unknown system. The planned port reproduces the Fortran exactly (it is the reference code), with
-three exceptions that reject an input instead of guessing: HD (Q12), `UseSymmetry` (Q10) and
-position-file version 1 (Q7). It adds reports and warnings where noted below. If the authors answer
-a question with a change, the change becomes an explicit, documented option with a test; the
-default stays the Fortran's behaviour.
+**Status.** The C++ code implements SCM ([scm.md](scm.md)) and reproduces the Fortran (it is the
+reference code): ΔV bitwise, gates 1–4 against the Fortran in the case `scm_cu111_srp48_small`
+([validation.md](validation.md#gates)), with three exceptions that reject an input instead of
+guessing: HD (Q12), `UseSymmetry` (Q10) and position-file version 1 (Q7). It adds reports and
+warnings where noted below. The questions remain open for the authors. If they answer a question
+with a change, the change becomes an explicit, documented option with a test; the default stays the
+Fortran's behaviour.
 
 **Where the numbers come from.** Every number describes **one example snapshot**,
 `potentials/H2Cu111SRP_C3v.dir/examplePosfile.dat` with `params.dat` from the same directory and the
@@ -27,8 +28,11 @@ marked with its source:
   [make_figures.py](scm_open_questions/make_figures.py);
 - [lit] from the literature or general knowledge, not checked here.
 
-The numbers will be re-measured with the C++ port once it exists. Fortran references name the file
-and routine in upstream `sources.dir/SOURCES.dir/DistortedSurfacePES.dir/`.
+The C++ port re-measured the cell-edge jump (Q2), the holes (Q3), the rescaling factor s (Q4) and
+ΔV at the V_asy points (Q8): [scm.md](scm.md#limits-and-open-questions) gives them with their
+sources and says why they differ from the values here where they do. Every other number on this
+page remains the [P], [T] or [lit] value marked as such. Fortran references name the file and
+routine in upstream `sources.dir/SOURCES.dir/DistortedSurfacePES.dir/`.
 
 ## Contents
 
@@ -122,7 +126,8 @@ means are only −0.026 (layer 1) and −0.004 bohr (layer 2) [T]. Another origi
 z = 0.94 bohr, so from z = 11.40 bohr up).
 
 **One SCM run** uses one snapshot (`PosFileSlabNum`); an ensemble is N runs that differ only in
-the snapshot number. The C++ input will use the same key names (documented with the port).
+the snapshot number. The C++ input uses the same key names
+([input_schema.md](input_schema.md#scm-keys-systemid-crpdistrtsurface)).
 
 ### Notation
 
@@ -356,9 +361,9 @@ example file only; re-centring and drift removal would be explicit options after
 
 ## Q3. Deep holes where the CRP clamps Z or r
 
-**What the code does.** The CRP potential is defined only for Z ≥ Zmin and r ≤ Rmax (for SRP48,
-Zmin = 0.472 bohr and Rmax = 4.35 bohr = 2.3 Å); outside, the CRP library uses the value at the
-limit (it clamps Z and r). The SCM correction uses the true Z and r (`SCM_Wrapper.f90
+**What the code does.** The CRP potential is defined only for Z ≥ Zmin and Rmin ≤ r ≤ Rmax (for
+SRP48, Zmin = 0.472 bohr, Rmin = 0.756 bohr and Rmax = 4.35 bohr = 2.3 Å); outside, the CRP library
+uses the value at the limit (it clamps Z and r). The SCM correction uses the true Z and r (`SCM_Wrapper.f90
 GetSCMPotential` receives them unclamped).
 
 **Why that makes holes.** Whenever an H atom comes within 1–2 bohr of Cu atoms, the pair function is

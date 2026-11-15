@@ -205,16 +205,18 @@ gradients are bitwise equal to the Fortran library on the synthetic test data se
 
 ## SCM distorted-surface PES (`src/potential/scm/`, SystemID `CRPDistrtSurface`)
 
-The port of the Fortran's distorted-surface correction (`DistortedSurfacePES.dir/`). Ported so far:
-the readers of its two data files, the parameter file and the slab position file
+The port of the Fortran's distorted-surface correction (`DistortedSurfacePES.dir/`), complete
+except position-file version 1 (SCM D5) and the `.pes` cache (SCM D11): the readers of its two data
+files, the parameter file and the slab position file
 (`scm_files.*`, tests `tests/test_scm_io.cpp`), the correction ΔV itself (`scm_correction.*`,
 tests `tests/test_scm_correction.cpp`), and the potential, SystemID `CRPDistrtSurface`
 (`scm_crp_potential.*`: V = CRP(u/s, v/s) + ΔV; tests `tests/test_scm_potential.cpp`), with its
 input keys ([input_schema.md](input_schema.md)), its set-up checks and report (`scm_diagnostics.*`,
 `report/potential_report.*`; tests `tests/test_scm_diagnostics.cpp`, `tests/test_report.cpp`) and
 its identity in the restart files and analysis.json ([output_files.md](output_files.md); tests
-`Restart.Scm*`, `AnalysisFiles.ScmIdentityRoundTrip`). Not yet ported: a regression gate of the
-program ([upstream_sync.md](upstream_sync.md)). Values and atoms read from the example files
+`Restart.Scm*`, `AnalysisFiles.ScmIdentityRoundTrip`). Gates 1–4 compare the program with the
+reference in the case `scm_cu111_srp48_small`, on the CPU and the GPU ([validation.md](validation.md)).
+How to use it: [scm.md](scm.md). Values and atoms read from the example files
 and from synthetic multi-configuration files, and ΔV at every point of the four reference runs (the
 example slab with rescaling on and off, synthetic slabs of versions 3 and 2), are bitwise equal to
 the reference's (the r1713-dce0ecc objects driven by `tools/fortran_reference/scm_driver/`; tests

@@ -51,6 +51,9 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
   `src/crplib/` (V and analytic gradients). The library is checked against the Fortran library on
   synthetic data sets (bitwise) and on the real H₂/Cu(111) SRP48 data set in `potentials/`, and the
   program against the Fortran potential on the grid for both.
+- The SCM distorted-surface potential of upstream 5.24 (SystemID `CRPDistrtSurface`: a CRP data set
+  plus a correction for one snapshot of a thermally distorted slab), checked against the Fortran on
+  the CPU and the GPU. Its model, input, ensembles and open questions: [docs/scm.md](docs/scm.md).
 - Surface symmetry (`UseSymmetry`): the potential is computed and stored only for symmetry-unique
   (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
   potential really has that symmetry.
@@ -332,6 +335,7 @@ vector extensions (see docs/performance.md).
 | Directory | Content |
 |---|---|
 | `inputs/hardwall_small/` | The hard wall reference case (H₂ on a hard wall, Cu(211)-like grid, 0.2–0.6 eV). `input.json` is the C++ input. `DVR.inp` is the same calculation for the Fortran reference code. |
+| `inputs/scm_example/` | A technical example of the SCM potential (`CRPDistrtSurface`): one snapshot on a small grid, not physics; see its README. |
 | `inputs/thesis_fig5_3_dz/`, `inputs/thesis_fig5_3_er/` | H₂ + Cu(111) on the Dai–Zhang and Persson (ER) PES, the two curves of Fig. 5.3 of M. F. Somers' PhD thesis, at the grid sizes of the thesis (except a finer Z grid, see their READMEs; JMax 28, ψ ≈ 6 GB; hours per run). Each directory has a README with the parameter choices. The DZ case is the GPU benchmark. |
 
 - The JSON keys mirror the Fortran `DVR.inp` field names. All keys, defaults, units and checks
@@ -385,7 +389,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker |
-| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), the flux analysis findings (`flux_analysis_findings.md`), performance notes, GPU backend |
+| `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), the flux analysis findings (`flux_analysis_findings.md`), the SCM potential (`scm.md`, `scm_open_questions.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |
 

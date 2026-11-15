@@ -244,3 +244,28 @@ The data set ([docs/crp_library.md](../docs/crp_library.md)) limits the grids:
   the grid point: the data set does not cover the grid.
 - Use `UseSymmetry` with `nPhisOptimal`: 4 to 8 times fewer PES evaluations (the set-up of a CRP
   potential costs microseconds per point; docs/performance.md "CRP library").
+
+## 12. SCM distorted surface (SystemID `CRPDistrtSurface`)
+A CRP data set plus the correction ΔV of one distorted-slab snapshot ([docs/scm.md](../docs/scm.md):
+the model, the files, the set-up report, ensembles and the open questions). Section 11 applies, and:
+- **The 6D region must hold all of ΔV.** V is stored only below `zasymp` (the data set's, or
+  `ZmaxSwitch` with `UseSwitching`); above it V is V_asy(r). An H atom feels ΔV up to p8 (10.46 bohr
+  in the example `params.dat`) above the highest kept atom (the report's "Highest atom": 0.94 bohr),
+  so up to Z = 11.40 bohr in the example; the lower atom of a tilted molecule lies (r/2)·|cos θ|
+  below Z. The set-up stops when ΔV changes a gas-phase point, and warns when |V − V_CRP| on the
+  plane Z = `zasymp` exceeds 1 meV (SCM D3; the example: 4.8e-5 eV at r = 4 bohr, θ = 25°).
+- **`ZStart` ≥ the CRP's Zmin** (0.47 bohr for SRP48), or `ImposeVMin` with `VMin` at least 0.1 eV
+  below the ideal surface's lowest V on the grid ([Q3](../docs/scm_open_questions.md#q3-deep-holes-where-the-crp-clamps-z-or-r)):
+  below Zmin the CRP is frozen at Zmin but ΔV is not, and V has holes of hundreds of eV (SCM D15).
+  The same happens where the CRP clamps r (below Rmin, beyond Rmax): keep r beyond Rmax inside the
+  r absorber (the report gives the lowest value there and whether it lies in the absorber).
+- **No `UseSymmetry`** (an error, SCM D2): the distorted slab has no symmetry, so V is computed at
+  every (x, y) point, 4 to 8 times more evaluations than a symmetric CRP run (section 11).
+- **nX, nY cannot converge across the edge jump.** The grid repeats one distorted cell, and V jumps
+  where the copies meet (report table "Jump of V across the cell edges", SCM D10): treat
+  per-snapshot diffraction as unconverged in nX, nY.
+- **One snapshot is not representative:** the result is an average over N runs that differ only in
+  `PosFileSlabNum` ([docs/scm.md](../docs/scm.md#ensembles-by-hand)).
+- **Paths** (`CRPlibDataSet`, `SCMParFilepath`, `PosFilepath`) are relative to the working
+  directory: run all inputs from one working directory, or use absolute paths.
+- A technical example (not physics): [scm_example/](scm_example/README.md).
