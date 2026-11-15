@@ -1,7 +1,7 @@
 #pragma once
 
 // Gates 3 and 4 (docs/validation.md) for one reference case, with a given propagation backend: the C++ run
-// of <case>/input.json against the Fortran output of the same case (skipped when missing).
+// of <case>/input.json against the Fortran output of the same case (skipped or failed when missing).
 // Used by test_regression_propagation.cpp (CPU) and cuda/test_cuda_regression.cpp (GPU).
 
 #include <filesystem>
@@ -16,10 +16,28 @@ namespace spodvr::testing {
 // Gate 4 tolerance of the BK coefficients, as a fraction of the reference scale (compare_bk_with_fortran).
 inline constexpr double bk_gate_tolerance = 1e-10;
 
-inline void run_gate(const std::string& case_name, const BackendFactory& backend = make_cpu_backend) {
+// Whether a case's Fortran files may be missing: without them the gates of an optional case skip
+// (without fort21 they leave out the BK comparison), those of a required case fail.
+enum class References { optional, required };
+
+inline void run_gate(const std::string& case_name, const BackendFactory& backend = make_cpu_backend,
+                     References references = References::optional) {
   namespace fs = std::filesystem;
   const fs::path dir = fs::path(SPODVR_REFERENCE_DIR) / case_name;
-  const auto ref = read_fortran_reference(dir / "fortran_stdout.txt", dir / "fortran_averages.out");
+  const fs::path stdout_file = dir / "fortran_stdout.txt";
+  const fs::path averages_file = dir / "fortran_averages.out";
+  const fs::path bk_file = dir / "fortran_fort21.bin";
+  const fs::path restart_file = dir / "fortran_restart_stdout.txt";  // optional in every case
+  if (references == References::required) {
+    bool missing = false;  // one failure per missing file, then stop
+    for (const fs::path& file : {stdout_file, averages_file, bk_file})
+      if (!fs::exists(file)) {
+        ADD_FAILURE() << "reference file " << file << " missing";
+        missing = true;
+      }
+    if (missing) return;
+  }
+  const auto ref = read_fortran_reference(stdout_file, averages_file);
   if (!ref)
     GTEST_SKIP() << "no Fortran reference in " << dir << "; run "
                  << "tools/fortran_reference/run_propagation_reference.sh " << case_name;
@@ -28,16 +46,15 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
   compare_with_fortran(cpp, *ref);  // gate 3
 
   // Gate 4: the printed probabilities, and the BK coefficients of every analysis step.
-  compare_probabilities_with_fortran(cpp, read_fortran_probabilities(dir / "fortran_stdout.txt"));
-  if (fs::exists(dir / "fortran_fort21.bin"))
-    compare_bk_with_fortran(cpp, read_fortran_bk_records(dir / "fortran_fort21.bin"), bk_gate_tolerance);
+  compare_probabilities_with_fortran(cpp, read_fortran_probabilities(stdout_file));
+  if (fs::exists(bk_file))
+    compare_bk_with_fortran(cpp, read_fortran_bk_records(bk_file), bk_gate_tolerance);
   else
     std::cout << "  no fortran_fort21.bin: BK coefficients not compared\n";
 
   // Restart gate: a Fortran run split by a restart gives the probabilities of the unsplit run
   // (tools/fortran_reference/run_restart_reference.sh). The C++ restart is bitwise exact (test_restart).
-  if (fs::exists(dir / "fortran_restart_stdout.txt"))
-    compare_probabilities_with_fortran(cpp, read_fortran_probabilities(dir / "fortran_restart_stdout.txt"));
+  if (fs::exists(restart_file)) compare_probabilities_with_fortran(cpp, read_fortran_probabilities(restart_file));
 }
 
 }  // namespace spodvr::testing

@@ -223,15 +223,16 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   ./build/tests/test_input --gtest_filter='Input.*'   # one test program directly (GoogleTest)
   ```
 - **Long tests:** the full 7000-step regression runs (hard wall and Dai–Light; the latter alone takes
-  about 13 minutes on 8 cores) and the negative test of the low-Z gate (a 1000-step run) are
-  skipped unless `SPODVR_LONG_TESTS` is set:
+  about 13 minutes on 8 cores) and the negative tests of the low-Z and the SCM gates (1000- and
+  3000-step runs) are skipped unless `SPODVR_LONG_TESTS` is set:
   ```bash
   SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build -R Long --output-on-failure
   SPODVR_LONG_TESTS=1 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R 'Cuda.*Long' --output-on-failure
   ```
 - **Skipped regression tests:** a regression test skips (it does not fail) when its Fortran
-  reference file is missing. The scripts in `tools/fortran_reference/` regenerate the files; they
-  need a Fortran reference install ([tools/fortran_reference/README.md](tools/fortran_reference/README.md)).
+  reference file is missing; the tests of the SCM cases `scm_cu111_srp48_small*` fail instead. The
+  scripts in `tools/fortran_reference/` regenerate the files; they need a Fortran reference install
+  ([tools/fortran_reference/README.md](tools/fortran_reference/README.md)).
   `ctest -R ReferenceManifest` fails when a file listed in a case's `MANIFEST.tsv` is missing or
   edited, or a case has no `MANIFEST.tsv` ([MANIFEST.tsv](tools/fortran_reference/README.md#manifesttsv)).
 - **Other build variants** ([Build variants](#build-variants-and-toolsbuild_allsh)): run the same

@@ -18,6 +18,7 @@
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
+#include "reference_case_input.hpp"
 
 using namespace spodvr;
 
@@ -218,13 +219,13 @@ TEST(SpatialGrids, RepositoryInputsHaveNoGridPointWarnings) {
   for (const std::filesystem::path& dir : {reference, root / "inputs"})
     for (const auto& entry : std::filesystem::directory_iterator(dir))
       if (std::filesystem::exists(entry.path() / "input.json")) inputs.push_back(entry.path() / "input.json");
-  EXPECT_GE(inputs.size(), 13u);  // 10 reference cases and 3 example inputs (2026-11-12)
+  EXPECT_GE(inputs.size(), 13u);  // 13 reference cases and 3 example inputs (2026-11-15)
   for (const std::filesystem::path& input : inputs) {
     std::ifstream file(input);
-    nlohmann::json json = nlohmann::json::parse(file, nullptr, true, /*ignore_comments=*/true);
-    if (json.contains("CRPlibDataSet"))  // relative to the repository root
-      json["CRPlibDataSet"] = (root / json["CRPlibDataSet"].get<std::string>()).string();
-    const SpatialGrids g = make_spatial_grids(build_config(parse_input(json)));
+    const nlohmann::json json = nlohmann::json::parse(file, nullptr, true, /*ignore_comments=*/true);
+    InputParameters parameters = parse_input(json);
+    spodvr::testing::resolve_repository_paths(parameters);  // data files relative to the repository root
+    const SpatialGrids g = make_spatial_grids(build_config(parameters));
     EXPECT_TRUE(g.split_points.empty()) << input << ": " << (g.split_points.empty() ? "" : g.split_points[0].key);
   }
 }

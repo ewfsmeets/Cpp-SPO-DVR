@@ -82,8 +82,11 @@ derived from exactly the same parameters.
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
    digits: |C++ − Fortran| ≤ half a unit in the 8th mantissa digit of E15.8 (the Fortran is not
-   patched). Passes for hardwall_short (21 rows) and the full hardwall_small run (7000 steps, 141
-   rows; worst 0.989645 of half a printed unit). Default case `tests/reference/hardwall_short` (same as
+   patched). The |ψ(k)| values (k = 0, grid edge, maximum) allow max(half a printed unit, 1e-14): at
+   k = 0 or the edge they can be FFT rounding noise (user's decision 2026-11-15; looser for the edge
+   value, which had a fixed 1e-15; `EXPECT_MOMENTUM_EQ`, tests/propagation_reference.hpp). Passes
+   for hardwall_short (21 rows) and the full hardwall_small run (7000 steps, 141 rows; worst
+   0.989645 of half a printed unit). Default case `tests/reference/hardwall_short` (same as
    hardwall_small but 1000 steps); the full 7000-step hardwall_small run only with
    `SPODVR_LONG_TESTS=1`. The hard wall has no θ/φ/x/y coupling, so gate 3 only checks that the
    angular transform and x/y FFTs act as the identity there; their correctness rests on the
@@ -113,6 +116,13 @@ derived from exactly the same parameters.
    with the input or the reference; a code regression fails the gate itself)
    `LowZGateFailsWithoutTheScatteringAbsorberLong`: without that absorber the C++ misses the
    Fortran by 3.3e4 half units and 9.6e3 BK tolerances.
+   SCM (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (default, CPU and GPU; the case is
+   described with its gate 1 below), 3000 steps, so that the wave reflected by the surface reaches
+   Zana (before t = 3600 every BK coefficient is below 1e-4, the floor of the scale). Margins (CPU /
+   GPU): averages 0.986 / 0.986, probabilities 0.988 / 0.988 of half a printed unit, BK 5.9e-13 /
+   5.1e-13 of the scale 0.075. Negative test (Long suite) `ScmGateFailsWithoutTheCorrectionLong`:
+   with the CRP term alone (ΔV removed, the lattice kept) the C++ misses the Fortran by 7.8e9 half
+   units and 1.4e10 BK tolerances (2026-11-15).
    Setup gates (gates 1/2 type, `tests/test_regression_pes.cpp`) for cu111_dailight_small (with
    switching 6..8), cu111_persson_small and cu111_dailight_short_sym (the Fortran symmetric .pes,
    expanded through symmetryIndex by extract_pes.py, vs the C++ gather): all pass, vasy ≤ 9e-16,
@@ -129,8 +139,21 @@ derived from exactly the same parameters.
    1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: decision D4
    on data up to 72 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
    clips the reference at VMin/VMax: the Fortran writes its .pes file before it imposes them.
-   SCM distorted-surface PES (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (gates 1–4)
-   and `scm_cu111_srp48_small_rescaling_off` (gates 1 and 2).
+   SCM distorted-surface PES (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (gates 1–4;
+   `crp_cu111_srp48_small` from ZStart 0.5 bohr ≥ the CRP's Zmin, plus the example slab of
+   `potentials/H2Cu111SRP_C3v.dir` rescaled to the CRP lattice) and
+   `scm_cu111_srp48_small_rescaling_off` (gates 1, 2). Vasy 7.7e-16 (ΔV = 0 there, SCM D3). Gate 1b
+   allows 1e-12 of max(|V|, 1 eV): V_CRP and ΔV reach ±125 eV where V is a few tenths of an eV, and
+   their absolute differences do not shrink with V. The 42620 compared points show no cancellation
+   (1.39e-13 and 1.33e-13 at V_CRP 0.47, ΔV 0.59 eV); the 1e-12 rests on the whole .pes (3.94 M
+   points; 2026-11-15, .pes of the 8222b8d runs, extract_pes.py at stride 1, C++ Release build):
+   2.98e-13 (margin 3.4) and 3.41e-13 at V = −0.22 = 125.23 − 125.44 eV, 1.5e-13 scaled by max(|V|,
+   |V_CRP|, |ΔV|, 1 eV). The terms are checked separately at identical points (`tests/scm`: ΔV
+   bitwise, V_CRP within 3e-13). On that grid V − ΔV is up to 1.14e-12 of max(|V_CRP|, 1 eV) from
+   the C++ V_CRP (r = 8.6 bohr, ΔV −329 eV): ΔV one ulp lower in r (the Fortran's grid is
+   quad-rounded) moves by −1.42e-12 eV (unscaled: 7.5e-13, −7.50e-13 eV). Small errors fail
+   (`RegressionPesScmNegative`): P17/P18 read as Å at 35244 points, θ, φ swapped once at 39499,
+   1.01× the tolerance at the largest |V| there only; 0.99× at the worst point passes.
 4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
    Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
    values) to half a unit in the last printed digit (values below 1e-20 are noise and compared

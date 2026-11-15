@@ -18,7 +18,8 @@
 # Environment: SPODVR_FORTRAN_REF_DIR, SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT (reference_config.sh);
 # TMPDIR (where the scratch directory is made).
 # Run time: about 45 min on 4 threads (2381–2538 s with the r1713 install, 2026-11-12, plus 158 s
-# for the case cu111_dailight_short_lowz and about 2 s for the SCM cases, added later).
+# for the case cu111_dailight_short_lowz, about 2 s for the SCM driver and 154 s for the SCM cases
+# scm_cu111_srp48_small*, added later).
 # Docs: tools/fortran_reference/README.md.
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

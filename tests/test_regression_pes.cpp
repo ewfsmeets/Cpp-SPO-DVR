@@ -3,16 +3,24 @@
 //   fortran_setup_stdout.txt  vasy table (gate 1)
 //   pes_reference.txt         6D subsample of the potential and the angular grid (gate 1)
 //   debug_asyp.dat            rovibrational energies and eigenvectors (gate 2)
-// Tests are skipped when a reference file is missing.
+// Tests are skipped when a reference file is missing, except those of the SCM cases, which fail.
+// The SCM cases also have the tests behind their looser gate 1b (the section at the end).
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -26,8 +34,11 @@
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "pes_gate.hpp"
+#include "potential/potential.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "potential/scm/scm_correction.hpp"
+#include "potential/scm/scm_crp_potential.hpp"
 #include "reference_case_input.hpp"
 #include "setup_reference.hpp"
 
@@ -44,11 +55,17 @@ namespace {
 constexpr double grid_tolerance = 4e-16;        // relative, ~2 ulp
 constexpr double vasy_tolerance = 1e-14;        // relative to max(|V|, 1 eV)
 constexpr double potential_tolerance = 1e-13;   // relative to max(|V|, 1 eV), full 6D potential
+// The real CRP data set (crp_cu111_srp48_small), relative to max(|V|, 1 eV): see potential_tolerance_of.
+constexpr double crp_tolerance = 3e-13;
+// The SCM cases, relative to max(|V|, 1 eV): V = V_CRP + ΔV, whose terms reach ±125 eV where they
+// cancel to a few tenths of an eV, so the CRP's absolute error weighs more (docs/validation.md).
+constexpr double scm_potential_tolerance = 1e-12;
 
 struct Calculation {
   Config config;
   SpatialGrids grids;
   AngularGrid angular;
+  std::unique_ptr<Potential> pes;  // the PES the grid was computed from
   PotentialGrid potential;
   GasPhase gas;
 };
@@ -57,13 +74,20 @@ struct Calculation {
 // (the C++ potential on the symmetry-reduced grid, compared with the full Fortran potential).
 std::string directory_of(const std::string& name) { return name.substr(0, name.find('+')); }
 bool with_symmetry(const std::string& name) { return name.ends_with("+UseSymmetry"); }
+// The SCM cases (SystemID CRPDistrtSurface).
+const std::set<std::string> scm_cases = {"scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"};
+// The cases whose reference files must exist: a missing file fails their tests where the other cases'
+// tests skip. The SCM cases were committed together with their reference files and tests.
+const std::set<std::string> required_reference_cases = {"scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"};
+bool references_required(const std::string& name) { return required_reference_cases.contains(directory_of(name)); }
 
 // The 6D tolerance of a case. The real CRP data set (crp_cu111_srp48_small) holds total energies
 // up to 72 Hartree (CutsInterpolation = F): decision D4 (scalar cos where gfortran uses libmvec in
 // the reduction of the cuts) gives up to 1.5e-13 there; with libmvec's cos it is 1.5e-14
 // (2026-11-11), the level of the other cases. docs/fortran_deviations.md "CRP library".
 double potential_tolerance_of(const std::string& name) {
-  return directory_of(name) == "crp_cu111_srp48_small" ? 3e-13 : potential_tolerance;
+  if (scm_cases.contains(directory_of(name))) return scm_potential_tolerance;
+  return directory_of(name) == "crp_cu111_srp48_small" ? crp_tolerance : potential_tolerance;
 }
 
 fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / directory_of(name); }
@@ -79,12 +103,21 @@ const Calculation& calculation(const std::string& name) {
     Config config = build_config(input);
     SpatialGrids grids = make_spatial_grids(config);
     AngularGrid angular = make_angular_grid(config);
-    const std::unique_ptr<Potential> pes = make_potential(config.input);
+    std::unique_ptr<Potential> pes = make_potential(config.input);
     PotentialGrid potential = compute_potential_grid(*pes, config, grids, angular);
     GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, FftwFft(), LapackEigensolver());
-    entry = std::make_unique<Calculation>(
-        Calculation{std::move(config), std::move(grids), std::move(angular), std::move(potential), std::move(gas)});
+    entry = std::make_unique<Calculation>(Calculation{std::move(config), std::move(grids), std::move(angular),
+                                                      std::move(pes), std::move(potential), std::move(gas)});
   }
+  return *entry;
+}
+
+// The 6D reference of a case (pes_reference.txt), read once.
+const test::PesReference& pes_reference(const std::string& name) {
+  static std::map<std::string, std::unique_ptr<test::PesReference>> cache;
+  auto& entry = cache[name];
+  if (!entry)
+    entry = std::make_unique<test::PesReference>(test::read_pes_reference_6d(case_dir(name) / "pes_reference.txt"));
   return *entry;
 }
 
@@ -93,10 +126,14 @@ class RegressionPes : public ::testing::TestWithParam<std::string> {
   [[nodiscard]] fs::path reference(const std::string& file) const { return case_dir(GetParam()) / file; }
 };
 
-#define REQUIRE_REFERENCE(file)                                                                                  \
-  if (!fs::exists(reference(file)))                                                                              \
-  GTEST_SKIP() << "reference file " << (file) << " missing; run tools/fortran_reference/run_setup_reference.sh " \
-               << GetParam()
+// A missing reference file of a case skips the test, or fails it if the case's references are required.
+#define REQUIRE_CASE_REFERENCE(name, file)                                                     \
+  if (const fs::path missing_file = case_dir(name) / (file); !fs::exists(missing_file)) {      \
+    if (references_required(name)) FAIL() << "reference file " << missing_file << " missing";  \
+    GTEST_SKIP() << "reference file " << missing_file                                          \
+                 << " missing; run tools/fortran_reference/run_setup_reference.sh " << (name); \
+  }
+#define REQUIRE_REFERENCE(file) REQUIRE_CASE_REFERENCE(GetParam(), file)
 
 }  // namespace
 
@@ -193,3 +230,258 @@ INSTANTIATE_TEST_SUITE_P(CrpReal, RegressionPes, ::testing::Values("crp_cu111_sr
 INSTANTIATE_TEST_SUITE_P(CrpSymmetric, RegressionPes,
                          ::testing::Values("crp_c6v_synthetic_small+UseSymmetry", "crp_c3v_synthetic_small+UseSymmetry",
                                            "crp_c4v_synthetic_small+UseSymmetry", "crp_cu111_srp48_small+UseSymmetry"));
+
+// The SCM distorted-surface PES (SystemID CRPDistrtSurface): the real data set plus the correction
+// of the example slab (potentials/H2Cu111SRP_C3v.dir), with the slab rescaled to the CRP lattice
+// and without; gate 1b at scm_potential_tolerance.
+INSTANTIATE_TEST_SUITE_P(Scm, RegressionPes,
+                         ::testing::Values("scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"));
+
+// --- The SCM cases: the worst point of gate 1b at 1e-12, and that the gate still fails on small errors -
+// The two terms are checked separately where both programs evaluate them at the same points (the
+// SCM driver's point lists, tests/scm: ΔV bit for bit, V_CRP within 3e-13 of max(|V_CRP|, 1 eV)).
+// On the grid they cannot be told apart: the Fortran's grid points are rounded from quad precision
+// (1 ulp from the C++'s, docs/fortran_deviations.md), which moves the steep ΔV of the deep holes
+// by up to 1.4e-12 eV (|ΔV| ≈ 330 eV at r = 8.6 bohr). The compared subsample shows no cancellation;
+// on the whole .pes gate 1b is 2.98e-13 (docs/validation.md: measured 2026-11-15 on the .pes of the
+// 8222b8d reference runs, extract_pes.py at stride 1, C++ Release build).
+
+namespace {
+
+// The case of the negative tests (rescaling on: s ≠ 1, the ideal frame differs from the slab's).
+const std::string scm_case = "scm_cu111_srp48_small";
+
+// The potential of an SCM case.
+const ScmCrpPotential& scm_potential(const Calculation& c) { return dynamic_cast<const ScmCrpPotential&>(*c.pes); }
+
+// The correction of an SCM potential with the given pair-function parameters, built from its slab,
+// rescaling factor and skew angle as the potential builds its own.
+ScmCorrection correction_with(const ScmCrpPotential& pes, const ScmParameters& parameters) {
+  return ScmCorrection(parameters, pes.slab(), pes.rescaling_factor(), pes.crp().system_parameters().skewing_angle);
+}
+
+// ΔV (hartree) at the Cartesian (x, y), Z, r, θ, φ: the correction, or a porting mistake of it.
+using DeltaV = std::function<double(double x, double y, double z, double r, double theta, double phi)>;
+
+// An SCM potential with another ΔV, composed as ScmCrpPotential::value: (x, y) of (u, v), the CRP
+// at (u/s, v/s), then ΔV/Constants_eV2Ha added (eV). Test-only: the negative tests run the program's
+// grid code (compute_potential_grid: hartree, gas-phase switching, VMax) on it.
+class ScmPotentialWithDeltaV final : public Potential {
+ public:
+  ScmPotentialWithDeltaV(const ScmCrpPotential& scm, DeltaV delta_v)
+      : scm_(scm),
+        correction_(correction_with(scm, scm.scm_parameters())),
+        crp_scale_(scm.rescaling_factor().value_or(1.0)),
+        delta_v_(std::move(delta_v)) {}
+
+  [[nodiscard]] double value(double u, double v, double z, double r, double theta, double phi, int iz,
+                             int ir) const override {
+    const CartesianVector xy = correction_.to_cartesian(u, v);
+    const double v_crp = scm_.crp().value(u / crp_scale_, v / crp_scale_, z, r, theta, phi, iz, ir);
+    return v_crp + units::precise.hartree_to_ev(delta_v_(xy.x, xy.y, z, r, theta, phi));
+  }
+  [[nodiscard]] const SystemParameters& system_parameters() const override { return scm_.system_parameters(); }
+  [[nodiscard]] std::string name() const override { return scm_.name(); }
+
+ private:
+  const ScmCrpPotential& scm_;
+  ScmCorrection correction_;  // for (x, y) of (u, v) only
+  double crp_scale_;          // s with rescaling, else 1
+  DeltaV delta_v_;
+};
+
+// The correction's own ΔV, and two porting mistakes: P17/P18 (the r clamp of the pair-function
+// parameters) taken as Å and converted to bohr, and θ and φ swapped once (the Fortran swaps them
+// twice, scm_correction.cpp).
+DeltaV correct_delta_v(const ScmCorrection& correction) {
+  return [&correction](double x, double y, double z, double r, double theta, double phi) {
+    return correction.value_hartree(x, y, z, r, theta, phi);
+  };
+}
+DeltaV swapped_angles_delta_v(const ScmCorrection& correction) {
+  return [&correction](double x, double y, double z, double r, double theta, double phi) {
+    return correction.value_hartree(x, y, z, r, phi, theta);
+  };
+}
+ScmParameters with_r_clamp_in_angstrom(ScmParameters parameters) {
+  for (ScmLayerParameters& layer : parameters.layers) {
+    layer.r_clamp_min = units::legacy.angstrom_to_bohr(layer.r_clamp_min);
+    layer.r_clamp_max = units::legacy.angstrom_to_bohr(layer.r_clamp_max);
+  }
+  return parameters;
+}
+
+// The two terms of V (eV) at the reference points, and the point's coordinates.
+struct ScmTermsAtPoint {
+  double u, v, z, r, theta, phi;  // lattice (u, v) and Z, r (bohr); θ, φ (rad)
+  double crp;                     // V_CRP(u/s, v/s, …)
+  double delta_v;                 // ΔV/Constants_eV2Ha
+};
+
+std::vector<ScmTermsAtPoint> scm_terms_at_points(const Calculation& c, const test::PesReference& ref) {
+  const ScmCrpPotential& pes = scm_potential(c);
+  const ScmCorrection correction = correction_with(pes, pes.scm_parameters());
+  const double s = pes.rescaling_factor().value_or(1.0);
+  std::vector<ScmTermsAtPoint> points;
+  points.reserve(ref.points.size());
+  for (const test::PesReference::Point& p : ref.points) {
+    ScmTermsAtPoint q{c.grids.x[p.ix],
+                      c.grids.y[p.iy],
+                      c.grids.z_scattering[p.iz],
+                      c.grids.r[p.ir],
+                      c.angular.thetas()[p.itheta],
+                      c.angular.phis()[p.iphi],
+                      0.0,
+                      0.0};
+    const CartesianVector xy = correction.to_cartesian(q.u, q.v);
+    q.crp = pes.crp().value(q.u / s, q.v / s, q.z, q.r, q.theta, q.phi, p.iz, p.ir);
+    q.delta_v = units::precise.hartree_to_ev(correction.value_hartree(xy.x, xy.y, q.z, q.r, q.theta, q.phi));
+    points.push_back(q);
+  }
+  return points;
+}
+
+// The values (hartree) at the reference points of the grid the program computes from a potential.
+std::vector<double> grid_values_at_points(const Potential& pes, const Calculation& c, const test::PesReference& ref) {
+  return potential_at_points(compute_potential_grid(pes, c.config, c.grids, c.angular), ref);
+}
+
+// Gate 1b of a case on a list of values: the floor 1 eV, the limits and the tolerance of the case.
+PesGateResult scm_gate(const std::string& name, const std::vector<double>& values) {
+  const Calculation& c = calculation(name);
+  return compare_pes_values(pes_reference(name), values, potential_limits(c.config), units::legacy.ev_to_hartree(1.0),
+                            potential_tolerance_of(name));
+}
+
+class RegressionPesScm : public RegressionPes {};
+
+}  // namespace
+
+// The total at its tolerance, with the worst point printed: its coordinates, the two terms, the
+// margin (tolerance / largest difference) and, as a diagnostic, the largest difference relative to
+// max(|V|, |V_CRP|, |ΔV|, 1 eV), the scale of the terms that cancel.
+TEST_P(RegressionPesScm, Gate1WorstPointAndCancellationAwareDifference) {
+  REQUIRE_REFERENCE("pes_reference.txt");
+  const test::PesReference& ref = pes_reference(GetParam());
+  const Calculation& c = calculation(GetParam());
+  const std::vector<double> values = potential_at_points(c.potential, ref);
+  const PesGateResult result = scm_gate(GetParam(), values);
+  const std::vector<ScmTermsAtPoint> points = scm_terms_at_points(c, ref);
+  const PotentialLimits limits = potential_limits(c.config);
+
+  // In hartree like the gate, so that it never exceeds the gate's value.
+  double cancellation_aware = 0.0;
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    const double expected = with_limits(ref.points[i].v, limits);
+    const double scale =
+        std::max({std::abs(values[i]), std::abs(expected), units::legacy.ev_to_hartree(std::abs(points[i].crp)),
+                  units::legacy.ev_to_hartree(std::abs(points[i].delta_v)), units::legacy.ev_to_hartree(1.0)});
+    cancellation_aware = nan_aware_max(cancellation_aware, std::abs(values[i] - expected) / scale);
+  }
+  const ScmTermsAtPoint& w = points.at(result.worst);
+  std::cout << "  " << GetParam() << ": max scaled difference " << result.max_difference << " (margin x"
+            << scm_potential_tolerance / result.max_difference << " to " << scm_potential_tolerance << ") at u " << w.u
+            << ", v " << w.v << ", Z " << w.z << ", r " << w.r << " bohr, theta " << w.theta << ", phi " << w.phi
+            << ": V " << units::legacy.hartree_to_ev(values[result.worst]) << " eV (Fortran "
+            << units::legacy.hartree_to_ev(ref.points[result.worst].v) << "), V_CRP " << w.crp << ", dV " << w.delta_v
+            << " eV; relative to max(|V|, |V_CRP|, |dV|, 1 eV): " << cancellation_aware << '\n';
+  EXPECT_LE(result.max_difference, scm_potential_tolerance);
+  EXPECT_TRUE(result.failing.empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(Scm, RegressionPesScm,
+                         ::testing::Values("scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"));
+
+// The potential the negative tests use is the program's when given the correction's own ΔV: equal
+// bit for bit at every reference point, so their values differ from the program's by the mistake only.
+TEST(RegressionPesScmNegative, TestPotentialWithTheOwnDeltaVIsTheProgramsBitwise) {
+  REQUIRE_CASE_REFERENCE(scm_case, "pes_reference.txt");
+  const Calculation& c = calculation(scm_case);
+  const ScmCrpPotential& pes = scm_potential(c);
+  const ScmCorrection correction = correction_with(pes, pes.scm_parameters());
+  const ScmPotentialWithDeltaV same(pes, correct_delta_v(correction));
+  int differ = 0;
+  for (const test::PesReference::Point& p : pes_reference(scm_case).points) {
+    const double args[] = {c.grids.x[p.ix],
+                           c.grids.y[p.iy],
+                           c.grids.z_scattering[p.iz],
+                           c.grids.r[p.ir],
+                           c.angular.thetas()[p.itheta],
+                           c.angular.phis()[p.iphi]};
+    const double expected = pes.value(args[0], args[1], args[2], args[3], args[4], args[5], p.iz, p.ir);
+    const double actual = same.value(args[0], args[1], args[2], args[3], args[4], args[5], p.iz, p.ir);
+    if (std::bit_cast<std::uint64_t>(actual) != std::bit_cast<std::uint64_t>(expected)) ++differ;
+  }
+  EXPECT_EQ(differ, 0);
+}
+
+// Porting mistakes in ΔV fail the gate at many points: P17/P18 read as Å (the r clamp [0.725, 1.847]
+// becomes [1.370, 3.490] bohr), and θ and φ swapped once.
+TEST(RegressionPesScmNegative, Gate1FailsForTheRClampInAngstrom) {
+  REQUIRE_CASE_REFERENCE(scm_case, "pes_reference.txt");
+  const Calculation& c = calculation(scm_case);
+  const ScmCrpPotential& pes = scm_potential(c);
+  const ScmCorrection mistaken = correction_with(pes, with_r_clamp_in_angstrom(pes.scm_parameters()));
+  const ScmPotentialWithDeltaV potential(pes, correct_delta_v(mistaken));
+  const PesGateResult result = scm_gate(scm_case, grid_values_at_points(potential, c, pes_reference(scm_case)));
+  std::cout << "  r clamp in Angstrom: " << result.failing.size() << " failing points, max scaled difference "
+            << result.max_difference << '\n';
+  EXPECT_EQ(result.failing.size(), 35244u);  // of 42620
+}
+
+TEST(RegressionPesScmNegative, Gate1FailsForAOneSidedThetaPhiSwap) {
+  REQUIRE_CASE_REFERENCE(scm_case, "pes_reference.txt");
+  const Calculation& c = calculation(scm_case);
+  const ScmCrpPotential& pes = scm_potential(c);
+  const ScmCorrection correction = correction_with(pes, pes.scm_parameters());
+  const ScmPotentialWithDeltaV potential(pes, swapped_angles_delta_v(correction));
+  const PesGateResult result = scm_gate(scm_case, grid_values_at_points(potential, c, pes_reference(scm_case)));
+  std::cout << "  theta and phi swapped once: " << result.failing.size() << " failing points, max scaled difference "
+            << result.max_difference << '\n';
+  EXPECT_EQ(result.failing.size(), 39499u);  // of 42620
+}
+
+// The boundary: the program's values with one error of 1.01 times the tolerance at the point of the
+// largest |V| fail there and nowhere else; with the worst point moved to 0.99 times the tolerance
+// (its error's sign kept) they pass. The errors use the documented 1e-12, which must be the case's.
+constexpr double documented_scm_tolerance = 1e-12;  // docs/validation.md
+
+TEST(RegressionPesScmNegative, Gate1FailsJustAboveTheToleranceAtTheLargestV) {
+  REQUIRE_CASE_REFERENCE(scm_case, "pes_reference.txt");
+  const Calculation& c = calculation(scm_case);
+  const test::PesReference& ref = pes_reference(scm_case);
+  const PotentialLimits limits = potential_limits(c.config);
+  const double floor = units::legacy.ev_to_hartree(1.0);
+  ASSERT_EQ(potential_tolerance_of(scm_case), documented_scm_tolerance);
+  std::size_t largest = 0;
+  for (std::size_t i = 0; i < ref.points.size(); ++i)
+    if (std::abs(with_limits(ref.points[i].v, limits)) > std::abs(with_limits(ref.points[largest].v, limits)))
+      largest = i;
+  const double expected = with_limits(ref.points[largest].v, limits);
+  std::vector<double> values = potential_at_points(c.potential, ref);
+  values[largest] =
+      expected + std::copysign(1.01 * documented_scm_tolerance * std::max(std::abs(expected), floor), expected);
+  const PesGateResult result = scm_gate(scm_case, values);
+  std::cout << "  error 1.01 x tolerance at V = " << units::legacy.hartree_to_ev(expected) << " eV: scaled difference "
+            << result.max_difference << '\n';
+  ASSERT_EQ(result.failing.size(), 1u);
+  EXPECT_EQ(result.failing[0], largest);
+}
+
+TEST(RegressionPesScmNegative, Gate1PassesJustBelowTheToleranceAtTheWorstPoint) {
+  REQUIRE_CASE_REFERENCE(scm_case, "pes_reference.txt");
+  const Calculation& c = calculation(scm_case);
+  const test::PesReference& ref = pes_reference(scm_case);
+  const double floor = units::legacy.ev_to_hartree(1.0);
+  ASSERT_EQ(potential_tolerance_of(scm_case), documented_scm_tolerance);
+  std::vector<double> values = potential_at_points(c.potential, ref);
+  const std::size_t worst = scm_gate(scm_case, values).worst;
+  const double expected = with_limits(ref.points[worst].v, potential_limits(c.config));
+  values[worst] = expected + std::copysign(0.99 * documented_scm_tolerance * std::max(std::abs(expected), floor),
+                                           values[worst] - expected);
+  const PesGateResult result = scm_gate(scm_case, values);
+  std::cout << "  worst point at 0.99 x tolerance: max scaled difference " << result.max_difference << '\n';
+  EXPECT_TRUE(result.failing.empty());
+  EXPECT_EQ(result.worst, worst);
+  EXPECT_GT(result.max_difference, 0.98 * documented_scm_tolerance);
+}

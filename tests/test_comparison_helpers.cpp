@@ -240,6 +240,62 @@ TEST(GateComparisons, AveragesFailOnAFortranNaN) {
   EXPECT_NONFATAL_FAILURE(compare_with_fortran(run_with_averages(), ref), "rest_norm");
 }
 
+// The momentum-space values of the initial packet: max(half a printed unit, 1e-14) absolute.
+TEST(GateComparisons, MomentumValueOffByMoreThanItsHalfPrintedUnitFails) {
+  PropagationRun run = run_with_averages();
+  run.initial.k_space_maximum = 0.8 + 1e-8;  // half a printed unit of 0.8: 5.05e-9
+  EXPECT_NONFATAL_FAILURE(compare_with_fortran(run, fortran_reference()), "k_space_maximum");
+}
+
+TEST(GateComparisons, MomentumValueAtNoiseLevelOffBy2e14Fails) {
+  PropagationRun run = run_with_averages();
+  run.initial.k_space_at_edge = 2e-14;  // the reference value is 0
+  EXPECT_NONFATAL_FAILURE(compare_with_fortran(run, fortran_reference()), "k_space_at_edge");
+}
+
+TEST(GateComparisons, MomentumValueAtNoiseLevelOffBy5e15Passes) {
+  // The printed noise of scm_cu111_srp48_small at k = 0; half a printed unit of it is 5.05e-23.
+  FortranPropagationReference ref = fortran_reference();
+  ref.k_at_zero = 0.27311442e-14;
+  PropagationRun run = run_with_averages();
+  run.initial.k_space_at_zero = ref.k_at_zero + 5e-15;
+  compare_with_fortran(run, ref);
+}
+
+// The floor itself: at the noise-level references 0 (the edge) and 2.73e-15 (k = 0), whose printed
+// half units are 0 and 5e-23, an error of 1.01e-14 fails and one of 0.99e-14 passes.
+TEST(GateComparisons, MomentumValueAtNoiseLevelOffByJustAboveTheFloorFails) {
+  FortranPropagationReference ref = fortran_reference();
+  ref.k_at_zero = 0.27311442e-14;
+  PropagationRun run = run_with_averages();
+  run.initial.k_space_at_zero = ref.k_at_zero + 1.01e-14;
+  EXPECT_NONFATAL_FAILURE(compare_with_fortran(run, ref), "k_space_at_zero");
+  run = run_with_averages();
+  run.initial.k_space_at_edge = 1.01e-14;  // the reference value is 0
+  EXPECT_NONFATAL_FAILURE(compare_with_fortran(run, fortran_reference()), "k_space_at_edge");
+}
+
+TEST(GateComparisons, MomentumValueAtNoiseLevelOffByJustBelowTheFloorPasses) {
+  FortranPropagationReference ref = fortran_reference();
+  ref.k_at_zero = 0.27311442e-14;
+  PropagationRun run = run_with_averages();
+  run.initial.k_space_at_zero = ref.k_at_zero + 0.99e-14;
+  run.initial.k_space_at_edge = 0.99e-14;  // the reference value is 0
+  compare_with_fortran(run, ref);
+}
+
+TEST(GateComparisons, MomentumValueFailsOnACppNaN) {
+  PropagationRun run = run_with_averages();
+  run.initial.k_space_at_zero = not_a_number;
+  EXPECT_NONFATAL_FAILURE(compare_with_fortran(run, fortran_reference()), "k_space_at_zero");
+}
+
+TEST(GateComparisons, MomentumValueFailsOnAFortranNaN) {
+  FortranPropagationReference ref = fortran_reference();
+  ref.k_at_edge = not_a_number;
+  EXPECT_NONFATAL_FAILURE(compare_with_fortran(run_with_averages(), ref), "k_space_at_edge");
+}
+
 // --- gate 4: printed probabilities --------------------------------------------------------------
 
 TEST(GateComparisons, ProbabilitiesPassWhenEqual) {

@@ -3,13 +3,17 @@
 // (fortran_stdout.txt, fortran_averages.out and, if present, fortran_fort21.bin, written by
 // tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
-// SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing.
-// LowZGateFailsWithoutTheScatteringAbsorberLong (also SPODVR_LONG_TESTS=1) is the negative test of
-// the low-Z case. RegressionHarness: the data-file paths of a case's input (reference_case_input.hpp).
+// SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing, except the
+// SCM case scm_cu111_srp48_small, which fails.
+// LowZGateFailsWithoutTheScatteringAbsorberLong and ScmGateFailsWithoutTheCorrectionLong (also
+// SPODVR_LONG_TESTS=1) are the negative tests of the low-Z and the SCM case. RegressionHarness: the data-file paths of
+// a case's input (reference_case_input.hpp).
 #include <cstdlib>
 #include <fstream>
 #include <string>
 
+#include "potential/potential.hpp"
+#include "potential/scm/scm_crp_potential.hpp"
 #include "regression_gate.hpp"
 #include "scm_example_input.hpp"
 
@@ -65,6 +69,60 @@ TEST(RegressionPropagation, LowZGateFailsWithoutTheScatteringAbsorberLong) {
   EXPECT_GT(averages, 100.0);
   EXPECT_GT(bk_in_tolerances, 100.0);
   std::cout << "  without the scattering low-Z absorber: averages " << averages << " x (half printed unit), BK "
+            << bk_in_tolerances << " x the gate-4 tolerance\n";
+}
+
+// The SCM distorted-surface PES (SystemID CRPDistrtSurface, upstream 5.24): the SRP48 CRP data set
+// plus the correction of the example slab, rescaled to the CRP lattice (so the x, y grid, the
+// diffraction channels and the initial wave packet are those of the slab's lattice constant). The
+// first CRP-based case of gates 3 and 4; 3000 steps, so that the wave reflected by the surface
+// reaches the analysis line (before t = 3600 every BK coefficient is below 1e-4). A missing
+// reference file fails it.
+TEST(RegressionPropagation, Gate3ScmShort) {
+  run_gate("scm_cu111_srp48_small", make_cpu_backend, References::required);
+}
+
+// The SCM potential of a case without its correction: the CRP at (u/s, v/s) on the slab's lattice,
+// as ScmCrpPotential::value computes its CRP term (test-only, for the negative test below).
+class ScmCrpTermOnly final : public Potential {
+ public:
+  explicit ScmCrpTermOnly(const Config& config)
+      : scm_(config.input.crp_dataset, config.input.scm), crp_scale_(scm_.rescaling_factor().value_or(1.0)) {}
+  [[nodiscard]] double value(double u, double v, double z, double r, double theta, double phi, int iz,
+                             int ir) const override {
+    return scm_.crp().value(u / crp_scale_, v / crp_scale_, z, r, theta, phi, iz, ir);
+  }
+  [[nodiscard]] const SystemParameters& system_parameters() const override { return scm_.system_parameters(); }
+  [[nodiscard]] std::string name() const override { return scm_.name(); }
+
+ private:
+  ScmCrpPotential scm_;
+  double crp_scale_;  // s = a_T/a0 with rescaling, else 1
+};
+
+// Negative test of the SCM gate: the C++ run with the CRP term alone (the correction removed, the
+// lattice kept) must fail gates 3 and 4 by at least 100 times their tolerance, so the gates see the
+// correction. Long suite, as the low-Z negative test: a broken correction fails the gate itself.
+TEST(RegressionPropagation, ScmGateFailsWithoutTheCorrectionLong) {
+  if (std::getenv("SPODVR_LONG_TESTS") == nullptr) GTEST_SKIP() << "set SPODVR_LONG_TESTS=1 to run";
+  const fs::path dir = fs::path(SPODVR_REFERENCE_DIR) / "scm_cu111_srp48_small";
+  const auto ref = read_fortran_reference(dir / "fortran_stdout.txt", dir / "fortran_averages.out");
+  ASSERT_TRUE(ref.has_value()) << "no Fortran reference in " << dir;
+  ASSERT_TRUE(fs::exists(dir / "fortran_fort21.bin")) << "no fortran_fort21.bin in " << dir;
+  std::ifstream file(dir / "input.json");
+  const Config config = case_config(nlohmann::json::parse(file));
+  const PropagationRun cpp = run_cpp_propagation(config, ScmCrpTermOnly(config));
+  const auto bk_ref = read_fortran_bk_records(dir / "fortran_fort21.bin");
+  ASSERT_EQ(cpp.averages.size(), ref->averages.size());
+  ASSERT_EQ(cpp.bk.size(), bk_ref.size());
+
+  // In the units of the gates: printed half units (gate 3 allows 1) and the BK tolerance (gate 4).
+  const double averages = averages_deviation(cpp, *ref);
+  const BkDeviation bk = bk_deviation(cpp, bk_ref);
+  const double bk_in_tolerances = bk.worst / (bk_gate_tolerance * bk.scale);
+  EXPECT_GT(averages, 100.0);
+  EXPECT_GT(bk_in_tolerances, 100.0);
+  std::cout << "  without the SCM correction: averages " << averages << " x (half printed unit), BK "
             << bk_in_tolerances << " x the gate-4 tolerance\n";
 }
 

@@ -46,6 +46,18 @@ inline double printed_half_unit(double fortran_value) {
 #define EXPECT_PRINTED_EQ(cpp_value, fortran_value) \
   EXPECT_LE(std::abs((cpp_value) - (fortran_value)), printed_half_unit(fortran_value))
 
+// The momentum-space values of the initial wave packet (|psi(k)| at k = 0, at the grid edge, its
+// maximum): |c - f| <= max(half a printed unit of f, 1e-14). At k = 0 or at the edge the value can be
+// FFT rounding noise, depending on the energy range and dZ (scm_cu111_srp48_small: 2.7e-15 at k = 0),
+// where the printed digits of the noise mean nothing: differences below 1e-14 absolute are accepted
+// (the user's decision, 2026-11-15). NaN on either side fails.
+inline constexpr double momentum_noise_floor = 1e-14;
+inline double momentum_tolerance(double fortran_value) {
+  return nan_aware_max(printed_half_unit(fortran_value), momentum_noise_floor);
+}
+#define EXPECT_MOMENTUM_EQ(cpp_value, fortran_value) \
+  EXPECT_LE(std::abs((cpp_value) - (fortran_value)), momentum_tolerance(fortran_value))
+
 struct FortranPropagationReference {
   double norm = 0.0;           // '* Norm initial wave packet (Z,r) ='
   double k_at_zero = 0.0;      // '- at k = 0'
@@ -134,14 +146,13 @@ struct PropagationRun {
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
 };
 
-// input: the JSON input of the run (a reference case's: case_config, reference_case_input.hpp);
-// backend: the propagation backend (CPU by default; the GPU tests pass the CUDA backend).
-inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
+// The C++ run of a configuration with the PES pes in place of its own (a negative test's modified
+// potential); backend: the propagation backend (CPU by default; the GPU tests pass the CUDA backend).
+inline PropagationRun run_cpp_propagation(const Config& config, const Potential& pes,
                                           const BackendFactory& backend = make_cpu_backend) {
-  const Config config = case_config(input);
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
-  PotentialGrid potential = compute_potential_grid(*make_potential(config.input), config, grids, angular);
+  PotentialGrid potential = compute_potential_grid(pes, config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend);
@@ -157,6 +168,14 @@ inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
     run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
                                      basis.mj(irotana * basis.n_diffraction()));
   return run;
+}
+
+// The C++ run of the JSON input (a reference case's: case_config, reference_case_input.hpp), with
+// its own PES.
+inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
+                                          const BackendFactory& backend = make_cpu_backend) {
+  const Config config = case_config(input);
+  return run_cpp_propagation(config, *make_potential(config.input), backend);
 }
 
 // The C++ run of the JSON input file input_json.
@@ -183,9 +202,9 @@ inline double averages_deviation(const PropagationRun& cpp, const FortranPropaga
 // Gate 3: initial wave packet block and the averages table against the Fortran output.
 inline void compare_with_fortran(const PropagationRun& cpp, const FortranPropagationReference& ref) {
   EXPECT_PRINTED_EQ(cpp.initial.norm, ref.norm);
-  EXPECT_PRINTED_EQ(cpp.initial.k_space_at_zero, ref.k_at_zero);
-  EXPECT_PRINTED_EQ(cpp.initial.k_space_maximum, ref.k_maximum);
-  EXPECT_NEAR(cpp.initial.k_space_at_edge, ref.k_at_edge, 1e-15);  // ~0: only absolute makes sense
+  EXPECT_MOMENTUM_EQ(cpp.initial.k_space_at_zero, ref.k_at_zero);
+  EXPECT_MOMENTUM_EQ(cpp.initial.k_space_maximum, ref.k_maximum);
+  EXPECT_MOMENTUM_EQ(cpp.initial.k_space_at_edge, ref.k_at_edge);
   EXPECT_EQ(cpp.initial.i_low + 1, ref.i_low);
   EXPECT_EQ(cpp.initial.i_high + 1, ref.i_high);
   EXPECT_PRINTED_EQ(cpp.initial.norm_inside, ref.norm_inside);
