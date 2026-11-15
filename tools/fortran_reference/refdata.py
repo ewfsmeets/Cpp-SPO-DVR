@@ -3,9 +3,9 @@
 reference trees.
 
 Every file a Fortran run generates for the regression tests has one line in the MANIFEST.tsv of
-its case directory (tests/reference/<case>/, tests/crplib/reference/<case>/): its path, sha256 and
-how it was made. The columns are described in tools/fortran_reference/README.md; ctest
-ReferenceManifest.FilesMatch checks the hashes.
+its case directory (tests/reference/<case>/, tests/crplib/reference/<case>/,
+tests/scm/reference/<case>/): its path, sha256 and how it was made. The columns are described in
+tools/fortran_reference/README.md; ctest ReferenceManifest.FilesMatch checks the hashes.
 
   manifest record CASE_DIR FILE... --script NAME (--install DIR --binary FILE | --pre-manifest)
                   [--input PATH]... [--runtime-drift TEXT]
@@ -21,16 +21,17 @@ Both refuse the committed inputs of a case (is_input) and a directory that holds
 output (NOT_A_CASE), so that a wrong call can never make a regeneration delete an input.
 
   compare OLD NEW --expected FILE [--no-provenance]
-      Compares the reference files (tests/reference/**, tests/crplib/reference/**) of the
-      repository trees OLD (e.g. the main checkout) and NEW (e.g. a worktree after
-      regenerate_all.sh). Each file is classified by the row of the expected-differences file
-      FILE whose glob matches it (a file two rows match is refused); a file no row matches must be
-      identical. Prints one line per file that is not identical, then a summary. NEW's provenance
-      is checked too: every case has a MANIFEST.tsv that lists exactly its generated files with
-      their sha256, all made by the install FILE names ("# install: <id>"), whose BUILDINFO copy
-      (tools/fortran_reference/buildinfo/<id>.tsv) has the executable the lines name, without
-      run-time drift, and every fine analysis read the case's fortran_fort21.bin. --no-provenance
-      skips only these MANIFEST and BUILDINFO checks (e.g. for files copied in by hand).
+      Compares the reference files (tests/reference/**, tests/crplib/reference/**,
+      tests/scm/reference/**) of the repository trees OLD (e.g. the main checkout) and NEW (e.g. a
+      worktree after regenerate_all.sh). Each file is classified by the row of the
+      expected-differences file FILE whose glob matches it (a file two rows match is refused); a
+      file no row matches must be identical. Prints one line per file that is not identical, then a
+      summary. NEW's provenance is checked too: every case has a MANIFEST.tsv that lists exactly its
+      generated files with their sha256, all made by the install FILE names ("# install: <id>"),
+      whose BUILDINFO copy (tools/fortran_reference/buildinfo/<id>.tsv) has the executable the lines
+      name, without run-time drift, and every fine analysis read the case's fortran_fort21.bin.
+      --no-provenance skips only these MANIFEST and BUILDINFO checks (e.g. for files copied in by
+      hand).
 
 Usage: python3 -I -B tools/fortran_reference/refdata.py {manifest {record,delete},compare} ... (-h)
 Exit status: 0 done (compare: every difference allowed), 1 refused or a difference not allowed
@@ -74,6 +75,10 @@ CASE_INPUT_FILES = ("DVR.inp", "input.json")
 CASE_INPUT_SUFFIX = ".in"  # the CRP driver's point lists
 CASE_INPUT_DIR = "dataset"  # a CRP data set
 NOT_A_CASE = ("fortran_unformatted",)
+# The reference trees, one directory per case. Copies: reference_config.sh FORTRAN_REFERENCE_TREES,
+# ReferenceManifest.cmake (also its MANIFEST header and NOT_A_CASE), tools/check_docs.py and the
+# exclude of .pre-commit-config.yaml; ctest FortranReference.ReferenceListsAgree checks them.
+REFERENCE_TREES = ("tests/reference", "tests/crplib/reference", "tests/scm/reference")
 
 
 class Refusal(Exception):
@@ -289,7 +294,6 @@ def delete(args):
 # ---------------------------------------------------------------------------------------------
 # compare: a regenerated reference tree against the committed one
 # ---------------------------------------------------------------------------------------------
-REFERENCE_TREES = ("tests/reference", "tests/crplib/reference")
 BUILDINFO_COPIES = "tools/fortran_reference/buildinfo"  # the committed BUILDINFO.tsv of each install
 FORTRAN_EXECUTABLE = "spodvr.x"  # the program name of the executable runs in fortran_ref
 FINE_DIR_PREFIX = "fine_"  # the fine-analysis runs of a case: fine_<variant>/
@@ -591,7 +595,7 @@ def text_differences(old, new, rule):
 def read_records(data):
     """The records of a gfortran unformatted sequential file: a 4-byte little-endian length before
     and after each. Records over 2 GiB are split into subrecords (negative lengths), which no
-    reference file has: refused, as in extract_pes.py."""
+    reference file has: refused. extract_pes.py reads the .pes files with it too."""
     records, position = [], 0
     while position < len(data):
         if position + 4 > len(data):
@@ -833,7 +837,7 @@ def compare(args):
     allowed."""
     for root in (args.old, args.new):
         if not all((Path(root) / tree).is_dir() for tree in REFERENCE_TREES):
-            raise Refusal(f"{root} has no {' and '.join(REFERENCE_TREES)}; name a repository checkout")
+            raise Refusal(f"{root} lacks one of {', '.join(REFERENCE_TREES)}; name a repository checkout")
     install, rules = read_expected(args.expected)
     print(f"* Comparing the reference files of {args.old} (OLD) and {args.new} (NEW) under {args.expected}")
     counts, failures, unused = compare_trees(args.old, args.new, rules)
@@ -868,8 +872,9 @@ def parse_arguments(argv):
     add.add_argument("--script", metavar="NAME", required=True, help="the script that generated the files")
     add.add_argument("--install", metavar="DIR", help="the reference install that ran (its BUILDINFO.tsv gives the id)")
     add.add_argument("--binary", metavar="FILE", help="the program that ran: the install's executable or the CRP driver")
-    add.add_argument("--input", metavar="PATH", action="append", default=[], help="an input as run (repeatable): a file, or a directory (a data set, hashed as a tree); "
-                          "named by the path as given if relative, else by its last component")
+    add.add_argument("--input", metavar="PATH", action="append", default=[],
+                     help="an input as run (repeatable): a file, or a directory (a data set, hashed as "
+                          "a tree); named by the path as given if relative, else by its last component")
     add.add_argument("--runtime-drift", metavar="TEXT", default=EMPTY,
                      help="run-time packages that differ from BUILDINFO.tsv (default: -)")
     add.add_argument("--pre-manifest", action="store_true",

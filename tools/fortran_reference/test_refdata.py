@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Tests of refdata.py compare with expected/r1713.tsv (ctest FortranReference.Compare*).
+"""Tests of refdata.py compare with expected/r1713.tsv (ctest FortranReference.Compare*), and of the
+copies of refdata.py's lists (ctest FortranReference.ReferenceListsAgree).
 
 Each case builds an OLD tree in the 5.19 style and a NEW tree in the 5.24 style under WORK, at
 the paths of real reference cases (small synthetic files), runs compare as a program and checks
@@ -26,6 +27,10 @@ its exit status and the FAIL line it prints:
   refusals             an expected file with unsorted rows, an unknown class, a limit that does
                        not fit its class (inf included), a row without reason, no install line; a
                        tree without the reference directories: refused (each)
+  reference-lists      the MANIFEST header and column count, the reference trees and NOT_A_CASE in
+                       ReferenceManifest.cmake, tools/check_docs.py and reference_config.sh equal
+                       refdata.py's, and the exclude of .pre-commit-config.yaml covers every tree;
+                       copies with a tree or NOT_A_CASE changed are reported (5 lines)
 The content cases run with --no-provenance, so that only the classification can fail them.
 
 Usage: python3 -I -B tools/fortran_reference/test_refdata.py CASE WORK
@@ -37,6 +42,7 @@ Docs: tools/fortran_reference/README.md "Comparing two reference trees".
 
 import argparse
 import hashlib
+import importlib.util
 import re
 import shutil
 import struct
@@ -52,13 +58,14 @@ EXPECTED = TOOLS_DIR / "expected" / "r1713.tsv"
 INSTALL_ID = re.search(r"^# install: (\S+)$", EXPECTED.read_text(encoding="utf-8"), re.MULTILINE).group(1)
 CASES = ("expected-file", "allowed", "edited-number", "deleted-file", "unknown-label", "s-magnitude", "bk-limit",
          "bk-nan", "non-finite-number", "number-count", "provenance", "install-mismatch", "fine-without-fort22",
-         "multi-match", "refusals")
+         "multi-match", "refusals", "reference-lists")
 EXPECTED_HEADER = "# install: x\nglob\tallowed\tlimit\treason\n"
 
 HARDWALL = "tests/reference/hardwall_small"
 DAILIGHT_SHORT = "tests/reference/cu111_dailight_short"
 DAILIGHT_SMALL = "tests/reference/cu111_dailight_small"
 KERNELS = "tests/crplib/reference/kernels"
+SCM_EXAMPLE = "tests/scm/reference/example"
 
 STDOUT_519 = """\
 *** SPO-DVR program version 5.19 (Compiled using GFORTRAN for X86 on Oct 26 2026 at 10:27:24) run on 20261026 at 1507 ***
@@ -144,6 +151,8 @@ def old_files():
         f"{KERNELS}/VERSIONS": "driver 5.19\n",
         f"{KERNELS}/spline.in": "1 2 3\n",
         f"{KERNELS}/spline.out": "cx 1 BFF0F7E3C95C02B0  -1.06051996856710318E+000\n",
+        f"{SCM_EXAMPLE}/points.in": "0.0 0.0 6.0 1.4 1.5707963267948966 0.0\n",
+        f"{SCM_EXAMPLE}/rescaling_on.out": "SCM_DRIVER_DONE\n",
     }
 
 
@@ -202,7 +211,8 @@ def record_manifests(work, new, install_id, fine_input=True):
              (DAILIGHT_SHORT, ["fortran_stdout.txt"], []),
              (DAILIGHT_SMALL, ["fortran_fort21.bin"], []),
              (DAILIGHT_SMALL, ["fine_full/fort.25"], ["--input", fort22] if fine_input else []),
-             (KERNELS, ["spline.out"], [])]
+             (KERNELS, ["spline.out"], []),
+             (SCM_EXAMPLE, ["rescaling_on.out"], [])]
     for case, files, inputs in calls:
         status, output = run("manifest", "record", new / case, *files, "--script", "test_refdata.py",
                              "--install", install, "--binary", install / "bin" / "spodvr.x", *inputs)
@@ -346,7 +356,8 @@ def refusals_case(work):
         expected.write_text(text, encoding="utf-8")
         expect_refusal(*compare(old, new, expected=expected), pattern)
     shutil.rmtree(new / "tests" / "crplib")
-    expect_refusal(*compare(old, new, "--no-provenance"), "has no tests/reference and tests/crplib/reference")
+    expect_refusal(*compare(old, new, "--no-provenance"),
+                   "lacks one of tests/reference, tests/crplib/reference, tests/scm/reference")
 
 
 def multi_match_case(work):
@@ -360,6 +371,65 @@ def multi_match_case(work):
     expected.write_text("\n".join(comments + rows[:1] + sorted(rows[1:] + [overlap])) + "\n", encoding="utf-8")
     expect_refusal(*compare(old, new, "--no-provenance", expected=expected),
                    r"hardwall_small/fortran_stdout.txt matches the rows")
+
+
+def load_module(name, path):
+    """The Python tool at path as a module (python3 -I keeps the tools' directories off sys.path)."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def cmake_lists(text):
+    """name -> values of the set(name value...) lines of a CMake script; a quoted value is one
+    string, with its \\t escapes as tabs."""
+    values = {}
+    for name, value in re.findall(r"^set\((\w+) (.*)\)$", text, re.MULTILINE):
+        values[name] = (value.strip('"').replace("\\t", "\t"),) if value.startswith('"') else tuple(value.split())
+    return values
+
+
+def list_mismatches(cmake_text, check_docs_trees, config_trees, precommit_exclude):
+    """One line per copy of a refdata.py list that differs from it: ReferenceManifest.cmake (the text
+    of the script), check_docs.py REFERENCE_TREES, reference_config.sh FORTRAN_REFERENCE_TREES; and
+    the trees whose files the pre-commit hooks would edit (precommit_exclude: the exclude regex)."""
+    refdata = load_module("refdata", REFDATA)
+    cmake = cmake_lists(cmake_text)
+    edited = tuple(tree for tree in refdata.REFERENCE_TREES if not re.match(precommit_exclude, f"{tree}/MANIFEST.tsv"))
+    copies = {
+        "ReferenceManifest.cmake manifest_header": (cmake.get("manifest_header"),
+                                                    ("\t".join(refdata.MANIFEST_COLUMNS),)),
+        "ReferenceManifest.cmake manifest_columns": (cmake.get("manifest_columns"),
+                                                     (str(len(refdata.MANIFEST_COLUMNS)),)),
+        "ReferenceManifest.cmake reference_trees": (cmake.get("reference_trees"), refdata.REFERENCE_TREES),
+        "ReferenceManifest.cmake not_a_case": (cmake.get("not_a_case"), refdata.NOT_A_CASE),
+        "check_docs.py REFERENCE_TREES": (tuple(tree.rstrip("/") for tree in check_docs_trees),
+                                          refdata.REFERENCE_TREES),
+        "reference_config.sh FORTRAN_REFERENCE_TREES": (tuple(config_trees), refdata.REFERENCE_TREES),
+        "the trees not excluded in .pre-commit-config.yaml": (edited, ()),
+    }
+    return [f"{name} is {copy}, not {original}" for name, (copy, original) in copies.items() if copy != original]
+
+
+def reference_lists_case():
+    """The copies agree with refdata.py; copies with a tree or NOT_A_CASE changed do not."""
+    cmake_text = (TOOLS_DIR / "ReferenceManifest.cmake").read_text(encoding="utf-8")
+    check_docs_trees = load_module("check_docs", REPO_DIR / "tools" / "check_docs.py").REFERENCE_TREES
+    config_trees = subprocess.run(["bash", "-c", 'source "$0"; printf "%s\\n" "${FORTRAN_REFERENCE_TREES[@]}"',
+                                   str(TOOLS_DIR / "reference_config.sh")],
+                                  capture_output=True, text=True, check=True).stdout.split()
+    precommit = (REPO_DIR / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    exclude = re.search(r"^exclude: (\S+)", precommit, re.MULTILINE).group(1)
+    mismatches = list_mismatches(cmake_text, check_docs_trees, config_trees, exclude)
+    if mismatches:
+        raise SystemExit("FAIL: a copy of a refdata.py list differs:\n" + "\n".join(mismatches))
+    planted = cmake_text.replace(" tests/scm/reference)", ")").replace("set(not_a_case fortran_unformatted)",
+                                                                       "set(not_a_case other)")
+    found = list_mismatches(planted, check_docs_trees[:2], config_trees[:2], exclude.replace("|scm", ""))
+    if len(found) != 5:
+        raise SystemExit(f"FAIL: 5 planted differences, {len(found)} reported:\n" + "\n".join(found))
+    print("planted differences reported as expected:\n" + "\n".join(found))
 
 
 def run_case(name, work):
@@ -389,6 +459,8 @@ def run_case(name, work):
         multi_match_case(work)
     elif name == "refusals":
         refusals_case(work)
+    elif name == "reference-lists":
+        reference_lists_case()
     else:
         content_case(name, work)
 

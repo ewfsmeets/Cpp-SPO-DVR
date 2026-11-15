@@ -167,14 +167,9 @@ target_include_directories(spodvr_crplib PUBLIC src)
 target_link_libraries(spodvr_crplib PRIVATE spodvr_fortran_text spodvr_warnings spodvr_crplib_fp)
 
 # =============================================================================================
-# spodvr_strict_objects: sources of spodvr_core compiled with strict floating point in every build,
-# also the fast-math one. The SCM distorted-surface correction (src/potential/scm/): its readers
-# match the Fortran's bit for bit (checked with a one-off gfortran driver), and which slab atoms lie
-# inside the cut-off sphere must not depend on the build (no contraction or reassociation of the
-# squared distance; test ScmPositionFile.CutoffUsesTheFortranExpression); the correction ΔV equals
-# the Fortran's bit for bit, also in the fast-math build (tests/scm/test_scm_correction_reference.cpp;
-# compiled with -ffast-math, most reference points differ); so do the SCM potential's ΔV term and
-# lattice check (tests/scm/test_scm_potential_reference.cpp).
+# spodvr_strict_objects: the SCM sources (src/potential/scm/, docs/scm.md), strict floating point in
+# every build, fast-math too: ΔV and the file readers stay bitwise the Fortran's (tests/scm/ against
+# the SCM driver's data), and the atoms within the cut-off sphere never depend on the build.
 # =============================================================================================
 add_library(spodvr_strict_objects OBJECT
   src/potential/scm/scm_files.cpp

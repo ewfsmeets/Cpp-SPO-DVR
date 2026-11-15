@@ -11,7 +11,8 @@
 #      or object with VEX/EVEX instructions, AVX libmvec imports or crtfastmath;
 #   4. installs bin/spodvr.x, OBJS/ (*.o, *.mod), BUILDINFO.tsv, SHA256SUMS, build.log and
 #      sources.tar with one mv, makes them read-only, and copies BUILDINFO.tsv to
-#      tools/fortran_reference/buildinfo/<id>.tsv (commit it).
+#      tools/fortran_reference/buildinfo/<id>.tsv (commit it); a copy there that differs from git
+#      is refused before the build (require_unmodified).
 #
 # Usage: tools/fortran_reference/build_fortran_reference.sh
 #        tools/fortran_reference/build_fortran_reference.sh --check-log LOG
@@ -119,9 +120,11 @@ write_buildinfo() {
 # build: steps 1 to 4 of the header.
 build() {
   local target="${FORTRAN_BUILD_INSTALL_DIR}" work tarball_sha epoch
+  local buildinfo_copy="${FORTRAN_REPO_DIR}/tools/fortran_reference/buildinfo/${FORTRAN_BUILD_ID}.tsv"
   [[ ! -e "${target}" ]] ||
     refuse "${target} exists; to rebuild: chmod -R u+w ${target} && rm -r ${target}"
   verify_pin
+  require_unmodified "${buildinfo_copy}"
   mkdir -p "$(dirname "${target}")"
   # Next to the install, on the same file system: the final mv is atomic.
   work="$(mktemp -d "$(dirname "${target}")/.build.XXXXXX")"
@@ -151,8 +154,8 @@ build() {
   mv "${install}" "${target}"
   rm -rf "${work}"
   chmod -R a-w "${target}"
-  cp "${target}/BUILDINFO.tsv" "${FORTRAN_REPO_DIR}/tools/fortran_reference/buildinfo/${FORTRAN_BUILD_ID}.tsv"
-  chmod u+w "${FORTRAN_REPO_DIR}/tools/fortran_reference/buildinfo/${FORTRAN_BUILD_ID}.tsv"
+  cp "${target}/BUILDINFO.tsv" "${buildinfo_copy}"
+  chmod u+w "${buildinfo_copy}"
   echo "* Installed ${target}"
   echo "* Commit tools/fortran_reference/buildinfo/${FORTRAN_BUILD_ID}.tsv"
 }

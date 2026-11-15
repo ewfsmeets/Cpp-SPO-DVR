@@ -14,11 +14,13 @@
 # files listed on 2026-11-12).
 
 cmake_minimum_required(VERSION 3.24)
+# Copies of refdata.py MANIFEST_COLUMNS, REFERENCE_TREES and NOT_A_CASE (CMake cannot import them);
+# ctest FortranReference.ReferenceListsAgree fails when a copy differs.
 set(manifest_header "path\tsha256\tscript\tcommit\tfortran_ref\tinput_sha\truntime_drift\tcpu\tdate")
 set(manifest_columns 9)
 # Every subdirectory of these trees is a reference case and needs a MANIFEST.tsv, except the ones
-# that hold no Fortran output (refdata.py NOT_A_CASE).
-set(reference_trees tests/reference tests/crplib/reference)
+# that hold no Fortran output.
+set(reference_trees tests/reference tests/crplib/reference tests/scm/reference)
 set(not_a_case fortran_unformatted)
 
 # report_error(<text>): prints "error: <text>" unformatted (one line, so it can be searched) and

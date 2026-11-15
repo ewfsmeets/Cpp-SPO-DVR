@@ -9,56 +9,57 @@
 #
 # Usage: tools/crp_mutation_check/run.sh [scratch_dir [index ...]]
 #   scratch_dir  default: a new mktemp -d directory;  index: only these mutations (default: all)
+# Output: one line per mutation. Exit 0 every mutation caught, 1 one survived or the baseline
+#   build or tests failed, 2 bad arguments.
 # Environment: OMP_NUM_THREADS (build jobs and test threads, default 8);
 #   FETCHCONTENT_SOURCE_DIR_GOOGLETEST and FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON (sources for an
 #   offline configure; default <repo>/build/_deps/googletest-src and .../nlohmann_json-src, cloned
-#   from GitHub if those are missing).
+#   from GitHub if those are missing; tools/scratch_build.sh offline_sources).
 # Run time: 15-16 min (28 mutations at 4 threads; three runs on 2026-11-14).
-set -uo pipefail
+set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "${here}/../.." && pwd)"
+count="$(python3 -I -B "${here}/mutations.py" list)"
+
+usage() {
+  echo "usage: run.sh [scratch_dir [index ...]]   (index: 0 to $((count - 1)))" >&2
+  exit 2
+}
 scratch="${1:-$(mktemp -d)}"
 shift $(($# > 0 ? 1 : 0))
-selected=("$@")
-# Sources for an offline configure: from the environment, else the main build's downloads if present.
-gtest_source="${FETCHCONTENT_SOURCE_DIR_GOOGLETEST:-${repo}/build/_deps/googletest-src}"
-json_source="${FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON:-${repo}/build/_deps/nlohmann_json-src}"
-if [[ -n "${FETCHCONTENT_SOURCE_DIR_GOOGLETEST:-}" && ! -d "${gtest_source}" ]]; then
-  echo "error: FETCHCONTENT_SOURCE_DIR_GOOGLETEST='${gtest_source}' is not a directory; point it at the googletest sources or unset it" >&2
-  exit 1
-fi
-if [[ -n "${FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON:-}" && ! -d "${json_source}" ]]; then
-  echo "error: FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON='${json_source}' is not a directory; point it at the nlohmann_json sources or unset it" >&2
-  exit 1
-fi
-source_options=()
-[[ -d "${gtest_source}" ]] && source_options+=(-DFETCHCONTENT_SOURCE_DIR_GOOGLETEST="${gtest_source}")
-[[ -d "${json_source}" ]] && source_options+=(-DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="${json_source}")
+indices=("$@")
+for i in "${indices[@]}"; do
+  [[ "${i}" =~ ^(0|[1-9][0-9]*)$ ]] && ((i < count)) || usage
+done
+((${#indices[@]} > 0)) || mapfile -t indices < <(seq 0 $((count - 1)))
+
+source "${repo}/tools/scratch_build.sh"
+offline_sources GOOGLETEST NLOHMANN_JSON
 wt="${scratch}/worktree"
 mkdir -p "${scratch}"
 [[ -d "${wt}" ]] || git -C "${repo}" worktree add --detach "${wt}" HEAD > /dev/null
-if [[ ! -f "${wt}/build/build.ninja" ]]; then
-  cmake -S "${wt}" -B "${wt}/build" -G Ninja -DCMAKE_BUILD_TYPE=Release "${source_options[@]}" \
-    > "${scratch}/configure.log" 2>&1 || { echo "configure failed: ${scratch}/configure.log"; exit 1; }
+if [[ ! -f "${wt}/build/build.ninja" ]] &&
+  ! cmake -S "${wt}" -B "${wt}/build" -G Ninja -DCMAKE_BUILD_TYPE=Release "${source_options[@]}" \
+    > "${scratch}/configure.log" 2>&1; then
+  echo "error: the configure failed; see ${scratch}/configure.log" >&2
+  exit 1
 fi
-# The library's tests, and those of its file reader (tests/fortran_text, tests FortranText.*)
-crplib_targets=$(cd "${wt}/tests/crplib" && ls test_*.cpp | sed 's/\.cpp$//; s/^/crplib_/')
-reader_targets=$(cd "${wt}/tests/fortran_text" && ls test_*.cpp | sed 's/\.cpp$//; s/^/fortran_text_/')
-targets="${crplib_targets} ${reader_targets}"
+# The library's tests, and those of its file reader (tests/fortran_text, tests FortranText.*).
+targets=()
+for test_source in "${wt}"/tests/crplib/test_*.cpp; do targets+=("crplib_$(basename "${test_source}" .cpp)"); done
+for test_source in "${wt}"/tests/fortran_text/test_*.cpp; do targets+=("fortran_text_$(basename "${test_source}" .cpp)"); done
 threads="${OMP_NUM_THREADS:-8}"  # build jobs and OpenMP threads (at most 8 on this machine)
-build() { cmake --build "${wt}/build" -j "${threads}" --target ${targets} > "${scratch}/build.log" 2>&1; }
+build() { cmake --build "${wt}/build" -j "${threads}" --target "${targets[@]}" > "${scratch}/build.log" 2>&1; }
 run() { OMP_NUM_THREADS="${threads}" ctest --test-dir "${wt}/build" -R "CrpLib|FortranText" > "${scratch}/ctest.log" 2>&1; }
 
 echo "baseline:"
-build || { echo "  build failed: ${scratch}/build.log"; exit 1; }
-run && echo "  all pass" || { echo "  baseline fails: ${scratch}/ctest.log"; exit 1; }
+build || { echo "error: the baseline build failed; see ${scratch}/build.log" >&2; exit 1; }
+run || { echo "error: the baseline tests fail; see ${scratch}/ctest.log" >&2; exit 1; }
+echo "  all pass"
 survived=0
-n=$(python3 -I "${here}/mutations.py" list)
-indices=("${selected[@]}")
-[[ ${#indices[@]} -gt 0 ]] || indices=($(seq 0 $((n - 1))))
 for i in "${indices[@]}"; do
   git -C "${wt}" checkout -q -- src
-  name=$(python3 -I "${here}/mutations.py" "${wt}" "${i}") || { echo "${i}: ${name} (not applied)"; continue; }
+  name=$(python3 -I -B "${here}/mutations.py" "${wt}" "${i}") || { echo "${i}: ${name} (not applied)"; continue; }
   if ! build; then echo "${i} ${name}: BUILD FAILED"; continue; fi
   if run; then
     if [[ "${name}" == *"[SAFETY MARGIN]"* ]]; then

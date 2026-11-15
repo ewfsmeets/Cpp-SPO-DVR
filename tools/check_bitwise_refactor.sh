@@ -23,16 +23,11 @@ if [[ $# -gt 1 ]]; then
 fi
 base_ref="${1:-HEAD}"
 repo="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-if ! git -C "$repo" rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null; then
-  echo "error: '$base_ref' is not a commit in $repo; give a branch, tag or commit hash" >&2
-  exit 1
-fi
 source "$repo/tools/scratch_build.sh"
-scratch="$(mktemp -d)"
-trap 'git -C "$repo" worktree remove --force "$scratch/base-src" >/dev/null 2>&1 || true; rm -rf "$scratch"' EXIT
+require_commit "$base_ref"
 
 echo "Building base ($base_ref) and working tree ..."
-git -C "$repo" worktree add --detach "$scratch/base-src" "$base_ref" >/dev/null 2>&1
+add_base_worktree "$base_ref"
 build_spodvr "$scratch/base-src" "$scratch/base-build"
 build_spodvr "$repo" "$scratch/new-build"
 
@@ -44,13 +39,7 @@ config["Potential"] = True
 json.dump(config, open(sys.argv[2], "w"), indent=2)
 ' "$repo/tests/reference/hardwall_small/input.json" "$scratch/input.json"
 
-# Short propagation: 50 steps, averages after every analysis step.
-python3 -I -B -c '
-import json, sys
-config = json.load(open(sys.argv[1]))
-config.update({"tEnd": 100.0, "nStep": 50, "dtAve": 10.0})
-json.dump(config, open(sys.argv[2], "w"), indent=2)
-' "$repo/tests/reference/hardwall_short/input.json" "$scratch/propagation.json"
+write_short_propagation_input "$scratch/propagation.json"
 
 # Printed output without what legitimately differs between runs: the output path, the thread
 # count and loop schedule, and wall-clock timings ("6D potential computed in 0.42 s").

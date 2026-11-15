@@ -9,7 +9,8 @@
 #             cu111_srp48: on the real data set potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v
 #             (not copied into the case)
 # Each <name>.in gives <name>.out, with its line in the case's MANIFEST.tsv (inputs: <name>.in and
-# the data set).
+# the data set). Refuses, before the first run, to overwrite an output (*.out) that differs from git
+# (require_unmodified).
 # --generate first rewrites the inputs: the kernel point lists (crp_driver/make_kernel_inputs.py),
 # or a case's data set and point lists (build/tests/crplib/crplib_make_dataset: needs the C++ build).
 #
@@ -59,6 +60,7 @@ if [[ "${target}" == "kernels" ]]; then
     python3 -I -B "${FORTRAN_REPO_DIR}/tools/fortran_reference/crp_driver/make_kernel_inputs.py" "${case_dir}"
   fi
   require_point_lists
+  require_unmodified "${case_dir}"/*.out  # every output (a glob that matches nothing names no file)
   run_driver /dev/null "${case_dir}/tables.out" tables
   record_manifest "${case_dir}" "${case_dir}" "${driver}" -- tables.out
   for input in "${case_dir}"/*.in; do
@@ -86,6 +88,7 @@ if [[ "${generate}" == true ]]; then
 fi
 require_point_lists
 [[ -f "${data_set}/CRPData" ]] || refuse "data set ${data_set} not found; restore it, or create it with --generate"
+require_unmodified "${case_dir}"/*.out
 # The Fortran opens the data set with a path of at most 50 characters: run with a short relative one.
 work="${scratch_dir}/run"
 mkdir "${work}" && cp -r "${data_set}" "${work}/dataset"

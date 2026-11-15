@@ -151,22 +151,22 @@ def refusals_case(work):
     write_pes(work / "truncated.pes", header, blocks)
     data = (work / "truncated.pes").read_bytes()
     (work / "truncated.pes").write_bytes(data[:-4])
-    expect_refusal(work, "truncated", f"truncated record at byte {len(data) - len(record(blocks[-1]))}")
+    expect_refusal(work, "truncated", f"the record at byte {len(data) - len(record(blocks[-1]))} has no matching end marker")
     # The trailer of the second record one byte longer than the record.
     write_pes(work / "trailer.pes", header, blocks)
     data = bytearray((work / "trailer.pes").read_bytes())
     second = len(record(header[0]))
     data[second + 4 + len(header[1])] += 1
     (work / "trailer.pes").write_bytes(bytes(data))
-    expect_refusal(work, "trailer", f"corrupt record at byte {second}")
+    expect_refusal(work, "trailer", f"the record at byte {second} has no matching end marker")
     # A record marker of -1: gfortran's subrecords (records over 2 GiB).
     write_pes(work / "subrecords.pes", header, blocks)
     data = (work / "subrecords.pes").read_bytes()
     (work / "subrecords.pes").write_bytes(struct.pack("<i", -1) + data[4:])
-    expect_refusal(work, "subrecords", "subrecords (records > 2 GiB) are not supported")
-    # Two bytes, shorter than a record marker: struct.error, reported as the format errors are.
+    expect_refusal(work, "subrecords", "subrecords (records over 2 GiB) at byte 0 are not supported")
+    # Two bytes, shorter than a record marker.
     (work / "fragment.pes").write_bytes(b"\x01\x00")
-    expect_refusal(work, "fragment", "fragment.pes: unpack_from requires a buffer of at least 4 bytes")
+    expect_refusal(work, "fragment", "fragment.pes: a truncated record marker at byte 0")
     (work / "empty.pes").write_bytes(b"")
     expect_refusal(work, "empty", "empty.pes: the file holds no records")
     expect_refusal(work, "missing", "No such file or directory")

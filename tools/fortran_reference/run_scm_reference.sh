@@ -13,6 +13,7 @@
 #                v2_slab2_rescaling_off.out  slab_v2.in, configuration 2 of 3, cut-off 4 bohr, F
 # Each <run>.out has its line in the case's MANIFEST.tsv (inputs: points.in, params.dat, slab.dat
 # and the data set, as staged for the run). The output format is in scm_driver/scm_reference_driver.f90.
+# Refuses, before the first run, to overwrite an output (*.out) that differs from git (require_unmodified).
 # --generate first rewrites the case's inputs (scm_driver/make_scm_inputs.py).
 #
 # Usage: tools/fortran_reference/run_scm_reference.sh [--generate] example|synthetic [scratch_dir]
@@ -47,6 +48,8 @@ fi
 [[ -f "${case_dir}/points.in" ]] ||
   refuse "no point list ${case_dir}/points.in; restore it, or create it with --generate"
 [[ -f "${data_set}/CRPData" ]] || refuse "data set ${data_set} not found; restore it from git"
+# Every output of the case (a glob that matches nothing names no file).
+require_unmodified "${case_dir}"/*.out
 
 driver="$("${FORTRAN_REPO_DIR}/tools/fortran_reference/scm_driver/build.sh" "${scratch_dir}/driver" | tail -n 1)"
 # The CRP library opens the data set by a short path: one copy, ../dataset from every run directory.

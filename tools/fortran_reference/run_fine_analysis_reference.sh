@@ -20,7 +20,8 @@
 #   fort.25     the interpolated S-matrix elements, probabilities and phases (writeProbs)
 # and their lines in the case's MANIFEST.tsv (inputs: the DVR.inp as run, the data files staged for
 # a CRP or SCM case (reference_config.sh stage_inputs) and fort.22, whose hash is that of
-# fortran_fort21.bin).
+# fortran_fort21.bin). Refuses, before the first run, to overwrite a fine_<variant>/ directory that
+# differs from git (require_unmodified).
 #
 # Usage: tools/fortran_reference/run_fine_analysis_reference.sh [case] [variant ...]
 #   case     reference case directory name (default: hardwall_small)
@@ -44,6 +45,7 @@ for variant in "${variants[@]}"; do
 done
 [[ -f "${case_dir}/fortran_fort21.bin" ]] ||
   refuse "${case_dir}/fortran_fort21.bin not found; run run_propagation_reference.sh ${case_name} first"
+require_unmodified "${variants[@]/#/${case_dir}/fine_}"
 
 for variant in "${variants[@]}"; do
   scratch_dir="$(new_scratch_dir)"

@@ -7,9 +7,12 @@ them) into WORK, runs the tool on them and checks its exit status and output lin
               with the default tolerance 0 and passes with 1e-13; files of different sizes fail
   non-finite  a NaN in b, an inf in a, a NaN at the same element of both (bitwise equal files)
               and a NaN with tolerance 1e300: each fails, naming the file and the element
+  arguments   one file, four arguments, a tolerance that is not a number, negative, NaN or inf:
+              exit 2 with a usage line; a missing, an empty and a 12-byte file: exit 1 with
+              "error: <what>; <fix>"
 Usage: python3 -I -B tools/compare/test_compare_wave.py TOOL CASE WORK
-  TOOL  the spodvr_compare_wave executable;  CASE  finite or non-finite;  WORK  scratch directory
-  (recreated)
+  TOOL  the spodvr_compare_wave executable;  CASE  one of the cases above;  WORK  scratch
+  directory (recreated)
 Exit status: 0 the case behaved as expected, 1 it did not, 2 bad arguments.
 Environment: none read. Run time: well under a second.
 Docs: docs/performance.md, section "Benchmarking checklist" (the final wave packet of two builds).
@@ -23,7 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-CASES = ("finite", "non-finite")
+CASES = ("finite", "non-finite", "arguments")
 WAVE = [1.0, 0.0, 0.5, -0.5, 0.25, 0.75]  # three complex values
 
 
@@ -38,6 +41,12 @@ def run(tool, a, b, tolerance=None):
     command = [str(tool), str(a), str(b)] + ([] if tolerance is None else [tolerance])
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     return result.returncode, result.stdout.strip()
+
+
+def run_with(tool, *arguments):
+    """Runs the tool with the given arguments; returns (exit status, stderr)."""
+    result = subprocess.run([str(tool), *map(str, arguments)], capture_output=True, text=True, check=False)
+    return result.returncode, result.stderr.strip()
 
 
 def expect(what, status, output, want_status, want_output):
@@ -77,6 +86,24 @@ def non_finite_case(tool, work):
            f"DIFFERENT: non-finite value nan in {b} at element 3")
 
 
+def arguments_case(tool, work):
+    """Bad command lines exit 2 with the usage line; files that cannot be compared are refused."""
+    a = write(work / "a.bin", WAVE)
+    for what, arguments in (("one file", [a]), ("four arguments", [a, a, "0", "x"]),
+                            ("tolerance abc", [a, a, "abc"]), ("tolerance 1e-13x", [a, a, "1e-13x"]),
+                            ("tolerance -1e-13", [a, a, "-1e-13"]), ("tolerance nan", [a, a, "nan"]),
+                            ("tolerance inf", [a, a, "inf"])):
+        expect(what, *run_with(tool, *arguments), 2, "usage: spodvr_compare_wave <a> <b> [tolerance]")
+    empty = write(work / "empty.bin", [])
+    partial = work / "partial.bin"
+    partial.write_bytes(struct.pack("=3i", 1, 2, 3))  # 12 bytes: not a whole complex value
+    for what, other in (("missing file", work / "missing.bin"), ("empty file", empty), ("12-byte file", partial)):
+        status, stderr = run_with(tool, a, other)
+        expect(what, status, stderr, 1, f"'{other}'")
+        if not stderr.startswith("error: ") or "; give two files written by spodvr_dump_wave" not in stderr:
+            raise AssertionError(f"{what}: {stderr!r} is not \"error: <what>; <fix>\"")
+
+
 def main(argv):
     """Runs the named case in WORK."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -91,7 +118,8 @@ def main(argv):
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
     try:
-        (finite_case if args.case == "finite" else non_finite_case)(args.tool, work)
+        cases = {"finite": finite_case, "non-finite": non_finite_case, "arguments": arguments_case}
+        cases[args.case](args.tool, work)
     except AssertionError as error:
         print(f"FAIL: {args.case}: {error}")
         return 1

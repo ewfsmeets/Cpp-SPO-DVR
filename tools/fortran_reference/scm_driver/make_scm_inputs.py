@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Writes the inputs of the SCM reference cases (tests/scm/reference/<case>/) for the SCM driver
 (scm_reference_driver.f90, run by tools/fortran_reference/run_scm_reference.sh --generate).
 

@@ -57,7 +57,9 @@ from pathlib import Path, PurePosixPath
 
 CHECKS = ("input-keys", "output-files", "links", "decision-ids", "local-paths", "cli", "gates",
           "env-vars", "upstream-pin", "numbers")
-REFERENCE_DATA = ("tests/reference/", "tests/crplib/reference/", "potentials/")
+# The Fortran reference trees: refdata.py REFERENCE_TREES (ctest FortranReference.ReferenceListsAgree).
+REFERENCE_TREES = ("tests/reference/", "tests/crplib/reference/", "tests/scm/reference/")
+REFERENCE_DATA = REFERENCE_TREES + ("potentials/",)
 THESIS_RECORD = "docs/validation_thesis_fig5_3_dz/"
 # This checker and its allow-list spell out the patterns they look for.
 SELF = ("tools/check_docs.py", "tools/check_docs_allowlist.tsv")

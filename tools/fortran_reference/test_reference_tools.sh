@@ -31,8 +31,15 @@
 #                      before it deletes anything (in a scratch git repository); with a stub install,
 #                      a step that writes nothing and a tree without MANIFESTs
 #   run-script-refusals  run_fine_analysis/crp/scm_reference.sh in a scratch repository with stub
-#                      driver builds: each missing input, a driver that fails or does not finish;
-#                      scm_driver/make_scm_inputs.py: a params.dat of 35 values
+#                      driver builds: each missing input, a driver that fails or does not finish, an
+#                      output git does not track (CRP, SCM); scm_driver/make_scm_inputs.py: a
+#                      params.dat of 35 values
+#   unmodified-targets require_unmodified in a scratch git repository passes an unchanged, an absent
+#                      and a deleted target, and refuses an edited file, a directory with an edited
+#                      file, a file added to the index, an untracked file, a directory with one, a
+#                      path outside the repository and a repository git cannot read;
+#                      run_propagation_reference.sh and run_fine_analysis_reference.sh refuse such a
+#                      target before they run; the propagation runs once its targets are deleted
 #   stage-scm          run_propagation_reference.sh on an SCM case whose three data files have paths
 #                      of over 100 characters (in a scratch git repository): the run finds them as
 #                      dataset, params.dat and slab.dat, the DVR.inp as run names them so and is
@@ -84,14 +91,13 @@ expect_success() {
     fail "exit $?, expected 0: $*; stderr: $(cat "${work}/stderr.txt")"
 }
 
-# in_config FUNCTION ARGS...: a function of reference_config.sh in a fresh bash.
-in_config() {
-  bash -c 'set -euo pipefail; source "$0"; "$@"' "${config}" "$@"
+# in_config_of CONFIG FUNCTION ARGS...: a function of the copy CONFIG of reference_config.sh in a
+# fresh bash; in_config FUNCTION ARGS...: the same with this directory's reference_config.sh.
+in_config_of() {
+  bash -c 'set -euo pipefail; source "$0"; "$@"' "$@"
 }
-
-# json_value FILE KEY: the value of KEY in the JSON file FILE ("" when absent).
-json_value() {
-  python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$1" "$2"
+in_config() {
+  in_config_of "${config}" "$@"
 }
 
 # make_install DIR EXE_BODY [ROW...]: a stub install whose executable is a shell script with
@@ -117,12 +123,15 @@ make_install() {
 }
 
 # scratch_repo DIR FILE...: DIR/tools/fortran_reference/ with copies of reference_config.sh,
-# refdata.py and the named FILEs of this directory, so that DIR is their repository.
+# refdata.py and the named FILEs of this directory, so that DIR is their repository: a git
+# repository with these files committed (the run scripts check their targets with git).
 scratch_repo() {
   local dir="$1" file
   shift
   mkdir -p "${dir}/tools/fortran_reference"
   for file in reference_config.sh refdata.py "$@"; do cp "${tools_dir}/${file}" "${dir}/tools/fortran_reference/"; done
+  git init -q "${dir}"
+  commit_all "${dir}" "the tools"
 }
 
 # stub_driver_build DIR STATUS: DIR/build.sh, a stand-in for a driver build script that prints the
@@ -161,7 +170,8 @@ case "${test_case}" in
     ;;
   existing-scratch)
     mkdir "${work}/scratch"
-    expect_refusal "scratch directory .* exists" "${tools_dir}/run_setup_reference.sh" hardwall_small "${work}/scratch"
+    # A case that does not exist, so that only the scratch directory can be refused.
+    expect_refusal "scratch directory .* exists" "${tools_dir}/run_setup_reference.sh" no_case "${work}/scratch"
     [[ -z "$(ls -A "${work}/scratch")" ]] || fail "the refused run wrote into ${work}/scratch"
     ;;
   changed-install)
@@ -349,13 +359,11 @@ case "${test_case}" in
     ;;
   regenerate-refusals)
     repo="${work}/repo"
-    mkdir -p "${repo}/tools/fortran_reference" "${repo}/tests/reference/case"
-    cp "${tools_dir}/reference_config.sh" "${tools_dir}/regenerate_all.sh" "${tools_dir}/refdata.py" "${repo}/tools/fortran_reference/"
+    scratch_repo "${repo}" regenerate_all.sh
+    mkdir -p "${repo}/tests/reference/case"
     echo "data" > "${repo}/tests/reference/case/out.txt"
     expect_success python3 -I -B "${tools_dir}/refdata.py" manifest record "${repo}/tests/reference/case" out.txt --script s --pre-manifest
-    git -C "${repo}" init -q
-    git -C "${repo}" add -A
-    git -C "${repo}" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm scratch
+    commit_all "${repo}" "a reference case"
     echo "stray" > "${repo}/tests/reference/case/stray.txt"
     expect_refusal "reference trees are not clean" "${repo}/tools/fortran_reference/regenerate_all.sh"
     rm "${repo}/tests/reference/case/stray.txt"
@@ -372,8 +380,7 @@ case "${test_case}" in
     ;;
   stage-scm)
     repo="${work}/repo"
-    mkdir -p "${repo}/tools/fortran_reference"
-    cp "${config}" "${tools_dir}/refdata.py" "${tools_dir}/run_propagation_reference.sh" "${repo}/tools/fortran_reference/"
+    scratch_repo "${repo}" run_propagation_reference.sh
     data="potentials/$(printf 'a_directory_of_forty_characters_number_%d/' 1 2 3)"
     ((${#data} > 100)) || fail "the data directory ${data} has ${#data} characters, not over 100"
     case_dir="${repo}/tests/reference/scm_case"
@@ -386,9 +393,7 @@ case "${test_case}" in
       "PosFilepath : STRING : \"${data}positions.dat\";" 'PosFileSlabNum : INTEGER : 1;' > "${case_dir}/DVR.inp"
     printf '{"SystemID": "CRPDistrtSurface", "CRPlibDataSet": "%s", "SCMParFilepath": "%s", "PosFilepath": "%s"}\n' \
       "${data}dataset" "${data}params.dat" "${data}positions.dat" > "${case_dir}/input.json"
-    git -C "${repo}" init -q
-    git -C "${repo}" add -A
-    git -C "${repo}" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm scratch
+    commit_all "${repo}" "an SCM case"
     # The stub runs only where it finds the staged files under their short names.
     make_install "${work}/install" "[ -f dataset/CRPData ] && [ -f params.dat ] && [ -f slab.dat ] || exit 3
 touch averages.out fort.21 fort.25"
@@ -406,18 +411,18 @@ touch averages.out fort.21 fort.25"
       fail "the DVR.inp as run differs from the case's in other lines"
     grep -qP '^fortran_stdout\.txt\t.*\tDVR\.inp:[0-9a-f]{12},dataset:[0-9a-f]{12},params\.dat:[0-9a-f]{12},slab\.dat:[0-9a-f]{12}\t' \
       "${case_dir}/MANIFEST.tsv" || fail "the MANIFEST does not list the staged inputs: $(cat "${case_dir}/MANIFEST.tsv")"
-    in_repo() { bash -c 'set -euo pipefail; source "$0"; "$@"' "${repo}/tools/fortran_reference/reference_config.sh" "$@"; }
+    repo_config="${repo}/tools/fortran_reference/reference_config.sh"
     # The input list with a prefix, as the restart script records its two runs.
-    listed="$(in_repo staged_inputs "${run}" part1/ | paste -sd ' ')"
+    listed="$(in_config_of "${repo_config}" staged_inputs "${run}" part1/ | paste -sd ' ')"
     [[ "${listed}" == "part1/DVR.inp part1/dataset part1/params.dat part1/slab.dat" ]] ||
       fail "staged_inputs with a prefix lists ${listed}"
     # stage_inputs alone: a data file missing, then a DVR.inp without a field its input.json names.
     mkdir "${work}/stage1" "${work}/stage2"
     mv "${repo}/${data}positions.dat" "${work}/positions.dat"
-    expect_refusal "PosFilepath .*positions\.dat .*not found" in_repo stage_inputs "${case_dir}" "${work}/stage1"
+    expect_refusal "PosFilepath .*positions\.dat .*not found" in_config_of "${repo_config}" stage_inputs "${case_dir}" "${work}/stage1"
     mv "${work}/positions.dat" "${repo}/${data}positions.dat"
     sed -i '/^PosFilepath /d' "${case_dir}/DVR.inp"
-    expect_refusal "field PosFilepath not found" in_repo stage_inputs "${case_dir}" "${work}/stage2"
+    expect_refusal "field PosFilepath not found" in_config_of "${repo_config}" stage_inputs "${case_dir}" "${work}/stage2"
     ;;
   staged-cases)
     count=0
@@ -455,6 +460,8 @@ touch averages.out fort.21 fort.25"
     expect_refusal "no point lists .* in .*kernels" "${scripts}/run_crp_reference.sh" kernels
     touch "${kernels}/spline.in"
     expect_refusal "the driver did not finish \(tables\)" "${scripts}/run_crp_reference.sh" kernels
+    # The failed run left an untracked tables.out: a rerun refuses before the driver runs.
+    expect_refusal "kernels/tables\.out: not tracked by git" "${scripts}/run_crp_reference.sh" kernels
     mkdir -p "${repo}/tests/crplib/reference/c3v_case"
     touch "${repo}/tests/crplib/reference/c3v_case/molecule.in"
     expect_refusal "crplib_make_dataset not built" "${scripts}/run_crp_reference.sh" --generate c3v_case
@@ -472,12 +479,57 @@ touch averages.out fort.21 fort.25"
     expect_refusal "the driver failed \(exit 3\)" "${scripts}/run_scm_reference.sh" synthetic
     stub_driver_build "${scripts}/scm_driver" 0
     expect_refusal "the driver did not finish in" "${scripts}/run_scm_reference.sh" synthetic
+    echo "stray" > "${synthetic}/v2_slab2_rescaling_off.out"
+    expect_refusal "synthetic/v2_slab2_rescaling_off\.out: not tracked by git" "${scripts}/run_scm_reference.sh" synthetic
     # The input generator of --generate: an example params.dat of 35 values (one missing).
     mkdir "${work}/example"
     { echo "VERSION 2"; printf '%s\n' {1..35}; } > "${work}/example/params.dat"
     expect_refusal "params\.dat has 35 values, not 36" \
       python3 -I -B "${tools_dir}/scm_driver/make_scm_inputs.py" example "${work}/scm_case" "${work}/example"
     [[ ! -e "${work}/scm_case" ]] || fail "the refused generator created ${work}/scm_case"
+    ;;
+  unmodified-targets)
+    repo="${work}/repo"
+    scratch_repo "${repo}" run_propagation_reference.sh run_fine_analysis_reference.sh
+    case_dir="${repo}/tests/reference/case"
+    mkdir -p "${case_dir}/fine_full"
+    printf '%s\n' 'writeSMatrix : LOGICAL : FALSE;' > "${case_dir}/DVR.inp"
+    for file in fortran_stdout.txt fortran_averages.out fortran_fort21.bin fine_full/stdout.txt; do
+      echo "committed" > "${case_dir}/${file}"
+    done
+    commit_all "${repo}" "the references of a case"
+    check=(in_config_of "${repo}/tools/fortran_reference/reference_config.sh" require_unmodified)
+    # What git can restore passes: unchanged files and directories, absent and deleted files.
+    rm "${case_dir}/fortran_averages.out"
+    expect_success "${check[@]}" "${case_dir}/fortran_stdout.txt" "${case_dir}/fine_full" "${case_dir}/absent.txt" \
+      "${case_dir}/fortran_averages.out"
+    echo "edited" >> "${case_dir}/fortran_stdout.txt"
+    expect_refusal "case/fortran_stdout\.txt: differs from the last commit" "${check[@]}" "${case_dir}/fortran_stdout.txt"
+    echo "edited" >> "${case_dir}/fine_full/stdout.txt"
+    expect_refusal "case/fine_full: differs from the last commit" "${check[@]}" "${case_dir}/fine_full"
+    echo "new" > "${case_dir}/fortran_fort25.txt"
+    expect_refusal "fortran_fort25\.txt: not tracked by git" "${check[@]}" "${case_dir}/fortran_fort25.txt"
+    git -C "${repo}" add "${case_dir}/fortran_fort25.txt"
+    expect_refusal "fortran_fort25\.txt: differs from the last commit" "${check[@]}" "${case_dir}/fortran_fort25.txt"
+    echo "new" > "${case_dir}/fine_full/fort.3"
+    git -C "${repo}" checkout -q -- "${case_dir}/fine_full/stdout.txt"
+    expect_refusal "fine_full: not tracked by git \(tests/reference/case/fine_full/fort\.3\)" "${check[@]}" "${case_dir}/fine_full"
+    expect_refusal "require_unmodified: .*elsewhere\.txt is not inside" "${check[@]}" "${work}/elsewhere.txt"
+    GIT_DIR="${work}/no-git" expect_refusal "is not a git checkout" "${check[@]}" "${case_dir}/fortran_stdout.txt"
+    # The run scripts check their targets before they run: the edited file stays as it was.
+    make_install "${work}/install" "touch averages.out fort.21 fort.25 fort.10"
+    export SPODVR_FORTRAN_REF_DIR="${work}/install" SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1
+    scripts="${repo}/tools/fortran_reference"
+    expect_refusal "fortran_stdout\.txt: differs" "${scripts}/run_propagation_reference.sh" case "${work}/run1"
+    [[ ! -e "${work}/run1" && "$(tail -n 1 "${case_dir}/fortran_stdout.txt")" == edited ]] ||
+      fail "the refused propagation ran or overwrote the edited fortran_stdout.txt"
+    expect_refusal "fine_full: not tracked by git" "${scripts}/run_fine_analysis_reference.sh" case full
+    # Deleted (as regenerate_all.sh leaves them) the targets pass, and the runs write them.
+    rm "${case_dir}/fortran_stdout.txt" "${case_dir}/fortran_fort25.txt" "${case_dir}/fine_full/fort.3"
+    git -C "${repo}" rm -q --cached "${case_dir}/fortran_fort25.txt"
+    expect_success "${scripts}/run_propagation_reference.sh" case "${work}/run2"
+    [[ -f "${case_dir}/fortran_stdout.txt" && -f "${case_dir}/fortran_fort25.txt" ]] ||
+      fail "the propagation run did not write its outputs"
     ;;
   *)
     echo "usage: test_reference_tools.sh CASE WORK [CXX] (unknown case ${test_case})" >&2

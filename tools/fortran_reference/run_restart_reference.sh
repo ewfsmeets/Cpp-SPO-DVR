@@ -5,7 +5,8 @@
 # Writes into tests/reference/hardwall_small/:
 #   fortran_restart_stdout.txt   stdout of the restarted run (its probabilities cover 0 .. 14000)
 # and its line in the case's MANIFEST.tsv (inputs: the DVR.inp of both runs, and the data files
-# stage_inputs stages for a CRP or SCM case).
+# stage_inputs stages for a CRP or SCM case). Refuses, before the runs, to overwrite that file if
+# it differs from git (require_unmodified).
 # The wave function files stay in the scratch directory (they are large); a C++ restart from
 # them can be tried by hand with "RestartFormat": "fortran" and "RestartDir": <scratch>/part1.
 #
@@ -18,6 +19,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/reference_config.sh"
 
 (($# <= 1)) || { echo "usage: run_restart_reference.sh [scratch_dir]" >&2; exit 2; }
 case_dir="${FORTRAN_REPO_DIR}/tests/reference/hardwall_small"
+require_unmodified "${case_dir}/fortran_restart_stdout.txt"
 scratch_dir="$(new_scratch_dir "${1:-}")"
 mkdir "${scratch_dir}/part1" "${scratch_dir}/part2"
 

@@ -3,7 +3,8 @@
 The scripts here run the Fortran SPO-DVR code to produce the reference data of the regression
 tests (`tests/reference/`, `tests/crplib/reference/`, `tests/scm/reference/`; the gates are described in
 [docs/validation.md](../../docs/validation.md)). They write straight into those directories: run
-them in a scratch clone or worktree when you only want to experiment. Which Fortran the reference
+them in a scratch clone or worktree when you only want to experiment. They refuse to overwrite a
+file that git could not restore ([below](#what-every-run-checks)). Which Fortran the reference
 is, and why it is built with `-O3`: [docs/validation.md](../../docs/validation.md#reference-data).
 The recipe, in order: [build](#building-a-reference-install) an install,
 [regenerate](#regenerating-all-references) the references, [compare](#comparing-two-reference-trees)
@@ -88,6 +89,11 @@ is committed in [buildinfo/](buildinfo/).
   file, and a `DVR.inp` without the field, refuse. Every run script records the staged files as
   inputs in `MANIFEST.tsv` (`staged_inputs`). The C++ regression tests read the same keys
   relative to the repository root (`tests/reference_case_input.hpp`).
+- **The targets** (`require_unmodified`), before the first run: every file the script writes
+  into the reference trees (and the build's copy `buildinfo/<id>.tsv`) is absent, deleted (as
+  `regenerate_all.sh` leaves it) or as last committed. A modified, staged or untracked file
+  (ignored ones included) refuses: git can always restore what a run replaces. `MANIFEST.tsv` is
+  not checked; `record_manifest` replaces only the lines of the files it records.
 - **The run** (`run_fortran`): exit status 0 and every required output file present (a Fortran
   `STOP` on bad input exits with status 0).
 - **The CRP and SCM driver builds** (`build_fortran_driver`): the install as above, and the
@@ -153,7 +159,10 @@ commit its `commit` column names (git history).
 listed file exists with its recorded sha256: a missing or edited reference, or a case left without
 MANIFEST by an interrupted regeneration, fails there, where the regression tests would skip
 (`FilesMatch`; `ChangedOrMissingFileFails` shows that it catches one changed byte, one deleted file
-and a deleted MANIFEST).
+and a deleted MANIFEST). Its MANIFEST header, list of reference trees and `NOT_A_CASE` are copies
+of refdata.py's, as are the tree lists of `reference_config.sh`, `tools/check_docs.py` and the
+`exclude` of `.pre-commit-config.yaml`: `ctest -R FortranReference.ReferenceListsAgree` fails when
+one differs.
 
 ## The SCM driver
 
@@ -181,10 +190,8 @@ sees the unclamped Z) to 6 bohr in four orientations, an r sweep through P17 and
 (0, 0, zasymp, r, π/2, 0), random points, and 20 random points from Z = 8 bohr up to the plane
 Z = zasymp (6 on it). `ctest -R Scm.ReferenceFiles` checks that every run
 is complete and that the C++ readers read the parameter and slab files bit for bit as the Fortran
-did. `ReferenceManifest.FilesMatch` hashes the files the SCM MANIFESTs list; its check for a case
-without MANIFEST, and `refdata.py compare`, cover only `tests/reference/` and
-`tests/crplib/reference/` so far: after a regeneration, compare the SCM files with `git diff` (a
-rerun is byte-identical).
+did. `ctest -R ReferenceManifest` and `refdata.py compare` cover these cases as they cover the
+others.
 
 ## Regenerating all references
 
@@ -214,15 +221,15 @@ python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected tool
 python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected FILE --no-provenance
 ```
 
-`compare` reads the reference files (`tests/reference/`, `tests/crplib/reference/`) of two
-repository checkouts: `OLD` with the committed references (e.g. the main checkout), `NEW` with
-regenerated ones (e.g. a worktree after `regenerate_all.sh`). It classifies each file by the
-row of the expected-differences file whose glob matches its path (a file that two rows match is
-refused); a file that no row matches must be byte-identical, and a file added in `NEW` always
-fails. It prints one line per file that is not identical (`ok` or `FAIL`, the class, what
-differs: lines, numbers, the largest absolute difference and printed units, a changed line count,
-or for BK files the fraction of the gate-4 scale), a note for each row that matches no file, and
-a summary. Exit status 0 only if every difference is allowed; it takes 4–7 s on the full trees
+`compare` reads the reference files (`tests/reference/`, `tests/crplib/reference/`,
+`tests/scm/reference/`) of two repository checkouts: `OLD` with the committed references (e.g. the
+main checkout), `NEW` with regenerated ones (e.g. a worktree after `regenerate_all.sh`). It
+classifies each file by the row of the expected-differences file whose glob matches its path (a file
+that two rows match is refused); a file that no row matches must be byte-identical, and a file added
+in `NEW` always fails. It prints one line per file that is not identical (`ok` or `FAIL`, the class,
+what differs: lines, numbers, the largest absolute difference and printed units, a changed line
+count, or for BK files the fraction of the gate-4 scale), a note for each row that matches no file,
+and a summary. Exit status 0 only if every difference is allowed; it takes 4–7 s on the full trees
 (measured 2026-11-12).
 
 It also checks the provenance of `NEW` (`--no-provenance` skips only this, e.g. for files copied

@@ -17,19 +17,17 @@
 # Usage: tools/fortran_reference/regenerate_all.sh   (no arguments)
 # Environment: SPODVR_FORTRAN_REF_DIR, SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT (reference_config.sh);
 # TMPDIR (where the scratch directory is made).
-# Run time: about 45 min on 4 threads (2381–2538 s with the r1713 install, 2026-11-12, plus 158 s
-# for the case cu111_dailight_short_lowz, about 2 s for the SCM driver and 154 s for the SCM cases
-# scm_cu111_srp48_small*, added later).
+# Run time: about 45 min on 4 threads (the measurements per step: tools/fortran_reference/README.md
+# "Regenerating all references").
 # Docs: tools/fortran_reference/README.md.
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${tools_dir}/reference_config.sh"
 
 (($# == 0)) || { echo "usage: regenerate_all.sh (no arguments)" >&2; exit 2; }
-reference_trees=(tests/reference tests/crplib/reference tests/scm/reference)
 
 # Untracked or modified files would be deleted or mixed with the regenerated ones.
-dirty="$(git -C "${FORTRAN_REPO_DIR}" status --porcelain -- "${reference_trees[@]}")"
+dirty="$(git -C "${FORTRAN_REPO_DIR}" status --porcelain -- "${FORTRAN_REFERENCE_TREES[@]}")"
 [[ -z "${dirty}" ]] ||
   refuse "the reference trees are not clean (git status: ${dirty//$'\n'/, }); commit, restore or remove those files"
 # What the runs and the CRP driver build will check, before anything is deleted.
@@ -98,11 +96,11 @@ echo "* Scratch directories in ${TMPDIR}"
 start=$(date +%s)
 
 # 1. The generated files of the previous generation, as their MANIFESTs list them.
+manifests=()
 shopt -s nullglob
-manifests=("${FORTRAN_REPO_DIR}"/tests/reference/*/MANIFEST.tsv "${FORTRAN_REPO_DIR}"/tests/crplib/reference/*/MANIFEST.tsv
-  "${FORTRAN_REPO_DIR}"/tests/scm/reference/*/MANIFEST.tsv)
+for tree in "${FORTRAN_REFERENCE_TREES[@]}"; do manifests+=("${FORTRAN_REPO_DIR}/${tree}"/*/MANIFEST.tsv); done
 shopt -u nullglob
-((${#manifests[@]} > 0)) || refuse "no MANIFEST.tsv in ${reference_trees[*]}; restore them from git"
+((${#manifests[@]} > 0)) || refuse "no MANIFEST.tsv in ${FORTRAN_REFERENCE_TREES[*]}; restore them from git"
 python3 -I -B "${tools_dir}/refdata.py" manifest delete "${manifests[@]%/MANIFEST.tsv}"
 
 # 2. Setup (potential-only) runs.

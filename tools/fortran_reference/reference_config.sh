@@ -35,6 +35,9 @@ done
 unset retired_var
 
 FORTRAN_REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# The reference trees (relative to FORTRAN_REPO_DIR), one directory per case: a copy of refdata.py
+# REFERENCE_TREES (ctest FortranReference.ReferenceListsAgree).
+FORTRAN_REFERENCE_TREES=(tests/reference tests/crplib/reference tests/scm/reference)
 
 # The reference every run script uses: an install with the fixed layout bin/spodvr.x, OBJS/ (*.o,
 # *.mod), BUILDINFO.tsv and SHA256SUMS (README.md of this directory). The reference is
@@ -49,8 +52,7 @@ FORTRAN_REF_THREADS=4
 
 # The upstream commit build_fortran_reference.sh builds: svn r1713 (5.24 plus the fine-analysis
 # sign fix). The tree hash identifies the content even if the git-svn mirror is regenerated.
-FORTRAN_MIRROR="${HOME}/work/SPO-DVR"
-FORTRAN_MIRROR="${SPODVR_FORTRAN_MIRROR:-${FORTRAN_MIRROR}}"
+FORTRAN_MIRROR="${SPODVR_FORTRAN_MIRROR:-"${HOME}/work/SPO-DVR"}"
 FORTRAN_BUILD_COMMIT="dce0ecc44a401098528e9ef94c54e1086d393ebb"
 FORTRAN_BUILD_TREE="3784a9530904190af7a804448cec0260f10edcf6"
 FORTRAN_BUILD_SVN="r1713"
@@ -152,6 +154,26 @@ record_manifest() {
     --runtime-drift "$(runtime_drift)" "${inputs[@]}")
 }
 
+# require_unmodified PATH...: refuses unless git can restore what a run script will overwrite: each
+# PATH (file or directory) is absent, deleted (regenerate_all.sh deletes first) or as last committed.
+# MANIFEST.tsv is never checked: record_manifest replaces only the lines of the files it records.
+require_unmodified() {
+  local path relative untracked
+  git -C "${FORTRAN_REPO_DIR}" rev-parse --verify --quiet HEAD > /dev/null ||
+    refuse "${FORTRAN_REPO_DIR} is not a git checkout with a commit; run the script in a clone or worktree"
+  for path in "$@"; do
+    relative="${path#"${FORTRAN_REPO_DIR}/"}"
+    [[ "${relative}" != "${path}" ]] || refuse "require_unmodified: ${path} is not inside ${FORTRAN_REPO_DIR}; fix the call"
+    # A tracked file edited, or added to the index, since the last commit.
+    git -C "${FORTRAN_REPO_DIR}" diff --quiet --diff-filter=d HEAD -- ":(literal)${relative}" ||
+      refuse "${path}: differs from the last commit (git status); commit or restore it before the script overwrites it"
+    # A file git does not track, ignored ones included.
+    untracked="$(git -C "${FORTRAN_REPO_DIR}" ls-files --others -- ":(literal)${relative}")"
+    [[ -z "${untracked}" ]] ||
+      refuse "${path}: not tracked by git (${untracked//$'\n'/, }); commit or delete it before the script overwrites it"
+  done
+}
+
 # check_build_package PACKAGE: the installed PACKAGE is the version that built the install ("-":
 # not recorded, accepted). Driver builds use it: their .mod files are compiler-version specific.
 check_build_package() {
@@ -200,10 +222,7 @@ stage_inputs() {
 # DIR/NAME and sets the field KEY of DIR/DVR.inp to "NAME".
 stage_data() {
   local case_dir="$1" dir="$2" key="$3" name="$4" member="$5" path="" required
-  if [[ -f "${case_dir}/input.json" ]]; then
-    path="$(python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' \
-      "${case_dir}/input.json" "${key}")"
-  fi
+  [[ ! -f "${case_dir}/input.json" ]] || path="$(json_value "${case_dir}/input.json" "${key}")"
   [[ -n "${path}" ]] || return 0
   required="${path}"
   [[ "${member}" == - ]] || required="${path}/${member}"
@@ -211,6 +230,12 @@ stage_data() {
     refuse "${key} ${required} (${case_dir}/input.json) not found; restore it"
   cp -r "${FORTRAN_REPO_DIR}/${path}" "${dir}/${name}"
   set_field "${dir}/DVR.inp" "${key}" "\"${name}\""
+}
+
+# json_value FILE KEY: the value of the top-level KEY of the JSON file FILE ("" when absent), read
+# by Python's json module.
+json_value() {
+  python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$1" "$2"
 }
 
 # staged_inputs DIR [PREFIX]: the inputs stage_inputs put into DIR, one per line as PREFIX<name>:

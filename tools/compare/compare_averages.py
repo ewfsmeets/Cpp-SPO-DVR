@@ -18,7 +18,8 @@ import math
 import sys
 from pathlib import Path
 
-COLUMNS = ("time", "norm", "<Z>", "<r>", "rest norm")  # t, norm, <Z>, <r>, rest norm
+# The five columns of averages.dat in file order (docs/output_files.md).
+COLUMNS = ("time", "norm", "<Z>", "<r>", "rest norm")
 TINY = 1e-300  # the denominator floor: two zeros differ by 0
 
 

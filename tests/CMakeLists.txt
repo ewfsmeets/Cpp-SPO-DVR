@@ -84,6 +84,7 @@ add_reference_tools_test(RegenerateRefusesBeforeDeleting regenerate-refusals)
 add_reference_tools_test(ScmInputsStagedUnderShortNames stage-scm)
 add_reference_tools_test(StagingOfTheCasesUnchanged staged-cases)
 add_reference_tools_test(RunScriptRefusals run-script-refusals)
+add_reference_tools_test(ModifiedTargetsRefused unmodified-targets)
 
 # extract_pes.py (tools/fortran_reference/test_extract_pes.py) on synthetic .pes files: files without
 # SCM records give the output of before, the six SCM records are detected, wrong files refused.
@@ -120,9 +121,14 @@ add_refdata_test(OtherInstallFails install-mismatch)
 add_refdata_test(FineLineWithoutBkInputFails fine-without-fort22)
 add_refdata_test(OverlappingRowsRefused multi-match)
 add_refdata_test(BadExpectedFileRefused refusals)
+# The copies of refdata.py's MANIFEST header, reference trees and NOT_A_CASE (ReferenceManifest.cmake,
+# tools/check_docs.py, reference_config.sh, .pre-commit-config.yaml) agree; planted differences fail.
+add_test(NAME FortranReference.ReferenceListsAgree
+         COMMAND ${Python3_EXECUTABLE} -I -B ${refdata_test} reference-lists
+                 ${CMAKE_CURRENT_BINARY_DIR}/refdata_compare/reference-lists)
 
 # spodvr_compare_wave (tools/compare/test_compare_wave.py): finite files compare as before, a NaN or
-# inf in either file always fails.
+# inf in either file always fails, bad arguments are usage errors and unreadable files are refused.
 if(SPODVR_BUILD_TOOLS)
   set(compare_wave_test ${PROJECT_SOURCE_DIR}/tools/compare/test_compare_wave.py)
   add_test(NAME CompareWave.FiniteFiles
@@ -131,6 +137,9 @@ if(SPODVR_BUILD_TOOLS)
   add_test(NAME CompareWave.NonFiniteValueFails
            COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> non-finite
                    ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/non-finite)
+  add_test(NAME CompareWave.BadArgumentsAndFilesRefused
+           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> arguments
+                   ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/arguments)
 endif()
 
 # The averages comparison of tools/compare_propagation.sh (tools/compare/test_compare_averages.py):

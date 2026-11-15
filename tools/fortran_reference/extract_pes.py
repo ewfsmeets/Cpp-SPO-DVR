@@ -32,6 +32,11 @@ docs: tools/fortran_reference/README.md.
 import math
 import struct
 import sys
+from pathlib import Path
+
+# The gfortran record reader is refdata.py's, in this directory (python3 -I leaves it off sys.path).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from refdata import FormatError, read_records  # noqa: E402
 
 # The records before the potential: dimensions, angular sizes, Z/r and x/y grid ends, thetas,
 # phis, the switching function, the symmetry flag and size, symmetryIndex.
@@ -47,30 +52,6 @@ SCM_RECORDS = (
     ("SlabAtomSize(1:3)", "<3i"),
     ("SCMSlabRefocusMethod", "<i"),
 )
-
-
-class FormatError(Exception):
-    """The file is not a .pes file of the layout above."""
-
-
-def read_records(path):
-    """The payloads of the records of a gfortran unformatted sequential file."""
-    with open(path, "rb") as f:
-        data = f.read()
-    records, pos = [], 0
-    while pos < len(data):
-        (length,) = struct.unpack_from("<i", data, pos)
-        if length < 0:
-            raise FormatError("subrecords (records > 2 GiB) are not supported")
-        if pos + length + 8 > len(data):
-            raise FormatError(f"truncated record at byte {pos}")
-        payload = data[pos + 4 : pos + 4 + length]
-        (trailer,) = struct.unpack_from("<i", data, pos + 4 + length)
-        if trailer != length:
-            raise FormatError(f"corrupt record at byte {pos}")
-        records.append(payload)
-        pos += length + 8
-    return records
 
 
 def unpack(fmt, payload):
@@ -156,7 +137,7 @@ def write_6d(out, header, thetas, phis, values, dims, use_symmetry, n_xy_compute
 
 
 def extract(pes_path, output_path):
-    records = read_records(pes_path)
+    records = read_records(Path(pes_path).read_bytes())
     if not records:
         raise FormatError("the file holds no records")
     nzpot, nr, nx, ny = unpack("<4i", records[0])
