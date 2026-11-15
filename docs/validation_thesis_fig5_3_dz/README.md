@@ -316,9 +316,10 @@ DVR → FBR. Whatever that round trip leaks from j = 0 into (J, m<sub>J</sub> = 
 family's channels. The test (criteria written before anything was computed,
 [criteria.md](scripts/criteria.md#criteria-changes)) runs each code's own angular transform on the
 thesis grid, with exp(−iV dt) → 1: the Fortran routines through a driver linked against the
-reference executable's object files ([scripts/angular_fortran.f90](scripts/angular_fortran.f90)), and
-the C++ `AngularTransform` through a helper linked against `build-cuda`, `build-fast` and
-`build-cuda-fast` ([scripts/angular_check.cpp](scripts/angular_check.cpp)). The Fortran θ nodes equal
+object files of the Fortran 5.19 executable that ran
+([scripts/angular_fortran.f90](scripts/angular_fortran.f90)), and the C++ `AngularTransform` through
+a helper linked against `build-cuda`, `build-fast` and `build-cuda-fast`
+([scripts/angular_check.cpp](scripts/angular_check.cpp)). The Fortran θ nodes equal
 the run's `.pes` header and the strict helper's nodes and weights the strict run's log, bitwise
 ([scripts/angular_matrices.py](scripts/angular_matrices.py)).
 
@@ -414,7 +415,7 @@ a quad-precision site, reproduced exactly. Details: [stages.md](stages.md).
 |---|---|
 | Machine | AMD Ryzen 7 5800X (8 cores / 16 threads), 27.4 GiB RAM, NVIDIA RTX 4070 Ti (12 GiB), Ubuntu 26.04.1 LTS under WSL2 |
 | Compilers | g++ 15.2, nvcc 13.3 (host compiler g++ 15.2), gfortran 15.2; oneMKL 2026.2, cuFFT 12.3, FFTW 3.3.10 |
-| C++ builds | `build-fast` and `build-cuda-fast`: `SPODVR_FAST_MATH=ON`, `-march=native`, the experimental fast builds (README "Build variants"); src unchanged from the build commit `abc47f0` to `HEAD` (clean tree assumed at build time); binaries 3.5 h (CPU) and 2.2 h (GPU) older than their runs |
+| C++ builds | `build-fast` and `build-cuda-fast`: `SPODVR_FAST_MATH=ON`, `-march=native`, the experimental fast builds (README "Build variants"); src unchanged from the build commit `abc47f0` to `e0c231b`, the HEAD at the time (clean tree assumed at build time); binaries 3.5 h (CPU) and 2.2 h (GPU) older than their runs |
 | Fortran | SPO-DVR 5.19, gfortran `-O3 -fopenmp -fdefault-real-8`, FFTW (ESTIMATE plans), built 2026-11-06 11:39 |
 | Input | `input.json` ≡ `DVR.inp` key by key (Title shorter by design); the Fortran's `DVR.inp` is bitwise the committed one |
 | Regression gates | `ctest -R Gate`: build-fast 20 passed, 2 skipped (long), 1 failed; build-cuda-fast 23 passed, 4 skipped, 1 failed. The failure is the hard-wall V<sub>asy</sub> table, 1.6e-14 against 1e-14, in both fast-math builds; the strict `build` passes it. The hard wall is not used here ([data/gates_ctest_summary.txt](data/gates_ctest_summary.txt)) |
@@ -528,9 +529,11 @@ was not part of this validation (docs/performance.md, docs/cuda.md have controll
   (iv) any error common to both codes: a bug ported faithfully looks like agreement.
   (v) code paths this input does not run (next point).
 - **Not exercised by this input**, and the gates that cover it (docs/validation.md): the hard
-  wall PES and the Persson PES (gates 1–4), restarts across the codes (gate 4, `test_restart`), the
-  Fortran fine analysis (gate 5), parallel momentum (E<sub>∥</sub> = 0 here), C2v/C4v/C3v symmetry
-  (C++-only tests), ProjOp ≠ 2 (not ported).
+  wall PES (gates 1–4) and the Persson PES (gates 1 and 2), restarts across the codes (gate 4,
+  `test_restart`), the Fortran fine analysis (gate 5), parallel momentum (E<sub>∥</sub> = 0 here),
+  C2v/C4v/C3v symmetry (C++-only tests; since 2026-11-09 C3v and C4v also in gate 1, the C++
+  potential on the symmetry-reduced grid against the Fortran's full potential), ProjOp ≠ 2 (not
+  ported).
 - **Deviations active in this run** (docs/fortran_deviations.md): the quad-precision sites (grids,
   momenta, kinetic energies, CAP profiles, α and k<sub>Z</sub>, analysis energies), libmvec in the θ grid
   and the Legendre and potential exponentials, oneMKL/cuFFT vs FFTW, LAPACK vs Jacobi for the
@@ -566,7 +569,7 @@ are as recorded.
 The report: `scripts/make_all.sh` regenerates `results.json`, all tables and figures from the
 extracts in [data/](data/) (no run files needed); `--extract` re-reads the run directories and logs;
 `--strict` redoes the strict GPU run's replays and comparison (`strict_gpu.py`); `--angular`
-rebuilds the angular-matrix helpers and the Fortran driver (linked against the reference
+rebuilds the angular-matrix helpers and the Fortran driver (linked against the Fortran 5.19
 executable's object files) and reruns `angular_matrices.py`;
 `--heavy` also rebuilds the helpers and reruns the potential, replay, negative-control,
 `onlyAnalysis`, ψ, thesis and manifest passes. Status of every item:
