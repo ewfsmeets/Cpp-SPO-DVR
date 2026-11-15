@@ -11,6 +11,8 @@
 
 namespace test_support {
 
+// A new directory under the system's temporary directory (tag, process id and a counter in its
+// name), removed with its contents when the object is destroyed.
 class TemporaryDirectory {
  public:
   explicit TemporaryDirectory(std::string_view tag) {

@@ -57,7 +57,7 @@ void print_summary_table(std::ostream& out, const Style& style, const AnalysisBa
                          const ScatteringResults& results) {
   std::vector<std::string> headers = {"E_coll (eV)", "P_scattered", "P_reaction"};
   for (int v = 0; v < basis.n_v(); ++v) headers.push_back("P(v=" + std::to_string(v) + ")");
-  for (const char* h : {"<E_vib> (eV)", "<E_rot> (eV)", "<E_dif> (eV)", ""}) headers.push_back(h);
+  for (const std::string h : {"<E_vib> (eV)", "<E_rot> (eV)", "<E_dif> (eV)", ""}) headers.push_back(h);
   Table table(headers);
   const int stride = energy_stride(static_cast<int>(results.energies.size()));
   for (std::size_t i = 0; i < results.energies.size(); i += stride) {

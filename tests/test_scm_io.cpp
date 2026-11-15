@@ -338,6 +338,8 @@ TEST(ScmParameterFileErrors, ScmD8OnlyVersion2) {
   expect_parameter_file_error(parameter_file("VERSION 3"), {"VERSION 3", "only version 2"});
 }
 
+// A params.dat that ends inside a layer or has a value that is not a real is an error naming the
+// line and the layer.
 TEST(ScmParameterFileErrors, ShortFileOrBadValue) {
   expect_parameter_file_error("VERSION 2\n" + example_layer + "\n", {"end of the file", "P1–P18 of layer 2"});
   expect_parameter_file_error("VERSION 2\n1 2 3\n", {"end of the file", "P1–P18 of layer 1"});
@@ -363,6 +365,7 @@ TEST(ScmParameterFileErrors, MissingFile) {
 // Errors in the position file and its selection
 // ---------------------------------------------------------------------------------------------
 
+// Only SlabSurfStruct FCC111 is accepted, case-sensitive, as in the Fortran (SCM_IO.f90 GetSurfaceParameters).
 TEST(ScmPositionFileErrors, Structure) {
   expect_position_file_error("s BCC110\n 1 1 2 1 3 2\n 4.8\n", 1, 16.0, "PosFilepath", {"SlabSurfStruct", "BCC110"});
   expect_position_file_error("s fcc111\n 1 1 2 1 3 2\n 4.8\n", 1, 16.0, "PosFilepath", {"SlabSurfStruct", "fcc111"});
@@ -423,6 +426,8 @@ TEST(ScmPositionFileErrors, ScmD6LayerAtLeast1) {
   expect_position_file_error(outside, 1, 16.0, "PosFilepath", {"atom 2 of configuration 1", "layer 0"});
 }
 
+// A position file that ends too early, or has a value of the wrong type, is an error saying where
+// (the line, and the atom and configuration or the header).
 TEST(ScmPositionFileErrors, ShortFileOrBadValue) {
   expect_position_file_error("s FCC111\n 1 1 2 1 3 2\n 4.8\n 0.0 0.0 0.1 0.0 0.0 0.0 1\n", 1, 16.0, "PosFilepath",
                              {"end of the file", "atom 2 of configuration 1"});

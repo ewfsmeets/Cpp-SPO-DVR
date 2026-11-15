@@ -14,6 +14,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -50,7 +51,7 @@ inline double printed_half_unit(double fortran_value) {
 // maximum): |c - f| <= max(half a printed unit of f, 1e-14). At k = 0 or at the edge the value can be
 // FFT rounding noise, depending on the energy range and dZ (scm_cu111_srp48_small: 2.7e-15 at k = 0),
 // where the printed digits of the noise mean nothing: differences below 1e-14 absolute are accepted
-// (the user's decision, 2026-11-15). NaN on either side fails.
+// (docs/validation.md, gate 3). NaN on either side fails.
 inline constexpr double momentum_noise_floor = 1e-14;
 inline double momentum_tolerance(double fortran_value) {
   return nan_aware_max(printed_half_unit(fortran_value), momentum_noise_floor);
@@ -117,7 +118,7 @@ inline std::optional<FortranPropagationReference> read_fortran_reference(const s
   FortranPropagationReference ref;
   std::string line;
   while (std::getline(file, line)) {
-    const auto has = [&](const char* text) { return line.find(text) != std::string::npos; };
+    const auto has = [&](std::string_view text) { return line.find(text) != std::string::npos; };
     if (has("* Norm initial wave packet (Z,r) ="))
       ref.norm = parse_fortran_real(last_token(line));
     else if (has("- at k = 0"))

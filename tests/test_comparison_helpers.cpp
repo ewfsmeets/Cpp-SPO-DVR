@@ -1,7 +1,6 @@
-// Tests: the NaN-aware maximum of the test comparisons (tests/comparison.hpp) and the gate
-// comparisons built on it: a NaN on either side fails gate 1b (the 6D potential, pes_gate.hpp),
-// gate 3 (averages) and gate 4 (printed probabilities, BK coefficients); for finite values the
-// maximum is std::max, bit for bit.
+// Tests: the NaN-aware maximum of tests/comparison.hpp (std::max bit for bit on finite values) and
+// the gates built on it: a NaN on either side fails gate 1b (the 6D potential, pes_gate.hpp), gate 3
+// (averages) and gate 4 (printed probabilities, BK coefficients).
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
@@ -45,6 +44,7 @@ PropagationRun run_with_averages() {
   return run;
 }
 
+// The Fortran reference that run_with_averages() matches (i_low and i_high 1-based).
 FortranPropagationReference fortran_reference() {
   FortranPropagationReference ref;
   ref.norm = 1.0;
@@ -80,6 +80,7 @@ std::vector<FortranEnergyBlock> fortran_probabilities() {
 // Two analysis steps of two BK coefficients.
 std::vector<std::vector<cplx>> bk_records() { return {{{0.5, 0.1}, {0.2, -0.3}}, {{0.4, 0.0}, {-0.1, 0.25}}}; }
 
+// A run with the BK coefficients bk_records().
 PropagationRun run_with_bk() {
   PropagationRun run;
   run.bk = bk_records();

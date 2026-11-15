@@ -55,7 +55,7 @@ nlohmann::json with_times(nlohmann::json json, double t_start, double t_end, int
   return json;
 }
 
-nlohmann::json restart_from(nlohmann::json json, const fs::path& dir, const char* format = "native") {
+nlohmann::json restart_from(nlohmann::json json, const fs::path& dir, const std::string& format = "native") {
   json["NewCalc"] = false;
   json["RestartDir"] = dir.string();
   json["RestartFormat"] = format;
@@ -79,8 +79,8 @@ TEST(CudaRestart, SplitGpuRunIsBitwiseIdenticalToTheUnsplitGpuRun) {
                 root / "second_fortran", "cuda", err),
             0)
       << err;
-  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "probabilities_rovib.tsv",
-                           "probabilities_diffraction.tsv", "fort.9", "fort.21"}) {
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "probabilities_rovib.tsv",
+                                 "probabilities_diffraction.tsv", "fort.9", "fort.21"}) {
     EXPECT_EQ(read_file(root / "full" / name), read_file(root / "second" / name)) << name;
     EXPECT_EQ(read_file(root / "full" / name), read_file(root / "second_fortran" / name)) << name;
   }

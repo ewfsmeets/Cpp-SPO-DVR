@@ -1,7 +1,6 @@
-// Tests: the SCM set-up diagnostics (scm_diagnostics.*): SCM D3 (ΔV at V_asy and on its plane), D10
-// (the cell-edge jump), D15 (ΔV below the CRP's Zmin) and the slab statistics, on stub potentials with
-// known values and on the SRP48 data set with the example slab (also with an atom raised into the gas
-// phase); the scans do not depend on the threads. SCM D9: tests/test_scm_potential.cpp.
+// Tests: the SCM set-up diagnostics (scm_diagnostics.*: SCM D3, D10, D15, the slab statistics) on stub
+// potentials with known values and on SRP48 with the example slab (also with an atom raised into the
+// gas phase); the scans do not depend on the threads. SCM D9: tests/test_scm_potential.cpp.
 #include <gtest/gtest.h>
 
 #include <omp.h>
@@ -41,6 +40,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
+// The bit pattern of x, for bitwise comparisons (−0 differs from +0, a NaN equals itself).
 std::uint64_t bits(double x) { return std::bit_cast<std::uint64_t>(x); }
 
 const fs::path& example_directory = test_support::scm_example_directory;
@@ -121,11 +121,13 @@ struct ScmSetup {
         angular(make_angular_grid(config)) {}
 };
 
+// The SCM example (SRP48, examplePosfile.dat), set up once for every test that uses it.
 const ScmSetup& example() {
   static const ScmSetup setup(scm_input(example_directory / "examplePosfile.dat"));
   return setup;
 }
 
+// Expects two points to be bitwise equal in every coordinate.
 void expect_same_point(const ScmPoint& a, const ScmPoint& b) {
   EXPECT_EQ(bits(a.u), bits(b.u));
   EXPECT_EQ(bits(a.v), bits(b.v));
@@ -202,7 +204,7 @@ TEST(ScmDiagnostics, ScmD3ChangedAsymptoticPointsAreAnError) {
   EXPECT_FALSE(unchanged.largest_on_plane.has_value());
   EXPECT_NO_THROW(require_unchanged_asymptotic_potential(unchanged, slab, ScmSlabStatistics{}));
   const ScmAsymptoticCheck unscaled = check_asymptotic_potential(scm, crp, 1.0, s.config, s.grids, s.angular, true);
-  EXPECT_GT(std::abs(unscaled.largest_on_plane->value - plane.value), 1e-3);  // the control: the CRP at (u, v)
+  EXPECT_GT(std::abs(unscaled.largest_on_plane.value().value - plane.value), 1e-3);  // the control: the CRP at (u, v)
 }
 
 // A NaN ΔV at a V_asy point is an error, and the NaN is the reported maximum.
@@ -423,7 +425,8 @@ TEST(ScmDiagnostics, ScansDoNotDependOnTheThreads) {
     std::vector<ScmExtreme> planes, holes, outside;
     for (const int n : {1, 3, 4}) {
       omp_set_num_threads(n);
-      planes.push_back(*check_asymptotic_potential(scm, crp, 1.0, s.config, s.grids, s.angular, true).largest_on_plane);
+      planes.push_back(
+          check_asymptotic_potential(scm, crp, 1.0, s.config, s.grids, s.angular, true).largest_on_plane.value());
       holes.push_back(check_holes_below_z_min(scm, crp, 1.0, crp_range(-1.7, 0.0, 100.0), s.grids, s.angular).lowest);
       outside.push_back(
           check_holes_outside_r_range(scm, crp, 1.0, crp_range(-1.7, 0.5, 2.0), s.grids, s.angular).lowest);
@@ -446,7 +449,7 @@ TEST(ScmDiagnostics, ScansDoNotDependOnTheThreads) {
   // The ties: the first point of the first row with |ΔV| = 1 (r > 1.5); a hole of −1 from the first Z.
   omp_set_num_threads(4);
   const ScmExtreme plane =
-      *check_asymptotic_potential(ties, crp, 1.0, s.config, s.grids, s.angular, true).largest_on_plane;
+      check_asymptotic_potential(ties, crp, 1.0, s.config, s.grids, s.angular, true).largest_on_plane.value();
   omp_set_num_threads(threads);
   int first_row = 0;
   while (!(s.grids.r[first_row] > 1.5)) ++first_row;
@@ -495,8 +498,8 @@ TEST(ScmDiagnostics, ScmD3ExampleLeavesTheAsymptoticPotentialUnchanged) {
   EXPECT_EQ(d.slab.top_layer_atoms + d.slab.second_layer_atoms, std::ssize(s.potential.slab().atoms));
   ASSERT_TRUE(d.holes.has_value());
   EXPECT_EQ(d.holes->planes, 0);
-  // Beyond Rmax (4.35 bohr) the lowest V − V_CRP lies in the r absorber (ROptStart = 4.2 bohr), as Q3's
-  // second region (r = 6–9.8 bohr) does: −232 eV at Z = 1.55 bohr, r = 5.8 bohr, θ = 57.4°.
+  // Beyond Rmax (4.35 bohr) the lowest V − V_CRP lies in the r absorber (ROptStart = 4.2 bohr), as the
+  // second region of scm_open_questions.md Q3 (r = 6–9.8 bohr) does; the point: fortran_deviations.md SCM D15.
   ASSERT_TRUE(d.outside_r_range.has_value());
   EXPECT_GT(d.outside_r_range->lowest.at.r, d.outside_r_range->r_max);
   EXPECT_TRUE(d.outside_r_range->in_r_absorber);

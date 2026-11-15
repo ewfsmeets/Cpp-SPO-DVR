@@ -238,8 +238,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
 
 // Fortran input fields of features that are not available in this program.
 void reject_unsupported_keys(JsonReader& in) {
-  for (const char* key : {"SystemMix", "UseRCutOff", "write2DPES"}) in.reject_logical_if_true(key);
-  for (const char* key :
+  for (const std::string key : {"SystemMix", "UseRCutOff", "write2DPES"}) in.reject_logical_if_true(key);
+  for (const std::string key :
        {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES", "PESMixingAlfa"})
     in.reject_if_present(key);
 }
@@ -290,9 +290,9 @@ void require_low_z_absorber(const JsonReader& in, const InputParameters& p, cons
 // potential is built before validate_input; ScmCrpPotential checks the files. Fortran: InputNew.f90 ReadInput
 void check_scm_keys(const JsonReader& in, const InputParameters& p, bool scm) {
   if (!scm) {
-    for (const char* key :
+    for (const std::string key :
          {"DistortedPESMode", "SCMParFilepath", "PosFilepath", "PosFileSlabNum", "EnableSurfExpan", "SCMCutoff"})
-      if (in.contains(key)) throw InputError(key, std::string(key) + " is only used with SystemID CRPDistrtSurface");
+      if (in.contains(key)) throw InputError(key, key + " is only used with SystemID CRPDistrtSurface");
     return;
   }
   // SCM D7: the Fortran stops for every other mode too ("Unknown mode for distorted PES").
@@ -336,8 +336,8 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
   check_scm_keys(in, p, scm);
 
   if (p.do_flux_analysis) {
-    for (const char* key : {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"})
-      if (!in.contains(key)) throw InputError(key, std::string(key) + " must be present");
+    for (const std::string key : {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"})
+      if (!in.contains(key)) throw InputError(key, key + " must be present");
   }
 
   const std::pair<std::string, std::string> cap_keys[] = {

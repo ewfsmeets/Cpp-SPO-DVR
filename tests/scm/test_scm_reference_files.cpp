@@ -47,12 +47,12 @@ TEST(ReferenceFiles, DriverRunsAreComplete) {
     const std::ptrdiff_t points = std::ssize(scm_test::read_points(scm_test::points_file(run)));
     EXPECT_GT(points, 0);
     EXPECT_EQ(output.text.at("points"), std::to_string(points));
-    for (const char* tag : {"x", "y", "delta_v", "v_crp", "v_total"})
+    for (const std::string tag : {"x", "y", "delta_v", "v_crp", "v_total"})
       EXPECT_EQ(std::ssize(output.values.at(tag)), points) << tag;
     const int atoms = std::stoi(output.text.at("atoms"));
     EXPECT_GT(atoms, 0);
     EXPECT_EQ(std::ssize(output.atom_layers), atoms);
-    for (const char* tag : {"distorted_x", "distorted_y", "distorted_z", "ideal_x", "ideal_y", "ideal_z"})
+    for (const std::string tag : {"distorted_x", "distorted_y", "distorted_z", "ideal_x", "ideal_y", "ideal_z"})
       EXPECT_EQ(std::ssize(output.values.at(tag)), atoms) << tag;
     EXPECT_EQ(output.values.at("parameter_layer1").size(), 18U);
     EXPECT_EQ(output.values.at("parameter_layer2").size(), 18U);

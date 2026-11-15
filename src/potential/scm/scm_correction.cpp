@@ -28,8 +28,8 @@ double unswitched_pair_energy(const ScmPairTerms& terms, double q) {
   return -(cubic * std::exp(-(terms.decay * q)));
 }
 
-// h₁,₂ = (X, Y, Z) ∓ ½r (sin θ cos φ, sin θ sin φ, cos θ), each offset the Fortran's left-to-right
-// product ((0.5·r)·sin θ)·cos φ. Fortran: SCM_Wrapper.f90 ConvertCoMToXYZ
+// h₁,₂ = (X, Y, Z) ∓ ½r (sin θ cos φ, sin θ sin φ, cos θ) with the unclamped Z and r (SCM D15), each
+// offset the Fortran's left-to-right product ((0.5·r)·sin θ)·cos φ. Fortran: SCM_Wrapper.f90 ConvertCoMToXYZ
 HydrogenPair hydrogen_positions(double x, double y, double z, double r, double theta, double phi) {
   const double sin_theta = std::sin(theta);
   const double cos_theta = std::cos(theta);
@@ -115,6 +115,7 @@ double ScmCorrection::value_hartree(double x_cartesian, double y_cartesian, doub
   const HydrogenPair h_ideal = rescaling_factor_ ? to_ideal_frame(h_distorted, *rescaling_factor_) : h_distorted;
   const std::array<ScmPairTerms, 2> terms = {scm_pair_terms(layers_[0], r), scm_pair_terms(layers_[1], r)};
   double delta_v = +0.0;  // Fortran: potE = 0.0 (a slab without atoms gives +0, not −0)
+  // Every atom in file order, also far ones with f = C: (ΔV − C) + C is not ΔV in floating point.
   for (const ScmAtom& atom : atoms_) {
     const ScmPairTerms& pair = terms[atom.layer - 1];
     for (int a = 0; a < 2; ++a) {  // H atom 1, then 2

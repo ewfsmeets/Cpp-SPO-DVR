@@ -65,7 +65,7 @@ TEST(Input, UnknownKeyIsAnError) {
 }
 
 TEST(Input, MissingRequiredKeyIsAnError) {
-  for (const char* key : {"Title", "nZ", "TolSp", "writeRDProbs", "ZSpOptEnd"}) {
+  for (const std::string key : {"Title", "nZ", "TolSp", "writeRDProbs", "ZSpOptEnd"}) {
     Json json = reference_json();
     json.erase(key);
     expect_input_error(json, key);
@@ -91,7 +91,7 @@ TEST(Input, IntegerAcceptedForRealKey) {
 }
 
 TEST(Input, UnsupportedFeatures) {
-  for (const char* key : {"SystemMix", "UseRCutOff", "write2DPES"}) {
+  for (const std::string key : {"SystemMix", "UseRCutOff", "write2DPES"}) {
     Json json = reference_json();
     json[key] = false;
     EXPECT_NO_THROW((void)build(json)) << key;
@@ -184,7 +184,7 @@ TEST(Input, ScmKeysValid) {
   EXPECT_EQ(c.derived.system.lattice_constant_x, 4.8896663475);  // a_T, line 3 of the slab file
 
   Json json = scm_json();
-  for (const char* key : {"DistortedPESMode", "PosFileSlabNum", "EnableSurfExpan", "SCMCutoff"}) json.erase(key);
+  for (const std::string key : {"DistortedPESMode", "PosFileSlabNum", "EnableSurfExpan", "SCMCutoff"}) json.erase(key);
   c = build(json);
   EXPECT_EQ(c.input.scm.mode, 1);
   EXPECT_EQ(c.input.scm.configuration, 1);
@@ -243,7 +243,7 @@ TEST(Input, ScmD7OnlyMode1) {
 // SCM D12: both paths are required (the Fortran defaults to ./params.dat and ./SlabPos.dat); a path
 // that does not name a readable file is an error naming its key.
 TEST(Input, ScmD12PathsRequired) {
-  for (const char* key : {"SCMParFilepath", "PosFilepath"}) {
+  for (const std::string key : {"SCMParFilepath", "PosFilepath"}) {
     SCOPED_TRACE(key);
     Json json = scm_json();
     json.erase(key);
@@ -310,7 +310,7 @@ TEST(Input, ScmSlabNumberAndCutoff) {
 // becomes the grid's lattice constant and s = a_T/a₀. Without rescaling it is not used.
 TEST(Input, ScmD6SlabLatticeConstantPositiveWhenRescaling) {
   const test_support::TemporaryDirectory directory("scm_input");
-  for (const char* lattice_constant : {"0.0", "-4.8896663475"}) {
+  for (const std::string lattice_constant : {"0.0", "-4.8896663475"}) {
     SCOPED_TRACE(lattice_constant);
     Json json = scm_json();
     json["PosFilepath"] = edited_example_slab(
@@ -420,7 +420,7 @@ TEST(Input, SwitchingReplacesZAsymptotic) {
 
 // flux Q1: a flux energy range that ends at or below EMaxWP is valid (the Fortran check rejects
 // every such range); the wave packet spans 0.2..0.6 eV.
-TEST(Input, FluxEnergyRangeInsideTheWavePacketIsValid) {
+TEST(Input, FluxQ1EnergyRangeInsideTheWavePacketIsValid) {
   Json json = reference_json();
   json["doFluxAnalysis"] = true;
   json["rFluxAnalysis"] = 3.05;
@@ -492,9 +492,9 @@ TEST(Input, LowZAbsorberStrengths) {
 
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
-  const char* name;
+  std::string name;
   std::function<void(Json&)> modify;
-  const char* parameter;
+  std::string parameter;
 };
 
 void PrintTo(const Violation& v, std::ostream* os) { *os << v.name; }
@@ -566,10 +566,10 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"FluxOffGrid", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.01; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis"},
         Violation{"FluxEMin", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.1; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna"},
         // flux Q1: EMaxFluxAna above EMaxWP (0.6 eV) is rejected.
-        Violation{"FluxEMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.7; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna"},
+        Violation{"FluxQ1EMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.7; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna"},
         // flux Q2: a zero or negative energy spacing is rejected (the Fortran accepts 0).
-        Violation{"FluxDeltaZero", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.0; }, "DeltaEFluxAna"},
-        Violation{"FluxDeltaNegative", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = -0.01; }, "DeltaEFluxAna"},
+        Violation{"FluxQ2DeltaZero", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.0; }, "DeltaEFluxAna"},
+        Violation{"FluxQ2DeltaNegative", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = -0.01; }, "DeltaEFluxAna"},
         Violation{"FluxDelta", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.5; }, "DeltaEFluxAna"},
         Violation{"FluxROpt", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 5.0; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis"},
         Violation{"EMinWP", [](Json& j) { j["EMinWP"] = 0.0; }, "EMinWP"},

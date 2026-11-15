@@ -31,6 +31,7 @@ using spodvr::testing::nan_aware_max;
 
 namespace {
 
+// The bit pattern of x, for bitwise comparisons (−0 differs from +0, a NaN equals itself).
 std::uint64_t bits(double x) { return std::bit_cast<std::uint64_t>(x); }
 
 // The CRP data set every reference run used: potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v (SRP48).
@@ -72,6 +73,8 @@ struct RunValues {
   std::vector<PointValues> points;
 };
 
+// The program's values (and those of the controls) at the points of a reference run, next to the
+// values the Fortran driver wrote.
 RunValues evaluate(const ReferenceRun& run) {
   RunValues result;
   result.name = run.output.string();
@@ -184,7 +187,7 @@ TEST(ScmPotentialReference, ScmD4ValueIsCrpPlusDeltaVInEvBitwise) {
   for (const RunValues& run : example_runs()) {
     for (const PointValues& v : run.points) {
       ++compared;
-      if (bits(v.total) != bits(v.crp + v.delta_v_fortran / 0.036749308286)) ++differ;
+      if (bits(v.total) != bits(v.crp + units::precise.hartree_to_ev(v.delta_v_fortran))) ++differ;
     }
   }
   EXPECT_EQ(compared, 768);

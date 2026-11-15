@@ -43,7 +43,7 @@ TEST(FortranReal, IsCorrectlyRounded) {
 }
 
 TEST(FortranReal, RejectsOtherText) {
-  for (const char* text : {"", "+", ".", "e5", "1e", "1.0+3", "1q0", "abc", "1.0x", "inf", "nan", "1,0", "--1"})
+  for (const std::string text : {"", "+", ".", "e5", "1e", "1.0+3", "1q0", "abc", "1.0x", "inf", "nan", "1,0", "--1"})
     EXPECT_FALSE(parse_fortran_real(text).has_value()) << text;
 }
 

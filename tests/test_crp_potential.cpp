@@ -257,7 +257,7 @@ TEST(CrpPotential, RangeReportAndSetupReport) {
   std::ostringstream out;
   print_crp_data_set(out, Style{}, pes.summary(), range);
   const std::string text = out.str();
-  for (const char* expected : {"CRP DATA SET", "C6v", "18 (18)", "22 of 32", "21 of 80", "0 of 2560"})
+  for (const std::string expected : {"CRP DATA SET", "C6v", "18 (18)", "22 of 32", "21 of 80", "0 of 2560"})
     EXPECT_NE(text.find(expected), std::string::npos) << expected << " in\n" << text;
 
   // Analysis-only runs: no 6D points, only the r line.

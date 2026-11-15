@@ -29,6 +29,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
+// The bit pattern of x, for bitwise comparisons (−0 differs from +0, a NaN equals itself).
 std::uint64_t bits(double x) { return std::bit_cast<std::uint64_t>(x); }
 
 const fs::path example_directory =
@@ -53,6 +54,7 @@ constexpr double a = 4.9;        // bohr, the lattice constant of the CRP
 constexpr double spacing = 3.9;  // bohr, its first interlayer spacing
 constexpr double third = 1.0 / 3.0;
 
+// The CRP's system parameters: a C3v lattice of constant a, skew angle 60°, z_asymptotic 10 bohr.
 SystemParameters crp_parameters() { return {a, a, 10.0, pi / 3.0, "C3v"}; }
 
 // A C3v summary: layer 2 under (1/3, 1/3), one spacing below; with c6v, a C6v one (no second layer).
@@ -170,9 +172,8 @@ TEST(ScmLatticeCheck, ScmD9NanFails) {
 // The potential on the SRP48 data set with the example slab
 // ---------------------------------------------------------------------------------------------
 
-// The example slab lies on the SRP48 lattice within 1.2e-6 bohr (its bohr constant differs from the
-// CRP library's by 7.2e-8 relative; its farthest kept atom is 15.8 bohr from the origin): accepted
-// without a warning; both layers are checked.
+// The example slab lies on the SRP48 lattice within 1.2e-6 bohr (the cause, a bohr constant 7.2e-8
+// apart: fortran_deviations.md SCM D9): accepted without a warning; both layers are checked.
 TEST(ScmCrpPotential, ScmD9ExampleSlabIsOnTheSrp48Lattice) {
   const ScmCrpPotential potential(srp48, example_input(true));
   const ScmLatticeCheck& check = potential.lattice_check();

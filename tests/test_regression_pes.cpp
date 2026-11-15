@@ -318,6 +318,7 @@ struct ScmTermsAtPoint {
   double delta_v;                 // ΔV/Constants_eV2Ha
 };
 
+// The two terms of V at each reference point of case c, each computed on its own.
 std::vector<ScmTermsAtPoint> scm_terms_at_points(const Calculation& c, const test::PesReference& ref) {
   const ScmCrpPotential& pes = scm_potential(c);
   const ScmCorrection correction = correction_with(pes, pes.scm_parameters());
@@ -353,6 +354,7 @@ PesGateResult scm_gate(const std::string& name, const std::vector<double>& value
                             potential_tolerance_of(name));
 }
 
+// Gate 1b of the SCM cases, one instance per case name.
 class RegressionPesScm : public RegressionPes {};
 
 }  // namespace

@@ -7,6 +7,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <vector>
 
@@ -22,10 +23,10 @@ using fortran_text::ListStatement;
 using fortran_text::ReadError;
 
 // The input keys that errors name (the Fortran's DVR.inp names).
-constexpr const char* parameter_file_key = "SCMParFilepath";
-constexpr const char* position_file_key = "PosFilepath";
-constexpr const char* configuration_key = "PosFileSlabNum";
-constexpr const char* cutoff_key = "SCMCutoff";
+constexpr std::string_view parameter_file_key = "SCMParFilepath";
+constexpr std::string_view position_file_key = "PosFilepath";
+constexpr std::string_view configuration_key = "PosFileSlabNum";
+constexpr std::string_view cutoff_key = "SCMCutoff";
 
 // The surface layers the correction uses. Fortran: SCM_Data%UsedLayers (= 2, never changed)
 constexpr int used_layers = 2;
@@ -34,23 +35,24 @@ constexpr int values_per_layer = 18;
 // Lines before the first configuration of a position file. Fortran: DummyReadSlabFile
 constexpr int header_lines = 3;
 
-[[noreturn]] void fail(const char* key, const std::filesystem::path& file, const std::string& message) {
-  throw InputError(key, file.string() + ": " + message);
+// An error in a data file: the input error naming `key`, with the file and what is wrong.
+[[noreturn]] void fail(std::string_view key, const std::filesystem::path& file, const std::string& message) {
+  throw InputError(std::string(key), file.string() + ": " + message);
 }
 
 // A reading error (its message names the file and line) with what was being read appended.
-[[noreturn]] void fail_reading(const char* key, const ReadError& error, const std::string& what) {
-  throw InputError(key, std::string(error.what()) + " (" + what + ")");
+[[noreturn]] void fail_reading(std::string_view key, const ReadError& error, const std::string& what) {
+  throw InputError(std::string(key), std::string(error.what()) + " (" + what + ")");
 }
 
 // Opens a data file for reading; a missing or unreadable file is an input error naming `key`.
-ListDirectedReader open_reader(const char* key, const std::filesystem::path& file) {
+ListDirectedReader open_reader(std::string_view key, const std::filesystem::path& file) {
   std::error_code ignored;
   if (!std::filesystem::is_regular_file(file, ignored)) fail(key, file, "no such file");
   try {
     return ListDirectedReader(file);
   } catch (const ReadError& e) {
-    throw InputError(key, e.what());
+    throw InputError(std::string(key), e.what());
   }
 }
 
@@ -272,7 +274,7 @@ ScmParameters read_scm_parameters(const std::filesystem::path& file) {
       ++layer_number;
     }
   } catch (const ReadError& e) {
-    throw InputError(parameter_file_key, e.what());
+    throw InputError(std::string(parameter_file_key), e.what());
   }
   int layer_number = 1;
   for (const ScmLayerParameters& layer : parameters.layers) require_clamp_range(file, layer, layer_number++);
@@ -280,9 +282,10 @@ ScmParameters read_scm_parameters(const std::filesystem::path& file) {
 }
 
 ScmSlab read_scm_slab(const std::filesystem::path& file, int configuration, double cutoff) {
-  if (!(cutoff > 0.0)) throw InputError(cutoff_key, std::format("the cut-off must be positive, got {} bohr", cutoff));
+  if (!(cutoff > 0.0))
+    throw InputError(std::string(cutoff_key), std::format("the cut-off must be positive, got {} bohr", cutoff));
   if (configuration < 1) {  // the Fortran reads configuration 1 (SCM D6)
-    throw InputError(configuration_key,
+    throw InputError(std::string(configuration_key),
                      std::format("the configuration number must be at least 1, got {}", configuration));
   }
 

@@ -1,6 +1,7 @@
 #pragma once
 // Reading text files the way gfortran's list-directed READ(unit,*) does (the subset that the CRP
-// data-set files need). Fortran: the READ statements of CRP_Wrapper.f90 and CRP_C*v_*Surface.f90.
+// data-set files and the SCM files need). Fortran: the READ statements of CRP_Wrapper.f90,
+// CRP_C*v_*Surface.f90 and SCM_IO.f90.
 
 #include <filesystem>
 #include <optional>

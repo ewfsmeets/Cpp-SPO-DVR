@@ -23,7 +23,7 @@ class ScmCrpPotential final : public Potential {
  public:
   // Reads the data set and the SCM files (relative to the working directory) and checks them (SCM
   // D6, D9, D14); throws InputError naming the key. Fortran: InitialiseDistPESModule,
-  // GetCRPDistSurfParams (DistortedSurfaceWrapper.f90), SetSCMCRPParameters, SetupSCMModule
+  // GetCRPDistSurfParams (DistortedSurfaceWrapper.f90), SetSCMCRPParameters, SetupSCMModule (SCM_Wrapper.f90)
   ScmCrpPotential(const std::filesystem::path& data_set, const ScmInput& input);
 
   // V in eV in the Fortran's order: (x, y), the CRP at (u/s, v/s), then ΔV added; r is an r grid

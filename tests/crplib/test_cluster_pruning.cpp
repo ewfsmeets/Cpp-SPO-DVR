@@ -9,6 +9,7 @@
 // cut-off distance changes the sum: a wrong boundary decision shows up.
 #include <gtest/gtest.h>
 
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -19,6 +20,7 @@
 #include <numbers>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -43,8 +45,9 @@ bool same_bits(const RepulsiveValue& a, const RepulsiveValue& b) {
 enum class Variant { c6v, c3v, c4v, c4v_negative_spacing };
 
 std::string name(Variant v) {
-  constexpr const char* names[] = {"C6v (1 layer)", "C3v (4 layers)", "C4v (2 layers)", "C4v (relative spacing)"};
-  return names[static_cast<int>(v)];
+  constexpr std::array<std::string_view, 4> names = {"C6v (1 layer)", "C3v (4 layers)", "C4v (2 layers)",
+                                                     "C4v (relative spacing)"};
+  return std::string(names[static_cast<int>(v)]);
 }
 
 DataSet variant_data_set(Variant v) {

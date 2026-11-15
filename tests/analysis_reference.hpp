@@ -11,6 +11,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -62,7 +63,7 @@ inline std::vector<FortranEnergyBlock> read_fortran_probabilities(const std::fil
   std::string section;
   std::string line;
   while (std::getline(file, line)) {
-    const auto has = [&](const char* text) { return line.find(text) != std::string::npos; };
+    const auto has = [&](std::string_view text) { return line.find(text) != std::string::npos; };
     if (has(" total energy =")) {
       blocks.emplace_back();
       blocks.back().total_energy = last_token(line);

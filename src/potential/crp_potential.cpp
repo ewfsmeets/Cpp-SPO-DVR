@@ -3,6 +3,8 @@
 #include "potential/crp_potential.hpp"
 
 #include <format>
+#include <string>
+#include <string_view>
 
 #include "core/error.hpp"
 #include "crplib/atom_surface.hpp"
@@ -15,7 +17,7 @@ namespace spodvr {
 
 namespace {
 
-constexpr const char* data_set_key = "CRPlibDataSet";
+constexpr std::string_view data_set_key = "CRPlibDataSet";
 
 std::string unit_name(crplib::LengthUnit unit) { return unit == crplib::LengthUnit::bohr ? "bohr" : "angstrom"; }
 
@@ -34,7 +36,7 @@ crplib::DataSet read_checked(const std::filesystem::path& directory) {
   try {
     return crplib::read_data_set(directory);
   } catch (const crplib::DataError& e) {
-    throw InputError(data_set_key, e.what());
+    throw InputError(std::string(data_set_key), e.what());
   }
 }
 
@@ -77,9 +79,9 @@ CrpPotential::CrpPotential(const std::filesystem::path& data_set) {
   try {
     wrapper_ = std::make_unique<const crplib::QdWrapper>(data);
   } catch (const crplib::DataError& e) {
-    throw InputError(data_set_key, e.what());
+    throw InputError(std::string(data_set_key), e.what());
   } catch (const crplib::EvaluationError& e) {  // the setup evaluates the atom PES (reduced cuts)
-    throw InputError(data_set_key, e.what());
+    throw InputError(std::string(data_set_key), e.what());
   }
   const crplib::QdParameters p = wrapper_->parameters();
   parameters_ = {p.lattice_constant, p.lattice_constant, p.z_asymptotic, p.skewing_angle, p.point_group};
@@ -93,9 +95,10 @@ double CrpPotential::value(double x, double y, double z, double r, double theta,
   try {
     return wrapper_->potential_ev(x, y, z, r, theta, phi);
   } catch (const crplib::EvaluationError& e) {
-    throw InputError(data_set_key, std::format("the CRP PES cannot be evaluated at x = {}, y = {}, Z = {}, r = {} "
-                                               "bohr, theta = {}, phi = {} rad (the grid is outside the data): {}",
-                                               x, y, z, r, theta, phi, e.what()));
+    throw InputError(std::string(data_set_key),
+                     std::format("the CRP PES cannot be evaluated at x = {}, y = {}, Z = {}, r = {} "
+                                 "bohr, theta = {}, phi = {} rad (the grid is outside the data): {}",
+                                 x, y, z, r, theta, phi, e.what()));
   }
 }
 

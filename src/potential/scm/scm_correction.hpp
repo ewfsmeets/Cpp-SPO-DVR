@@ -6,20 +6,8 @@
 // ConvertCoMToXYZ), SCM_Types.f90 (Setup_3Body_Rydberg_Par), DistortedSurfaceWrapper.f90
 // (GetCRPDistSurfParams, GetCRPDistSurfPotential).
 //
-// ΔV at the centre of mass (X, Y) (Cartesian), Z, bond length r and orientation (θ, φ), bitwise as
-// the Fortran computes it (the comments in scm_correction.cpp give each operation order):
-// 1. H positions h₁,₂ = (X, Y, Z) ∓ ½r (sin θ cos φ, sin θ sin φ, cos θ), with the unclamped r and Z.
-//    Below the CRP's Zmin, where the CRP clamps Z, this gives deep holes in V (SCM D15).
-// 2. With rescaling (EnableSurfExpan), the ideal-frame positions h′: the bond centre's x and y are
-//    divided by s = a_T/a₀ and the atoms rebuilt from centre and bond (z changes by rounding);
-//    without rescaling h′ = h.
-// 3. Per layer, the pair-function parameters p₁…p₈ = slope·t + intercept at t = r clamped to
-//    [P17, P18], and C = f(p₈).
-// 4. ΔV = +0; for each atom j in file order, for H atom 1 then 2:
-//    ΔV ← (ΔV − f(|h′ − R_j^ideal|)) + f(|h − R_j^distorted|), with the parameters of j's layer.
-// The pair function f(R), q = R − p₁: C for R > p₈; else −(p₃ + q(p₄ + q(p₅ + q p₆)))·exp(−p₂ q),
-// blended towards C for R > p₇ with ρ = ½cos(((R − p₈)π)/(p₈ − p₇)) + ½.
-// Every term is kept, also far atoms with f = C: (ΔV − C) + C is not ΔV in floating point.
+// ΔV is computed bitwise as the Fortran does: the formula is in docs/scm.md "The model", each step
+// and its operation order in ScmCorrection::value_hartree and its helpers (scm_correction.cpp).
 
 #include <array>
 #include <optional>

@@ -56,7 +56,7 @@ TEST(RegressionPropagation, LowZGateFailsWithoutTheScatteringAbsorberLong) {
                  << "tools/fortran_reference/run_propagation_reference.sh cu111_dailight_short_lowz";
   std::ifstream file(dir / "input.json");
   nlohmann::json input = nlohmann::json::parse(file);
-  for (const char* key : {"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy"}) ASSERT_EQ(input.erase(key), 1u) << key;
+  for (const std::string key : {"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy"}) ASSERT_EQ(input.erase(key), 1u) << key;
   const PropagationRun cpp = run_cpp_propagation(input);
   const auto bk_ref = read_fortran_bk_records(dir / "fortran_fort21.bin");
   ASSERT_EQ(cpp.averages.size(), ref->averages.size());
@@ -76,8 +76,8 @@ TEST(RegressionPropagation, LowZGateFailsWithoutTheScatteringAbsorberLong) {
 // plus the correction of the example slab, rescaled to the CRP lattice (so the x, y grid, the
 // diffraction channels and the initial wave packet are those of the slab's lattice constant). The
 // first CRP-based case of gates 3 and 4; 3000 steps, so that the wave reflected by the surface
-// reaches the analysis line (before t = 3600 every BK coefficient is below 1e-4). A missing
-// reference file fails it.
+// reaches the analysis line (why 3000: docs/validation.md, gate 3, SCM). A missing reference file
+// fails it.
 TEST(RegressionPropagation, Gate3ScmShort) {
   run_gate("scm_cu111_srp48_small", make_cpu_backend, References::required);
 }
@@ -186,7 +186,7 @@ TEST(RegressionHarness, DataPathsResolveAgainstTheRepositoryRoot) {
 // run_cpp_propagation and so by run_gate): its potential reads all three from the resolved paths.
 TEST(RegressionHarness, ScmCaseInputBuildsWithRepositoryRelativePaths) {
   nlohmann::json json = test_support::scm_example_json(test_support::scm_example_directory / "examplePosfile.dat");
-  for (const char* key : {"CRPlibDataSet", "SCMParFilepath", "PosFilepath"})
+  for (const std::string key : {"CRPlibDataSet", "SCMParFilepath", "PosFilepath"})
     json[key] = fs::relative(json[key].get<std::string>(), repository_root()).string();
   ASSERT_EQ(json["SCMParFilepath"], "potentials/H2Cu111SRP_C3v.dir/params.dat");
   const Config config = case_config(json);

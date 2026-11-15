@@ -45,7 +45,7 @@ std::vector<std::string> rovib_cells(const AnalysisBasis& basis, int is, int v) 
 void write_summary(const std::filesystem::path& path, const AnalysisBasis& basis, const ScatteringResults& results) {
   std::vector<std::string> columns = {"E_coll", "E_total", "E_z", "P_scattered", "P_reaction"};
   for (int v = 0; v < basis.n_v(); ++v) columns.push_back("P_v" + std::to_string(v));
-  for (const char* name : {"E_vib_mean", "E_rot_mean", "E_dif_mean"}) columns.push_back(name);
+  for (const std::string name : {"E_vib_mean", "E_rot_mean", "E_dif_mean"}) columns.push_back(name);
   TsvFile file(path,
                {"Scattering summary, one row per analysis energy.", energy_comment,
                 "E_z: E_coll minus the initial parallel kinetic energy.",

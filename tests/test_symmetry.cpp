@@ -9,6 +9,7 @@
 #include <numeric>
 #include <set>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -532,7 +533,7 @@ TEST(GridSymmetry, UsableSubgroupSizes) {
   const double pi = Constants::pi;
   const SurfaceLattice hex(4.84, 4.84, pi / 3.0);
   const SurfaceLattice square(4.0, 4.0, pi / 2.0);
-  auto usable = [](const SurfaceLattice& l, const char* g, int nx, int ny, int nphi) {
+  auto usable = [](const SurfaceLattice& l, std::string_view g, int nx, int ny, int nphi) {
     return GridSymmetry(l, PointGroup(g), nx, ny, nphi).operations().size();
   };
   EXPECT_EQ(usable(hex, "C6v", 8, 8, 12), 12U);

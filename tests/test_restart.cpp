@@ -148,7 +148,7 @@ struct FineAnalysisRuns {
     j["alsoAnalysis"] = true;
     return with_times(j, t_start, t_end, static_cast<int>((t_end - t_start) / 10.0 + 0.5));
   }
-  static nlohmann::json only_analysis(const fs::path& dir, const char* format) {
+  static nlohmann::json only_analysis(const fs::path& dir, const std::string& format) {
     nlohmann::json j = json(0.0, 600.0);
     j["alsoAnalysis"] = false;
     j["onlyAnalysis"] = true;
@@ -197,7 +197,7 @@ TEST(FineAnalysisRuns, AllRunModesGiveBitwiseIdenticalResults) {
   for (const std::string& name : fine_analysis_files) {
     const std::string full = read_file(r.root / "full" / name);
     EXPECT_FALSE(full.empty()) << name;
-    for (const char* other : {"second", "only_native", "only_fortran", "in_place"})
+    for (const std::string other : {"second", "only_native", "only_fortran", "in_place"})
       EXPECT_EQ(full, read_file(r.root / other / name)) << other << "/" << name;
   }
   // The analysis-only run in RestartDir leaves the BK file alone and writes no propagation files.
@@ -230,8 +230,8 @@ TEST(Restart, SplitRunIsBitwiseIdenticalToTheUnsplitRun) {
   ASSERT_EQ(r.code_full, 0) << r.err;
   ASSERT_EQ(r.code_first, 0) << r.err;
   ASSERT_EQ(r.code_second, 0) << r.err;
-  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "scattering_summary.tsv",
-                           "probabilities_rovib.tsv", "probabilities_diffraction.tsv", "fort.9", "fort.21"})
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "scattering_summary.tsv",
+                                 "probabilities_rovib.tsv", "probabilities_diffraction.tsv", "fort.9", "fort.21"})
     EXPECT_EQ(read_file(r.root / "full" / name), read_file(r.root / "second" / name)) << name;
   EXPECT_GT(fs::file_size(r.root / "second" / "bk_coefficients.bin"),
             fs::file_size(r.root / "first" / "bk_coefficients.bin"));
@@ -340,7 +340,7 @@ TEST(RestartFiles, MissingFileStopsTheRunBeforeTheSetUp) {
     fs::create_directories(restart_dir);
     for (const std::string& name : c.present) std::ofstream(restart_dir / name) << "";
     nlohmann::json json = c.run_mode == 1 ? restart_from(with_times(short_json(), 60.0, 120.0, 30), restart_dir)
-                                          : FineAnalysisRuns::only_analysis(restart_dir, c.format.c_str());
+                                          : FineAnalysisRuns::only_analysis(restart_dir, c.format);
     json["RestartFormat"] = c.format;
     EXPECT_EQ(run(json, dir.path() / std::format("output_{}", k), err, out), 2) << c.error << ": " << err;
     EXPECT_NE(err.find("RestartDir: " + c.error + " in '" + restart_dir.string() + "'"), std::string::npos) << err;
@@ -369,7 +369,7 @@ TEST(RestartFiles, RestartDirAndItsFilesMustBeRegular) {
 
   const fs::path fortran_dir = dir.path() / "fortran";
   fs::create_directories(fortran_dir / "fort.8");
-  for (const char* name : {"fort.9", "fort.21"}) std::ofstream(fortran_dir / name) << "";
+  for (const std::string name : {"fort.9", "fort.21"}) std::ofstream(fortran_dir / name) << "";
   nlohmann::json fortran = restart_from(times, fortran_dir);
   fortran["RestartFormat"] = "fortran";
   EXPECT_EQ(run(fortran, dir.path() / "output_3", err, out), 2) << err;
@@ -384,7 +384,7 @@ TEST(RestartFiles, UnreadableFileOrRestartDirIsAnInputError) {
   const test_support::TemporaryDirectory dir("restart_permissions");
   const fs::path restart_dir = dir.path() / "restart";
   fs::create_directories(restart_dir);
-  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin"}) std::ofstream(restart_dir / name) << "";
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin"}) std::ofstream(restart_dir / name) << "";
   const fs::path checkpoint = restart_dir / "checkpoint.bin";
   fs::permissions(checkpoint, fs::perms::none);
   if (std::ifstream(checkpoint)) {
@@ -412,7 +412,7 @@ TEST(RestartFiles, UnreadableFileOrRestartDirIsAnInputError) {
 TEST(Restart, RestartFromFortranFilesIsBitwiseIdenticalToTheUnsplitRun) {
   const RestartRuns& r = runs();
   ASSERT_EQ(r.code_second_fortran, 0) << r.err;
-  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "fort.9", "fort.21"})
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "fort.9", "fort.21"})
     EXPECT_EQ(read_file(r.root / "full" / name), read_file(r.root / "second_fortran" / name)) << name;
 }
 
@@ -447,6 +447,7 @@ struct LowZRuns {
   ~LowZRuns() { fs::remove_all(root); }
 };
 
+// The low-Z runs, made once for every test that reads them.
 const LowZRuns& low_z_runs() {
   static const LowZRuns r;
   return r;
@@ -459,7 +460,7 @@ TEST(Restart, SplitRunWithLowZAbsorbersIsBitwiseIdenticalToTheUnsplitRun) {
   ASSERT_EQ(r.code_full, 0) << r.err;
   ASSERT_EQ(r.code_first, 0) << r.err;
   ASSERT_EQ(r.code_second, 0) << r.err;
-  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "probabilities_rovib.tsv"})
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv", "probabilities_rovib.tsv"})
     EXPECT_EQ(read_file(r.root / "full" / name), read_file(r.root / "second" / name)) << name;
 }
 
@@ -542,7 +543,7 @@ TEST(Restart, CheckpointWithoutLowZAbsorbersKeepsItsParameterList) {
                                              "ZOptFactor (effective)",
                                              "ROptFactor (effective)",
                                              "ZSpOptFactor (effective)"};
-  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin"}) {
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin"}) {
     BinaryReader file(r.root / "first" / name);
     (void)file.read<std::array<char, 16>>();  // magic
     EXPECT_EQ(file.read<std::uint32_t>(), 2u) << name;
@@ -593,6 +594,7 @@ struct ScmRuns {
   }
 };
 
+// The SCM runs, made once for every test that reads them.
 const ScmRuns& scm_runs() {
   static const ScmRuns r;
   return r;

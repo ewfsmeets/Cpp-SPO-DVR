@@ -122,6 +122,7 @@ double formula_factor(double q, double start, double end, double strength, Absor
   return std::exp(-(v_opt * dt));
 }
 
+// The hardwall_small input with the keys of `changes` added or replaced.
 nlohmann::json with_changes(const nlohmann::json& changes) {
   nlohmann::json json = reference_json();
   json.update(changes);

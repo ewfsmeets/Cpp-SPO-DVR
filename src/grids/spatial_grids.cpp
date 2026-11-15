@@ -30,7 +30,7 @@ IndexRange optical_range(const UniformGrid& grid, double start, double end) {
 __extension__ typedef __float128 Quad;
 
 // Grid point i as the Fortran computes it: `start + dfloat(i-1)*delta` in quad precision, rounded
-// once to double (1 ulp from this program's point at some i). Fortran: Setup.f90 zgrid, rgrid
+// once to double (1 ulp from this program's point at some i). Fortran: Setup.f90 MiscellaneousSetup (zgrid, rgrid)
 double fortran_grid_point(const UniformGrid& grid, int i) {
   const Quad offset = static_cast<Quad>(i) * static_cast<Quad>(grid.spacing());
   return static_cast<double>(static_cast<Quad>(grid.start()) + offset);
@@ -118,7 +118,7 @@ SpatialGrids make_spatial_grids(const Config& config) {
   g.z_optical = optical_range(g.z_scattering, p.z_opt_start, p.z_opt_end);
   if (p.projection_operator == 2) g.z_specular_optical = optical_range(g.z_specular, p.zsp_opt_start, p.zsp_opt_end);
   g.r_optical = p.nr == 1 ? IndexRange{0, 0} : optical_range(g.r, p.r_opt_start, p.r_opt_end);
-  // Points inside, also ZStart itself (the Fortran's index loop starts at the second point).
+  // Points inside, also ZStart itself (the Fortran's index loop starts at the second point: low-Z D4).
   if (p.z_opt_low.enabled()) g.z_optical_low = optical_range(g.z_scattering, *p.z_opt_low.start, *p.z_opt_low.end);
   if (p.projection_operator == 2 && p.zsp_opt_low.enabled())
     g.z_specular_optical_low = optical_range(g.z_specular, *p.zsp_opt_low.start, *p.zsp_opt_low.end);

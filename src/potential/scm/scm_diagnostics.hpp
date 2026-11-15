@@ -18,9 +18,8 @@ namespace spodvr {
 
 class ScmCrpPotential;
 
-// Ideal atoms farther than this from the CRP lattice give a warning (bohr). The SRP48 example slab
-// lies within 1.2e-6 bohr: its bohr constant differs from the CRP library's by 7.2e-8 relative, and
-// its farthest kept atom is 15.8 bohr from the origin (SCM D9).
+// Ideal atoms farther than this from the CRP lattice give a warning (bohr); the SRP48 example slab
+// lies within 1.2e-6 bohr (SCM D9).
 inline constexpr double scm_lattice_warning_distance = 1e-5;
 // Ideal atoms farther than this from the CRP lattice are an error (bohr): ΔV would subtract the
 // pair energies of another lattice than the one the CRP potential describes.
@@ -131,7 +130,7 @@ struct ScmEdgeJumps {
   double accessible_limit = 0.0;  // eV: min V_asy + EMaxWP + scm_accessible_margin
   int points_per_edge = 0;
   int phi_points = 0;             // φ = k·π/phi_points (H₂ is homonuclear: φ + π is the same geometry)
-  std::vector<ScmEdgeJump> rows;  // Z = 2.25, 3, 4 bohr (each with r = 1.95, then 1.4 bohr)
+  std::vector<ScmEdgeJump> rows;  // per Z of edge_heights, each r of edge_bond_lengths (scm_diagnostics.cpp)
 };
 
 // SCM D10 (data), a few thousand evaluations of V (not on the grid; iz = ir = 0).

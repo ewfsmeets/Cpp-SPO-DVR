@@ -9,6 +9,8 @@
 #include <format>
 #include <functional>
 #include <optional>
+#include <string>
+#include <string_view>
 
 #include "core/constants.hpp"
 #include "core/error.hpp"
@@ -20,7 +22,7 @@ namespace spodvr {
 
 namespace {
 
-constexpr const char* position_file_key = "PosFilepath";
+constexpr std::string_view position_file_key = "PosFilepath";
 
 // The (Z, r) of the cell-edge jumps (bohr): the barrier region of H₂/Cu(111) and above it, at the
 // SRP48 barrier's bond length and at H₂'s equilibrium one (SCM D10; docs/scm_open_questions.md Q2).
@@ -171,6 +173,7 @@ struct EdgePair {
   double u_inside, v_inside, u_image, v_image;
 };
 
+// The pair of edge 0 or 1 at distance t from its start; a: the lattice constant (bohr).
 EdgePair edge_pair(int edge, double t, double a) { return edge == 0 ? EdgePair{t, 0.0, t, a} : EdgePair{0.0, t, a, t}; }
 
 // A (Z, r) grid point of the 6D potential: one row of a hole scan.
@@ -271,7 +274,7 @@ void require_slab_lattice(const ScmLatticeCheck& check, const ScmSlab& slab, con
   if (check.max_deviation() <= scm_lattice_error_distance) return;
   const ScmAtom& atom = slab.atoms.at(check.worst_atom);
   throw InputError(
-      position_file_key,
+      std::string(position_file_key),
       std::format("configuration {}: the ideal position ({}, {}, {}) bohr of an atom of layer {} lies {} bohr from "
                   "its site of the CRP lattice (a = {} bohr, skew angle {} rad; layer 1 on the lattice at z = 0, "
                   "layer 2 of a C3v data set one interlayer spacing lower under the site (1/3, 1/3)); more than "
@@ -341,7 +344,7 @@ void require_unchanged_asymptotic_potential(const ScmAsymptoticCheck& check, con
   if (check.changed_points == 0) return;
   const ScmExtreme& worst = check.largest_at_points;
   throw InputError(
-      position_file_key,
+      std::string(position_file_key),
       std::format("configuration {}: ΔV changes the gas-phase potential V_asy at {} of its {} points (0, 0, Z, r, "
                   "θ = π/2, φ = 0), by up to {} eV at Z = {} bohr, r = {} bohr: a slab atom reaches the gas phase "
                   "(the highest lies at z = {} bohr). V_asy, the gas-phase states and the switch to the gas phase "

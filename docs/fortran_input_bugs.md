@@ -113,8 +113,8 @@ Both versions accept it:
   Not supported: doFluxAnalysis = true: the flux analysis is not implemented yet
   ```
   Analysis-only and potential-only runs accept the flux keys and ignore them.
-- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxEMax`,
-  `Input.FluxEnergyRangeInsideTheWavePacketIsValid`) and `tests/test_cli.cpp`
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxQ1EMax`,
+  `Input.FluxQ1EnergyRangeInsideTheWavePacketIsValid`) and `tests/test_cli.cpp`
   (`FluxAnalysisGuard.*`).
 
 ## flux Q2: a zero DeltaEFluxAna passes the check
@@ -181,8 +181,8 @@ and no error or warning about the flux analysis. Their flux output files:
   ```
   Input error: DeltaEFluxAna: DeltaEFluxAna <= 0 (0 eV): the flux analysis energy grid needs a positive spacing; use DeltaEFluxAna > 0
   ```
-- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxDeltaZero` and
-  `FluxDeltaNegative`).
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxQ2DeltaZero` and
+  `FluxQ2DeltaNegative`).
 
 ## absorber D1: an absorber energy of 0 keeps the default strength
 

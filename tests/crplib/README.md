@@ -24,7 +24,7 @@ Shared headers: `crp_synthetic.hpp` (cut geometry, the pairwise model, synthetic
 `reference_basis.hpp` (the Fourier bases and site positions, written down independently of the
 library),
 `fortran_reference.hpp` (reading the driver output, `EXPECT_BITS`); and
-`tests/temporary_directory.hpp` (shared with `tests/fortran_text/` and `tests/test_crp_potential.cpp`).
+`tests/temporary_directory.hpp` (a directory removed when the test ends; shared with the program's tests).
 The program-side adapter is tested in `tests/test_crp_potential.cpp`.
 
 ## Reference data (`reference/`)

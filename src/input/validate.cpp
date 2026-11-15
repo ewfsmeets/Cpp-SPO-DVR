@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <format>
 #include <string>
+#include <string_view>
 
 #include "core/constants.hpp"
 #include "core/error.hpp"
@@ -17,8 +18,8 @@ namespace spodvr {
 
 namespace {
 
-void check(bool violated, const char* parameter, const std::string& message) {
-  if (violated) throw InputError(parameter, message);
+void check(bool violated, std::string_view parameter, const std::string& message) {
+  if (violated) throw InputError(std::string(parameter), message);
 }
 
 // Fortran NINT: round half away from zero.

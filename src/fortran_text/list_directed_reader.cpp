@@ -1,5 +1,6 @@
 // List-directed reading of text files as gfortran's READ(unit,*) does (the subset that the CRP
-// data-set files use). Fortran: the READ statements of CRP_Wrapper.f90 and CRP_C*v_*Surface.f90.
+// data-set files and the SCM files use). Fortran: the READ statements of CRP_Wrapper.f90,
+// CRP_C*v_*Surface.f90 and SCM_IO.f90.
 #include "fortran_text/list_directed_reader.hpp"
 
 #include <cctype>

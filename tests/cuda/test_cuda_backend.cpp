@@ -317,6 +317,7 @@ std::vector<cplx> cpu_specular_step(const BackendSetup& s, const std::vector<cpl
   return {psi.values.begin(), psi.values.end()};
 }
 
+// The same step on the GPU twin (DeviceSpecularOperator).
 std::vector<cplx> gpu_specular_step(const BackendSetup& s, const std::vector<cplx>& initial) {
   const int nr = s.config.input.nr;
   const int nz = s.grids.z_specular.size();
