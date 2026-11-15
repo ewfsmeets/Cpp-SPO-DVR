@@ -9,8 +9,9 @@ and runs extract_pes.py as a program:
   scm          the 6D file with the six SCM records of SCM_Wrapper.f90 SetPESVariables_SCM: the
                same output plus their '#' lines, which the C++ reader skips
   refusals     five or seven extra records, an SCM record of the wrong size, a truncated file,
-               a trailer that differs from its record's length, an empty file, a missing file:
-               exit 1 with "error: <what>; <fix>" and no output file; bad arguments: exit 2
+               a trailer that differs from its record's length, a subrecord marker (-1), a
+               two-byte fragment, an empty file, a missing file: exit 1 with "error: <what>; <fix>"
+               and no output file; bad arguments: exit 2
 
 Usage: python3 -I -B tools/fortran_reference/test_extract_pes.py CASE WORK
   CASE  one of the cases above;  WORK  scratch directory (recreated)
@@ -158,6 +159,14 @@ def refusals_case(work):
     data[second + 4 + len(header[1])] += 1
     (work / "trailer.pes").write_bytes(bytes(data))
     expect_refusal(work, "trailer", f"corrupt record at byte {second}")
+    # A record marker of -1: gfortran's subrecords (records over 2 GiB).
+    write_pes(work / "subrecords.pes", header, blocks)
+    data = (work / "subrecords.pes").read_bytes()
+    (work / "subrecords.pes").write_bytes(struct.pack("<i", -1) + data[4:])
+    expect_refusal(work, "subrecords", "subrecords (records > 2 GiB) are not supported")
+    # Two bytes, shorter than a record marker: struct.error, reported as the format errors are.
+    (work / "fragment.pes").write_bytes(b"\x01\x00")
+    expect_refusal(work, "fragment", "fragment.pes: unpack_from requires a buffer of at least 4 bytes")
     (work / "empty.pes").write_bytes(b"")
     expect_refusal(work, "empty", "empty.pes: the file holds no records")
     expect_refusal(work, "missing", "No such file or directory")

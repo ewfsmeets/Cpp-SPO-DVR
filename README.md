@@ -253,10 +253,11 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
   `tools/check_docs_allowlist.tsv`; a row that no longer suppresses anything fails the check.
 - **Numerically neutral changes** (refactors) must leave the results bitwise unchanged:
   `tools/check_bitwise_refactor.sh [base-ref]` (default `HEAD`). It builds both trees in a scratch
-  directory; to configure without network access, set `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` to
-  the nlohmann_json sources. For changes that may alter rounding:
-  `tools/compare_propagation.sh [base-ref] [tolerance]`. The final wave packet of two builds, or of
-  the CPU and the GPU: `spodvr_dump_wave` and `spodvr_compare_wave` ([docs/performance.md](docs/performance.md)).
+  directory. For changes that may alter rounding: `tools/compare_propagation.sh [base-ref]
+  [tolerance]` (its comparison, `tools/compare/compare_averages.py`, is tested by
+  `ctest -R ComparePropagation`). Both build through `tools/scratch_build.sh`; to configure without
+  network access, set `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` to the nlohmann_json sources. The
+  final wave packet of two builds, or of the CPU and the GPU: `spodvr_dump_wave` and `spodvr_compare_wave` ([docs/performance.md](docs/performance.md)).
 - **Production-grid validation:** beyond the gates, the full thesis calculation
   (`inputs/thesis_fig5_3_dz`, 7000 steps) was run with the Fortran, the C++ CPU and the C++ GPU
   code and compared state by state: [docs/validation_thesis_fig5_3_dz](docs/validation_thesis_fig5_3_dz/README.md).

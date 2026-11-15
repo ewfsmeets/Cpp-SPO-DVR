@@ -25,7 +25,7 @@ strings the three together.
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
 | [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1713.tsv](expected/r1713.tsv) ([below](#comparing-two-reference-trees)) |
 | [ReferenceManifest.cmake](ReferenceManifest.cmake) | Checks every file a `MANIFEST.tsv` lists against its sha256 (`ctest -R ReferenceManifest`) |
-| `test_reference_tools.sh`, `test_refdata.py`, `test_extract_pes.py` | The tests of these tools (`ctest -R FortranReference`; no Fortran run) |
+| `test_reference_tools.sh`, `test_refdata.py`, `test_extract_pes.py` | The tests of these tools (`ctest -R FortranReference`; no Fortran run, stub installs; they write only to scratch). Every refusal (`error: …`, exit 1) of the shell and Python tools of this directory and its subdirectories has a negative test there, but one: `scm_driver/make_scm_inputs.py` "no position exactly on the cut-off sphere" depends only on the script's constants, so it cannot fire without editing the code. A new refusal gets a test |
 
 Each script's header gives its arguments, outputs, environment and run time. Every run script
 records the files it writes in the case's `MANIFEST.tsv`.

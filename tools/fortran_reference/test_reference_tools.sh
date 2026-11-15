@@ -10,16 +10,29 @@
 #   run                run_fortran: a failed run and a missing output refuse; the run sees the
 #                      pinned environment only (OMP_NUM_THREADS = FORTRAN_REF_THREADS)
 #   check-log          the build log checks accept a log of the pinned flags and refuse -Ofast,
-#                      -march, -DMKL, an error line, a warning and a missing link line
-#   check-binary       the instruction check refuses -mavx2 code and crtfastmath (-ffast-math)
+#                      -march, -DMKL, an error line, a warning, a missing link line and no log
+#   check-binary       the instruction check refuses -mavx2 code, crtfastmath (-ffast-math), an
+#                      AVX libmvec import and a file that is not an object
+#   config-refusals    the other refusals of reference_config.sh: a BUILDINFO.tsv without header, a
+#                      build package other than BUILDINFO's, record_manifest or build_fortran_driver
+#                      without "--", a driver source neither .f90 nor .c, a scratch directory
+#                      without parent, a case without DVR.inp, a DVR.inp field without type
+#   build-refusals     build_fortran_reference.sh: an existing install, a mirror without the pinned
+#                      commit; on a scratch mirror pinned in a copy of reference_config.sh: another
+#                      tree, no svn revision, another GNU.mk line 19, a failed DoBuild, no executable
 #   manifest           refdata.py manifest: record writes checked lines (ReferenceManifest.cmake
 #                      accepts them) and replaces a file's line; record_manifest records the inputs
 #                      (a data set as a tree) and the run-time drift; bad paths, committed inputs,
 #                      a non-case directory, a ';' in a field and a bad header refuse; delete
 #                      removes only the listed files, and refuses a listed input and a case
-#                      without MANIFEST
+#                      without MANIFEST; a missing case directory, an install without BUILDINFO.tsv
+#                      or its id, a failing git, a short row and a MANIFEST without header refuse
 #   regenerate-refusals  regenerate_all.sh refuses an unclean reference tree and a missing install
-#                      before it deletes anything (in a scratch git repository)
+#                      before it deletes anything (in a scratch git repository); with a stub install,
+#                      a step that writes nothing and a tree without MANIFESTs
+#   run-script-refusals  run_fine_analysis/crp/scm_reference.sh in a scratch repository with stub
+#                      driver builds: each missing input, a driver that fails or does not finish;
+#                      scm_driver/make_scm_inputs.py: a params.dat of 35 values
 #   stage-scm          run_propagation_reference.sh on an SCM case whose three data files have paths
 #                      of over 100 characters (in a scratch git repository): the run finds them as
 #                      dataset, params.dat and slab.dat, the DVR.inp as run names them so and is
@@ -81,12 +94,14 @@ json_value() {
   python3 -I -B -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$1" "$2"
 }
 
-# make_install DIR EXE_BODY: a stub install whose executable is a shell script with EXE_BODY and
-# whose BUILDINFO.tsv records the version "0-recorded" of every run-time package.
+# make_install DIR EXE_BODY [ROW...]: a stub install whose executable is a shell script with
+# EXE_BODY and whose BUILDINFO.tsv records the version "0-recorded" of every run-time package, and
+# the ROWs ("key<TAB>value").
 make_install() {
-  local dir="$1" sha package
+  local dir="$1" body="$2" sha package
+  shift 2
   mkdir -p "${dir}/bin" "${dir}/OBJS"
-  printf '#!/bin/sh\n%s\n' "$2" > "${dir}/bin/spodvr.x"
+  printf '#!/bin/sh\n%s\n' "${body}" > "${dir}/bin/spodvr.x"
   chmod +x "${dir}/bin/spodvr.x"
   echo "stub object" > "${dir}/OBJS/stub.o"
   sha="$(sha256sum < "${dir}/bin/spodvr.x")"
@@ -96,8 +111,44 @@ make_install() {
     printf 'exe.sha256\t%s\n' "${sha%% *}"
     printf 'id\tstub\n'
     for package in "${FORTRAN_RUNTIME_PACKAGES[@]}"; do printf 'package.runtime.%s\t0-recorded\n' "${package}"; done
+    (($# == 0)) || printf '%s\n' "$@"
   } > "${dir}/BUILDINFO.tsv"
   (cd "${dir}" && sha256sum bin/spodvr.x OBJS/* BUILDINFO.tsv > SHA256SUMS)
+}
+
+# scratch_repo DIR FILE...: DIR/tools/fortran_reference/ with copies of reference_config.sh,
+# refdata.py and the named FILEs of this directory, so that DIR is their repository.
+scratch_repo() {
+  local dir="$1" file
+  shift
+  mkdir -p "${dir}/tools/fortran_reference"
+  for file in reference_config.sh refdata.py "$@"; do cp "${tools_dir}/${file}" "${dir}/tools/fortran_reference/"; done
+}
+
+# stub_driver_build DIR STATUS: DIR/build.sh, a stand-in for a driver build script that prints the
+# path of a driver which exits with STATUS without any output (no end marker).
+stub_driver_build() {
+  mkdir -p "$1"
+  printf '#!/bin/sh\nmkdir -p "$1" && printf "#!/bin/sh\\nexit %s\\n" > "$1/driver" && chmod +x "$1/driver" && echo "$1/driver"\n' \
+    "$2" > "$1/build.sh"
+  chmod +x "$1/build.sh"
+}
+
+# good_log: a DoBuild log of the pinned flags that passes the log checks.
+good_log() {
+  echo "Cleaning up all stuff for doing a complete re-make ..."
+  echo "./PreProcess Main.f90 Main.f90 ${FORTRAN_BUILD_DEFINES}"
+  echo "gfortran ${FORTRAN_BUILD_FLAGS}  ${FORTRAN_BUILD_INCLUDES} -c Main.f90"
+  echo "./PreProcess H2W100PES-vdW.f90 H2W100PES-vdW.f90 ${FORTRAN_BUILD_DEFINES}"
+  echo "gfortran ${FORTRAN_BUILD_FLAGS}  ${FORTRAN_BUILD_INCLUDES} -c H2W100PES-vdW.f90"
+  echo "gfortran ${FORTRAN_BUILD_FLAGS}  ${FORTRAN_BUILD_INCLUDES} -o ${FORTRAN_BUILD_EXE_NAME} Main.o H2W100PES-vdW.o  -lfftw3 "
+  echo "Cleaning up TEMP dir ..."
+}
+
+# commit_all REPO MESSAGE: commits every file of the scratch repository REPO.
+commit_all() {
+  git -C "$1" add -A
+  git -C "$1" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false commit -q --allow-empty -m "$2"
 }
 
 case "${test_case}" in
@@ -146,17 +197,10 @@ case "${test_case}" in
     ;;
   check-log)
     good="${work}/good.log"
-    {
-      echo "Cleaning up all stuff for doing a complete re-make ..."
-      echo "./PreProcess Main.f90 Main.f90 ${FORTRAN_BUILD_DEFINES}"
-      echo "gfortran ${FORTRAN_BUILD_FLAGS}  ${FORTRAN_BUILD_INCLUDES} -c Main.f90"
-      echo "./PreProcess H2W100PES-vdW.f90 H2W100PES-vdW.f90 ${FORTRAN_BUILD_DEFINES}"
-      echo "gfortran ${FORTRAN_BUILD_FLAGS}  ${FORTRAN_BUILD_INCLUDES} -c H2W100PES-vdW.f90"
-      echo "gfortran ${FORTRAN_BUILD_FLAGS}  ${FORTRAN_BUILD_INCLUDES} -o ${FORTRAN_BUILD_EXE_NAME} Main.o H2W100PES-vdW.o  -lfftw3 "
-      echo "Cleaning up TEMP dir ..."
-    } > "${good}"
+    good_log > "${good}"
     check="${tools_dir}/build_fortran_reference.sh"
     expect_success "${check}" --check-log "${good}"
+    expect_refusal "build log .*none\.log not found" "${check}" --check-log "${work}/none.log"
     sed 's/ -O3 / -Ofast /' "${good}" > "${work}/ofast.log"
     expect_refusal "outside the allow-lists" "${check}" --check-log "${work}/ofast.log"
     sed 's/ -O3 / -O3 -march=native /' "${good}" > "${work}/march.log"
@@ -180,6 +224,71 @@ case "${test_case}" in
     expect_refusal "has VEX/EVEX instructions" "${check}" --check-binary "${work}/avx2"
     "${cxx}" -O2 -ffast-math -o "${work}/fastmath" "${work}/kernel.cpp"
     expect_refusal "links crtfastmath" "${check}" --check-binary "${work}/fastmath"
+    # An object calling the AVX2 libmvec exp without VEX code of its own (plain -O2).
+    printf '%s\n' 'extern "C" double _ZGVdN4v_exp(double);' 'double call(double x) { return _ZGVdN4v_exp(x); }' \
+      > "${work}/libmvec.cpp"
+    "${cxx}" -O2 -c -o "${work}/libmvec.o" "${work}/libmvec.cpp"
+    expect_refusal "imports AVX libmvec functions _ZGVdN4v_exp" "${check}" --check-binary "${work}/libmvec.o"
+    expect_refusal "kernel\.cpp is not an object file" "${check}" --check-binary "${work}/kernel.cpp"
+    ;;
+  config-refusals)
+    make_install "${work}/install" "exit 0" $'package.build.gfortran-15\t0-recorded'
+    export SPODVR_FORTRAN_REF_DIR="${work}/install" SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1
+    expect_refusal "build package gfortran-15 is .*, not the version in" in_config check_build_package gfortran-15
+    expect_refusal "record_manifest: no" in_config record_manifest "${work}" "${work}" program DVR.inp
+    expect_refusal "cannot create scratch directory" in_config new_scratch_dir "${work}/missing/scratch"
+    mkdir "${work}/no_case" "${work}/stage"
+    expect_refusal "no_case/DVR\.inp not found" in_config stage_inputs "${work}/no_case" "${work}/stage"
+    echo "tEnd : 7000.0;" > "${work}/DVR.inp"
+    expect_refusal "field tEnd of .* is not" in_config set_field "${work}/DVR.inp" tEnd 1.0
+    make_install "${work}/install2" "exit 0" $'package.build.gfortran-15\t-'
+    export SPODVR_FORTRAN_REF_DIR="${work}/install2"
+    expect_refusal "driver source .*DVR\.inp is neither" in_config build_fortran_driver "${work}/d1" name "${work}/DVR.inp" -- o
+    expect_refusal "before the object list" in_config build_fortran_driver "${work}/d2" name
+    sed -i '/^key\tvalue$/d' "${work}/install2/BUILDINFO.tsv"
+    expect_refusal "has no header row" in_config check_install
+    ;;
+  build-refusals)
+    check="${tools_dir}/build_fortran_reference.sh"
+    mkdir "${work}/existing"
+    SPODVR_FORTRAN_REF_DIR="${work}/existing" expect_refusal "existing exists" "${check}"
+    mirror="${work}/mirror"
+    git init -q "${mirror}"
+    SPODVR_FORTRAN_MIRROR="${mirror}" expect_refusal "commit ${FORTRAN_BUILD_COMMIT} is not in" "${check}"
+    # A copy of the build script whose pin names commits of the scratch mirror (pin_mirror).
+    scratch_repo "${work}/repo" build_fortran_reference.sh
+    check="${work}/repo/tools/fortran_reference/build_fortran_reference.sh"
+    export SPODVR_FORTRAN_MIRROR="${mirror}"
+    pin_mirror() {  # MESSAGE [TREE]: commits the mirror, pins the copy to it (and TREE, default its own)
+      commit_all "${mirror}" "$1"
+      local commit tree
+      commit="$(git -C "${mirror}" rev-parse HEAD)"
+      tree="${2:-$(git -C "${mirror}" rev-parse "HEAD^{tree}")}"
+      sed -i -E -e "s/^FORTRAN_BUILD_COMMIT=.*/FORTRAN_BUILD_COMMIT=\"${commit}\"/" \
+        -e "s/^FORTRAN_BUILD_TREE=.*/FORTRAN_BUILD_TREE=\"${tree}\"/" "${work}/repo/tools/fortran_reference/reference_config.sh"
+      grep -qx "FORTRAN_BUILD_COMMIT=\"${commit}\"" "${work}/repo/tools/fortran_reference/reference_config.sh" ||
+        fail "the pin of the copied reference_config.sh was not replaced"
+    }
+    mkdir "${mirror}/sources.dir"
+    gnu_mk() { for line in {1..18}; do echo "# line ${line}"; done; echo "$1"; }
+    gnu_mk "${FORTRAN_BUILD_GNU_MK_LINE}" > "${mirror}/sources.dir/GNU.mk"
+    good_log > "${work}/good.log"
+    printf '#!/bin/sh\ncat %s\n' "${work}/good.log" > "${mirror}/sources.dir/DoBuild"
+    chmod +x "${mirror}/sources.dir/DoBuild"
+    svn_message="git-svn-id: svn://test/trunk@${FORTRAN_BUILD_SVN#r} 00000000-0000-0000-0000-000000000000"
+    pin_mirror "${svn_message}" 0000000000000000000000000000000000000000
+    expect_refusal "has tree [0-9a-f]+, not 0+" "${check}"
+    pin_mirror "a commit without svn revision"
+    expect_refusal "is not svn trunk ${FORTRAN_BUILD_SVN}" "${check}"
+    gnu_mk "O3FLAGS = -O2" > "${mirror}/sources.dir/GNU.mk"
+    pin_mirror "${svn_message}"
+    expect_refusal "line 19 of .*GNU\.mk is not" "${check}"
+    gnu_mk "${FORTRAN_BUILD_GNU_MK_LINE}" > "${mirror}/sources.dir/GNU.mk"
+    pin_mirror "${svn_message}"
+    expect_refusal "DoBuild wrote no .*executable\.dir" "${check}"
+    printf '#!/bin/sh\nexit 1\n' > "${mirror}/sources.dir/DoBuild"
+    pin_mirror "${svn_message}"
+    expect_refusal "DoBuild failed" "${check}"
     ;;
   manifest)
     make_install "${work}/install" "exit 0"
@@ -225,6 +334,18 @@ case "${test_case}" in
     [[ -f "${case_dir}/DVR.inp" ]] || fail "delete removed the input DVR.inp"
     printf 'path\tsha256\n' > "${case_dir}/MANIFEST.tsv"
     expect_refusal "the header is not" "${refdata[@]}" record "${case_dir}" c.txt --script s --pre-manifest
+    { printf 'path\tsha256\tscript\tcommit\tfortran_ref\tinput_sha\truntime_drift\tcpu\tdate\n'
+      printf 'c.txt\t-\n'; } > "${case_dir}/MANIFEST.tsv"
+    expect_refusal "MANIFEST\.tsv:[0-9]+: 2 fields, expected 9" "${refdata[@]}" delete "${case_dir}"
+    echo "# a writer line only" > "${case_dir}/MANIFEST.tsv"
+    expect_refusal "MANIFEST\.tsv has no header row" "${refdata[@]}" delete "${case_dir}"
+    expect_refusal "case directory .*no-case not found" "${refdata[@]}" record "${work}/no-case" c.txt --script s --pre-manifest
+    run_options=(--script s --install "${work}/other" --binary "${work}/install/bin/spodvr.x")
+    mkdir "${work}/other"
+    expect_refusal "other/BUILDINFO\.tsv not found" "${refdata[@]}" record "${case_dir}" c.txt "${run_options[@]}"
+    printf 'key\tvalue\n' > "${work}/other/BUILDINFO.tsv"
+    expect_refusal "other/BUILDINFO\.tsv has no id row" "${refdata[@]}" record "${case_dir}" c.txt "${run_options[@]}"
+    GIT_DIR="${work}/no-git" expect_refusal "git .* failed in" "${refdata[@]}" record "${case_dir}" c.txt "${run_options[@]}"
     ;;
   regenerate-refusals)
     repo="${work}/repo"
@@ -240,6 +361,14 @@ case "${test_case}" in
     rm "${repo}/tests/reference/case/stray.txt"
     expect_refusal "is not a reference install" "${repo}/tools/fortran_reference/regenerate_all.sh"
     [[ -z "$(git -C "${repo}" status --porcelain)" ]] || fail "a refused regeneration changed the tree: $(git -C "${repo}" status --porcelain)"
+    # With an install that passes: a step that writes nothing (after the deletion), then no MANIFEST.
+    make_install "${work}/install" "exit 0" $'package.build.gfortran-15\t-'
+    export SPODVR_FORTRAN_REF_DIR="${work}/install" SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1
+    printf '#!/bin/sh\nexit 0\n' > "${repo}/tools/fortran_reference/run_setup_reference.sh"
+    chmod +x "${repo}/tools/fortran_reference/run_setup_reference.sh"
+    expect_refusal "the step wrote no .*hardwall_small/fortran_setup_stdout\.txt" "${repo}/tools/fortran_reference/regenerate_all.sh"
+    commit_all "${repo}" "the deleted references"
+    expect_refusal "no MANIFEST\.tsv in" "${repo}/tools/fortran_reference/regenerate_all.sh"
     ;;
   stage-scm)
     repo="${work}/repo"
@@ -314,6 +443,41 @@ touch averages.out fort.21 fort.25"
     done
     ((count >= 11)) || fail "only ${count} cases staged; tests/reference has at least 11"
     echo "${count} cases staged as before"
+    ;;
+  run-script-refusals)
+    repo="${work}/repo"
+    scratch_repo "${repo}" run_fine_analysis_reference.sh run_crp_reference.sh run_scm_reference.sh
+    scripts="${repo}/tools/fortran_reference"
+    expect_refusal "no_case/fortran_fort21\.bin not found" "${scripts}/run_fine_analysis_reference.sh" no_case full
+    stub_driver_build "${scripts}/crp_driver" 0
+    kernels="${repo}/tests/crplib/reference/kernels"
+    mkdir -p "${kernels}"
+    expect_refusal "no point lists .* in .*kernels" "${scripts}/run_crp_reference.sh" kernels
+    touch "${kernels}/spline.in"
+    expect_refusal "the driver did not finish \(tables\)" "${scripts}/run_crp_reference.sh" kernels
+    mkdir -p "${repo}/tests/crplib/reference/c3v_case"
+    touch "${repo}/tests/crplib/reference/c3v_case/molecule.in"
+    expect_refusal "crplib_make_dataset not built" "${scripts}/run_crp_reference.sh" --generate c3v_case
+    expect_refusal "data set .*c3v_case/dataset not found" "${scripts}/run_crp_reference.sh" c3v_case
+    synthetic="${repo}/tests/scm/reference/synthetic"
+    mkdir -p "${synthetic}"
+    expect_refusal "no point list .*synthetic/points\.in" "${scripts}/run_scm_reference.sh" synthetic
+    touch "${synthetic}/points.in"
+    expect_refusal "data set .*H2Cu111SRP_C3v not found" "${scripts}/run_scm_reference.sh" synthetic
+    mkdir -p "${repo}/potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v"
+    touch "${repo}/potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v/CRPData"
+    stub_driver_build "${scripts}/scm_driver" 3
+    expect_refusal "input .*params\.in or .*slab_v3\.in not found" "${scripts}/run_scm_reference.sh" synthetic
+    touch "${synthetic}/params.in" "${synthetic}/slab_v3.in"
+    expect_refusal "the driver failed \(exit 3\)" "${scripts}/run_scm_reference.sh" synthetic
+    stub_driver_build "${scripts}/scm_driver" 0
+    expect_refusal "the driver did not finish in" "${scripts}/run_scm_reference.sh" synthetic
+    # The input generator of --generate: an example params.dat of 35 values (one missing).
+    mkdir "${work}/example"
+    { echo "VERSION 2"; printf '%s\n' {1..35}; } > "${work}/example/params.dat"
+    expect_refusal "params\.dat has 35 values, not 36" \
+      python3 -I -B "${tools_dir}/scm_driver/make_scm_inputs.py" example "${work}/scm_case" "${work}/example"
+    [[ ! -e "${work}/scm_case" ]] || fail "the refused generator created ${work}/scm_case"
     ;;
   *)
     echo "usage: test_reference_tools.sh CASE WORK [CXX] (unknown case ${test_case})" >&2

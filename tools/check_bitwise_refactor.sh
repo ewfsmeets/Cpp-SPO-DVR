@@ -10,7 +10,8 @@
 # Output: the differences found, or one "OK" line. Exit 0 identical, 1 different or error, 2 usage.
 # Environment: FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON (nlohmann_json sources for an offline
 #   configure; default <repo>/build/_deps/nlohmann_json-src, cloned from GitHub if that is
-#   missing), TMPDIR (scratch builds), CMAKE_BUILD_PARALLEL_LEVEL (build jobs, read by cmake).
+#   missing), TMPDIR (scratch builds), CMAKE_BUILD_PARALLEL_LEVEL (build jobs, read by cmake);
+#   the builds: tools/scratch_build.sh.
 # Run time: about 50 s (two Release builds of spodvr and six runs; 48 s measured on the
 #   development machine with CMAKE_BUILD_PARALLEL_LEVEL=4, 2026-11-12).
 # Docs: README.md, section "Testing".
@@ -26,25 +27,14 @@ if ! git -C "$repo" rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null; 
   echo "error: '$base_ref' is not a commit in $repo; give a branch, tag or commit hash" >&2
   exit 1
 fi
-json_src="${FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON:-$repo/build/_deps/nlohmann_json-src}"
-if [[ -n "${FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON:-}" && ! -d "$json_src" ]]; then
-  echo "error: FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON='$json_src' is not a directory; point it at the nlohmann_json sources or unset it" >&2
-  exit 1
-fi
+source "$repo/tools/scratch_build.sh"
 scratch="$(mktemp -d)"
 trap 'git -C "$repo" worktree remove --force "$scratch/base-src" >/dev/null 2>&1 || true; rm -rf "$scratch"' EXIT
 
-configure_and_build() {  # <source dir> <build dir>
-  local reuse=()
-  [[ -d "$json_src" ]] && reuse=(-DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="$json_src")
-  cmake -S "$1" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_BUILD_TESTS=OFF "${reuse[@]}" >/dev/null
-  cmake --build "$2" --target spodvr >/dev/null
-}
-
 echo "Building base ($base_ref) and working tree ..."
 git -C "$repo" worktree add --detach "$scratch/base-src" "$base_ref" >/dev/null 2>&1
-configure_and_build "$scratch/base-src" "$scratch/base-build"
-configure_and_build "$repo" "$scratch/new-build"
+build_spodvr "$scratch/base-src" "$scratch/base-build"
+build_spodvr "$repo" "$scratch/new-build"
 
 # Potential-only variant of the reference input.
 python3 -I -B -c '

@@ -24,8 +24,8 @@ its exit status and the FAIL line it prints:
   fine-without-fort22  a fine-analysis MANIFEST line without its input fort.22: fails
   multi-match          an expected file with a row that overlaps another: refused
   refusals             an expected file with unsorted rows, an unknown class, a limit that does
-                       not fit its class (inf included), no install line; a tree without the
-                       reference directories: refused (each)
+                       not fit its class (inf included), a row without reason, no install line; a
+                       tree without the reference directories: refused (each)
 The content cases run with --no-provenance, so that only the classification can fail them.
 
 Usage: python3 -I -B tools/fortran_reference/test_refdata.py CASE WORK
@@ -339,6 +339,7 @@ def refusals_case(work):
         "does not fit class bk_scaled": EXPECTED_HEADER + "tests/a\tbk_scaled\tinf\tr\n",
         "does not fit class signs_only": EXPECTED_HEADER + "tests/a\tsigns_only\t0,4\tr\n",
         "does not fit class labels": EXPECTED_HEADER + "tests/a\tlabels\t1e-12\tr\n",
+        "a row needs a glob and a reason": EXPECTED_HEADER + "tests/a\tlabels\t-\t-\n",
         "has 0 '# install: <id>' lines": "glob\tallowed\tlimit\treason\ntests/a\tlabels\t-\tr\n",
     }
     for pattern, text in bad_files.items():

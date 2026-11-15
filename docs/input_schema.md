@@ -93,7 +93,7 @@ must be a C3v or C6v data set (the slab is FCC111, SCM D14), `UseSymmetry` false
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `RestartDir` | string | — | output directory of the run to continue; required if `NewCalc` is false. It must differ from `--output-dir`. For `onlyAnalysis`: the directory with the BK file to analyse (required; it may equal `--output-dir`) |
+| `RestartDir` | string | — | output directory of the run to continue; required if `NewCalc` is false. It must differ from `--output-dir`. For `onlyAnalysis`: the directory with the BK file to analyse (required; it may equal `--output-dir`). The files the run reads from it (`RestartFormat`) are checked before the set-up: a missing one is an input error (exit code 2) |
 | `RestartFormat` | string | `"native"` | `"native"`: checkpoint.bin + bk_coefficients.bin; `"fortran"`: fort.8 (or fort.9) + fort.22 (or fort.21) written by the Fortran code or by this program. `onlyAnalysis` reads only the BK file |
 | `CheckpointFormat` | string | `"native"` | files written for a later restart: `"native"`, `"fortran"` (fort.9, fort.21) or `"both"`. bk_coefficients.bin is always written |
 

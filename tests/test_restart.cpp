@@ -43,8 +43,9 @@ std::string read_file(const fs::path& path) {
   return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
-// Runs the program on `json` with output into `dir`; returns the exit code (stderr in err).
-int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
+// Runs the program on `json` with output into `dir`; returns the exit code (stderr in err,
+// stdout in out).
+int run(const nlohmann::json& json, const fs::path& dir, std::string& err, std::string& out) {
   fs::create_directories(dir);
   const fs::path input = dir / "input.json";
   std::ofstream(input) << json.dump(1);
@@ -52,11 +53,17 @@ int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
   cl.input_file = input;
   cl.output_dir = dir;
   cl.threads = 2;
-  std::ostringstream out;
+  std::ostringstream output;
   std::ostringstream errors;
-  const int code = run_program(cl, out, errors, false);
+  const int code = run_program(cl, output, errors, false);
   err = errors.str();
+  out = output.str();
   return code;
+}
+
+int run(const nlohmann::json& json, const fs::path& dir, std::string& err) {
+  std::string out;
+  return run(json, dir, err, out);
 }
 
 nlohmann::json with_times(nlohmann::json json, double t_start, double t_end, int n_steps) {
@@ -212,9 +219,10 @@ TEST(FineAnalysisRuns, Errors) {
   json["Z0"] = 11.6;
   EXPECT_EQ(run(json, r.root / "mismatch", err), 4);
   EXPECT_NE(err.find("Z0"), std::string::npos) << err;
-  // No BK file.
+  // No BK file: an input error, found before the set-up (RestartFiles below).
   json = FineAnalysisRuns::only_analysis(r.root / "missing", "fortran");
-  EXPECT_EQ(run(json, r.root / "no_file", err), 4);
+  EXPECT_EQ(run(json, r.root / "no_file", err), 2);
+  EXPECT_NE(err.find("RestartDir"), std::string::npos) << err;
 }
 
 TEST(Restart, SplitRunIsBitwiseIdenticalToTheUnsplitRun) {
@@ -296,6 +304,107 @@ TEST(Restart, RestartWithoutRestartDirIsAnInputError) {
   EXPECT_EQ(run(json, fs::temp_directory_path() / "spodvr_restart_no_dir", err), 2);
   EXPECT_NE(err.find("RestartDir"), std::string::npos) << err;
   fs::remove_all(fs::temp_directory_path() / "spodvr_restart_no_dir");
+}
+
+// A restart (run mode 1) or an analysis-only run (mode 2) whose RestartDir lacks a file it will
+// read stops right after the input with an input error naming RestartDir and the file. Its stdout
+// ends before the input summary ("Run mode"), so no set-up step ran (grids, PES, 6D potential);
+// a valid restart prints both markers, so their absence is not vacuous. The files present are
+// empty stand-ins: only their presence is checked this early.
+TEST(RestartFiles, MissingFileStopsTheRunBeforeTheSetUp) {
+  const FirstRun& r = first_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  std::string err;
+  std::string out;
+  const nlohmann::json restart = restart_from(with_times(short_json(), 60.0, 120.0, 30), r.root / "first");
+  ASSERT_EQ(run(restart, r.root / "valid_restart", err, out), 0) << err;
+  ASSERT_NE(out.find("Run mode"), std::string::npos) << out;
+  ASSERT_NE(out.find("6D potential computed"), std::string::npos) << out;
+
+  struct Case {
+    std::string format;
+    int run_mode;
+    std::vector<std::string> present;
+    std::string error;
+  };
+  const std::vector<Case> cases = {{"native", 1, {"bk_coefficients.bin"}, "no checkpoint.bin"},
+                                   {"native", 1, {"checkpoint.bin"}, "no bk_coefficients.bin"},
+                                   {"fortran", 1, {"fort.21"}, "neither fort.8 nor fort.9"},
+                                   {"fortran", 1, {"fort.9"}, "neither fort.22 nor fort.21"},
+                                   {"native", 2, {"checkpoint.bin", "fort.21"}, "no bk_coefficients.bin"},
+                                   {"fortran", 2, {"bk_coefficients.bin"}, "neither fort.22 nor fort.21"}};
+  const test_support::TemporaryDirectory dir("restart_files");
+  for (std::size_t k = 0; k < cases.size(); ++k) {
+    const Case& c = cases[k];
+    const fs::path restart_dir = dir.path() / std::format("restart_dir_{}", k);
+    fs::create_directories(restart_dir);
+    for (const std::string& name : c.present) std::ofstream(restart_dir / name) << "";
+    nlohmann::json json = c.run_mode == 1 ? restart_from(with_times(short_json(), 60.0, 120.0, 30), restart_dir)
+                                          : FineAnalysisRuns::only_analysis(restart_dir, c.format.c_str());
+    json["RestartFormat"] = c.format;
+    EXPECT_EQ(run(json, dir.path() / std::format("output_{}", k), err, out), 2) << c.error << ": " << err;
+    EXPECT_NE(err.find("RestartDir: " + c.error + " in '" + restart_dir.string() + "'"), std::string::npos) << err;
+    EXPECT_EQ(out.find("Run mode"), std::string::npos) << c.error << ": " << out;
+  }
+}
+
+// RestartDir must be a directory, and each file the run reads from it a readable regular file
+// (here a directory named checkpoint.bin, and a directory fort.8 next to a regular fort.9: the
+// name the reader picks is checked); both before the set-up.
+TEST(RestartFiles, RestartDirAndItsFilesMustBeRegular) {
+  const test_support::TemporaryDirectory dir("restart_dir");
+  const nlohmann::json times = with_times(short_json(), 60.0, 120.0, 30);
+  std::string err;
+  std::string out;
+  EXPECT_EQ(run(restart_from(times, dir.path() / "absent"), dir.path() / "output_1", err, out), 2) << err;
+  EXPECT_NE(err.find("RestartDir: '" + (dir.path() / "absent").string() + "' is not a directory"), std::string::npos)
+      << err;
+  EXPECT_EQ(out.find("Run mode"), std::string::npos) << out;
+
+  fs::create_directories(dir.path() / "restart" / "checkpoint.bin");
+  std::ofstream(dir.path() / "restart" / "bk_coefficients.bin") << "";
+  EXPECT_EQ(run(restart_from(times, dir.path() / "restart"), dir.path() / "output_2", err, out), 2) << err;
+  EXPECT_NE(err.find("checkpoint.bin' (the wave packet) is not a readable regular file"), std::string::npos) << err;
+  EXPECT_EQ(out.find("Run mode"), std::string::npos) << out;
+
+  const fs::path fortran_dir = dir.path() / "fortran";
+  fs::create_directories(fortran_dir / "fort.8");
+  for (const char* name : {"fort.9", "fort.21"}) std::ofstream(fortran_dir / name) << "";
+  nlohmann::json fortran = restart_from(times, fortran_dir);
+  fortran["RestartFormat"] = "fortran";
+  EXPECT_EQ(run(fortran, dir.path() / "output_3", err, out), 2) << err;
+  EXPECT_NE(err.find("fort.8' (the wave packet) is not a readable regular file"), std::string::npos) << err;
+  EXPECT_EQ(out.find("Run mode"), std::string::npos) << out;
+}
+
+// Permissions: a file without read permission, and RestartDir without search permission
+// (chmod 600: an InputError naming RestartDir, not a filesystem_error with exit code 1). Skipped
+// where permissions do not restrict access (running as root).
+TEST(RestartFiles, UnreadableFileOrRestartDirIsAnInputError) {
+  const test_support::TemporaryDirectory dir("restart_permissions");
+  const fs::path restart_dir = dir.path() / "restart";
+  fs::create_directories(restart_dir);
+  for (const char* name : {"checkpoint.bin", "bk_coefficients.bin"}) std::ofstream(restart_dir / name) << "";
+  const fs::path checkpoint = restart_dir / "checkpoint.bin";
+  fs::permissions(checkpoint, fs::perms::none);
+  if (std::ifstream(checkpoint)) {
+    fs::permissions(checkpoint, fs::perms::owner_read | fs::perms::owner_write);
+    GTEST_SKIP() << "running as root: file permissions do not restrict access";
+  }
+  const nlohmann::json restart = restart_from(with_times(short_json(), 60.0, 120.0, 30), restart_dir);
+  std::string err;
+  std::string out;
+  EXPECT_EQ(run(restart, dir.path() / "output_1", err, out), 2) << err;
+  EXPECT_NE(err.find("checkpoint.bin' (the wave packet) is not a readable regular file"), std::string::npos) << err;
+  EXPECT_EQ(out.find("Run mode"), std::string::npos) << out;
+  fs::permissions(checkpoint, fs::perms::owner_read | fs::perms::owner_write);
+
+  fs::permissions(restart_dir, fs::perms::owner_read | fs::perms::owner_write);
+  EXPECT_EQ(run(restart, dir.path() / "output_2", err, out), 2) << err;
+  EXPECT_NE(err.find("RestartDir: cannot access '" + checkpoint.string() + "': Permission denied"), std::string::npos)
+      << err;
+  EXPECT_EQ(out.find("Run mode"), std::string::npos) << out;
+  fs::permissions(restart_dir, fs::perms::owner_all);  // so that the scratch directory can be removed
 }
 
 // Restarting from the Fortran-format files (fort.9 / fort.21) also continues the run exactly:

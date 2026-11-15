@@ -77,10 +77,13 @@ add_reference_tools_test(RuntimeDriftRefused runtime-drift)
 add_reference_tools_test(RunChecksExitAndOutputs run)
 add_reference_tools_test(BuildLogAllowLists check-log)
 add_reference_tools_test(InstructionCheck check-binary)
+add_reference_tools_test(ConfigHelperRefusals config-refusals)
+add_reference_tools_test(BuildRefusals build-refusals)
 add_reference_tools_test(ManifestRecordAndDelete manifest)
 add_reference_tools_test(RegenerateRefusesBeforeDeleting regenerate-refusals)
 add_reference_tools_test(ScmInputsStagedUnderShortNames stage-scm)
 add_reference_tools_test(StagingOfTheCasesUnchanged staged-cases)
+add_reference_tools_test(RunScriptRefusals run-script-refusals)
 
 # extract_pes.py (tools/fortran_reference/test_extract_pes.py) on synthetic .pes files: files without
 # SCM records give the output of before, the six SCM records are detected, wrong files refused.
@@ -129,6 +132,20 @@ if(SPODVR_BUILD_TOOLS)
            COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> non-finite
                    ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/non-finite)
 endif()
+
+# The averages comparison of tools/compare_propagation.sh (tools/compare/test_compare_averages.py):
+# equal files pass, a NaN or inf in either file always fails, a file without rows is refused, a bad
+# tolerance is a usage error.
+set(compare_averages_test ${PROJECT_SOURCE_DIR}/tools/compare/test_compare_averages.py)
+function(add_compare_averages_test name test_case)
+  add_test(NAME ComparePropagation.${name}
+           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_averages_test} ${test_case}
+                   ${CMAKE_CURRENT_BINARY_DIR}/compare_averages/${test_case})
+endfunction()
+add_compare_averages_test(EqualFilesPass equal)
+add_compare_averages_test(NonFiniteValueFails non-finite)
+add_compare_averages_test(FileWithoutRowsRefused rows)
+add_compare_averages_test(BadToleranceIsUsageError arguments)
 
 # Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
 # missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).

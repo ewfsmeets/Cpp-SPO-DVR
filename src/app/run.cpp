@@ -6,8 +6,10 @@
 
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <optional>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -52,6 +54,8 @@ constexpr std::string_view checkpoint_file = "checkpoint.bin";
 constexpr std::string_view bk_file = "bk_coefficients.bin";
 constexpr std::string_view fortran_wave_function_file = "fort.9";
 constexpr std::string_view fortran_bk_file = "fort.21";
+constexpr std::string_view fortran_wave_function_input = "fort.8";
+constexpr std::string_view fortran_bk_input = "fort.22";
 
 // BK coefficients of the earlier runs, in time order.
 using BkRecords = std::vector<std::pair<double, BkCoefficients>>;
@@ -62,6 +66,54 @@ std::filesystem::path first_existing(const std::filesystem::path& dir, std::stri
   if (std::filesystem::exists(dir / a)) return dir / a;
   if (std::filesystem::exists(dir / b)) return dir / b;
   throw CheckpointError("neither " + std::string(a) + " nor " + std::string(b) + " found in '" + dir.string() + "'");
+}
+
+// A file a run reads from RestartDir: its names in the order first_existing tries them, and what
+// it holds (for the error message).
+struct RestartFile {
+  std::vector<std::string_view> names;
+  std::string_view holds;
+};
+
+// The files run mode 1 (restart) or 2 (analysis-only) reads from RestartDir, as RestartFormat
+// selects, in the order restore_from_checkpoint and analysis_input open them.
+std::vector<RestartFile> restart_files(const Config& config) {
+  const bool native = config.input.restart_format == "native";
+  const RestartFile bk = native ? RestartFile{{bk_file}, "the BK coefficients"}
+                                : RestartFile{{fortran_bk_input, fortran_bk_file}, "the BK coefficients"};
+  if (config.derived.run_mode == 2) return {bk};
+  const RestartFile wave_packet =
+      native ? RestartFile{{checkpoint_file}, "the wave packet"}
+             : RestartFile{{fortran_wave_function_input, fortran_wave_function_file}, "the wave packet"};
+  return {wave_packet, bk};
+}
+
+// The status of a path in RestartDir. An error other than "not found" (e.g. RestartDir without
+// search permission) is an InputError naming RestartDir, not a filesystem_error (exit code 1).
+std::filesystem::file_status restart_path_status(const std::filesystem::path& path) {
+  std::error_code error;
+  const std::filesystem::file_status status = std::filesystem::status(path, error);
+  if (error && status.type() != std::filesystem::file_type::not_found)
+    throw InputError("RestartDir", "cannot access '" + path.string() + "': " + error.message());
+  return status;
+}
+
+// The first of the file's names that exists in dir (the one its reader opens) must be a readable
+// regular file; if none exists, the error names them all.
+void require_restart_file(const std::filesystem::path& dir, const RestartFile& file, const std::string& format) {
+  for (const std::string_view name : file.names) {
+    const std::filesystem::path path = dir / name;
+    const std::filesystem::file_status status = restart_path_status(path);
+    if (!std::filesystem::exists(status)) continue;
+    if (!std::filesystem::is_regular_file(status) || !std::ifstream(path, std::ios::binary))
+      throw InputError("RestartDir",
+                       "'" + path.string() + "' (" + std::string(file.holds) + ") is not a readable regular file");
+    return;
+  }
+  std::string missing = "no " + std::string(file.names[0]);
+  if (file.names.size() == 2) missing = "neither " + std::string(file.names[0]) + " nor " + std::string(file.names[1]);
+  throw InputError("RestartDir", missing + " in '" + dir.string() + "' (" + std::string(file.holds) +
+                                     ", RestartFormat = \"" + format + "\")");
 }
 
 // Restart (nread = 1): reads the wave packet and analysis surface of the earlier run and its BK
@@ -92,10 +144,11 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
     const AnalysisSurfaceState fresh = propagation.analysis_surface().state();
     AnalysisSurfaceState state{};
     propagation.read_wave_packet([&](WavePacket& psi) {
-      state = read_fortran_wave_function(first_existing(dir, "fort.8", "fort.9"), psi, fresh);
+      state = read_fortran_wave_function(first_existing(dir, fortran_wave_function_input, fortran_wave_function_file),
+                                         psi, fresh);
     });
     propagation.restore_analysis_surface(state);
-    read_fortran_bk_file(first_existing(dir, "fort.22", "fort.21"), config, propagation.rotational_basis(),
+    read_fortran_bk_file(first_existing(dir, fortran_bk_input, fortran_bk_file), config, propagation.rotational_basis(),
                          propagation.analysis_basis(), add_record);
     checkpoint_time = records.empty() ? 0.0 : records.back().first;
   }
@@ -107,12 +160,18 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
   return records;
 }
 
-// A restart must not overwrite the files it continues from.
+// Run modes 1 and 2, right after the input and before the (possibly long) set-up: RestartDir
+// holds every file the run will read (the readers check their contents later), and a restart
+// does not overwrite the files it continues from.
 void check_restart_directory(const Config& config, const std::filesystem::path& output_dir) {
-  if (config.derived.run_mode != 1) return;
+  if (config.derived.run_mode != 1 && config.derived.run_mode != 2) return;
   const std::filesystem::path dir = config.input.restart_dir;
-  if (std::filesystem::exists(dir) && std::filesystem::exists(output_dir) &&
-      std::filesystem::equivalent(dir, output_dir))
+  if (!std::filesystem::is_directory(restart_path_status(dir)))
+    throw InputError("RestartDir", "'" + dir.string() + "' is not a directory");
+  for (const RestartFile& file : restart_files(config)) require_restart_file(dir, file, config.input.restart_format);
+  // An error here (e.g. no output directory yet) means the two are not the same directory.
+  std::error_code not_comparable;
+  if (config.derived.run_mode == 1 && std::filesystem::equivalent(dir, output_dir, not_comparable))
     throw InputError("RestartDir",
                      "the output directory must differ from RestartDir (the checkpoint would be overwritten)");
 }
@@ -133,7 +192,6 @@ struct BkOutput {
 void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                      const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
                      const std::filesystem::path& output_dir, Device device) {
-  check_restart_directory(config, output_dir);
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device));
   print_propagation_setup(out, style, grids, propagation);
   print_analysis_setup(out, style, config, propagation.analysis_basis(), propagation.analysis_energies());
@@ -220,7 +278,7 @@ void run_fine(std::ostream& out, const Style& style, const Config& config, const
 BkInput analysis_input(const Config& config) {
   const std::filesystem::path dir = config.input.restart_dir;
   if (config.input.restart_format == "native") return {dir / bk_file, false};
-  return {first_existing(dir, "fort.22", "fort.21"), true};
+  return {first_existing(dir, fortran_bk_input, fortran_bk_file), true};
 }
 
 }  // namespace
@@ -243,6 +301,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     out << "  " << numerical_libraries_summary() << '\n';
 
     const Config config = build_config(read_input_file(command_line.input_file));
+    check_restart_directory(config, command_line.output_dir);
     // Checked before the (possibly long) set-up: the GPU must be available in this build.
     const Device device = parse_device(command_line.device);
     const bool propagates = config.derived.run_mode != 2 && config.derived.run_mode != 6;
