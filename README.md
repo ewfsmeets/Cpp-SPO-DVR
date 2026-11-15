@@ -302,9 +302,11 @@ pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build
 
 ## Testing
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~7.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~9.5 min)
 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1.5 min)
 ```
+The times: 809 tests (803 pass, 6 long or reference-less tests skipped) and 24 GPU tests, measured
+2026-11-15 at 8b3df8d with 8 threads on an AMD Ryzen 7 5800X and an RTX 4070 Ti.
 - **Run ctest serially** (no `-j`): many tests already use all OpenMP threads. Set
   `OMP_NUM_THREADS` to the number of physical cores (not hyperthreads).
 - **What is tested:**
@@ -320,12 +322,12 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GP
 - **Selecting tests** (ctest `-R`/`-E` take a regular expression on the test name;
   `ctest --test-dir build -N` lists them all):
   ```bash
-  ctest --test-dir build -E Regression           # unit tests only (~1.5 min)
+  ctest --test-dir build -E Regression           # unit tests only (~2.5 min)
   ctest --test-dir build -R Gate3                # one acceptance gate
   ./build/tests/test_input --gtest_filter='Input.*'   # one test program directly (GoogleTest)
   ```
 - **Long tests:** the full 7000-step regression runs (hard wall and Dai–Light; the latter alone takes
-  about 13 minutes on 8 cores), the negative tests of the low-Z and the SCM gates (1000- and
+  about 10 minutes on 8 cores), the negative tests of the low-Z and the SCM gates (1000- and
   3000-step runs) and the CRP cluster-pruning check on ten million points
   (`CrpLib.ClusterPruningLong.TenMillionPoints`) are skipped unless `SPODVR_LONG_TESTS` is set:
   ```bash
@@ -372,8 +374,9 @@ The program reads one JSON input file:
 ```bash
 ./build/spodvr inputs/hardwall_small/input.json --threads 8 --output-dir runs/hardwall_small
 ```
-This example (`inputs/hardwall_small`, 7000 time steps) took about 3.5 minutes with 8 threads on a
-desktop machine (AMD Ryzen 7 5800X; measured 2026-11-05 with GCC 13). Its set-up prints two
+This example (`inputs/hardwall_small`, 7000 time steps) takes about 3 minutes with 8 threads on a
+desktop machine (AMD Ryzen 7 5800X: the long gate `Gate3FullRunLong`, which runs this input, took
+164 s on 2026-11-15). Its set-up prints two
 warnings, "Rotational basis too small to describe all open channels" and "the diffraction basis is
 too small to describe all open channels": JMax = 4 and the 4 × 4 surface grid are kept small for
 speed. They are harmless here because the hard wall depends only on Z and r, so the wave packet

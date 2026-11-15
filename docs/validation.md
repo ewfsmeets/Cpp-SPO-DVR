@@ -57,13 +57,13 @@ gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `Fortran
 keep the 5.19 model with its `s1_real` typo ([fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md)).
 
 ## Gates
-Status on the 5.24 r1713 reference data (measured 2026-11-12 at 5cbbcf4; the margins of gates
-3–5 below were measured at the switch, and the setup data of gates 1 and 2 did not change with
-it): the full ctest, 665 tests = 660 passed + 5 skipped (the long tests); the long tests
-(`SPODVR_LONG_TESTS=1 ctest -R Long`), 4 of 4; the CUDA tests including the long ones, 23 of 23
-(gates 3 and 4 on the GPU; 7000-step BK within 8.5e-13 (hard wall) and 9.3e-13 (Dai–Light) of the
-scale). Since then the SCM cases and more negative tests were added: 801 tests registered on
-2026-11-15 (`ctest --test-dir build -N`).
+Status on the 5.24 r1713 reference data (measured 2026-11-15 at 8b3df8d with 8 threads; the margins of
+gates 3–5 below were measured at the switch, and the setup data of gates 1 and 2 did not change
+with it): the full ctest, 809 tests = 803 passed + 6 skipped (the five long tests and
+`CrpLib.Cases/FortranMoleculeSurface.GasPhase/"c6v_pairwise_angstrom"`, which has no gas-phase
+reference); the long tests (`SPODVR_LONG_TESTS=1 ctest -R 'Long($|\.)'`), 5 of 5; the CUDA tests
+including the long ones, 24 of 24 (gates 3 and 4 on the GPU; 7000-step BK within 8.5e-13 (hard
+wall) and 9.3e-13 (Dai–Light) of the scale, measured 2026-11-12).
 
 Main reference case: `tests/reference/hardwall_small/DVR.inp` (Fortran input), with the Fortran
 output next to it; the corrugated Cu(111) cases are in their own directories.

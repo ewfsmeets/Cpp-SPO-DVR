@@ -34,7 +34,9 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
 - **Known test failures** (full ctest of `build-fast`, 2026-11-15, GCC 15.2, `-march=native` on
   the Ryzen 7 5800X, with the commit that added `-fno-finite-math-only`): of 809 tests 795 passed,
   8 failed and 6 were skipped (the long tests and one CRP case, as in the default build). All 8
-  compare exact values; no NaN test fails, and every regression gate passes.
+  compare exact values; no NaN test fails, and every regression gate passes. `build-cuda-fast`
+  (same date and commit) fails the same 8 of its CPU tests; its 24 GPU tests (`-R Cuda`) pass, the
+  2 long ones skipped.
   - `PropagationTables.FftScaleFactors`: dz/√(2π) and dr/√(2π) are 1 ulp off (presumably the
     division becomes a multiplication by the reciprocal, `-freciprocal-math`).
   - `PotentialGrid.SwitchingToGasPhase`: the switched potential is 1–2 ulp off the formula
@@ -214,7 +216,7 @@ re-measured since.
 - Re-measured with GCC 15 (2026-11-07/08, [validation report](validation_thesis_fig5_3_dz/README.md)):
   - Both fast-math builds (`build-fast`, `build-cuda-fast`) fail gate 1's hard-wall V<sub>asy</sub> table by
     1.6e-14 against 1e-14; the default build passes. All other regular gates pass. (Plain
-    `-ffast-math`; since NaN and inf are kept, `build-fast` passes that table:
+    `-ffast-math`; since NaN and inf are kept, both pass that table:
     [The fast-math build](#the-fast-math-build-spodvr_fast_math).)
   - On the thesis grid (`inputs/thesis_fig5_3_dz`, 7000 steps, 435 rotational functions) the effect
     is larger: `build-cuda-fast` against `build-cuda` 7.8e-12 (norm-weighted relative S-matrix
