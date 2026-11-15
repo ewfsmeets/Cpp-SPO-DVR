@@ -1,8 +1,9 @@
 // Unit tests of the screen formatting (report/format, report/propagation_report, report/sections,
 // report/potential_report): durations, the live progress line (only with colour, so that logs stay
-// plain text), the absorber lines of the set-up printout and the SCM block.
+// plain text), the absorber lines and warnings of the set-up printout and the SCM block.
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -117,6 +118,50 @@ TEST(Report, LowZD4PrintsEachAbsorbersOwnValues) {
   const std::string plain = setup_printout(config_with(nlohmann::json::object()));
   EXPECT_EQ(line_with(plain, "Low-Z"), "");
   EXPECT_EQ(line_with(plain, "WARNING"), "");
+}
+
+// An absorber whose L/lambda lies outside the Vibok & Balint-Kurti table gets a warning naming its
+// energy key, L/lambda and the table end (the Fortran's getACoeffOptPotential warns without naming
+// the absorber). ROptEnergy 0.01 eV: L/lambda = 0.58847; ZSpOptEnergy 3 eV: 15.9458.
+TEST(Report, AbsorberOutsideTheStrengthTableIsWarnedAbout) {
+  const std::string text = setup_printout(config_with({{"ROptEnergy", 0.01}, {"ZSpOptEnergy", 3.0}}));
+  EXPECT_NE(line_with(text,
+                      "WARNING: ROptEnergy: at this energy the absorber is 0.58847 wavelengths long (L/lambda), "
+                      "below the Vibok-Balint-Kurti table (L/lambda = 1 .. 15), so its strength is the "
+                      "table's value at L/lambda = 1 (inputs/README.md, section \"Absorbers\")"),
+            "")
+      << text;
+  EXPECT_NE(line_with(text,
+                      "WARNING: ZSpOptEnergy: at this energy the absorber is 15.9458 wavelengths long "
+                      "(L/lambda), above the Vibok-Balint-Kurti table (L/lambda = 1 .. 15), so its strength is "
+                      "the table's value at L/lambda = 15 (inputs/README.md, section \"Absorbers\")"),
+            "")
+      << text;
+  EXPECT_EQ(line_with(text, "ZOptEnergy:"), "");
+}
+
+// absorber D2: at L/lambda = 1 exactly the strength is 0 and the warning says the absorber is off.
+// A value just above 15 is printed with all digits, so that it does not read "15" (and one just
+// below 1 so that it does not read "1"). The records are set by hand: an input that hits 1 exactly
+// is impractical.
+TEST(Report, AbsorberWarningAtTheFirstTablePointAndNearTheEnds) {
+  Config config = config_with(nlohmann::json::object());
+  config.derived.absorber_table_warnings = {{"ZOptEnergy", 1.0, AbsorberTableRange::at_first_point},
+                                            {"ROptEnergy", std::nextafter(1.0, 0.0), AbsorberTableRange::below},
+                                            {"ZSpOptEnergy", std::nextafter(15.0, 16.0), AbsorberTableRange::above}};
+  const std::string text = setup_printout(config);
+  EXPECT_NE(line_with(text,
+                      "WARNING: ZOptEnergy: at this energy the absorber is exactly 1 wavelength long "
+                      "(L/lambda = 1), the first point of the Vibok-Balint-Kurti table, which no interval of "
+                      "the table includes: its strength is 0 and the absorber is off"),
+            "")
+      << text;
+  EXPECT_NE(line_with(text, "WARNING: ROptEnergy: at this energy the absorber is 0.9999999999999999 wavelengths long"),
+            "")
+      << text;
+  EXPECT_NE(
+      line_with(text, "WARNING: ZSpOptEnergy: at this energy the absorber is 15.000000000000002 wavelengths long"), "")
+      << text;
 }
 
 // An SCM slab of 3 + 2 atoms and its diagnostics, as diagnose_scm_potential would return them.

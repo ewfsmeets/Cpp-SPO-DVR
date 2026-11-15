@@ -19,7 +19,7 @@ reference scales are reduced with a maximum that keeps NaN (`nan_aware_max` in
 Known differences between the two programs (Fortran bugs fixed in C++, quirks kept on purpose,
 quad-precision sites) are listed in [fortran_deviations.md](fortran_deviations.md).
 
-**Production grid.** The gates use small grids. A full thesis calculation (`inputs/thesis_fig5_3_dz`,
+<a id="production-grid"></a>**Production grid.** The gates use small grids. A full thesis calculation (`inputs/thesis_fig5_3_dz`,
 Dai–Zhang PES, 7000 steps, 435 rotational functions) was run with the Fortran, the C++ CPU and the
 C++ GPU code and compared state by state, with criteria written before the comparisons:
 [validation_thesis_fig5_3_dz](validation_thesis_fig5_3_dz/README.md). With the default (strict)
@@ -41,7 +41,8 @@ svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream
 - **Provenance:** the install's `BUILDINFO.tsv` (copies in `tools/fortran_reference/buildinfo/`)
   and a `MANIFEST.tsv` per case (`ctest -R ReferenceManifest`). Build, regenerate, compare, bump:
   [tools/fortran_reference/README.md](../tools/fortran_reference/README.md).
-- **5.19** (`~/work/SPO-DVR_v5.19`, install `v5.19`) is the archive, kept for the thesis record.
+- **5.19** (install `v5.19`: symlinks into the unmodified 5.19 distribution) is the archive, kept
+  for the thesis record.
 
 ### Reference history
 
@@ -70,18 +71,56 @@ output next to it; the corrugated Cu(111) cases are in their own directories.
 If `DVR.inp` changes, the Fortran reference must be regenerated and the gate values updated; the
 C++ regression tests must use the equivalent JSON input (`tests/reference/hardwall_small/input.json`)
 derived from exactly the same parameters.
-1. **Hard wall PES, gas-phase potential** (`tests/test_regression_hardwall.cpp`): V(r) at Z = zasymp = 7.0, θ = π/2 (Fortran
-   "INFO FROM SETTING UP THE ROVIBRATIONAL ASYMPTOTIC POTENTIAL" table, r = 0.8 … 9.05, 56 points)
-   reproduced to ~1e-14 relative (full 6D potential ~1e-13, see the quad-precision sites in
-   fortran_deviations.md). Sanity: V(r = 1.4) = 0 exactly. With GCC 15 the fast-math builds
-   (`SPODVR_FAST_MATH`) fail the V(r) table by 1.6e-14 (at r index 5); the default build passes.
-2. **Gas-phase rovibrational states** (same test; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): the
+1. **Potential** (`tests/test_regression_hardwall.cpp`, `tests/test_regression_pes.cpp`). Gate 1a:
+   the gas-phase potential V(r) at Z = zasymp, θ = π/2 (the Fortran table "INFO FROM SETTING UP THE
+   ROVIBRATIONAL ASYMPTOTIC POTENTIAL"). Gate 1b: the 6D potential (hartree, before the −dt
+   premultiplication) against the Fortran's `.pes` file (`pes_reference.txt`: V(Z, r) for the hard
+   wall, which depends on nothing else; a subsample of the 6D grid for the other cases), and the
+   angular grid.
+   - Hard wall: V(r) at Z = zasymp = 7.0 (r = 0.8 … 9.05, 56 points) reproduced to ~1e-14 relative
+     (full 6D potential ~1e-13, see the quad-precision sites in fortran_deviations.md). Sanity:
+     V(r = 1.4) = 0 exactly. With GCC 15 and plain `-ffast-math` the fast-math builds
+     (`SPODVR_FAST_MATH`) failed the V(r) table by 1.6e-14 (at r index 5); since NaN and inf are kept
+     (`-fno-finite-math-only`, 2026-11-15) `build-fast` passes it, as the default build does.
+   - Corrugated Cu(111) cases (`tests/test_regression_pes.cpp`, gates 1 and 2):
+     cu111_dailight_small (with switching 6..8), cu111_persson_small and cu111_dailight_short_sym (the Fortran symmetric .pes,
+     expanded through symmetryIndex by extract_pes.py, vs the C++ gather): all pass, vasy ≤ 9e-16,
+     6D ≤ 3.6e-14 of max(|V|, 1 eV); computed (x, y) points 10 = 10 (C6v triangle 1).
+   - The same gates for the CRP library (SystemID `CRPlibrary`) on the synthetic data sets of its
+     tests (pairwise model; `tests/crplib/reference/<sym>_pairwise/dataset`):
+     `crp_c6v_synthetic_small`, `crp_c3v_synthetic_small` (6 × 6) and `crp_c4v_synthetic_small`
+     (8 × 8), with r and Z partly outside the data (clamped) and switching 6..8: all pass, vasy
+     bitwise, 6D ≤ 3.0e-14 of max(|V|, 1 eV) (the grids' quad-precision ulps, as above).
+     With `UseSymmetry` (C++ only for C3v and C4v; the subgroup usable with nφ = 10) the same cases
+     against the full Fortran potential: 6D ≤ 5.7e-14.
+     On the real CRP data set (H₂/Cu(111) SRP48, `potentials/H2Cu111SRP_C3v.dir`):
+     `crp_cu111_srp48_small` (the upstream input on coarse grids, VMax imposed): vasy 7.7e-16, 6D
+     1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: CRP D4
+     on data up to 77 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
+     clips the reference at VMin/VMax: the Fortran writes its .pes file before it imposes them.
+   - SCM distorted-surface PES (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (gates 1–4;
+     `crp_cu111_srp48_small` from ZStart 0.5 bohr ≥ the CRP's Zmin, plus the example slab of
+     `potentials/H2Cu111SRP_C3v.dir` rescaled to the CRP lattice) and
+     `scm_cu111_srp48_small_rescaling_off` (gates 1, 2). Vasy 7.7e-16 (ΔV = 0 there, SCM D3). Gate 1b
+     allows 1e-12 of max(|V|, 1 eV): V_CRP and ΔV reach ±125 eV where V is a few tenths of an eV, and
+     their absolute differences do not shrink with V. The 42620 compared points show no cancellation
+     (1.39e-13 and 1.33e-13 at V_CRP 0.47, ΔV 0.59 eV); the 1e-12 rests on the whole .pes (3.94 M
+     points; 2026-11-15, .pes of the 8222b8d runs, extract_pes.py at stride 1, C++ Release build):
+     2.98e-13 (margin 3.4) and 3.41e-13 at V = −0.22 = 125.23 − 125.44 eV, 1.5e-13 scaled by max(|V|,
+     |V_CRP|, |ΔV|, 1 eV). The terms are checked separately at identical points (`tests/scm`: ΔV
+     bitwise, V_CRP within 3e-13). On that grid V − ΔV is up to 1.14e-12 of max(|V_CRP|, 1 eV) from
+     the C++ V_CRP (r = 8.6 bohr, ΔV −329 eV): ΔV one ulp lower in r (the Fortran's grid is
+     quad-rounded) moves by −1.42e-12 eV (unscaled: 7.5e-13, −7.50e-13 eV). Small errors fail
+     (`RegressionPesScmNegative`): P17/P18 read as Å at 35244 points, θ, φ swapped once at 39499,
+     1.01× the tolerance at the largest |V| there only; 0.99× at the worst point passes.
+2. **Gas-phase rovibrational states** (same tests; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): the
    energy and wave function of every (v, j) level against the Fortran's full-precision dump
    `debug_asyp.dat` (`run_setup_reference.sh` sets `DoDump`): the analysed levels to 1e-12 relative
    (energy) and 1e-10 absolute (ψ), the other levels to 1e-10 relative (energy); LAPACK against
    the Fortran's Jacobi ([fortran_deviations.md](fortran_deviations.md)). Measured on hardwall_small
    (2026-11-15): 1.3e-14 and 8.7e-15. The 6-digit printed table (e.g. e(0,0) = 0.258378 eV,
    e(1,0) = 0.762842 eV) is checked by the unit test `GasPhase.ReferenceCaseSixDigitValues`.
+   The other cases of gate 1 run the same comparison (`RegressionPes.Gate2RovibrationalStates`).
 3. **Propagation** (`tests/test_regression_propagation.cpp`): initial wave-packet block
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
@@ -121,43 +160,12 @@ derived from exactly the same parameters.
    `LowZGateFailsWithoutTheScatteringAbsorberLong`: without that absorber the C++ misses the
    Fortran by 3.3e4 half units and 9.6e3 BK tolerances.
    SCM (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (default, CPU and GPU; the case is
-   described with its gate 1 below), 3000 steps, so that the wave reflected by the surface reaches
+   described with its gate 1 above), 3000 steps, so that the wave reflected by the surface reaches
    Zana (before t = 3600 every BK coefficient is below 1e-4, the floor of the scale). Margins (CPU /
    GPU): averages 0.986 / 0.986, probabilities 0.988 / 0.988 of half a printed unit, BK 5.9e-13 /
    5.1e-13 of the scale 0.075. Negative test (Long suite) `ScmGateFailsWithoutTheCorrectionLong`:
    with the CRP term alone (ΔV removed, the lattice kept) the C++ misses the Fortran by 7.8e9 half
    units and 1.4e10 BK tolerances (2026-11-15).
-   Setup gates (gates 1/2 type, `tests/test_regression_pes.cpp`) for cu111_dailight_small (with
-   switching 6..8), cu111_persson_small and cu111_dailight_short_sym (the Fortran symmetric .pes,
-   expanded through symmetryIndex by extract_pes.py, vs the C++ gather): all pass, vasy ≤ 9e-16,
-   6D ≤ 3.6e-14 of max(|V|, 1 eV); computed (x, y) points 10 = 10 (C6v triangle 1).
-   The same gates for the CRP library (SystemID `CRPlibrary`) on the synthetic data sets of its
-   tests (pairwise model; `tests/crplib/reference/<sym>_pairwise/dataset`):
-   `crp_c6v_synthetic_small`, `crp_c3v_synthetic_small` (6 × 6) and `crp_c4v_synthetic_small`
-   (8 × 8), with r and Z partly outside the data (clamped) and switching 6..8: all pass, vasy
-   bitwise, 6D ≤ 3.0e-14 of max(|V|, 1 eV) (the grids' quad-precision ulps, as above).
-   With `UseSymmetry` (C++ only for C3v and C4v; the subgroup usable with nφ = 10) the same cases
-   against the full Fortran potential: 6D ≤ 5.7e-14.
-   On the real CRP data set (H₂/Cu(111) SRP48, `potentials/H2Cu111SRP_C3v.dir`):
-   `crp_cu111_srp48_small` (the upstream input on coarse grids, VMax imposed): vasy 7.7e-16, 6D
-   1.5e-13 of max(|V|, 1 eV) with and without `UseSymmetry`. This case allows 3e-13: CRP D4
-   on data up to 77 Hartree (1.5e-14 with gfortran's libmvec cos, checked 2026-11-11). Gate 1b
-   clips the reference at VMin/VMax: the Fortran writes its .pes file before it imposes them.
-   SCM distorted-surface PES (SystemID `CRPDistrtSurface`): `scm_cu111_srp48_small` (gates 1–4;
-   `crp_cu111_srp48_small` from ZStart 0.5 bohr ≥ the CRP's Zmin, plus the example slab of
-   `potentials/H2Cu111SRP_C3v.dir` rescaled to the CRP lattice) and
-   `scm_cu111_srp48_small_rescaling_off` (gates 1, 2). Vasy 7.7e-16 (ΔV = 0 there, SCM D3). Gate 1b
-   allows 1e-12 of max(|V|, 1 eV): V_CRP and ΔV reach ±125 eV where V is a few tenths of an eV, and
-   their absolute differences do not shrink with V. The 42620 compared points show no cancellation
-   (1.39e-13 and 1.33e-13 at V_CRP 0.47, ΔV 0.59 eV); the 1e-12 rests on the whole .pes (3.94 M
-   points; 2026-11-15, .pes of the 8222b8d runs, extract_pes.py at stride 1, C++ Release build):
-   2.98e-13 (margin 3.4) and 3.41e-13 at V = −0.22 = 125.23 − 125.44 eV, 1.5e-13 scaled by max(|V|,
-   |V_CRP|, |ΔV|, 1 eV). The terms are checked separately at identical points (`tests/scm`: ΔV
-   bitwise, V_CRP within 3e-13). On that grid V − ΔV is up to 1.14e-12 of max(|V_CRP|, 1 eV) from
-   the C++ V_CRP (r = 8.6 bohr, ΔV −329 eV): ΔV one ulp lower in r (the Fortran's grid is
-   quad-rounded) moves by −1.42e-12 eV (unscaled: 7.5e-13, −7.50e-13 eV). Small errors fail
-   (`RegressionPesScmNegative`): P17/P18 read as Å at 35244 points, θ, φ swapped once at 39499,
-   1.01× the tolerance at the largest |V| there only; 0.99× at the worst point passes.
 4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
    Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
    values) to half a unit in the last printed digit (values below 1e-20 are noise and compared

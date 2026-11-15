@@ -7,7 +7,7 @@ in the table below, and the Fortran reference data of the regression tests come 
 
 | Item | Value |
 |---|---|
-| Upstream repository | the git-svn mirror of the SPO-DVR SVN trunk (Leiden), branch `master`; locally `~/work/SPO-DVR`, updated with `git pull` and never built in |
+| Upstream repository | the git-svn mirror of the SPO-DVR SVN trunk (Leiden), branch `master`; a local clone (`SPODVR_FORTRAN_MIRROR`; how to get it: [tools/fortran_reference/README.md](../tools/fortran_reference/README.md#getting-the-fortran-code)), updated with `git pull` and never built in |
 | Upstream commit | `dce0ecc44a401098528e9ef94c54e1086d393ebb` |
 | svn revision | r1713 |
 | Date | 2026-11-09 |
@@ -22,10 +22,11 @@ the pinned build (`FORTRAN_REF_ID` ≠ `FORTRAN_BUILD_ID`).
 
 ## Newer upstream commits
 
+With `SPODVR_FORTRAN_MIRROR` set to the local clone of the mirror:
 ```bash
-git -C ~/work/SPO-DVR pull                                               # update the mirror
-git -C ~/work/SPO-DVR log --oneline dce0ecc..master                      # commits after the pin
-git -C ~/work/SPO-DVR diff -w dce0ecc master -- sources.dir/SOURCES.dir  # their source changes
+git -C "$SPODVR_FORTRAN_MIRROR" pull                                               # update the mirror
+git -C "$SPODVR_FORTRAN_MIRROR" log --oneline dce0ecc..master                      # commits after the pin
+git -C "$SPODVR_FORTRAN_MIRROR" diff -w dce0ecc master -- sources.dir/SOURCES.dir  # their source changes
 ```
 
 On 2026-11-12 the mirror's `master` was `dce0ecc` itself: no newer commit. Each newer change gets a
@@ -35,7 +36,7 @@ row below; moving the reference to a newer commit follows the recipe in
 ## Port status of the upstream changes since 5.19
 
 5.19 is git `601d833` (svn r1572, 2023-07-13). Up to `dce0ecc`, 43 commits changed
-`sources.dir/SOURCES.dir` (`git -C ~/work/SPO-DVR log --oneline 601d833..dce0ecc -- sources.dir/SOURCES.dir`);
+`sources.dir/SOURCES.dir` (`git -C "$SPODVR_FORTRAN_MIRROR" log --oneline 601d833..dce0ecc -- sources.dir/SOURCES.dir`);
 many source files changed only by the GPL 3 license header (f52dbf3, 2025-09-19). For inputs that
 use only 5.19 features, the operators, absorber formulas, input defaults and file formats are
 unchanged: built with `-O3`, 5.24 reproduces the 5.19 results bitwise on every gate case (checked

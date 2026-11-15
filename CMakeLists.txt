@@ -15,7 +15,7 @@ endif()
 option(SPODVR_USE_MKL "Use Intel oneMKL (BLAS/LAPACK, FFTs) when it is found" ON)
 set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "FFT library: AUTO (oneMKL if found, else FFTW), MKL or FFTW")
 set(SPODVR_ARCH "x86-64-v3" CACHE STRING "-march value: x86-64-v3 (AVX2), x86-64-v4 (AVX-512), native, or empty")
-option(SPODVR_FAST_MATH "Experimental: -ffast-math (and FMA in the CUDA kernels); changes rounding" OFF)
+option(SPODVR_FAST_MATH "Experimental: -ffast-math (NaN/inf kept; FMA in the CUDA kernels); changes rounding" OFF)
 set(SPODVR_PGO "OFF" CACHE STRING "Profile-guided optimisation: OFF, GENERATE or USE (docs/performance.md)")
 set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of the PGO profile data")
 option(SPODVR_USE_CUDA "Build the GPU backend (--device cuda; docs/cuda.md)" OFF)
@@ -83,10 +83,13 @@ endif()
 #   -fno-math-errno     math functions need not set errno (sqrt is inlined)
 #   -fno-trapping-math  no floating-point traps (more vectorisation)
 # SPODVR_FAST_MATH replaces these strict flags by -ffast-math, except in spodvr_strict_objects
-# (below), which is compiled with strict_fp_flags in every build.
+# (below), which is compiled with strict_fp_flags in every build. -fno-finite-math-only keeps the
+# NaN and inf semantics (std::isnan and the NaN-aware comparisons of the tests and self-checks
+# work, the user's decision of 2026-11-15); the rest of -ffast-math (reassociation, FMA,
+# reciprocals) stays.
 set(strict_fp_flags -ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math)
 if(SPODVR_FAST_MATH)
-  set(fp_flags -ffast-math -fcx-fortran-rules)
+  set(fp_flags -ffast-math -fno-finite-math-only -fcx-fortran-rules)
 else()
   set(fp_flags ${strict_fp_flags})
 endif()
@@ -282,7 +285,8 @@ endif()
 # docs/cuda.md). The kernels (.cu) are compiled by nvcc, the host code (.cpp) by the C++ compiler.
 # =============================================================================================
 if(SPODVR_USE_CUDA)
-  # nvcc from PATH, else from where NVIDIA's packages install it.
+  # nvcc from /usr/local/cuda/bin (where NVIDIA's packages install it), else from PATH: find_program
+  # searches HINTS before PATH. -DCMAKE_CUDA_COMPILER=<path> overrides both.
   find_program(CMAKE_CUDA_COMPILER nvcc HINTS /usr/local/cuda/bin)
   # The kernels are compiled for the GPU of this machine. For a build that runs elsewhere, set
   # e.g. -DCMAKE_CUDA_ARCHITECTURES="80-real;90-real" (A100, H100).
@@ -334,15 +338,17 @@ if(SPODVR_USE_CUDA)
     src/cuda/specular_kernels.cu
     src/cuda/wave_function_kernels.cu
   )
-  # Only kernels and their launchers are .cu files; all host code of the backend is .cpp. No
-  # link-time optimisation (nvcc objects cannot take part in GCC's LTO).
-  set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON
-                                               INTERPROCEDURAL_OPTIMIZATION OFF)
+  # Only kernels and their launchers are .cu files; all host code of the backend is .cpp. In a
+  # Release build the .cpp files get GCC's LTO (-flto=auto) like every target
+  # (CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE, above); CMake passes no LTO flags to nvcc for the
+  # .cu files.
+  set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON)
   if(SPODVR_FAST_MATH)
     # The most aggressive device code (build-cuda-fast). Of --use_fast_math only the FMA
     # contraction matters for our FP64 kernels; the rest (flush-to-zero, fast division and
-    # square root) acts on FP32.
-    set(cuda_flags --use_fast_math --extra-device-vectorization -Xcompiler=-ffast-math)
+    # square root) acts on FP32. The host side of the .cu files keeps NaN and inf, as the C++ code.
+    set(cuda_flags --use_fast_math --extra-device-vectorization
+                   -Xcompiler=-ffast-math,-fno-finite-math-only)
   else()
     # No FMA contraction, as on the CPU.
     set(cuda_flags -fmad=false -Xcompiler=-ffp-contract=off,-fno-fast-math)

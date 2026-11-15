@@ -4,6 +4,8 @@
 
 #include <cmath>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "core/constants.hpp"
 #include "core/real_compare.hpp"
@@ -18,14 +20,25 @@ namespace spodvr {
 
 namespace {
 
+// Strength (hartree) of an absorber of the given length tuned for energy_ev (eV). An absorber
+// whose L/λ is not inside the table is added to `warnings` (outside it the Fortran warns).
+// Fortran: MyFunctions.f90 getACoeffOptPotential, called from InputNew.f90 ProcessInput
+double strength_for_energy(const std::string& energy_key, double energy_ev, double length, double mass,
+                           std::vector<AbsorberTableWarning>& warnings) {
+  const double ekin = units::legacy.ev_to_hartree(energy_ev);
+  const AbsorberReducedLength reduced = absorber_reduced_length(ekin, length, mass);
+  if (reduced.range != AbsorberTableRange::inside) warnings.push_back({energy_key, reduced.value, reduced.range});
+  return optical_potential_strength(ekin, reduced);
+}
+
 // Strength of a low-Z absorber (hartree): from the energy if it is > 0, else the factor; 0 when
 // the absorber is off or its energy is 0 (as in the Fortran, whose default strength is 0 here).
 // Fortran: InputNew.f90 ProcessInput (vabszblow, vabssblow)
-double low_z_absorber_strength(const LowZAbsorberInput& absorber, double total_mass) {
+double low_z_absorber_strength(const std::string& energy_key, const LowZAbsorberInput& absorber, double total_mass,
+                               std::vector<AbsorberTableWarning>& warnings) {
   if (!absorber.enabled()) return 0.0;
   if (absorber.energy && *absorber.energy > 0.0)
-    return optical_potential_strength(units::legacy.ev_to_hartree(*absorber.energy), *absorber.end - *absorber.start,
-                                      total_mass);
+    return strength_for_energy(energy_key, *absorber.energy, *absorber.end - *absorber.start, total_mass, warnings);
   return absorber.factor.value_or(0.0);
 }
 
@@ -52,17 +65,19 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
   d.z_opt_factor = p.z_opt_factor.value_or(0.0);
   d.r_opt_factor = p.r_opt_factor.value_or(0.0);
   d.zsp_opt_factor = p.zsp_opt_factor.value_or(0.0);
+  // In the order of the Fortran's ProcessInput, which is the order of its warnings.
+  std::vector<AbsorberTableWarning>& warnings = d.absorber_table_warnings;
   if (p.z_opt_energy && *p.z_opt_energy > 0.0)
     d.z_opt_factor =
-        optical_potential_strength(units.ev_to_hartree(*p.z_opt_energy), p.z_opt_end - p.z_opt_start, total_mass);
+        strength_for_energy("ZOptEnergy", *p.z_opt_energy, p.z_opt_end - p.z_opt_start, total_mass, warnings);
+  d.z_opt_low_factor = low_z_absorber_strength("ZOptLowEnergy", p.z_opt_low, total_mass, warnings);
   if (p.r_opt_energy && *p.r_opt_energy > 0.0)
     d.r_opt_factor =
-        optical_potential_strength(units.ev_to_hartree(*p.r_opt_energy), p.r_opt_end - p.r_opt_start, reduced_mass);
+        strength_for_energy("ROptEnergy", *p.r_opt_energy, p.r_opt_end - p.r_opt_start, reduced_mass, warnings);
   if (p.zsp_opt_energy && *p.zsp_opt_energy > 0.0)
     d.zsp_opt_factor =
-        optical_potential_strength(units.ev_to_hartree(*p.zsp_opt_energy), p.zsp_opt_end - p.zsp_opt_start, total_mass);
-  d.z_opt_low_factor = low_z_absorber_strength(p.z_opt_low, total_mass);
-  d.zsp_opt_low_factor = low_z_absorber_strength(p.zsp_opt_low, total_mass);
+        strength_for_energy("ZSpOptEnergy", *p.zsp_opt_energy, p.zsp_opt_end - p.zsp_opt_start, total_mass, warnings);
+  d.zsp_opt_low_factor = low_z_absorber_strength("ZSpOptLowEnergy", p.zsp_opt_low, total_mass, warnings);
 
   d.rotational_constant = units.wavenumber_to_hartree(59.304);
 

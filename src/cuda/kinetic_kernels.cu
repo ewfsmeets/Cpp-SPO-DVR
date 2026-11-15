@@ -54,7 +54,8 @@ __global__ void multiply_by_kinetic_factors_kernel(Complex* psi, DeviceLayout la
 
 }  // namespace
 
-// Fortran: KineticOp.f90 MultByEXPKinEnergy (Z, r and x, y in one pass)
+// Fortran: KineticOp.f90 PerformEXPKinOpZScat and PerformEXPKinOpRScat (Z, r) and GridEnergies.f90
+// MultByEXPKinEnergy (x, y), here in one pass
 void multiply_by_kinetic_factors(Complex* psi, const DeviceLayout& layout, const Complex* zr_factors,
                                  FftScales zr_scales, const Complex* xy_factors, FftScales xy_scales) {
   multiply_by_kinetic_factors_kernel<<<grid_2d(layout.n_zr, layout.n_xy), threads_per_block>>>(
@@ -62,7 +63,7 @@ void multiply_by_kinetic_factors(Complex* psi, const DeviceLayout& layout, const
   check_kernel_launch("multiply_by_kinetic_factors");
 }
 
-// Fortran: KineticOp.f90 MultByEXPKinEnergy (specular grid)
+// Fortran: KineticOp.f90 PerformEXPKinOpSpec (the multiplication between the transforms)
 void multiply_by_periodic_factors(Complex* data, const Complex* factors, FftScales scales, std::int64_t period,
                                   std::int64_t n) {
   multiply_by_periodic_factors_kernel<<<grid_2d(period, n / period), threads_per_block>>>(data, factors, scales,
@@ -70,7 +71,8 @@ void multiply_by_periodic_factors(Complex* data, const Complex* factors, FftScal
   check_kernel_launch("multiply_by_periodic_factors");
 }
 
-// Fortran: SplitOperator.f90 PerformEXPKineticOp (MomentumShiftWF, MultByEXPKinEnergy)
+// Fortran: MomentumShifting.f90 MomentumShiftWF (forward and backward, called from SplitOperator.f90
+// PerformEXPKineticOp)
 void multiply_by_blocked_factors(Complex* data, const Complex* factors, FftScales scales, std::int64_t block,
                                  std::int64_t n) {
   multiply_by_blocked_factors_kernel<<<grid_2d(block, n / block), threads_per_block>>>(data, factors, scales, block,

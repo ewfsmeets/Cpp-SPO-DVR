@@ -28,8 +28,8 @@ double nint(double x) { return static_cast<double>(std::lround(x)); }
 }  // namespace
 
 // Fortran: InputNew.f90 ValidateInput. The checks appear in the same order and with the same
-// messages (a few message typos are corrected, and two flux analysis checks are fixed: flux Q1,
-// flux Q2; see docs/fortran_deviations.md).
+// messages (a few message typos are corrected, two flux analysis checks are fixed: flux Q1,
+// flux Q2, and NrOfEs = 0 and 1 are rejected: analysis D1; see docs/fortran_deviations.md).
 void validate_input(const InputParameters& p, const SystemParameters& system, double zasymp) {
   using namespace fortran_compare;
   const auto& units = units::legacy;
@@ -119,6 +119,12 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   if (p.v_analysis) check(*p.v_analysis < 0, "VAna", "VAna < 0.");
   if (p.diffraction_order_analysis) check(*p.diffraction_order_analysis < 0, "DifOrdAna", "DifOrdAna < 0.");
   if (p.n_energies != Constants::nen95_sentinel) check(p.n_energies < 0, "NrOfEs", "NrOfEs < 0.");
+  // analysis D1: the Fortran accepts NrOfEs = 0 (no analysis energies, no results) and 1
+  // (InputNew.f90 ProcessInput divides by zero in denrgy = (EMaxWP-EMinWP)/(nenrgy-1): NaN energies).
+  check(p.n_energies == 0 || p.n_energies == 1, "NrOfEs",
+        std::format("NrOfEs = {}: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use "
+                    "NrOfEs >= 2, or -95 for energies pi/tEnd apart",
+                    p.n_energies));
 
   check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step), "dtAna",
         "Propagation time must be an integer times dtAna.");

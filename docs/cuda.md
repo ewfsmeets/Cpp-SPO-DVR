@@ -192,13 +192,15 @@ GPU run of 2026-11-08 ([validation record](validation_thesis_fig5_3_dz/README.md
 | exp(−iV dt) table (19 symmetry representatives of 144 (x, y) points) | 1.3 GiB |
 | DVR scratch (slab of 500 points) | 1.0 GiB |
 | cuFFT work area (limit; the DZ grid of 2026-11-06, nZ 128, needed < 1 MiB with cuFFT 12.3 / CUDA 13.3) | ≤ 0.5 GiB |
-| BK plane, copy buffer | 0.1 GiB |
+| BK plane (the Zana plane of ψ, copied to the host every analysis step) | 38.2 MiB |
+| copy buffer (ψ is copied between the host and the GPU through it in chunks of at most 64 MiB; only while a restart is read or the checkpoint written) | 63.1 MiB |
 | total | 8.8 GiB of the card's 12.0 GiB |
 
 The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is set at start-up).
 - **Host memory:** the host allocates ψ only to read a restart or to write the checkpoint at the end.
   The host MEMORY ESTIMATE block still describes a CPU run.
-- **Production grids** (> 64 GB) do not fit on one GPU of this class. The options are surface
+- **Larger grids** do not fit on one GPU of this class: the ER thesis input needs 14.8 GiB
+  ([inputs/thesis_fig5_3_er](../inputs/thesis_fig5_3_er/README.md)). The options are surface
   symmetry (C6v: the potential up to 12× smaller; 7.6× on the DZ grid), a data-centre GPU (80–141 GB), or a multi-GPU version
   (not implemented).
 
@@ -249,7 +251,7 @@ GPU potential stage by kernel, summed over the 8 slabs:
 
 Whole program, 80 steps: 52.1 s of propagation time (CPU: 305.0 s; the averages of the two runs
 agree to 1.0e-14 relative, the BK coefficients to 1.8e-15 absolute) (0.65 s per step) against 3.8 s per step on
-the CPU (305.0 s / 80): **5.9×** (against the CPU stage sum above, 3.57 s: 5.5×). The 10 000 steps of the benchmark would take ≈ 1.8 h instead of ≈ 10 h.
+the CPU (305.0 s / 80): **5.9×** (against the CPU stage sum above, 3.57 s: 5.5×). The 10 000 steps that the DZ input then had (tEnd 25 000 a.u.; it now has 7000) would take ≈ 1.8 h instead of ≈ 10 h.
 
 What limits the speed on this card:
 - **Memory passes:** one pass over ψ (read + write) takes 25.5 ms (400 GB/s). A 2D (Z, r) cuFFT
@@ -344,9 +346,11 @@ Results, fast against strict build:
 - DZ, the full 7000-step thesis run (2026-11-08, [validation report](validation_thesis_fig5_3_dz/README.md#strict-build-gpu-run-added-2026-11-08)):
   S 7.8e-12 (norm-weighted relative), mostly a uniform amplitude offset of 6.4e-12. Against the
   Fortran the strict build is 3.5e-13 off, the fast build 7.9e-12. The strict run took 1.12× as long.
-- The host code is fast-math too: with GCC 15 gate 1's hard-wall V<sub>asy</sub> table fails by 1.6e-14
-  against 1e-14, as in the CPU fast-math build, and native restart files are not interchangeable
-  with the strict build (README "Build variants").
+- The host code is fast-math too (NaN and inf kept, as in the CPU build:
+  [performance.md](performance.md#the-fast-math-build-spodvr_fast_math)). With plain `-ffast-math`
+  and GCC 15 gate 1's hard-wall V<sub>asy</sub> table failed by 1.6e-14 against 1e-14, as in the CPU
+  fast-math build (which passes it since NaN and inf are kept; `build-cuda-fast` not re-checked
+  here). Native restart files are not interchangeable with the strict build (README "Build variants").
 
 So the fast build is within the regression tolerances, but no longer comparable to the CPU build
 to the last bits; use the strict build when comparing with the CPU or the Fortran code.

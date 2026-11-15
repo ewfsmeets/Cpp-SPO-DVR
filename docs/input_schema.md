@@ -28,7 +28,7 @@ Fortran default.
 | `dtAna` `dtAve` | real | dtAnalysis, dtAverages | analysis / averages interval |
 | `DynamZSpAna` | bool | dynamicalZSpAna | dynamical analysis surface on the specular grid |
 | `Zana` | real | ZAnalysis | analysis line (on the Z grid) |
-| `NrOfEs` | int | nenrgy | number of analysis energies; −95 (Fortran `Constants_NEN95`): the collision energies k·π/tEnd (atomic units) between EMinWP + EParallel and EMaxWP + EParallel |
+| `NrOfEs` | int | nenrgy | number of analysis energies, at least 2 (0 and 1 are input errors, analysis D1); −95 (Fortran `Constants_NEN95`): the collision energies k·π/tEnd (atomic units) between EMinWP + EParallel and EMaxWP + EParallel |
 | `EMinWP` `EMaxWP` | real | | wave packet energy range (eV) |
 | `Z0` | real | z0 | initial wave packet centre |
 | `ZOptStart` `ZOptEnd` | real | zsplmi, zsplma | CAP in Z, scattering grid |
@@ -128,7 +128,7 @@ most of them in `tests/test_input.cpp`; the initial norm outside the allowed reg
 `tests/test_initial_wave_packet.cpp`, the `RestartDir` checks in `tests/test_restart.cpp`.
 Deviations are listed in [fortran_deviations.md](fortran_deviations.md).
 Two Fortran flux analysis checks are wrong and are fixed here (flux Q1, flux Q2), and so are
-the silent cases of the low-Z absorber keys (low-Z D1–D3) and the default strength the Fortran
-keeps for an absorber energy of 0 (absorber D1):
+the silent cases of the low-Z absorber keys (low-Z D1–D3), the default strength the Fortran
+keeps for an absorber energy of 0 (absorber D1) and NrOfEs = 0 and 1 (analysis D1):
 [fortran_input_bugs.md](fortran_input_bugs.md) describes them, with demonstration runs of the
 Fortran program.

@@ -10,18 +10,21 @@ ValidateInput, and the grid checks of `Setup.f90`; see [input_schema.md](input_s
 
 The short entries are in [fortran_deviations.md](fortran_deviations.md), under the same IDs.
 The sections cover the flux analysis checks (flux Q1, flux Q2), the default strength that the
-Fortran keeps for an absorber energy of 0 (absorber D1), and the optical potentials at the low end
-of the Z grid that upstream 5.24 added (low-Z D1–D4).
+Fortran keeps for an absorber energy of 0 (absorber D1), the optical potentials at the low end
+of the Z grid that upstream 5.24 added (low-Z D1–D4), and the number of analysis energies
+(analysis D1).
 
 ## The demonstration runs
 - **Executables:**
-  - 5.19, the version the port started from: `~/work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x`
-    (gfortran 15, `-O3`, OpenMP, FFTW);
-  - 5.24: upstream master at commit dce0ecc (svn r1713), built with `O3FLAGS = -O3` in `GNU.mk`
-    (the default flags enable fast-math); now the reference of the port
-    ([validation.md](validation.md#reference-data)).
+  - 5.19, the version the port started from: the archive install `v5.19`, whose `bin/spodvr.x` is
+    the 5.19 distribution's `EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x` (gfortran 15,
+    `-O3`, OpenMP, FFTW);
+  - 5.24: the reference install `r1713-dce0ecc`, upstream master at commit dce0ecc (svn r1713),
+    built with `O3FLAGS = -O3` in `GNU.mk` (the default flags enable fast-math); now the reference
+    of the port ([validation.md](validation.md#reference-data)).
+  - The installs: [tools/fortran_reference/README.md](../tools/fortran_reference/README.md#the-reference-install).
 - **Input:** `tests/reference/hardwall_small/DVR.inp` with the keys of each case appended (or, where
-  a case says so, one line of it replaced).
+  a case says so, lines of it replaced).
   - Its wave packet spans EMinWP = 0.2 to EMaxWP = 0.6 eV.
   - rFluxAnalysis = 3.05 bohr is point 16 of the r grid (0.8 + 15 × 0.15) and lies below
     ROptStart = 4.55, so the checks on r pass.
@@ -366,3 +369,67 @@ while `Setup.f90` prints the right index range (points 1 to 101, Z = −2.0 to 6
   `LowZD3…`, the exact bounds `LowZStartBelowZStart` and `LowZEndAboveZana`, and
   `Input.LowZAbsorbersAtTheirBoundsAreValid`) and `tests/test_report.cpp`
   (`Report.LowZD4PrintsEachAbsorbersOwnValues`).
+
+## analysis D1: NrOfEs = 0 and 1 pass the check
+
+### The Fortran code
+`InputNew.f90 ValidateInput` rejects only a negative number of analysis energies (line 574 in
+5.19, 644 in 5.24; identical):
+```fortran
+    IF ( nenrgy /= Constants_NEN95 ) CALL ERROR( nenrgy < 0, 'NrOfEs < 0.' )
+```
+`ProcessInput` then computes the spacing of the analysis energies (lines 906–907 in 5.19, 978–979
+in 5.24):
+```fortran
+    enrgi = EMinWP + epar
+    denrgy = (EMaxWP - EMinWP) / FLOAT(nenrgy - 1)
+```
+and `Analyzor.f90 SetupAnalysis` the energies themselves (lines 112–114 in 5.19, 124–126 in 5.24;
+NrOfEs = −95, `Constants_NEN95`, replaces `enrgi`, `denrgy` and `nenrgy` by the spectral grid first):
+```fortran
+      allocate ( ensctr(nenrgy), enscev(nenrgy), enscau(nenrgy) )
+      do ien = 1 , nenrgy
+        ensctr(ien) = enrgi + dfloat(ien-1) * denrgy    ! Total translational energy in eV.
+```
+
+### What goes wrong
+- **NrOfEs = 1:** the spacing is (EMaxWP − EMinWP)/0 = +∞ (the build does not trap floating-point
+  exceptions), and the one energy is `enrgi + 0·∞` = NaN. Every channel then counts as closed
+  (`smatrix_calc` tests `skzsq > 0.0`, which is false for NaN), so the sum of the probabilities is
+  0 and the reaction probability 1. The run ends normally, without an error or a warning.
+- **NrOfEs = 0:** the arrays of energies are empty and every loop over them does nothing: the run
+  propagates and prints no S-matrix, probability or reaction probability at all.
+
+### Demonstration
+**Case (i):** `NrOfEs : INTEGER : 1;` instead of 41, and a short propagation (`tEnd : REAL : 200.0;`,
+`nStep : INTEGER : 100;` instead of 14000.0 and 7000). Both versions finish with exit status 0;
+their analysis output (stdout from the line `PRINTING SCATTERING AND REACTION PROBABILITIES` on),
+`averages.out` and fort.25 are identical. The input echo and the analysis print:
+```
+* Number of energies that are on-the-fly analysed:             1
+...
+ total energy =             NaN
+ trans energy =             NaN
+ trans energy in z =             NaN
+ total momentum =             NaN
+...
+ sum of the probabilities =  0.0000000
+...
+ the reaction probability =  0.1000000D+01
+```
+
+**Case (j):** the same with `NrOfEs : INTEGER : 0;`. Both versions finish with exit status 0. After
+the header `PRINTING SCATTERING AND REACTION PROBABILITIES` the output goes straight on to the CPU
+times, and no fort.25 is written.
+
+### The C++ behaviour
+- `src/input/validate.cpp` (`validate_input`) rejects NrOfEs = 0 and 1 after the Fortran's
+  `NrOfEs < 0` check (−95 stays valid). Both cases are input errors (exit code 2), e.g. for case (i):
+  ```
+  Input error: NrOfEs: NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart
+  ```
+- Until this check the C++ behaved as the Fortran: for case (i) its summary table showed
+  `E_coll = -nan`, `P_scattered = 0`, `P_reaction = 1`, and for case (j) empty tables, with exit
+  code 0.
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD1NrOfEsZero` and
+  `AnalysisD1NrOfEsOne`, `Input.AnalysisD1TwoEnergiesAndNen95AreValid`).

@@ -8,7 +8,7 @@
 | `SPODVR_FFT_LIBRARY` | `AUTO` | Implementation of the FFTW3 API: `AUTO` (oneMKL's FFTW3 interface if oneMKL is found, else FFTW), `MKL`, `FFTW`. With `FFTW` and oneMKL both present, FFTW is linked first so that the `fftw_*` symbols resolve to it. |
 | `SPODVR_ARCH` | `x86-64-v3` | Value for `-march`. `x86-64-v3` (AVX2) runs on any recent x86-64 CPU; `x86-64-v4` (AVX-512) or `native` for a specific machine. Results of our own code do not depend on it (no FMA contraction). |
 | `SPODVR_PGO` | `OFF` | Profile-guided optimisation, see below. |
-| `SPODVR_FAST_MATH` | `OFF` | Experimental: `-ffast-math` instead of the flags below (FMA contraction, reassociation, vectorised math functions). Changes results at ~1e-12 on the gate grids and by 7.8e-12 on the thesis grid; passes the gates with the reaction-probability floor of 1e-11 except, with GCC 15, the hard-wall V<sub>asy</sub> table (1.6e-14 against 1e-14), see "Fortran vs C++" below. Native restart files are not interchangeable with the default build (README "Build variants"). Speed experiments only. |
+| `SPODVR_FAST_MATH` | `OFF` | Experimental: `-ffast-math -fno-finite-math-only` instead of the flags below (FMA contraction, reassociation, reciprocals; NaN and inf keep their meaning). Changes results at ~1e-12 on the gate grids and by 7.8e-12 on the thesis grid; passes the gates with the reaction-probability floor of 1e-11 (with plain `-ffast-math` and GCC 15 the hard-wall V<sub>asy</sub> table failed by 1.6e-14 against 1e-14; since NaN and inf are kept it passes). Details and the known test failures: [below](#the-fast-math-build-spodvr_fast_math). Native restart files are not interchangeable with the default build (README "Build variants"). Speed experiments only. |
 | `SPODVR_POISON_UNINITIALISED` | `OFF` | Debug: fill uninitialised `AlignedVector` elements with NaN (any read before write then shows up as NaN). |
 | `CMAKE_BUILD_TYPE=Release` | | `-O3` plus link-time optimisation. |
 
@@ -19,6 +19,46 @@ exactly the gfortran semantics). Never use `-ffast-math`/`-Ofast` or FMA contrac
 builds: they change the results (measured below; `SPODVR_FAST_MATH` exists only for experiments).
 The CRP library, its list-directed reader and the SCM sources keep the strict flags in every build,
 also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`).
+
+### The fast-math build (`SPODVR_FAST_MATH`)
+- **Flags:** the C++ code gets `-ffast-math -fno-finite-math-only -fcx-fortran-rules` (plus
+  `-march`); the CRP library, its reader and the SCM sources keep the strict flags. The CUDA kernels
+  get `--use_fast_math --extra-device-vectorization` (for FP64 only the FMA contraction matters),
+  the host side of the `.cu` files `-ffast-math,-fno-finite-math-only`.
+- **NaN and inf are kept** (`-fno-finite-math-only`, the user's decision of 2026-11-15). Plain
+  `-ffast-math` implies `-ffinite-math-only`: GCC may then assume that no value is NaN or inf and
+  fold `std::isnan(x)` to false, which disables the NaN checks of the tests (`nan_aware_max`) and of
+  the program's self-checks. A side effect: GCC defines `__FAST_MATH__` only with all of
+  `-ffast-math`, so glibc's `math-vector.h` no longer declares its vector (libmvec) variants and
+  `cos`/`sin` stay scalar calls.
+- **Known test failures** (full ctest of `build-fast`, 2026-11-15, GCC 15.2, `-march=native` on
+  the Ryzen 7 5800X, with the commit that added `-fno-finite-math-only`): of 809 tests 795 passed,
+  8 failed and 6 were skipped (the long tests and one CRP case, as in the default build). All 8
+  compare exact values; no NaN test fails, and every regression gate passes.
+  - `PropagationTables.FftScaleFactors`: dz/√(2π) and dr/√(2π) are 1 ulp off (presumably the
+    division becomes a multiplication by the reciprocal, `-freciprocal-math`).
+  - `PotentialGrid.SwitchingToGasPhase`: the switched potential is 1–2 ulp off the formula
+    evaluated in the test (EXPECT_EQ).
+  - `SpatialGrids.FindsTheGridPointsThatAnAbsorbersStrongestEndSplits` and
+    `Report.LowZD4PrintsEachAbsorbersOwnValues`: grid point 30 (ZStart + 30·dZ) rounds differently,
+    so it no longer lies on the other side of the absorber's end than the Fortran's point: no split
+    is found and no warning printed.
+  - `PropagationTables.LowZAbsorberOverwritesTheHighEndWhereTheyOverlap`: a grid point on the
+    boundary of the overlap falls inside it (9 overlapping points instead of 8).
+  - `RegressionPesScmNegative.TestPotentialWithTheOwnDeltaVIsTheProgramsBitwise`: the test's own
+    V_CRP + ΔV (`ScmPotentialWithDeltaV` in the test source, compiled with fast-math) differs in
+    the last bits from the program's (`src/potential/scm/`, always strict) at 6895 points.
+  - `PotentialOperator.PrecomputedAndOnTheFlyExponentialsAreBitwiseIdentical` and
+    `SymmetricPotentialOperator.BitwiseEqualToTheExpandedPotential` (on-the-fly case only): the
+    on-the-fly exp(−iV dt) path is compiled differently from the precomputed one; they differ by up
+    to 1.1e-15 on values of order 1 (measured 2026-11-15). With plain `-ffast-math` they did not
+    fail.
+  - With plain `-ffast-math` 21 tests failed (2026-11-15, the same sources in another build
+    tree): the NaN tests (GCC folded `std::isnan` to false), most of the above, and
+    `RegressionHardWall.Gate1AsymptoticPotentialTable` and
+    `SpecularOperator.AppliesTheZFactorsAtEveryZPoint`, which now pass. The measurements of the
+    fast-math build below (2026-11-05 to 11-08) were made with plain `-ffast-math` and have not been
+    repeated.
 
 ### Profile-guided optimisation (11–16 % less time on the medium grid, 2026-10-26)
 ```
@@ -113,7 +153,7 @@ header line.
 - `spodvr_operator_timing <input.json>` (built in `build/tools/`) shows where the time goes.
 - Check the results of every change: `tools/check_bitwise_refactor.sh` (must be bitwise identical)
   or `tools/compare_propagation.sh` (rounding-level changes, ≤ 1e-13), then the gates
-  (`ctest`, and `SPODVR_LONG_TESTS=1 ctest -R Long` for the full 7000-step run).
+  (`ctest`, and `SPODVR_LONG_TESTS=1 ctest -R 'Long($|\.)'` for the full 7000-step run).
 - The final wave packet of two builds, or of the CPU and the GPU (built in `build*/tools/`):
   `spodvr_dump_wave <input.json> <file> [--device cpu|cuda]` (threads: `OMP_NUM_THREADS`; `cuda`
   only in a CUDA build), then `spodvr_compare_wave <a> <b> [tolerance]` (largest difference
@@ -173,7 +213,9 @@ re-measured since.
   double comparisons fail by 1 ulp. Not the default build.
 - Re-measured with GCC 15 (2026-11-07/08, [validation report](validation_thesis_fig5_3_dz/README.md)):
   - Both fast-math builds (`build-fast`, `build-cuda-fast`) fail gate 1's hard-wall V<sub>asy</sub> table by
-    1.6e-14 against 1e-14; the default build passes. All other regular gates pass.
+    1.6e-14 against 1e-14; the default build passes. All other regular gates pass. (Plain
+    `-ffast-math`; since NaN and inf are kept, `build-fast` passes that table:
+    [The fast-math build](#the-fast-math-build-spodvr_fast_math).)
   - On the thesis grid (`inputs/thesis_fig5_3_dz`, 7000 steps, 435 rotational functions) the effect
     is larger: `build-cuda-fast` against `build-cuda` 7.8e-12 (norm-weighted relative S-matrix
     difference), 7.8× the figure above. Most of it is a uniform amplitude offset of 6.4e-12. Against

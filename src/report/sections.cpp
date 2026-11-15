@@ -53,6 +53,31 @@ std::string split_point_warning(const SplitGridPoint& s) {
       s.key, s.end, s.index, s.point, s.fortran_point, here, fortran, s.key);
 }
 
+// L/λ with 6 significant digits, or with all digits where 6 would print a table end (1 or 15) for
+// a value that is not that end.
+std::string reduced_length_text(double reduced_length) {
+  const std::string text = std::format("{:.6g}", reduced_length);
+  const bool looks_like_an_end = (text == "1" && reduced_length != 1.0) || (text == "15" && reduced_length != 15.0);
+  return looks_like_an_end ? std::format("{}", reduced_length) : text;
+}
+
+// The warning for an absorber whose L/λ is not inside the Vibok & Balint-Kurti table. Outside it
+// the Fortran prints "getACoeffOptPotential: extrapolating; reduced length too small/big !".
+std::string absorber_table_warning(const AbsorberTableWarning& w) {
+  constexpr std::string_view see = "(inputs/README.md, section \"Absorbers\")";
+  if (w.range == AbsorberTableRange::at_first_point)
+    return std::format(
+        "{}: at this energy the absorber is exactly 1 wavelength long (L/lambda = 1), the first point of the "
+        "Vibok-Balint-Kurti table, which no interval of the table includes: its strength is 0 and the absorber is "
+        "off (the Fortran's strength is undefined here: docs/fortran_deviations.md, absorber D2) {}",
+        w.energy_key, see);
+  const bool below = w.range == AbsorberTableRange::below;
+  return std::format(
+      "{}: at this energy the absorber is {} wavelengths long (L/lambda), {} the Vibok-Balint-Kurti table "
+      "(L/lambda = 1 .. 15), so its strength is the table's value at L/lambda = {} {}",
+      w.energy_key, reduced_length_text(w.reduced_length), below ? "below" : "above", below ? 1 : 15, see);
+}
+
 // "first .. last", or "none" for an empty range (no grid point inside the absorber).
 std::string index_range_text(const IndexRange& range) {
   if (range.size() <= 0) return "none";
@@ -95,6 +120,8 @@ void print_input_summary(std::ostream& out, const Style& style, const Config& co
   add_low_z_absorber(list, "Low-Z CAP in Z (scattering)", p.z_opt_low, d.z_opt_low_factor);
   add_low_z_absorber(list, "Low-Z CAP in Z (specular)", p.zsp_opt_low, d.zsp_opt_low_factor);
   list.print(out, style);
+  for (const AbsorberTableWarning& w : d.absorber_table_warnings)
+    out << "  " << style.warning("WARNING: " + absorber_table_warning(w)) << '\n';
 }
 
 void print_grids(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& g,

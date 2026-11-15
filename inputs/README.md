@@ -159,9 +159,11 @@ V_opt = A·(3/2)·((q − start)/L)² on [start, end], zero elsewhere; A from th
 table at the target energy `…OptEnergy` (`optical_potential_strength`; Z absorbers with M, the r
 absorber with μ). The target is a tuning knob, not the packet energy: a low target transmits fast
 waves, a high one reflects slow ones.
-- **Table range**: L/λ = L·√(2m·E_target)/(2π) must lie in [1, 15]. Outside, the strength is
-  clamped to the table end (the Fortran warns, the C++ does not). This scales with the mass: for D₂
-  the same L/λ needs √2 shorter absorbers.
+- **Table range**: L/λ = L·√(2m·E_target)/(2π) must lie in (1, 15]. Outside, the strength is
+  clamped to the table end, and both codes warn (the C++ set-up names the absorber's energy key and
+  L/λ). At exactly 1 no interval of the table matches: the strength is 0, the absorber is off, and
+  the C++ warns ([absorber D2](../docs/fortran_deviations.md#absorber-d2)). This scales with the
+  mass: for D₂ the same L/λ needs √2 shorter absorbers.
 - **End on the last grid point**: whatever passes the end wraps around to Z = 0.
 - **Scattering absorber**: sees all channels, down to their thresholds: target ~0.2 eV, L ≥ ~4 bohr
   (H₂: R + T ≤ 4e-5 for 0.05–1.0 eV, 8e-5 at 1.5 eV). Below ~0.03 eV it reflects whatever the choice

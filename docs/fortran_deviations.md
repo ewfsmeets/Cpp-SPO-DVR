@@ -9,12 +9,13 @@ entry says so. Add every new deviation here. The fine-analysis bugs are describe
 [fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md); the gates that bound the numerical
 differences are in [validation.md](validation.md).
 
-- `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2).
-- flux Q1: the Fortran stops when `EMaxFluxAna .RLT. EMaxWP` (message `'EMaxFluxAna < EMinWP'`):
+- `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2), so the
+  Fortran always reads it as the specular grid size. C++: the same (a required key); ProjOp must be 2.
+- flux Q1<a id="flux-q1"></a>: the Fortran stops when `EMaxFluxAna .RLT. EMaxWP` (message `'EMaxFluxAna < EMinWP'`):
   it rejects every flux energy range that ends inside the wave packet and accepts ranges beyond
   it. C++: error if EMaxFluxAna > EMaxWP (tolerant, like the EMinFluxAna check). Details and a
   demonstration: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q1-emaxfluxana-is-checked-the-wrong-way-round).
-- flux Q2: the Fortran rejects only `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passes and
+- flux Q2<a id="flux-q2"></a>: the Fortran rejects only `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passes and
   `FluxAnalyzor.f90 setupFluxAnalyzor` divides by it (a garbage energy count, no flux results).
   C++: error if DeltaEFluxAna ≤ 0 (tolerant). Details: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
 - Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
@@ -23,47 +24,51 @@ differences are in [validation.md](validation.md).
   A port was validated against the Fortran and reverted (2026-11-14): with ProjOp 2 the Fortran's
   flux leaves out the initial channel. Findings, tests and what was tried:
   [flux_analysis_findings.md](flux_analysis_findings.md).
-- `InitGenComplexTransform` silently returns on invalid nφ.
+- `transform.f90 InitGenComplexTransform` silently returns on an invalid nφ (not a valid FFT size,
+  or below 2·MJMax + 1), leaving the transform unset. C++: an input error naming `MJMax`
+  (`src/grids/angular_grid.cpp`).
 - `tolsp` (`TolSp`) has no default in `globaldata.f90` (uninitialised if absent). C++: required key.
 - `nZSpecular < nZ` is not checked by Fortran (out-of-bounds zgrid access). C++: hard error.
-- Kept on purpose (Fortran semantics reproduced): `MJMax <= 0` ⇒ the basis/grid uses MJMax = JMax
+- <a id="mjmax-zero"></a>Kept on purpose (Fortran semantics reproduced): `MJMax <= 0` ⇒ the basis/grid uses MJMax = JMax
   (`setupdvr.f90`/`transform.f90` "MjMax < 1"), while ValidateInput checks |MJIn| ≤ |MJMax| with the
   raw value. `VAna < 1` and absent `JAna` are replaced by the program-determined open-channel limits
   (`GasPhase.f90`).
-- Not ported: `.pes` file caching (`ReadPesFromFile`/`WritePesToFile`); the potential is always
-  computed. `UseRCutOff` is silently forced off by Fortran `ProcessInput`; C++ rejects
-  `UseRCutOff: true` / `RCutOff`. Also rejected (NotSupportedError): `SystemMix` (+`SystemID2`,
-  `SystemMixCoeff`; the Fortran reads and checks them, but has no mixing code), `write2DPES`
-  (+ coordinates), `PESMixingAlfa`. `FullSMatrix`, which the Fortran only prints, is accepted and
-  ignored.
-- Not ported by decision (not needed in the C++): the MPI code (`MPI_*.f90`, the `USE_MPI` blocks;
+- <a id="not-ported-pes-cache"></a>Not ported: `.pes` file caching (`ReadPesFromFile`/`WritePesToFile`); the potential is always
+  computed. Also rejected (NotSupportedError): `write2DPES` (+ coordinates), `PESMixingAlfa`.
+  `FullSMatrix`, which the Fortran only prints, is accepted and ignored.
+- <a id="not-planned-pes-mixing-and-r-cut-off"></a>Not planned (the Fortran has no code to port):
+  `SystemMix` (+`SystemID2`, `SystemMixCoeff`; the Fortran reads and checks them, but has no mixing
+  code) and `UseRCutOff` (silently forced off by Fortran `ProcessInput`). C++: rejected
+  (NotSupportedError) when switched on (`SystemMix: true`, `UseRCutOff: true`) or given
+  (`SystemID2`, `SystemMixCoeff`, `RCutOff`).
+- <a id="not-ported-by-decision"></a>Not ported by decision (not needed in the C++): the MPI code (`MPI_*.f90`, the `USE_MPI` blocks;
   OpenMP and the GPU backend instead), the platform files `*_hack.f90` (thread queries, flush,
   timer), the ESSL and SCSL FFT paths of `ffts.f90`, and the old input reader `Input.f90` (dead:
   `preprocessoptions.inc` defines `__USE_NEW_INPUT_FORMAT__`, so `InputNew.f90` reads the input).
-- Input file: JSON ([input_schema.md](input_schema.md)) instead of `DVR.inp`, with the Fortran's
+- <a id="input-file"></a>Input file: JSON ([input_schema.md](input_schema.md)) instead of `DVR.inp`, with the Fortran's
   field names. The keys are case-sensitive (the Fortran upper-cases every name,
   `inputfields.f90 inp_VerifyFieldName`), and an unknown key is an error (the Fortran stores an
   unknown key that carries a type, `Name : REAL : value;`, and never reads it). An input error
   exits with status 2; the Fortran's `errortrap.f90 AbortWithError` stops with status 0
   ([fortran_input_bugs.md](fortran_input_bugs.md#the-demonstration-runs)).
-- Output not reproduced: the mean rotational and diffraction energies per final v (Fortran stdout,
+- <a id="output-not-reproduced"></a>Output not reproduced: the mean rotational and diffraction energies per final v (Fortran stdout,
   `Analyzor.f90 smatrix_combine`, and fil10, `probaf`), which the C++ computes (`combine_s_matrix`)
   but does not write: it writes the means over all v; and the CPU time per operator
   (`CpuTimings.f90 PrintCpuTimes`, stdout and fort.99): the C++ prints the times of the potential,
   the propagation and the fine analysis. `DoDump` (the gas-phase states in `debug_asyp.dat`) is
   accepted and ignored: the C++ always writes them to `gas_phase_states.dat`.
-- Surface symmetry, deviations: the Fortran switches `UseSymmetry` off with a warning for C2v and
+- <a id="surface-symmetry-deviations"></a>Surface symmetry, deviations: the Fortran switches `UseSymmetry` off with a warning for C2v and
   C4v (complete but never validated code) and has no code for C3v/C3; C++ supports all five
   (gates for those: C++ with vs without symmetry). nX or nY = 1 with UseSymmetry and a trivial
   usable group are errors (Fortran: warn and continue). Representatives differ from the Fortran
   regions (triangle A / 1, rectangle A): equal values up to PES rounding. The PES self-check (θ, Z and r at grid points, x, y, φ anywhere; until 2026-11-09 θ was sampled anywhere too, which could reach geometries the grid never uses)
   (`SymmetryTolerance`, default 1e-5 eV) is not in the Fortran. Native checkpoint format 2 adds
   the number of φ points to the restart parameters.
-- Diffraction order: derived from the reciprocal lattice (nearest-neighbour step distance,
+- <a id="diffraction-order"></a>Diffraction order: derived from the reciprocal lattice (nearest-neighbour step distance,
   `SurfaceLattice::diffraction_order`) instead of the Fortran per-point-group table
   (`getDiffractionOrder`, which stops for other groups); identical integers for all Fortran
   groups (exhaustive test).
-- Persson PES quirk, kept: coordinates are converted with 0.529167 Å/bohr, the lattice constant
+- <a id="persson-pes-quirk"></a>Persson PES quirk, kept: coordinates are converted with 0.529167 Å/bohr, the lattice constant
   with cboan 0.529177, so the PES has period cc/0.529167 ≠ alat (1.9e-5 relative). Symmetric about
   the origin, but not periodic on the grid: with UseSymmetry the self-check fails (hundreds of eV
   deep in the wall, ~4 meV with VMax 10 eV); the Fortran would use the map silently.
@@ -76,6 +81,14 @@ differences are in [validation.md](validation.md).
   keeps the factor's default (`globaldata.f90 SetupGlobalDataModule`, e.g. 4.38e-3 hartree for
   ZOpt), so it absorbs without saying so. The low-Z absorbers' default strength is 0, so there both
   codes agree. Details: [fortran_input_bugs.md](fortran_input_bugs.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength).
+- absorber D2<a id="absorber-d2"></a>: an absorber whose reduced length L/λ is exactly 1, the first point of the
+  Vibók–Balint-Kurti table, matches no interval of `MyFunctions.f90 getACoeffOptPotential` (the
+  test is `xtab(i) < L/λ ≤ xtab(i+1)`, and L/λ < 1 is the clamp branch). The Fortran then returns
+  its uninitialised local `asel`; the C++ returns 0 (no absorption) and warns that the absorber is
+  off (`optical_potential_strength`, tests `Input.AbsorberD2ReducedLengthOneGivesStrengthZero`,
+  `Report.AbsorberWarningAtTheFirstTablePointAndNearTheEnds`). Outside the table (L/λ < 1 or > 15)
+  both codes take the table's end value and warn with L/λ; only the C++ warning names the absorber
+  (its energy key), in the Fortran's order (`InputNew.f90 ProcessInput`).
 - The low-Z absorbers of upstream 5.24 (keys `ZOptLow…`, `ZSpOptLow…`; `InputNew.f90 ReadInput`,
   `Absorption.f90 SetupAbsorpPot`). The Fortran's silent cases are errors here; details and
   demonstrations: [fortran_input_bugs.md](fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524).
@@ -129,7 +142,7 @@ differences are in [validation.md](validation.md).
   coefficient of the initial channel is *replaced* by the specular-grid projection (the
   scattering-grid part of that channel is discarded). The phase of S is set to 0 when Re S = 0
   (`smatrix_combine`), even if Im S ≠ 0.
-- Fortran restart bug, fixed: `anlyTol` and `oldValZanly` are neither saved in fort.9 nor
+- <a id="fortran-restart-bug"></a>Fortran restart bug, fixed: `anlyTol` and `oldValZanly` are neither saved in fort.9 nor
   recomputed on a restart (uninitialised while the dynamic specular surface is not yet fixed).
   C++ native checkpoints store the full surface state; reading Fortran files recomputes anlyTol
   from the input's initial wave packet and sets oldValZanly = izanlySpecChan (what a continuous
@@ -142,7 +155,7 @@ differences are in [validation.md](validation.md).
   that typo fixed (svn r1713), so gate 5 emulates only the ATAN and sign handling. Fortran
   nen95 = 1 reads out of bounds (C++: no interpolation for nen95 < 2); ndatol < 2 gives an FFT
   length 1 (C++: error).
-- Fine analysis, kept: truncation to ndused = largest FFT length <= records (trapezoid, end
+- <a id="fine-analysis-kept"></a>Fine analysis, kept: truncation to ndused = largest FFT length <= records (trapezoid, end
   weight 1/2, so not equal to the on-the-fly rectangle sum); open channel if kz^2 >= 0 (on the
   fly: > 0); interpolation index by plain `>=` while the range check is tolerant; a channel
   closed at E_z but open at a neighbouring grid point keeps its small interpolated P (in the
@@ -152,8 +165,11 @@ differences are in [validation.md](validation.md).
   Fortran replaces the on-the-fly results, C++ writes both (`fine_analysis/`). The transform is
   one zero-padded FFT with trapezoid weights instead of hlftrf's two (anti-)Hermitian FFTs
   (equal to rounding, tested).
-- `NrOfEs = 1` divides by zero in `denrgy = (EMaxWP-EMinWP)/(nenrgy-1)` (Fortran and C++ alike).
-- ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
+- analysis D1<a id="analysis-d1"></a>: NrOfEs = 0 and 1 are input errors. The Fortran accepts both: with 0
+  it computes no S-matrix at all, with 1 `InputNew.f90 ProcessInput` divides by zero in
+  `denrgy = (EMaxWP-EMinWP)/(nenrgy-1)`, and the run reports NaN energies and P_reaction = 1.
+  Details and a demonstration: [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d1-nrofes--0-and-1-pass-the-check).
+- <a id="projop-1"></a>ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
   option); the input reader rejects it.
 - Kept on purpose (`Analyzor.f90 FindNewAnalysisPoint`): the clamp of `izanlySpecChan` to `nschmi`
   is overwritten on the next line, and reaching `izanly` fixes the surface without leaving the

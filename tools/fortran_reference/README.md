@@ -31,6 +31,17 @@ strings the three together.
 Each script's header gives its arguments, outputs, environment and run time. Every run script
 records the files it writes in the case's `MANIFEST.tsv`.
 
+## Getting the Fortran code
+
+Running the tests needs no Fortran: the regression tests read only the committed reference files.
+The Fortran is needed to regenerate or extend those files, or to compare a new feature with it.
+The Fortran SPO-DVR code is developed by the Theoretical Chemistry Group of Leiden University in
+the trunk of its SVN repository (since 5.24 the source files carry the GNU GPL header); the port
+follows a git-svn mirror of that trunk, branch `master` ([docs/upstream_sync.md](../../docs/upstream_sync.md)
+names the commit the port is up to speed with). Access to the repository is on request from its
+maintainers. The scripts here need a clone of the mirror (`SPODVR_FORTRAN_MIRROR`) to build an
+install, and an install (`SPODVR_FORTRAN_REF_DIR`) to run.
+
 ## Environment variables
 
 | Variable | Meaning |
@@ -44,7 +55,8 @@ refuse to run while one is set. Point `SPODVR_FORTRAN_REF_DIR` at an install ins
 
 ## The reference install
 
-An install is a directory `~/work/SPO-DVR_ref/<id>/` with a fixed layout:
+An install is a directory (`SPODVR_FORTRAN_REF_DIR`, by default `<id>` in the reference root of
+[reference_config.sh](reference_config.sh)) with a fixed layout:
 
 | Path | Content |
 |---|---|
@@ -54,8 +66,8 @@ An install is a directory `~/work/SPO-DVR_ref/<id>/` with a fixed layout:
 | `SHA256SUMS` | sha256 of the files above (`sha256sum -c` in the install) |
 | `build.log`, `sources.tar` | The DoBuild log and the exact sources (installs made by the build script) |
 
-`v5.19` is the 5.19 archive (`~/work/SPO-DVR_v5.19`, symlinked; it must never be rebuilt or
-deleted). Since the libc6 upgrade of 2026-11-14 a run against it needs
+`v5.19` is the 5.19 archive (symlinks into the unmodified 5.19 distribution; it must never be
+rebuilt or deleted). Since the libc6 upgrade of 2026-11-14 a run against it needs
 `SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1`: its `BUILDINFO.tsv` records libc6 2.43-2ubuntu2.4. Installs are read-only; to rebuild one: `chmod -R u+w <install> && rm -r <install>`.
 
 `BUILDINFO.tsv` is a TSV file: `#` comment lines, the header `key<TAB>value`, rows sorted by key,
@@ -283,12 +295,12 @@ commit the build script builds, `FORTRAN_REF_ID` the install every run uses. The
 up to speed with, and the port status of each upstream change, are in
 [docs/upstream_sync.md](../../docs/upstream_sync.md). Steps:
 
-1. **Review the upstream changes.** After `git -C ~/work/SPO-DVR pull`, list the commits after the
-   pin with `git -C ~/work/SPO-DVR log --oneline <pin>..master` and read
-   `git -C ~/work/SPO-DVR diff -w <pin> <new> -- sources.dir/SOURCES.dir`. Give each change a row
+1. **Review the upstream changes.** In the clone of the mirror (`SPODVR_FORTRAN_MIRROR`): after
+   `git pull`, list the commits after the pin with `git log --oneline <pin>..master` and read
+   `git diff -w <pin> <new> -- sources.dir/SOURCES.dir`. Give each change a row
    in the table of docs/upstream_sync.md (ported, a deviation, or not ported).
 2. **Pin and build.** Set `FORTRAN_BUILD_COMMIT`, `FORTRAN_BUILD_TREE`
-   (`git -C ~/work/SPO-DVR rev-parse <new>^{tree}`), `FORTRAN_BUILD_SVN` and
+   (`git rev-parse <new>^{tree}` in the mirror), `FORTRAN_BUILD_SVN` and
    `FORTRAN_BUILD_VERSION`, and check that `FORTRAN_BUILD_GNU_MK_LINE` is still line 19 of
    `sources.dir/GNU.mk`. Run `build_fortran_reference.sh` ([above](#building-a-reference-install));
    a log line outside its allow-lists stops the build: understand it before widening a list.

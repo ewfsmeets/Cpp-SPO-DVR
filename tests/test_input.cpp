@@ -434,6 +434,23 @@ TEST(Input, FluxQ1EnergyRangeInsideTheWavePacketIsValid) {
   }
 }
 
+// analysis D1: NrOfEs = 0 and 1 are errors (the Fortran gives no results or divides by zero); two
+// energies are the smallest valid grid, and -95 (nen95) chooses the energies itself.
+TEST(Input, AnalysisD1TwoEnergiesAndNen95AreValid) {
+  Json json = reference_json();
+  json["NrOfEs"] = 2;
+  Config config = build(json);
+  EXPECT_EQ(config.derived.analysis_energy_start, 0.2);
+  EXPECT_EQ(config.derived.analysis_energy_step, 0.6 - 0.2);
+  json["NrOfEs"] = -95;
+  config = build(json);
+  EXPECT_EQ(config.input.n_energies, -95);
+
+  json["NrOfEs"] = 1;
+  const std::string message = expect_input_error(json, "NrOfEs");
+  EXPECT_NE(message.find("NrOfEs = 1: the analysis needs at least 2 energies"), std::string::npos) << message;
+}
+
 // RStart <= 0 is rejected with the 1e-12 absolute tolerance of .RLE. (5.24 InputNew.f90
 // ValidateInput), so a start 2e-12 above 0 is valid; 0 and 1e-13 are in the violation table.
 TEST(Input, RStartJustAboveZeroIsValid) {
@@ -555,6 +572,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"VAnaNeg", [](Json& j) { j["VAna"] = -1; }, "VAna"},
         Violation{"DifOrdNeg", [](Json& j) { j["DifOrdAna"] = -1; }, "DifOrdAna"},
         Violation{"NrOfEs", [](Json& j) { j["NrOfEs"] = -1; }, "NrOfEs"},
+        Violation{"AnalysisD1NrOfEsZero", [](Json& j) { j["NrOfEs"] = 0; }, "NrOfEs"},
+        Violation{"AnalysisD1NrOfEsOne", [](Json& j) { j["NrOfEs"] = 1; }, "NrOfEs"},
         Violation{"ZanaLtZasymp", [](Json& j) { j["Zana"] = 6.0; }, "Zana"},
         Violation{"ZanaOffGrid", [](Json& j) { j["Zana"] = 8.01; }, "Zana"},
         Violation{"ZanaGtZOptStart", [](Json& j) { j["Zana"] = 9.04; }, "Zana"},
@@ -640,4 +659,86 @@ TEST(Input, OpticalPotentialStrengthInterpolates) {
   EXPECT_NEAR(optical_potential_strength(ekin, 2.25 * wavelength, mass), 0.5 * (2.51 + 2.38) * ekin, 1e-15);
   EXPECT_EQ(optical_potential_strength(ekin, 0.5 * wavelength, mass), 2.75 * ekin);
   EXPECT_EQ(optical_potential_strength(ekin, 20.0 * wavelength, mass), 0.663 * ekin);
+}
+
+// absorber_reduced_length gives the L/lambda the strength is interpolated at, and says where it
+// lies: below or above the table (1 .. 15; the Fortran's two warnings), inside, or exactly at 1.
+TEST(Input, AbsorberReducedLengthNamesTheTableEnd) {
+  const double mass = 1000.0;
+  const double ekin = 0.01;
+  const double wavelength = 2.0 * std::acos(-1.0) / std::sqrt(2.0 * mass * ekin);
+  const AbsorberReducedLength below = absorber_reduced_length(ekin, 0.5 * wavelength, mass);
+  EXPECT_EQ(below.value, 0.5 * wavelength / wavelength);
+  EXPECT_EQ(below.range, AbsorberTableRange::below);
+  EXPECT_EQ(absorber_reduced_length(ekin, 20.0 * wavelength, mass).range, AbsorberTableRange::above);
+  EXPECT_EQ(absorber_reduced_length(ekin, wavelength, mass).range, AbsorberTableRange::at_first_point);
+  // Not 15.0 itself: 15·λ/λ may round above 15 in the fast-math build.
+  for (const double table_point : {2.25, 14.5})
+    EXPECT_EQ(absorber_reduced_length(ekin, table_point * wavelength, mass).range, AbsorberTableRange::inside)
+        << table_point;
+}
+
+// absorber D2: L/lambda exactly 1 matches no interval of the table: strength 0 (the Fortran returns
+// its uninitialised local); the set-up warns that the absorber is off (Report test).
+TEST(Input, AbsorberD2ReducedLengthOneGivesStrengthZero) {
+  const double mass = 1000.0;
+  const double ekin = 0.01;
+  const double wavelength = 2.0 * std::acos(-1.0) / std::sqrt(2.0 * mass * ekin);
+  const AbsorberReducedLength at_one = absorber_reduced_length(ekin, wavelength, mass);
+  ASSERT_EQ(at_one.value, 1.0);
+  EXPECT_EQ(at_one.range, AbsorberTableRange::at_first_point);
+  EXPECT_EQ(optical_potential_strength(ekin, at_one), 0.0);
+  EXPECT_EQ(optical_potential_strength(ekin, wavelength, mass), 0.0);
+}
+
+// Every absorber tuned by its energy (all five energy keys) whose L/lambda lies outside the table
+// gets the end value of the table and is recorded for the set-up warning, in the order of the
+// Fortran's ProcessInput (Fortran: getACoeffOptPotential warns). For ROpt and ZSpOpt the Fortran
+// 5.24 printed reduced_length = 0.58847038336148938 and 15.945765873846009 for this input: the
+// C++ values equal these doubles bitwise in the default build (2026-11-15); the tolerance 1e-13,
+// about 50 ulp at 16, leaves room for the reassociations of the fast-math build.
+TEST(Input, AbsorberOutsideTheStrengthTableIsRecorded) {
+  Json json = reference_json();
+  EXPECT_TRUE(build(json).derived.absorber_table_warnings.empty());
+
+  json["ZOptEnergy"] = 5.0;      // 3.12 bohr: L/lambda = 18.2
+  json["ZOptLowStart"] = -1.0;   // 0.5 bohr at 0.3 eV: L/lambda = 0.72
+  json["ZOptLowEnd"] = -0.5;
+  json["ZOptLowEnergy"] = 0.3;
+  json["ROptEnergy"] = 0.01;     // 4.5 bohr with the reduced mass: L/lambda = 0.59
+  json["ZSpOptEnergy"] = 3.0;    // 3.52 bohr: L/lambda = 15.9
+  json["ZSpOptLowStart"] = -1.9; // 0.5 bohr at 0.3 eV: L/lambda = 0.72
+  json["ZSpOptLowEnd"] = -1.4;
+  json["ZSpOptLowEnergy"] = 0.3;
+  const Config config = build(json);
+  const DerivedParameters& d = config.derived;
+  const auto& u = units::legacy;
+  const std::vector<AbsorberTableWarning>& warnings = d.absorber_table_warnings;
+  ASSERT_EQ(warnings.size(), 5);
+  const std::vector<std::string> keys = {"ZOptEnergy", "ZOptLowEnergy", "ROptEnergy", "ZSpOptEnergy",
+                                         "ZSpOptLowEnergy"};
+  const std::vector<AbsorberTableRange> ranges = {AbsorberTableRange::above, AbsorberTableRange::below,
+                                                  AbsorberTableRange::below, AbsorberTableRange::above,
+                                                  AbsorberTableRange::below};
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(warnings[i].energy_key, keys[i]) << i;
+    EXPECT_EQ(warnings[i].range, ranges[i]) << keys[i];
+  }
+  EXPECT_NEAR(warnings[2].reduced_length, 0.58847038336148938, 1e-13);
+  EXPECT_NEAR(warnings[3].reduced_length, 15.945765873846009, 1e-13);
+  // The table's end values; within 4 ulp because the fast-math build rounds ekin differently
+  // (1 ulp for ZOptEnergy 5 eV, 2026-11-15).
+  EXPECT_DOUBLE_EQ(d.z_opt_factor, 0.663 * u.ev_to_hartree(5.0));
+  EXPECT_DOUBLE_EQ(d.z_opt_low_factor, 2.75 * u.ev_to_hartree(0.3));
+  EXPECT_DOUBLE_EQ(d.r_opt_factor, 2.75 * u.ev_to_hartree(0.01));
+  EXPECT_DOUBLE_EQ(d.zsp_opt_factor, 0.663 * u.ev_to_hartree(3.0));
+  EXPECT_DOUBLE_EQ(d.zsp_opt_low_factor, 2.75 * u.ev_to_hartree(0.3));
+
+  json["ZOptEnergy"] = 0.3;
+  json["ROptEnergy"] = 0.0;  // absorber D1: no strength computed, so nothing to warn about
+  json["ZSpOptEnergy"] = 0.3;
+  for (const char* key :
+       {"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy", "ZSpOptLowStart", "ZSpOptLowEnd", "ZSpOptLowEnergy"})
+    json.erase(key);
+  EXPECT_TRUE(build(json).derived.absorber_table_warnings.empty());
 }

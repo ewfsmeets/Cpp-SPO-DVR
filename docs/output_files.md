@@ -1,7 +1,9 @@
 # Output files
 
 All files are written to `--output-dir`. Numbers that are compared with the Fortran code are
-written in full precision (`%.16e`). Energies are in eV, lengths in bohr, times in atomic units.
+written in full precision (`%.16e`). Lengths are in bohr and times in atomic units everywhere;
+energies are in eV in the result tables (`.tsv`, `analysis.json`) and in hartree in the `.dat`
+files, unless a column says otherwise (each file's `#` header names the units).
 
 ## Results (tab-separated tables)
 Every table starts with `#` comment lines that explain the columns and units, followed by one
@@ -19,11 +21,16 @@ gnuplot: `set datafile separator "\t"; plot "scattering_summary.tsv" using "E_co
 | `s_matrix.tsv` | energy and **open** final channel | `E_coll`, `E_total`, `v`, `j`, `mJ`, `n`, `m` (diffraction channel n b₁ + m b₂), `order`, `Re_S`, `Im_S`, `P` = \|S\|², `phase` = arg S (rad; 0 when Re S = 0, as in Fortran) |
 | `probabilities_rovib.tsv` | energy and (v, j, mJ) | `E_coll`, `v`, `j`, `mJ`, `P` (summed over diffraction). Written if `writeProbs` |
 | `probabilities_diffraction.tsv` | energy, (v, j, mJ) and diffraction order | `E_coll`, `v`, `j`, `mJ`, `order`, `P` (summed over the (n, m) of that order). Written if `writeRDProbs` |
-| `averages.dat` | averages time | t, norm, ⟨Z⟩, ⟨r⟩, rest norm (space-separated, Fortran averages.out) |
 
 Closed channels (energetically inaccessible at that energy) are omitted from `s_matrix.tsv`;
 in the summed tables they contribute 0. The diffraction order depends on the surface point group
 (|n| + |m| for C2v and C4v).
+
+`P_reaction` is not measured but derived: 1 − P_scattered. A run that ends before the scattered
+packet has passed the analysis lines therefore reports P_reaction close to 1 at the energies whose
+flux has not arrived yet. The means `E_vib_mean`, `E_rot_mean` and `E_dif_mean` are averages
+over the scattered molecules (weighted by their probabilities and divided by P_scattered): where
+P_scattered is tiny they are dominated by noise and mean nothing.
 
 `analysis.json` holds the run metadata: program version, title, SystemID, units, initial state,
 basis sizes (`n_vibrational_levels` = nviba, `j_max` = jana, `max_diffraction_order` = mdifa,
@@ -40,9 +47,6 @@ analysis surface, the energy range and the list of result files. A `CRPDistrtSur
 | `rms_displacement`, `top_layer_shift`, `highest_atom` | of those atoms (bohr): the rms of distorted − ideal, its mean [x, y, z] over layer 1, the largest distorted z |
 | `parameters` | P1–P18 of layer 1, then of layer 2, as read from the parameter file |
 
-Set-up files: `asymptotic_potential.dat` (vasy(r)) and `gas_phase_states.dat` (rovibrational
-energies and wave functions).
-
 The set-up output of a `CRPDistrtSurface` run has, after the CRP data set, the block "SCM DISTORTED
 SURFACE": the files, the snapshot and its atoms per layer, the lattice constants a_T and a0 and the
 rescaling s, the displacements (rms, largest, the mean shift of layer 1, the highest atom), and the
@@ -53,6 +57,16 @@ point stops the run), a table of the jump of V across the cell edges (SCM D10), 
 on the Z planes below the CRP's Zmin at Rmin ≤ r ≤ Rmax (SCM D15), each with its warning, and the
 lowest V − V_CRP at r outside Rmin .. Rmax on every Z plane, with whether it lies below Rmin or
 inside the r absorber (SCM D15, no warning). An analysis-only run checks only the gas-phase points.
+
+## Data files (space-separated)
+The `.dat` files hold plain columns of numbers separated by spaces, after `#` comment lines that
+name the columns and units; `numpy.loadtxt(f)` reads them.
+
+| File | One row per | Columns |
+|---|---|---|
+| `averages.dat` | averages time (every dtAve) | t (a.u.), norm, ⟨Z⟩ (bohr), ⟨r⟩ (bohr), rest norm (the Fortran's averages.out) |
+| `asymptotic_potential.dat` | r grid point | index ir, r (bohr), V_asy (hartree), V_asy (eV): the gas-phase potential at Z = zasymp, θ = π/2 |
+| `gas_phase_states.dat` | rovibrational state (v, j) | v, j, E (hartree), ψ(r) at every r grid point (a `#` line lists the grid) |
 
 ## Correspondence with the Fortran output
 | Fortran | C++ |

@@ -3,7 +3,9 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <vector>
 
+#include "input/wave_packet_params.hpp"
 #include "potential/potential.hpp"
 
 namespace spodvr {
@@ -169,6 +171,16 @@ struct InputParameters {
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)
 };
 
+// An absorber whose reduced length L/λ lies outside the Vibok & Balint-Kurti table (its strength
+// is the value at the table's nearer end) or exactly at its first point (strength 0, absorber D2).
+// The set-up report prints a warning for it.
+// Fortran: MyFunctions.f90 getACoeffOptPotential (ShowWarning "extrapolating; reduced length …")
+struct AbsorberTableWarning {
+  std::string energy_key;    // the absorber's energy key, e.g. "ROptEnergy"
+  double reduced_length;     // L/λ at that energy
+  AbsorberTableRange range;  // below (L/λ < 1), above (L/λ > 15) or at_first_point (L/λ = 1)
+};
+
 // Quantities derived from the input. Fortran: InputNew.f90 ProcessInput and the scalar part of
 // Setup.f90 MiscellaneousSetup. Atomic units unless stated otherwise.
 struct DerivedParameters {
@@ -196,6 +208,9 @@ struct DerivedParameters {
   double z_opt_low_factor;          // 0 without a low-Z absorber. Fortran: vabszblow
   double zsp_opt_low_factor;        // 0 without a low-Z absorber. Fortran: vabssblow
   int optical_potential_power;      // Fortran: nabpow
+  // Absorbers given by an energy whose L/λ is not inside the strength table, in the Fortran's
+  // order (ProcessInput: ZOpt, ZOptLow, ROpt, ZSpOpt, ZSpOptLow).
+  std::vector<AbsorberTableWarning> absorber_table_warnings;
 
   double dx;                        // Fortran: delx
   double dy;                        // Fortran: dely
