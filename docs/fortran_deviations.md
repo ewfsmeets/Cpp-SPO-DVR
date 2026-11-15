@@ -33,7 +33,25 @@ differences are in [validation.md](validation.md).
 - Not ported: `.pes` file caching (`ReadPesFromFile`/`WritePesToFile`); the potential is always
   computed. `UseRCutOff` is silently forced off by Fortran `ProcessInput`; C++ rejects
   `UseRCutOff: true` / `RCutOff`. Also rejected (NotSupportedError): `SystemMix` (+`SystemID2`,
-  `SystemMixCoeff`), `write2DPES` (+ coordinates), `PESMixingAlfa`.
+  `SystemMixCoeff`; the Fortran reads and checks them, but has no mixing code), `write2DPES`
+  (+ coordinates), `PESMixingAlfa`. `FullSMatrix`, which the Fortran only prints, is accepted and
+  ignored.
+- Not ported by decision (not needed in the C++): the MPI code (`MPI_*.f90`, the `USE_MPI` blocks;
+  OpenMP and the GPU backend instead), the platform files `*_hack.f90` (thread queries, flush,
+  timer), the ESSL and SCSL FFT paths of `ffts.f90`, and the old input reader `Input.f90` (dead:
+  `preprocessoptions.inc` defines `__USE_NEW_INPUT_FORMAT__`, so `InputNew.f90` reads the input).
+- Input file: JSON ([input_schema.md](input_schema.md)) instead of `DVR.inp`, with the Fortran's
+  field names. The keys are case-sensitive (the Fortran upper-cases every name,
+  `inputfields.f90 inp_VerifyFieldName`), and an unknown key is an error (the Fortran stores an
+  unknown key that carries a type, `Name : REAL : value;`, and never reads it). An input error
+  exits with status 2; the Fortran's `errortrap.f90 AbortWithError` stops with status 0
+  ([fortran_input_bugs.md](fortran_input_bugs.md#the-demonstration-runs)).
+- Output not reproduced: the mean rotational and diffraction energies per final v (Fortran stdout,
+  `Analyzor.f90 smatrix_combine`, and fil10, `probaf`), which the C++ computes (`combine_s_matrix`)
+  but does not write: it writes the means over all v; and the CPU time per operator
+  (`CpuTimings.f90 PrintCpuTimes`, stdout and fort.99): the C++ prints the times of the potential,
+  the propagation and the fine analysis. `DoDump` (the gas-phase states in `debug_asyp.dat`) is
+  accepted and ignored: the C++ always writes them to `gas_phase_states.dat`.
 - Surface symmetry, deviations: the Fortran switches `UseSymmetry` off with a warning for C2v and
   C4v (complete but never validated code) and has no code for C3v/C3; C++ supports all five
   (gates for those: C++ with vs without symmetry). nX or nY = 1 with UseSymmetry and a trivial

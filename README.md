@@ -38,39 +38,132 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 
 ## Status
 
-- Implemented and checked against the Fortran code: set-up, the hard wall test potential, the
-  gas-phase rovibrational states, the wave-packet propagation, the on-the-fly asymptotic
-  analysis (S-matrix and state-to-state probabilities) and the fine analysis of the BK time series
-  (onlyAnalysis / alsoAnalysis; two Fortran interpolation bugs fixed, see
-  docs/fortran_fine_analysis_bugs.md).
-- Potentials: the hard wall test potential and the two analytic H₂/Cu(111) LEPS potentials of the
-  Fortran code (Dai–Light and Persson), checked against the Fortran potential on the grid; the
-  Dai–Light propagation and analysis are checked against the Fortran code as well.
-- CRP potentials from a data set (SystemID `CRPlibrary`, input key `CRPlibDataSet`): the Fortran
-  CRP library of M. Wijzenbroek (C3v, C4v and C6v surfaces), ported as the self-contained library
-  `src/crplib/` (V and analytic gradients). The library is checked against the Fortran library on
-  synthetic data sets (bitwise) and on the real H₂/Cu(111) SRP48 data set in `potentials/`, and the
-  program against the Fortran potential on the grid for both.
-- The SCM distorted-surface potential of upstream 5.24 (SystemID `CRPDistrtSurface`: a CRP data set
-  plus a correction for one snapshot of a thermally distorted slab), checked against the Fortran on
-  the CPU and the GPU. Its model, input, ensembles and open questions: [docs/scm.md](docs/scm.md).
-- Surface symmetry (`UseSymmetry`): the potential is computed and stored only for symmetry-unique
-  (x, y) points, for the point groups C2v, C4v, C6v, C3v and C3, after a self-check that the
-  potential really has that symmetry.
-- Implemented: checkpoint/restart (native files and Fortran-compatible files).
-- Absorbing potentials at the low end of the Z grids (keys `ZOptLow…`, `ZSpOptLow…`, added in
-  upstream 5.24) on the CPU and the GPU, compared with the Fortran code in the gate case
-  `cu111_dailight_short_lowz` ([docs/validation.md](docs/validation.md)).
-- Optional GPU backend (CUDA, `--device cuda`): the wave packet stays in GPU memory; passes the same
-  Fortran regression gates as the CPU code, and agrees with it to ≈1e-13 (see
-  [docs/cuda.md](docs/cuda.md)).
-- Not yet implemented: the flux analysis. A propagating run with `doFluxAnalysis: true` is refused
-  with a "not implemented yet" error ([docs/input_schema.md](docs/input_schema.md)). Why, and what a
-  reverted port found: [docs/flux_analysis_findings.md](docs/flux_analysis_findings.md).
-- Not yet implemented: the other Fortran potentials (their data files are in `potentials/`).
-- Fortran version: the port started from SPO-DVR 5.19 (2023). Every comparison uses upstream 5.24
-  at svn r1713 (2026), built with `-O3` ([docs/validation.md](docs/validation.md#reference-data)).
-  The port status of each upstream change since 5.19: [docs/upstream_sync.md](docs/upstream_sync.md).
+This program is a port of the Fortran SPO-DVR code. The port started from version 5.19 (2023);
+every comparison uses upstream 5.24 at svn r1713 (2026), built with `-O3`
+([docs/validation.md](docs/validation.md#reference-data)). The port status of each upstream change
+since 5.19 is in [docs/upstream_sync.md](docs/upstream_sync.md), every known difference from the
+Fortran code in [docs/fortran_deviations.md](docs/fortran_deviations.md), and the gates that
+compare the two programs in [docs/validation.md](docs/validation.md#gates).
+
+The table lists the features of the Fortran code (5.24 r1713) and their status in the C++:
+- **ported**: the C++ does what the Fortran does; a note in parentheses names a Fortran quirk
+  that is kept, or a deliberate difference in a single check or edge case (with its ID);
+- **deviation**: ported, but different on purpose;
+- **partly ported**: the cell says what is missing;
+- **not ported**: the cell says what such an input does in the C++;
+- **not planned**: decided not to port; the cell gives the reason.
+
+"Input error": the program stops with a message naming the key (exit code 2). "Refused": the
+program stops with a "not supported" message (exit code 3).
+
+| Feature | What it does | Status | Details |
+|---|---|---|---|
+| **Run modes** | | | |
+| New run (`NewCalc: true`; Fortran nread 0) | propagates the initial wave packet and analyses it on the fly | **ported** | [validation](docs/validation.md#gates) |
+| Restart (`NewCalc: false`; nread 1) | continues a run from its saved wave packet; the S matrix covers the whole run | **ported** | [restart](#continuing-a-run-restart) |
+| Analysis-only run (`onlyAnalysis`; nread 2) | the fine analysis of the BK coefficients of an earlier run, without propagation | **ported** | [output_files](docs/output_files.md#fine-analysis-onlyanalysis-alsoanalysis) |
+| Fine analysis after the run (`alsoAnalysis`) | the same analysis right after the propagation | **deviation**: the fine results are written next to the on-the-fly ones (the Fortran replaces them) | [fortran_deviations: Fine analysis, kept](docs/fortran_deviations.md) |
+| Potential-only run (`Potential`; nread 6) | computes the potential and the gas-phase states, then stops | **partly ported**: V is computed and checked but not saved (the `.pes` cache, below, is not ported) | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| 2D potential cut (`write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`) | writes V(r, Z) at fixed x, y, θ, φ to a file, then stops | **not ported**: refused | [input_schema](docs/input_schema.md#not-supported) |
+| **Grids and wave packet** | | | |
+| Six dimensions (`ZDoF`, `RDoF`, `XDoF`, `YDoF`, `ThetaDoF`, `PhiDoF`) | the coordinates Z, r, x, y, θ, φ; both codes accept only all six | **ported** | [input_schema](docs/input_schema.md#required-keys) |
+| Molecule (`Mass1`, `Mass2`, `HomoNuc`) | the atom masses; homonuclear (one parity of j) or heteronuclear | **ported** | [input_schema](docs/input_schema.md#required-keys) |
+| Z grids (`ZStart`, `dZ`, `nZ`, `nZSpecular`) | FFT grids in the molecule–surface distance Z: the scattering grid and the longer specular grid | **ported**; a specular grid shorter than the scattering grid is an input error | [inputs/README](inputs/README.md#1-terms) |
+| r grid (`RStart`, `dR`, `nR`) | FFT grid in the bond length r | **ported** (`RStart ≤ 0` rejected, as in 5.24) | [upstream_sync](docs/upstream_sync.md#port-status-of-the-upstream-changes-since-519) |
+| Surface grid (`nX`, `nY`) | FFT grid over the surface unit cell, whose lattice and skew angle the PES defines | **ported** | [input_schema](docs/input_schema.md#required-keys) |
+| Rotational basis (`JMax`, `MJMax`) | spherical harmonics up to JMax, on a Gauss–Legendre grid in θ and an FFT grid in φ | **ported** (`MJMax ≤ 0` means JMax, as in the Fortran) | [fortran_deviations: MJMax <= 0](docs/fortran_deviations.md) |
+| Gas-phase states | the potential far from the surface, V_asy(r), and its rovibrational states (Fourier grid Hamiltonian) | **ported** | [validation](docs/validation.md#gates) |
+| Initial wave packet (`EMinWP`, `EMaxWP`, `Z0`, `VIn`, `JIn`, `MJIn`, `TolSp`) | a Gaussian in Z at Z0 that spans the energies EMinWP to EMaxWP, times the initial state (v, j, mJ) | **ported** (`TolSp` is required: the Fortran has no default) | [inputs/README](inputs/README.md#3-the-wave-packet-is-set-by-its-energy-range) |
+| Oblique incidence (`EParallel`, `PhiParallel`) | the parallel translational energy and its azimuth, by a momentum shift on the x, y grid | **ported** | [input_schema](docs/input_schema.md#required-keys) |
+| **Propagation** | | | |
+| Split-operator propagation (`tStart`, `tEnd`, `dtStep`, `nStep`) | exp(−iT·dt/2) exp(−iV·dt) exp(−iT·dt/2) per step: T by FFTs in Z, r, x, y and in the rotational basis, V on the angular grid | **ported** | [validation](docs/validation.md#gates) |
+| Two grids (`ProjOp: 2`) | the initial channel on the long specular grid, the rest of the wave on the scattering grid | **ported** | [input_schema](docs/input_schema.md#required-keys) |
+| Single grid (`ProjOp: 1`, `0`) | 1: moves the specular wave onto the scattering grid once little of it lies beyond that grid; 0: one grid from the start | **not planned**: 1 is a legacy option, and the Fortran rejects 0 itself; both are input errors | [fortran_deviations: ProjOp = 1](docs/fortran_deviations.md) |
+| **Potentials** (`SystemID`) | | | |
+| `HardWallPES` | test potential: a 1/Z⁴ wall on an H₂ curve in r, without x, y, θ, φ dependence | **ported** | [validation](docs/validation.md#gates) |
+| `H2Cu111DaiLight` | H₂/Cu(111): analytic LEPS of Dai and Light | **ported** | [validation](docs/validation.md#gates) |
+| `H2Cu111Persson` | H₂/Cu(111): analytic LEPS of Persson et al. | **ported** (a lattice-period quirk kept) | [fortran_deviations: Persson PES quirk](docs/fortran_deviations.md) |
+| `CRPlibrary` (`CRPlibDataSet`) | any C3v, C4v or C6v data set of the CRP library of M. Wijzenbroek | **ported** ([deviations](docs/fortran_deviations.md#crp-library-srccrplib-systemid-crplibrary)) | [crp_library](docs/crp_library.md) |
+| `CRPDistrtSurface` (`CRPlibDataSet` and the SCM keys; new in 5.24) | a CRP data set plus the static corrugation model (SCM) of one snapshot of a distorted slab | **ported** ([SCM deviations](docs/fortran_deviations.md#scm-distorted-surface-pes-srcpotentialscm-systemid-crpdistrtsurface)) | [scm](docs/scm.md), [keys](docs/input_schema.md#scm-keys-systemid-crpdistrtsurface) |
+| `H2Cu111PW91` | H₂/Cu(111): CRP fit of PW91 DFT data | **not ported**: input error | [data](potentials/H2Cu111PW91.dir) |
+| `H2Cu111RPBE` | H₂/Cu(111): CRP fit of RPBE DFT data | **not ported**: input error | [data](potentials/H2Cu111RPBE.dir) |
+| `H2Cu111PW91RPBE` (`PESMixingAlfa`) | H₂/Cu(111): α·PW91 + (1 − α)·RPBE of the two above (SRP) | **not ported**: input error (refused if `PESMixingAlfa` is given) | [data](potentials/H2Cu111PW91RPBE.dir) |
+| `H2Cu111SRPnMode4` (`PESMixingAlfa`) | 4-mode expansion of `H2Cu111PW91RPBE` about its barrier | **not ported**: input error (refused if `PESMixingAlfa` is given) | [data](potentials/H2Cu111PW91RPBE.dir) |
+| `H2Cu111SRPnMode5` (`PESMixingAlfa`) | 5-mode expansion of `H2Cu111PW91RPBE` about its barrier | **not ported**: input error (refused if `PESMixingAlfa` is given) | [data](potentials/H2Cu111PW91RPBE.dir) |
+| `H2Cu111Grow` | H₂/Cu(111): GROW fit (Collins) of DFT data | **not ported**: input error | [data](potentials/H2Cu111Grow.dir) |
+| `H2Cu110` | H₂/Cu(110), from its data files | **not ported**: input error | [data](potentials/H2Cu110.dir) |
+| `H2Cu100PES5` | H₂/Cu(100): corrugation-reducing fit, PES number 5 | **not ported**: input error | [data](potentials/PES5_INPUT_FILES.dir) |
+| `H2Pt111` | H₂/Pt(111): interpolated ab initio data (direct or corrugation-reducing) | **not ported**: input error | [data](potentials/H2Pt111.dir) |
+| `H2Pt111nMode4` | 4-mode expansion of `H2Pt111` about its barrier | **not ported**: input error | [data](potentials/H2Pt111.dir) |
+| `H2Pt111nMode5` | 5-mode expansion of `H2Pt111` about its barrier | **not ported**: input error | [data](potentials/H2Pt111.dir) |
+| `HDPt111` | HD/Pt(111): `H2Pt111` in the HD centre-of-mass frame | **not ported**: input error | [data](potentials/H2Pt111.dir) |
+| `H2Pd111` | H₂/Pd(111): interpolated ab initio data | **not ported**: input error | [data](potentials/H2Pd111.dir) |
+| `H2Ru0001PW91` | H₂/Ru(0001): corrugation-reducing fit of PW91 data | **not ported**: input error | [data](potentials/H2Ru0001.dir) |
+| `H2Ru0001RPBE` | H₂/Ru(0001): corrugation-reducing fit of RPBE data | **not ported**: input error | [data](potentials/H2Ru0001RPBE.dir) |
+| `H2Ru0001PW91RPBE` (`PESMixingAlfa`) | H₂/Ru(0001): α·PW91 + (1 − α)·RPBE of the two above | **not ported**: input error (refused if `PESMixingAlfa` is given) | [data](potentials/H2Ru0001PW91RPBE.dir) |
+| `H2CORu0001Grow` | H₂ on CO-covered Ru(0001): GROW fit | **not ported**: input error | [data](potentials/H2CORu0001Grow.dir) |
+| `H2NiAl110` | H₂/NiAl(110): interpolated ab initio data, on a rectangular unit cell | **not ported**: input error | [data](potentials/H2NiAl110.dir) |
+| `H2TiAl100GrowPES` | H₂/TiAl(100): GROW fit | **not ported**: input error | [data](potentials/H2TiAl100Grow.dir) |
+| `H2Al110` | H₂/Al(110), adapted from the Cu(110) module | **not ported**: input error | [data](potentials/H2Al110.dir) |
+| `H2W100` | H₂/W(100): corrugation-reducing fit with van der Waals | **not ported**: input error | [data](potentials/H2W100.dir) |
+| `H2W110` (new in 5.24) | H₂/W(110): corrugation-reducing fit with van der Waals | **not ported**: input error | [data](potentials/H2W110.dir) |
+| `HW110` (new in 5.24) | an H atom on W(110): a test potential built on `H2W110` | **not ported**: input error | [data](potentials/H2W110.dir) |
+| **Potential options** | | | |
+| Potential limits (`ImposeVMin`, `VMin`, `ImposeVMax`, `VMax`) | clamps V from below or above | **ported** | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| Switching to the gas phase (`UseSwitching`, `ZminSwitch`, `ZmaxSwitch`) | switches V over to V_asy(r) between ZminSwitch and ZmaxSwitch; the asymptotic region then starts at ZmaxSwitch | **ported** | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| Potential cache (`.pes` file) | saves V on disk and reads it back in a later run on the same grids | **not ported**: V is always computed; a `.pes` file is ignored | [upstream_sync](docs/upstream_sync.md#port-status-of-the-upstream-changes-since-519) |
+| PES morphing (`pesmorphparameters.dat`; new in 5.24) | scales or shifts expansion coefficients of V with Gaussians in Z and r | **not ported**: the file is ignored, without a warning | [upstream_sync](docs/upstream_sync.md#port-status-of-the-upstream-changes-since-519) |
+| PES mixing, r cut-off (`SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`, `RCutOff`) | read by the Fortran, but without effect (no mixing code; the cut-off is forced off) | **not planned**: refused when switched on or given | [fortran_deviations: Not ported: `.pes` file caching](docs/fortran_deviations.md) |
+| **Surface symmetry** | | | |
+| C6v symmetry (`UseSymmetry`) | computes and stores V only at the symmetry-unique (x, y) points | **ported** (nX or nY = 1 is an input error; the Fortran warns) | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| C2v and C4v symmetry (`UseSymmetry`) | the same for these point groups; the Fortran switches it off with a warning | **deviation**: used | [fortran_deviations: Surface symmetry, deviations](docs/fortran_deviations.md) |
+| Optimal φ grid (`nPhisOptimal`) | raises nφ to a multiple that the whole point group can use | **ported** | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| **Absorbers** | | | |
+| High-end absorbers (`ZOpt…`, `ROpt…`, `ZSpOpt…`: Start, End, Energy or Factor) | negative imaginary potentials, quadratic in the coordinate, at large Z on both Z grids and at large r | **ported** ([absorber D1](docs/fortran_input_bugs.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength)) | [inputs/README](inputs/README.md#7-absorbers) |
+| Low-Z absorbers (`ZOptLow…`, `ZSpOptLow…`; new in 5.24) | the same, mirrored, at the low-Z end of both Z grids | **ported** ([low-Z D1–D4](docs/fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524)) | [inputs/README](inputs/README.md#low-z-absorbers-and-the-grid-point-trap) |
+| **Analyses** | | | |
+| Analysis line (`Zana`, `dtAna`) | projects ψ at Z = Zana on the asymptotic channels every dtAna (Balint-Kurti coefficients) | **ported** | [validation](docs/validation.md#gates) |
+| Specular analysis line (`DynamZSpAna`, `ZAnaSp`) | where the initial channel is analysed on the specular grid: following the packet's tail inwards, or fixed | **ported** (Fortran quirks kept) | [inputs/README](inputs/README.md#6-the-specular-analysis-line) |
+| Analysed channels (`VAna`, `JAna`, `DifOrdAna`) | the vibrational, rotational and diffraction states analysed; by default the open ones | **ported** | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| Diffraction orders | the order of each diffraction channel, per surface point group | **deviation**: derived from the reciprocal lattice; the same orders | [fortran_deviations: Diffraction order](docs/fortran_deviations.md) |
+| Analysis energies (`NrOfEs`) | the collision energies at which S is computed; −95 puts them on the grid of multiples of π/tEnd | **ported** | [input_schema](docs/input_schema.md#required-keys) |
+| S matrix and probabilities | the energy-resolved S matrix from the BK coefficients during the run: state-to-state, diffraction and reaction probabilities | **ported** | [validation](docs/validation.md#gates) |
+| Mean final energies | the mean vibrational, rotational and diffraction energy of the scattered molecules | **partly ported**: the means per final v are not written | [fortran_deviations: Output not reproduced](docs/fortran_deviations.md) |
+| Fine analysis | FFT of the whole BK time series onto the spectral grid, interpolated to the analysis energies | **deviation**: two Fortran interpolation bugs fixed | [fortran_fine_analysis_bugs](docs/fortran_fine_analysis_bugs.md) |
+| Optional tables (`writeProbs`, `writeRDProbs`, `writeSMatrix`) | probabilities per (v, j, mJ) and per diffraction order; the S matrix on the spectral grid | **ported** (as TSV files) | [output_files](docs/output_files.md#results-tab-separated-tables) |
+| Flux analysis (`doFluxAnalysis`, `rFluxAnalysis`, `EMinFluxAna`, `EMaxFluxAna`, `DeltaEFluxAna`) | the reaction probability from the flux through r = r_c, and its (x, y) density | **not ported**: a propagating run refuses it; its input checks are ported, two of them corrected ([flux Q1, Q2](docs/fortran_input_bugs.md)) | [flux_analysis_findings](docs/flux_analysis_findings.md#1-status-2026-11-14) |
+| Averages (`dtAve`) | the norm, ⟨Z⟩, ⟨r⟩ and the rest norm (between the two analysis lines) every dtAve | **ported** | [validation](docs/validation.md#gates) |
+| **Restart files** | | | |
+| Fortran restart files (fort.9 → fort.8: wave packet; fort.21 → fort.22: BK coefficients) | what a run writes for a restart or a fine analysis, and what those read | **ported**: read and written (`RestartFormat`, `CheckpointFormat`) | [input_schema](docs/input_schema.md#checkpoint--restart-keys-c-only) |
+| Analysis state across a restart | the state of the specular analysis line carried into the restarted run | **deviation**: a Fortran bug fixed (`anlyTol` is not saved) | [fortran_deviations: Fortran restart bug, fixed](docs/fortran_deviations.md) |
+| **Input and output** | | | |
+| Input file (`DVR.inp`, `InputNew.f90`; `Title`) | the run parameters as named fields with defaults | **deviation**: a JSON file with the Fortran's key names, case-sensitive | [input_schema](docs/input_schema.md), [fortran_deviations: Input file](docs/fortran_deviations.md) |
+| Input checks (`InputNew.f90`, `Setup.f90`, `setupdvr.f90`, `transform.f90`) | stop on inconsistent parameters before the run | **ported**; stricter where the Fortran continues silently; exit code 2 (the Fortran's is 0) | [input_schema](docs/input_schema.md#validation), [fortran_input_bugs](docs/fortran_input_bugs.md) |
+| Old input reader (`Input.f90`) | the earlier input format | **not planned**: dead code (the build uses `InputNew.f90`) | [fortran_deviations: Not ported by decision](docs/fortran_deviations.md) |
+| Debug output (`DoDump`; `FullSMatrix`) | `DoDump` writes the gas-phase states to `debug_asyp.dat`; `FullSMatrix` is only printed | **deviation**: both keys are ignored; the states are always written, to `gas_phase_states.dat` | [fortran_deviations: Output not reproduced](docs/fortran_deviations.md) |
+| Screen output | input echo, grids, gas-phase states, averages, results per energy | **deviation**: a new layout with the same quantities | [Running](#running) |
+| Result files (fort.25, fil10, unit 3, `averages.out`) | S matrix, probabilities, spectrum and averages on disk | **deviation**: TSV and JSON files (additions below) | [output_files](docs/output_files.md#correspondence-with-the-fortran-output) |
+| CPU timings (`CpuTimings.f90`, fort.99) | the time spent per operator and per stage | **partly ported**: only the times of the potential, the propagation and the fine analysis | [fortran_deviations: Output not reproduced](docs/fortran_deviations.md) |
+| Post-processing tools (upstream `tools.dir`) | read fil10 and fort.25, compare `.pes` files, site-specific reaction (flux density), n-H₂ averaging, plots, FFT sizes, wave-packet set-up | **not ported**: the TSV files need no reader; the input checks FFT sizes; `tools/wave_packet_check.py` checks the wave packet | [inputs/README](inputs/README.md) |
+| **Parallelism and build** | | | |
+| OpenMP | threads share the grid points | **ported**: the results do not depend on the thread count | [performance](docs/performance.md#threads-and-loop-scheduling) |
+| MPI (`MPI_*.f90`, `USE_MPI`) | distributes the grid over several computers | **not planned**: OpenMP and the GPU instead | [fortran_deviations: Not ported by decision](docs/fortran_deviations.md) |
+| FFTs (`ffts.f90`, `fftw_2_scs.f90`) | the 1D and 2D FFTs of the grids, through FFTW or oneMKL | **ported**: an FFT layer of its own (oneMKL's FFTW3 interface or FFTW) | [performance](docs/performance.md#build-options-cmake) |
+| Platform code (`*_hack.f90`; the ESSL and SCSL FFTs) | thread queries, timers and vendor FFT libraries per machine type | **not planned**: standard C++ and OpenMP instead | [fortran_deviations: Not ported by decision](docs/fortran_deviations.md) |
+| Build flags (upstream `GNU.mk` since 5.24) | `-Ofast -march=native`: fast-math and FMA | **not ported**: not relevant; strict floating point without FMA, and the reference is built with `-O3` | [upstream_sync](docs/upstream_sync.md#port-status-of-the-upstream-changes-since-519) |
+
+### Additions in the C++ program
+
+| Addition | What it does | Details |
+|---|---|---|
+| GPU backend (`--device cuda`) | propagates on an NVIDIA GPU with the wave packet in GPU memory; agrees with the CPU code to rounding | [cuda](docs/cuda.md) |
+| C3v and C3 symmetry; PES self-check (`SymmetryTolerance`) | symmetry-reduced V for point groups the Fortran has no code for; checks that the PES has the symmetry before using it | [input_schema](docs/input_schema.md#optional-keys-fortran-defaults) |
+| Native restart files (`checkpoint.bin`, `bk_coefficients.bin`; `RestartDir`) | restart files that record the run parameters; a restart checks them and names any that differ | [output_files](docs/output_files.md#checkpoint-files-binary) |
+| TSV and JSON results | tables with commented headers in full precision, and the run metadata in `analysis.json` | [output_files](docs/output_files.md) |
+| Loop scheduling (`--threads`, `--schedule`) | shares the uneven work per (Z, r) point over threads and NUMA nodes; the results do not depend on it | [performance](docs/performance.md#threads-and-loop-scheduling) |
+| Set-up reports | a memory estimate before V is computed; the ranges of a CRP data set; the SCM checks; the absorber grid-point warning | [performance](docs/performance.md#memory-and-numa), [scm](docs/scm.md#the-scm-set-up-report) |
+| Build variants (`SPODVR_FAST_MATH`, PGO) | optional faster builds; the default build is strict floating point without FMA | [performance](docs/performance.md#build-options-cmake) |
+| Checking tools | compare the final wave packet of two builds or devices; check a wave packet; regenerate and compare the Fortran references | [Testing](#testing), [fortran_reference](tools/fortran_reference/README.md) |
 
 ## Dependencies
 
