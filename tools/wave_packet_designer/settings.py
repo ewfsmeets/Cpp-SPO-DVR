@@ -13,3 +13,8 @@ class Settings:
 
     z_asymptotic: float | None = None  # bohr; needed for CRP data sets (SystemID CRPlibrary, CRPDistrtSurface)
     point_group: str | None = None  # likewise (C2v, C4v, C6v, C3v, C3 or none)
+    threads: int = 8  # OpenMP threads of the run: each has its own work arrays (the repository runs with 8)
+    # With UseSymmetry: the (x, y) points at which the program stores the potential, and the operations it
+    # uses (its SURFACE SYMMETRY block prints both). Without them the memory estimate assumes no reduction.
+    representatives: int | None = None
+    operations: int | None = None  # None: the order of the point group (all its operations usable)

@@ -144,8 +144,11 @@ class DerivedParameters:
     run_mode: int  # 0 new, 1 restart, 2 analysis only, 6 potential only
     total_mass: float  # electron masses
     reduced_mass: float  # electron masses
+    mj_max_basis: int  # MJMax of the rotational basis: MJMax < 1 means JMax
+    phi_points_multiple: int  # the number of phi points is a multiple of this (1 unless UseSymmetry and nPhisOptimal)
     wave_packet_alpha: float  # bohr^-2: psi(Z) ~ exp(-alpha (Z - Z0)^2)
     kz: float  # bohr^-1: the packet moves with momentum -kz
+    confidence_e_max: float  # eV: kinetic energy at kz + 2 sqrt(alpha), the top of the packet's 95% interval
     # The absorbers in the order of the Fortran's ProcessInput (the order of its warnings): ZOpt, ZOptLow
     # (if on), ROpt, ZSpOpt, ZSpOptLow (if on).
     absorbers: tuple[AbsorberStrength, ...]

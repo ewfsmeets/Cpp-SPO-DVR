@@ -14,6 +14,7 @@ LAYERS = {
     "program": 0,
     "settings": 1,
     "input_file": 1,
+    "dz_gas_phase": 1,
     "evaluation": 2,
     "report": 3,
     "wave_packet_designer": 4,

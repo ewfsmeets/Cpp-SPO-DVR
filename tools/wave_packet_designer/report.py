@@ -1,13 +1,16 @@
 """Text report of an Evaluation, for the command line.
 
+Shadows: src/report/format.cpp (format_bytes, Table::print), src/report/sections.cpp (print_memory_estimate)
+
 Presentation layer (README, "Architecture"): formats what evaluate() computed and computes nothing itself
 (apart from unit conversions for display). One function per section; each returns its lines.
 """
 
 import textwrap
 
-from evaluation import SETTINGS_STAGE, Evaluation
+from evaluation import SETTINGS_STAGE, SYMMETRY_GIVEN, SYMMETRY_NOT_GIVEN, Evaluation
 from program.findings import Finding, Severity
+from program.memory_estimate import MemoryEstimate
 from program.unit_conversion import hartree_to_ev
 
 LABEL_WIDTH = 46  # label plus dotted leader, as in the program's set-up output
@@ -23,6 +26,22 @@ def format_check_report(e: Evaluation, source: str, reading_findings: list[Findi
         lines += z_grids_section(e)
         lines += absorbers_section(e)
         lines += r_grid_section(e)
+        lines += gas_phase_section(e)
+    return "\n".join(lines) + "\n"
+
+
+def format_memory_report(e: Evaluation, source: str, reading_findings: list[Finding]) -> str:
+    """The report of the `memory` command: the sizes that set the memory, and the CPU and GPU estimates."""
+    lines = input_section(e, source)
+    lines += findings_section(reading_findings + list(e.findings), e.stopped_at)
+    if e.resources is not None:
+        lines += sizes_section(e)
+        if e.resources.memory is None:
+            lines.append("  (no estimate: an analysis-only run needs the fine analysis's memory, not copied)")
+        else:
+            lines += memory_section("MEMORY ESTIMATE", e.resources.memory)
+        if e.resources.gpu_memory is not None:
+            lines += memory_section("GPU MEMORY ESTIMATE (with --device cuda)", e.resources.gpu_memory)
     return "\n".join(lines) + "\n"
 
 
@@ -135,3 +154,79 @@ def r_grid_section(e: Evaluation) -> list[str]:
         row("Kinetic energy at pi/dR (reduced mass)", f"{hartree_to_ev(e.grids.kr.max_kinetic_energy):.4f}", "eV")
     )
     return lines
+
+
+def gas_phase_section(e: Evaluation) -> list[str]:
+    lines = section("GAS PHASE (r)")
+    gas = e.gas_phase
+    if gas is None:
+        lines.append("  (not computed: VIn lies beyond the levels of the gas-phase curve)")
+        return lines
+    lines.append(f"  States of {gas.curve.source},")
+    lines.append(f"  for the input's masses, on the curve's r grid (r = {gas.r[0]:g} .. {gas.r[-1]:g} bohr):")
+    if e.gas_phase_indicative:
+        lines.append(
+            "  (the program solves its own potential's curve on the input's r grid: these are only indicative)"
+        )
+    lines.append(row("Open vibrational levels", f"{gas.v_max_open}"))
+    lines.append(row("Highest open j", f"{gas.j_max_open}"))
+    lines.append(row("Vibrational levels analysed (VAna)", f"{gas.n_v_analysis}"))
+    lines.append(row("Highest j analysed (JAna)", f"{gas.j_max_analysis}"))
+    for warning in gas.warnings:
+        lines.append(f"  WARNING {warning}")
+    return lines
+
+
+def sizes_section(e: Evaluation) -> list[str]:
+    p, r = e.parameters, e.resources
+    lines = section("SIZES")
+    lines.append(row("Theta points", f"{r.angular.n_theta}"))
+    lines.append(row("Phi points", f"{r.angular.n_phi}"))
+    lines.append(row("J range (step)", f"{r.angular.j_min} .. {r.angular.j_max} ({r.angular.delta_j})"))
+    lines.append(row("MJMax (basis)", f"{r.angular.mj_max}"))
+    lines.append(row("Rotational basis functions", f"{r.rotational_basis_size}"))
+    lines.append(row("Grid points (x, y, Z, r)", f"{p.nx} x {p.ny} x {p.nz} x {p.nr}"))
+    lines.append(row("Interaction region nzpot", f"{e.grids.nz_potential} Z points"))
+    n_xy = p.nx * p.ny
+    if r.symmetry_source == SYMMETRY_GIVEN:
+        symmetry = f"{r.symmetry.n_representatives} of {n_xy} (x, y) points, {r.symmetry.n_operations} operations"
+    elif r.symmetry_source == SYMMETRY_NOT_GIVEN:
+        symmetry = f"not given: all {n_xy} (x, y) points (an upper bound; see --representatives)"
+    else:
+        symmetry = "none (UseSymmetry false)"
+    lines.append(row("Surface symmetry of the potential", symmetry))
+    lines.append(row("OpenMP threads (work arrays)", f"{r.threads}"))
+    return lines
+
+
+def memory_section(title: str, estimate: MemoryEstimate) -> list[str]:
+    """The program's table of the large arrays and the totals (print_memory_estimate)."""
+    lines = section(title)
+    header = ("array", "values", "size", "note")
+    rows = [(item.name, str(item.values), format_bytes(item.bytes), item.note) for item in estimate.items]
+    widths = [max(len(cells[column]) for cells in [header, *rows]) for column in range(4)]
+    for cells in [header, *rows]:
+        lines.append(("  " + "  ".join(cell.rjust(width) for cell, width in zip(cells, widths, strict=True))).rstrip())
+        if cells is header:
+            lines.append("-" * sum(width + 2 for width in widths))
+    lines.append("")
+    if estimate.propagation_bytes == 0:  # potential-only run
+        lines.append(row("Total", format_bytes(estimate.setup_bytes)))
+    else:
+        lines.append(row("Setting up the propagation", format_bytes(estimate.setup_bytes)))
+        lines.append(row("During the propagation", format_bytes(estimate.propagation_bytes)))
+    lines.append("  Small tables and FFT plans are not included.")
+    return lines
+
+
+def format_bytes(n_bytes: int) -> str:
+    """A size in B, KiB, MiB, GiB or TiB with one decimal (format_bytes)."""
+    if n_bytes < 1024:
+        return f"{n_bytes} B"
+    units = ("KiB", "MiB", "GiB", "TiB")
+    size = n_bytes / 1024.0
+    unit = 0
+    while size >= 1024.0 and unit < 3:
+        size = size / 1024.0
+        unit = unit + 1
+    return f"{size:.1f} {units[unit]}"

@@ -11,10 +11,12 @@ from program.json_input import parse_input
 TOOL_DIR = Path(__file__).resolve().parent.parent
 REPOSITORY = TOOL_DIR.parent.parent
 DZ_INPUT = REPOSITORY / "inputs/thesis_fig5_3_dz/input.json"
-# The program's values for DZ_INPUT that the tests compare with come from the set-up output of
-#   build-cuda/spodvr inputs/thesis_fig5_3_dz/input.json --device cuda --threads 8      (2026-11-08)
-# (blocks INPUT, GRIDS and ROTATIONAL BASIS AND INITIAL WAVE PACKET). All are printed before
-# the propagation starts, so the run can be stopped there; the packet is built on the host, so a CPU run
+# The program's values for DZ_INPUT that the tests compare with come from its output, committed as
+DZ_LOG = REPOSITORY / "docs/validation_thesis_fig5_3_dz/data/logs/cleaned_cuda_strict.txt"
+# (the run `build-cuda/spodvr inputs/thesis_fig5_3_dz/input.json --device cuda --threads 8` of 2026-11-08,
+# docs/cuda.md), blocks INPUT (line 19), GRIDS (44), SURFACE SYMMETRY OF THE POTENTIAL (87), MEMORY
+# ESTIMATE (103), GPU MEMORY ESTIMATE (122), GAS-PHASE POTENTIAL (142), GAS-PHASE ROVIBRATIONAL STATES
+# (191) and ROTATIONAL BASIS AND INITIAL WAVE PACKET (270). The packet is built on the host, so a CPU run
 # prints the same values.
 ER_INPUT = REPOSITORY / "inputs/thesis_fig5_3_er/input.json"
 HARDWALL_INPUT = REPOSITORY / "tests/reference/hardwall_small/input.json"

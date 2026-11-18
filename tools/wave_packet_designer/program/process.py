@@ -11,6 +11,7 @@ import math
 
 from program.config import AbsorberStrength, DerivedParameters, InputParameters, low_z_absorber_enabled
 from program.findings import Finding, FindingList
+from program.point_group import PHI_POINTS_MULTIPLE
 from program.potential_systems import SystemParameters
 from program.unit_conversion import PI, amu_to_electron_masses, ev_to_hartree, hartree_to_ev, rad_to_deg
 from program.wave_packet_params import (
@@ -41,6 +42,9 @@ def build_derived(p: InputParameters, system: SystemParameters) -> DerivedParame
     theta_degrees = rad_to_deg(math.asin(math.sqrt(p.e_parallel / translational_energy)))
     theta = PI / 180.0 * theta_degrees
     k_total = math.sqrt(ev_to_hartree(2.0 * total_mass * translational_energy))
+    kz = k_total * math.cos(theta)  # = k_total for EParallel = 0
+    alpha = wave_packet_alpha(e_min, e_max, total_mass)
+    k_max = kz + 2.0 * math.sqrt(alpha)  # the top of the packet's 95% interval in momentum
 
     return DerivedParameters(
         z_asymptotic=effective_z_asymptotic(p, system),
@@ -48,8 +52,11 @@ def build_derived(p: InputParameters, system: SystemParameters) -> DerivedParame
         run_mode=run_mode(p),
         total_mass=total_mass,
         reduced_mass=reduced_mass,
-        wave_packet_alpha=wave_packet_alpha(e_min, e_max, total_mass),
-        kz=k_total * math.cos(theta),  # = k_total for EParallel = 0
+        mj_max_basis=p.j_max if p.mj_max < 1 else p.mj_max,
+        phi_points_multiple=PHI_POINTS_MULTIPLE[system.point_group] if p.use_symmetry and p.phis_optimal else 1,
+        wave_packet_alpha=alpha,
+        kz=kz,
+        confidence_e_max=0.5 / total_mass * (k_max * k_max) * hartree_to_ev(1.0),
         absorbers=absorber_strengths(p, total_mass, reduced_mass),
     )
 

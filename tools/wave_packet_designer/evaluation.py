@@ -7,7 +7,8 @@ The model layer (README, "Architecture"): the front ends call `evaluate` and onl
 follow the reading of the file: validate_input, the derived parameters, the grids, the flux refusal and
 the initial wave packet. A stage runs only when the ones before it passed, so `stopped_at` names the stage
 where spodvr would stop, and `findings` lists that stage's errors (all of them, where spodvr shows the
-first).
+first). Once the grids exist it also computes what the program prints later in its set-up: the memory
+estimates and the gas-phase channels.
 
 Two things happen outside the program's stages:
 - Reading the file (program/json_input.py, parse_input) comes before evaluate(): a front end reads the
@@ -19,9 +20,14 @@ Two things happen outside the program's stages:
 import math
 from dataclasses import dataclass
 
+from dz_gas_phase import dz_gas_phase_curve
+from program.angular_grid import AngularGrid, make_angular_grid, rotational_basis_size
 from program.config import DerivedParameters, InputParameters
-from program.findings import Finding, Severity, has_errors
+from program.findings import Finding, FindingList, Severity, has_errors
+from program.gas_phase import GasPhase, GasPhaseCurve, compute_gas_phase
 from program.initial_wave_packet import InitialWavePacket, make_initial_wave_packet
+from program.memory_estimate import MemoryEstimate, SymmetryCounts, estimate_gpu_memory, estimate_memory
+from program.point_group import GROUP_ORDER
 from program.potential_systems import SystemParameters, is_data_set_system, system_parameters
 from program.process import absorber_table_warnings, build_derived, effective_z_asymptotic
 from program.spatial_grids import IndexRange, SpatialGrids, make_spatial_grids
@@ -29,6 +35,10 @@ from program.validate import validate_input
 from settings import Settings
 
 SETTINGS_STAGE = "settings"  # the designer lacks a value that is not an input key; spodvr itself is not involved
+# Where the surface-symmetry counts of the memory estimate come from (Resources.symmetry_source).
+SYMMETRY_OFF = "off"  # UseSymmetry is false: every (x, y) point is its own representative
+SYMMETRY_GIVEN = "given"  # the representatives were given in the settings
+SYMMETRY_NOT_GIVEN = "not given"  # UseSymmetry without counts: no reduction assumed (an upper bound)
 
 
 @dataclass(frozen=True)
@@ -59,6 +69,19 @@ class PacketSummary:
 
 
 @dataclass(frozen=True)
+class Resources:
+    """The sizes that set the memory of a run, and its CPU and GPU memory."""
+
+    angular: AngularGrid
+    rotational_basis_size: int  # (J, mJ) functions per (x, y, Z, r) point of the wave function
+    symmetry: SymmetryCounts
+    symmetry_source: str  # SYMMETRY_OFF, SYMMETRY_GIVEN or SYMMETRY_NOT_GIVEN
+    threads: int
+    memory: MemoryEstimate | None  # None for an analysis-only run (its fine-analysis estimate is not copied)
+    gpu_memory: MemoryEstimate | None  # only for a propagating run
+
+
+@dataclass(frozen=True)
 class Evaluation:
     """The result of evaluate(); a field keeps its default (None or empty) when its stage did not run."""
 
@@ -71,6 +94,11 @@ class Evaluation:
     absorbers: tuple[AbsorberSummary, ...] = ()
     packet: InitialWavePacket | None = None
     packet_summary: PacketSummary | None = None
+    resources: Resources | None = None
+    gas_phase: GasPhase | None = None  # None if VIn lies beyond the gas-phase curve's levels
+    # The curve is another potential's, or the input's r grid is not the curve's: then the program's states
+    # differ, and these are only indicative.
+    gas_phase_indicative: bool = False
     findings: tuple[Finding, ...] = ()  # the program's errors and warnings, stage by stage
     stopped_at: str | None = None  # the stage where evaluation stops; None if the set-up passes
 
@@ -90,6 +118,9 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
     findings = validate_input(p, system, z_asymptotic)
     if has_errors(findings):
         return Evaluation(p, settings, system, z_asymptotic, findings=tuple(findings), stopped_at="validate_input")
+    settings_errors = check_settings(p, system, settings)
+    if settings_errors:
+        return Evaluation(p, settings, system, z_asymptotic, findings=tuple(settings_errors), stopped_at=SETTINGS_STAGE)
 
     derived = build_derived(p, system)
     findings += absorber_table_warnings(derived.absorbers)
@@ -101,14 +132,32 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         )
     absorbers = absorber_summaries(p, derived, grids)
 
-    # Potential-only and analysis-only runs build no wave packet; a propagating run refuses the flux analysis.
+    # A propagating run refuses the flux analysis right after the grids.
     propagates = derived.run_mode in (0, 1)
-    packet, stopped_at = None, None
     if p.do_flux_analysis and propagates:
         message = "doFluxAnalysis = true: the flux analysis is not implemented yet"
         findings.append(Finding(Severity.ERROR, "doFluxAnalysis", message, "run_program"))
-        stopped_at = "run_program"
-    elif propagates:
+        summary = packet_summary(p, derived, None)
+        return Evaluation(
+            p,
+            settings,
+            system,
+            z_asymptotic,
+            derived,
+            grids,
+            absorbers,
+            None,
+            summary,
+            findings=tuple(findings),
+            stopped_at="run_program",
+        )
+
+    # Then the program prints the memory estimates and the gas phase, and a propagating run builds the packet.
+    resources = estimate_resources(p, derived, grids, settings)
+    curve = dz_gas_phase_curve()
+    gas_phase = compute_gas_phase(p, derived, resources.angular, curve) if p.v_in < len(curve.potential) else None
+    packet, stopped_at = None, None
+    if propagates:
         packet, packet_findings = make_initial_wave_packet(p, derived, grids)
         findings += packet_findings
         if has_errors(packet_findings):
@@ -123,9 +172,55 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         absorbers,
         packet=packet,
         packet_summary=packet_summary(p, derived, packet),
+        resources=resources,
+        gas_phase=gas_phase,
+        gas_phase_indicative=not curve_is_the_inputs(p, curve),
         findings=tuple(findings),
         stopped_at=stopped_at,
     )
+
+
+def check_settings(p: InputParameters, system: SystemParameters, settings: Settings) -> list[Finding]:
+    """The designer's own checks of the settings that the input fixes: the symmetry counts must be possible."""
+    checks = FindingList("designer settings")
+    if p.use_symmetry and settings.representatives is not None:
+        n_xy = p.nx * p.ny
+        checks.error_if(
+            settings.representatives > n_xy,
+            "",
+            f"{settings.representatives} representatives, but the grid has only {n_xy} (x, y) points",
+        )
+        order = GROUP_ORDER[system.point_group]
+        checks.error_if(
+            settings.operations is not None and settings.operations > order,
+            "",
+            f"{settings.operations} operations, but the point group {system.point_group} has only {order}",
+        )
+    return checks.findings
+
+
+def curve_is_the_inputs(p: InputParameters, curve: GasPhaseCurve) -> bool:
+    """True if the curve is the input's potential on the input's r grid: then the states are the program's."""
+    same_grid = p.r_start == curve.r_start and p.dr == curve.dr and p.nr == len(curve.potential)
+    return p.system_id == curve.system_id and same_grid
+
+
+def estimate_resources(p: InputParameters, d: DerivedParameters, g: SpatialGrids, settings: Settings) -> Resources:
+    """The angular sizes and the memory estimates of the run modes that print them: the CPU estimate except
+    for an analysis-only run (2), the GPU estimate for a propagating run (0, 1)."""
+    angular = make_angular_grid(p, d)
+    n_xy = p.nx * p.ny
+    if not p.use_symmetry:
+        symmetry, source = SymmetryCounts(n_xy, 1), SYMMETRY_OFF
+    elif settings.representatives is None:
+        symmetry, source = SymmetryCounts(n_xy, 1), SYMMETRY_NOT_GIVEN
+    else:
+        operations = settings.operations if settings.operations is not None else GROUP_ORDER[d.point_group]
+        symmetry, source = SymmetryCounts(settings.representatives, operations), SYMMETRY_GIVEN
+    memory = estimate_memory(p, d, g, angular, symmetry, settings.threads) if d.run_mode != 2 else None
+    propagates = d.run_mode in (0, 1)
+    gpu_memory = estimate_gpu_memory(p, g, angular, symmetry.n_representatives) if propagates else None
+    return Resources(angular, rotational_basis_size(angular), symmetry, source, settings.threads, memory, gpu_memory)
 
 
 def missing_system_parameters(p: InputParameters, settings: Settings) -> Evaluation:
@@ -135,8 +230,8 @@ def missing_system_parameters(p: InputParameters, settings: Settings) -> Evaluat
         finding = Finding(Severity.ERROR, "SystemID", "Unknown system ID", "validate_input")
         return Evaluation(p, settings, findings=(finding,), stopped_at="validate_input")
     message = (
-        f"SystemID {p.system_id}: Z_asymptotic and the point group come from the CRP data set and must be given "
-        "to the designer (the program's set-up output prints both)"
+        f"SystemID {p.system_id} takes Z_asymptotic and the point group from its CRP data set: give both (the "
+        "program's set-up output prints them)"
     )
     finding = Finding(Severity.ERROR, "SystemID", message, "designer settings")
     return Evaluation(p, settings, findings=(finding,), stopped_at=SETTINGS_STAGE)

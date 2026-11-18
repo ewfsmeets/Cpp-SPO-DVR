@@ -33,6 +33,8 @@ CASES = {
     "absorbers": "tests.test_absorbers",
     "grids": "tests.test_grids",
     "packet": "tests.test_packet",
+    "memory": "tests.test_memory",
+    "gas-phase": "tests.test_gas_phase",
     "input-file": "tests.test_input_file",
     "cli": "tests.test_cli",
     "structure": "tests.test_structure",

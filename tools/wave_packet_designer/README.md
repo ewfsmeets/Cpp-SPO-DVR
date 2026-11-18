@@ -19,8 +19,10 @@ python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/th
 
 | Command | What it does |
 |---|---|
-| `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers and the r grid. |
+| `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers, the r grid and the gas-phase channels. |
 | `check <input.json> --zasymp Z --point-group G` | The same for a CRP data set (SystemID `CRPlibrary`, `CRPDistrtSurface`), whose Z_asymptotic and point group come from the data set (the program's set-up output prints both). |
+| `memory <input.json> [--threads N]` | The sizes that set the memory (θ and φ points, rotational basis, grid points) and the program's CPU and GPU memory estimates, array by array. `--threads` (default 8): the run's OpenMP threads, each with its own work arrays. |
+| `memory <input.json> --representatives N [--operations N]` | The same for a run with `UseSymmetry`: the (x, y) points at which the program stores the potential, and the operations it uses (default: all of the point group). Its SURFACE SYMMETRY block prints both: "(x, y) points computed / total", and the names under "Operations used" (count them, identity included). Without them the estimate assumes no reduction, an upper bound. |
 
 Exit status: 0 `spodvr` accepts the input, 1 it would stop on it, 2 the file or the options are
 unusable (also a CRP data set without `--zasymp` and `--point-group`). The tool never writes into the
@@ -38,7 +40,8 @@ other side of an absorber's end) are listed too.
 **The input as the program sees it.** The packet (mean momentum kz, widths σ_k and σ_Z, the allowed
 region, the norm and the part of it outside the region, |ψ(k)| at the grid edge), the Z grids (sizes,
 k_grid = π/dZ, the interaction region nzpot, the analysis line), each absorber (grid indices, target
-energy, L/λ, strength) and the r grid. An excerpt for the DZ input:
+energy, L/λ, strength), the r grid, and the gas phase: the open vibrational levels and the highest open
+j, which set the analysed channels. An excerpt for the DZ input:
 
 ```text
 INITIAL WAVE PACKET (Z)
@@ -59,6 +62,19 @@ INITIAL WAVE PACKET (Z)
 "1 − norm inside" is what the program compares with TolSp; here it is the rounding of the whole norm,
 not norm outside the region.
 
+The gas phase comes from the DZ input's gas-phase curve V(r) (Dai-Light H2/Cu(111), hard-coded in
+`dz_gas_phase.py`), solved for the input's masses and JMax on that curve's r grid (0.5–8.3 bohr). It is
+the free H2 molecule's curve, so it serves D2 and HD too. The program solves its own potential's curve on
+the input's r grid; where that differs (another potential, or another RStart, dR or nR), the report marks
+the states as indicative.
+
+## What `memory` reports
+
+The program's MEMORY ESTIMATE and GPU MEMORY ESTIMATE tables, with the same rows and sizes: for the DZ
+input with `--representatives 19` they equal the program's (7.9 GiB while setting up, 7.3 GiB during the
+propagation, 8.8 GiB on the GPU). The CPU estimate covers run modes 0, 1 and 6 (a potential-only run
+holds the potential only), the GPU estimate the propagating runs.
+
 ## Architecture
 
 The code is layered; each layer imports only from the layers below it (checked by the test case
@@ -70,7 +86,7 @@ flowchart TB
     report["report.py<br/>text tables"]
     evaluation["evaluation.py<br/>evaluate(parameters, settings) -> Evaluation"]
     program["program/<br/>copies of what spodvr computes or rejects"]
-    data["settings.py, input_file.py<br/>options; reading and saving input files"]
+    data["settings.py, input_file.py, dz_gas_phase.py<br/>options; input files; the gas-phase curve"]
     cli --> report --> evaluation
     cli --> data
     cli -- "parse_input" --> program
@@ -96,13 +112,13 @@ flowchart TB
 - **Stages like the program.** `evaluate()` runs the set-up stages in the program's order; a stage runs
   only when the ones before it passed, and `Evaluation.stopped_at` names the stage where `spodvr` would
   stop. One stage is the designer's own: `settings`, when a CRP data set lacks its Z_asymptotic and point
-  group.
+  group, or the symmetry counts cannot hold for the grid (the command line then exits 2).
 
 | Module | Responsibility | Shadows |
 |---|---|---|
 | `wave_packet_designer.py` | command line | — |
-| `report.py` | text report of an `Evaluation` | — |
-| `evaluation.py` | `evaluate()`: the stages, the absorber and packet summaries | `src/app/run.cpp` (stage order) |
+| `report.py` | text report of an `Evaluation` | `src/report/format.cpp` (format_bytes), `sections.cpp` (memory table) |
+| `evaluation.py` | `evaluate()`: the stages, the absorber and packet summaries, the memory and the gas phase | `src/app/run.cpp` (stage order) |
 | `settings.py` | values that are not input keys (Z_asymptotic of a CRP data set, …) | — |
 | `input_file.py` | read input.json; save changed values into a copy of its text | — |
 | `program/config.py` | `InputParameters`, `DerivedParameters` | `src/input/config.hpp` |
@@ -112,6 +128,11 @@ flowchart TB
 | `program/wave_packet_params.py` | strength table, L/λ, α | `src/input/wave_packet_params.cpp` |
 | `program/spatial_grids.py` | grids, nzpot, absorber indices, the grid-point trap | `src/grids/spatial_grids.cpp`, `uniform_grid.hpp`, `momentum_grid.cpp` |
 | `program/initial_wave_packet.py` | ψ(Z), \|ψ(k)\|, the TolSp check | `src/propagation/initial_wave_packet.cpp` |
+| `program/angular_grid.py` | θ and φ points, the J range, the rotational basis size | `src/grids/angular_grid.cpp`, `rotational_basis.cpp` |
+| `program/memory_estimate.py` | the CPU and GPU memory, array by array | `src/propagation/memory_estimate.cpp`, `src/cuda/cuda_backend.cpp`, … |
+| `program/gas_phase.py` | the FGH states of V(r), the open channels | `src/gasphase/fourier_grid_hamiltonian.cpp`, `gas_phase.cpp` |
+| `program/point_group.py` | the φ multiple and order of each point group | `src/symmetry/point_group.cpp` |
+| `dz_gas_phase.py` | the DZ input's V(r), hard-coded (data) | — |
 | `program/potential_systems.py` | Z_asymptotic and point group per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
 | `program/fft_sizes.py`, `real_compare.py`, `unit_conversion.py` | valid FFT sizes; the Fortran's tolerant comparisons and NINT; units and π | `src/fft/fft_sizes.cpp`, `src/core/real_compare.hpp`, `src/core/unit_conversion.hpp`, `src/core/constants.hpp` |
 | `program/findings.py` | an error or warning of the program | `src/core/error.hpp` |
@@ -127,7 +148,10 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
   - `validate`: the key and message of every check, in order, with `validate.cpp`;
   - `input-reading`: the key table with `json_input.cpp`;
   - `packet`, `grids`, `absorbers`: the set-up output of the DZ run (masses, α and kz bitwise, the grid
-    indices, the packet's norms and |ψ(k)|, the absorber strengths) and the L/λ the Fortran printed.
+    indices, the packet's norms and |ψ(k)|, the absorber strengths) and the L/λ the Fortran printed;
+  - `memory`: every row of the DZ run's two memory tables, and the hand counts of
+    `tests/test_memory_estimate.cpp`;
+  - `gas-phase`: the DZ run's state energies (to 1e-13 eV) and open channels.
 
   The command of the DZ run is in `tests/helpers.py`; the Fortran values come with the C++ test that
   the test's docstring names.
@@ -162,7 +186,14 @@ a line in `test_designer.py` (`CASES`) and in `tests/CMakeLists.txt`.
 
 ## Limits
 
-- No potential is evaluated: Z_asymptotic and the point group of a CRP data set must be given.
+- No potential is evaluated: Z_asymptotic and the point group of a CRP data set must be given, the gas
+  phase uses the DZ input's curve, and the surface-symmetry reduction of the memory must be given
+  (`--representatives`).
+- No fine-analysis memory estimate (an analysis-only run).
+- Not checked, as the program does after the grids: that some operation of the point group is usable on
+  the grid with `UseSymmetry` (`src/potential/potential_symmetry.cpp`), that the GPU has the memory of the
+  GPU estimate (`--device cuda`, `src/app/backend_factory.cpp`), and the physical memory against the CPU
+  estimate.
 - Not copied:
   - the SCM key checks (`check_scm_keys`);
   - the flux-analysis input checks (a propagating run with `doFluxAnalysis` stops anyway; the tool
