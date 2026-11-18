@@ -24,24 +24,27 @@ from dataclasses import dataclass, replace
 import numpy as np
 
 from design.rules import DesignCheck, DesignInput, analysed_bound_states, design_checks, memory_fits, norm_beyond
-from design.suggest import SUGGESTED_FIELDS, fit_time, fit_z_grids, suggested_keys
+from design.suggest import SUGGESTED_FIELDS, fit_r_grid, fit_time, fit_z_grids, suggested_keys
 from design.transmission import AbsorberResponse, absorber_mass, absorber_response, response_window
 from dz_gas_phase import dz_gas_phase_curve
 from program.angular_grid import AngularGrid, make_angular_grid, rotational_basis_size
 from program.config import DerivedParameters, InputParameters
+from program.fft_sizes import nearest_fft_size
 from program.findings import Finding, FindingList, Severity, has_errors
 from program.gas_phase import GasPhase, GasPhaseCurve, compute_gas_phase
+from program.gas_phase_potentials import gas_phase_potential
 from program.initial_wave_packet import InitialWavePacket, make_initial_wave_packet
 from program.json_input import key_of_field
 from program.memory_estimate import MemoryEstimate, SymmetryCounts, estimate_gpu_memory, estimate_memory
 from program.point_group import GROUP_ORDER
 from program.potential_systems import SystemParameters, is_data_set_system, system_parameters
 from program.process import absorber_table_warnings, build_derived, effective_z_asymptotic
-from program.spatial_grids import IndexRange, SpatialGrids, make_spatial_grids
+from program.spatial_grids import IndexRange, SpatialGrids, UniformGrid, make_spatial_grids
 from program.unit_conversion import hartree_to_ev
 from program.validate import validate_input
 from settings import Settings
 
+REFERENCE_REFINEMENT = 4  # the converged gas phase uses this many times the input's r points, over the same range
 SETTINGS_STAGE = "settings"  # the designer lacks a value that is not an input key; spodvr itself is not involved
 # Where the surface-symmetry counts of the memory estimate come from (Resources.symmetry_source).
 SYMMETRY_OFF = "off"  # UseSymmetry is false: every (x, y) point is its own representative
@@ -114,12 +117,14 @@ class Evaluation:
     packet: InitialWavePacket | None = None
     packet_summary: PacketSummary | None = None
     resources: Resources | None = None
-    gas_phase: GasPhase | None = None  # None if VIn lies beyond the gas-phase curve's levels
+    gas_phase: GasPhase | None = None  # as the program computes it; None if VIn lies beyond the curve's levels
+    gas_reference: GasPhase | None = None  # the same potential on a finer r grid: the converged states
     # The curve is another potential's, or the input's r grid is not the curve's: then the program's states
     # differ, and these are only indicative.
     gas_phase_indicative: bool = False
     # Per analysed v: the norm beyond each r of its most extended analysed bound j, on the gas phase's r grid.
     bound_state_tails: tuple[np.ndarray, ...] = ()
+    reference_tails: tuple[np.ndarray, ...] = ()  # the same for the converged states (gas_reference)
     densities: PacketDensities | None = None
     design: tuple[DesignCheck, ...] = ()  # the recommendations of inputs/README.md, applied
     absorber_responses: tuple[AbsorberResponse, ...] = ()  # R and T of each absorber that is on
@@ -178,8 +183,7 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
 
     # Then the program prints the memory estimates and the gas phase, and a propagating run builds the packet.
     resources = estimate_resources(p, derived, grids, settings)
-    curve = dz_gas_phase_curve()
-    gas_phase = compute_gas_phase(p, derived, resources.angular, curve) if p.v_in < len(curve.potential) else None
+    gas_phase, gas_reference, gas_phase_indicative = gas_phases(p, derived, grids, resources.angular)
     packet, stopped_at = None, None
     if propagates:
         packet, packet_findings = make_initial_wave_packet(p, derived, grids)
@@ -198,10 +202,12 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         packet_summary=packet_summary(p, derived, packet),
         resources=resources,
         gas_phase=gas_phase,
-        gas_phase_indicative=not curve_is_the_inputs(p, curve),
+        gas_reference=gas_reference,
+        gas_phase_indicative=gas_phase_indicative,
         bound_state_tails=bound_state_tails(gas_phase, resources),
+        reference_tails=bound_state_tails(gas_reference, resources),
         densities=packet_densities(packet, grids),
-        design=design_checks(DesignInput(p, derived, grids, resources.angular, gas_phase))
+        design=design_checks(DesignInput(p, derived, grids, resources.angular, gas_phase, gas_reference))
         + memory_checks(resources, settings),
         absorber_responses=absorber_responses(p, derived, grids, absorbers, gas_phase),
         findings=tuple(findings),
@@ -246,6 +252,11 @@ def fitted_parameters(
         return p
     z_asymptotic = effective_z_asymptotic(p, system)
     return replace(p, **fit_z_grids(p, z_asymptotic, scattering_length, specular_length))
+
+
+def fitted_r_grid(p: InputParameters) -> InputParameters:
+    """`p` with the r absorber ending on the last point of its r grid (design/suggest.py fit_r_grid)."""
+    return replace(p, **fit_r_grid(p))
 
 
 def fitted_time(p: InputParameters, t_end: float) -> InputParameters:
@@ -330,10 +341,25 @@ def check_settings(p: InputParameters, system: SystemParameters, settings: Setti
     return checks.findings
 
 
-def curve_is_the_inputs(p: InputParameters, curve: GasPhaseCurve) -> bool:
-    """True if the curve is the input's potential on the input's r grid: then the states are the program's."""
-    same_grid = p.r_start == curve.r_start and p.dr == curve.dr and p.nr == len(curve.potential)
-    return p.system_id == curve.system_id and same_grid
+def gas_phases(
+    p: InputParameters, d: DerivedParameters, grids: SpatialGrids, angular: AngularGrid
+) -> tuple[GasPhase | None, GasPhase | None, bool]:
+    """The gas phase as the program computes it, on the input's r grid, and the converged reference on a
+    REFERENCE_REFINEMENT times finer grid over the same range: where the potential's gas phase is copied
+    (program/gas_phase_potentials.py). For another potential the DZ input's curve on its own grid stands in,
+    without a reference, and the states are only indicative (the third value)."""
+    potential = gas_phase_potential(p, grids.r)
+    if potential is None:
+        curve = dz_gas_phase_curve()
+        stand_in = compute_gas_phase(p, d, angular, curve) if p.v_in < len(curve.potential) else None
+        return stand_in, None, True
+    source = f"the {p.system_id} potential at Z_asymptotic"
+    curve = GasPhaseCurve(p.r_start, p.dr, tuple(potential), p.system_id, source + ", on the input's r grid")
+    n_fine = nearest_fft_size(REFERENCE_REFINEMENT * p.nr)
+    fine_grid = UniformGrid(p.r_start, p.nr * p.dr / n_fine, n_fine)
+    fine_potential = tuple(gas_phase_potential(p, fine_grid))
+    fine = GasPhaseCurve(p.r_start, fine_grid.spacing, fine_potential, p.system_id, source + ", on a finer r grid")
+    return compute_gas_phase(p, d, angular, curve), compute_gas_phase(p, d, angular, fine), False
 
 
 def estimate_resources(p: InputParameters, d: DerivedParameters, g: SpatialGrids, settings: Settings) -> Resources:

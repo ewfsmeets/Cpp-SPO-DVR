@@ -36,11 +36,12 @@ from matplotlib.backends import BackendFilter, backend_registry  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.widgets import Button, Slider, TextBox  # noqa: E402
 
-from evaluation import SETTINGS_STAGE, evaluate, fitted_parameters, fitted_time, suggest  # noqa: E402
+from evaluation import SETTINGS_STAGE, evaluate, fitted_parameters, fitted_r_grid, fitted_time, suggest  # noqa: E402
 from explanations import CONTROLS, PANELS  # noqa: E402
 from input_file import InputFile, InputFileError, load_input_file, save_changed_copy  # noqa: E402
 from plots import INK, INK_2, add_panels, apply_style, draw_panels  # noqa: E402
 from program.config import InputParameters  # noqa: E402
+from program.fft_sizes import is_valid_fft_size  # noqa: E402
 from program.json_input import key_of_field, parse_input  # noqa: E402
 from program.point_group import GROUP_ORDER  # noqa: E402
 from report import status_line, verdict_lines  # noqa: E402
@@ -52,9 +53,11 @@ UPDATE_DELAY = 250  # ms after the last slider move: one evaluation (about 0.5 s
 SCATTERING_LENGTH, SPECULAR_LENGTH = "scattering absorber length", "specular absorber length"
 # The sliders whose change re-fits the Z grids, and the one that moves tEnd in whole averaging intervals.
 GRID_SLIDERS = ("dz", "zsp_opt_start", SCATTERING_LENGTH, SPECULAR_LENGTH)
+R_GRID_SLIDERS = ("dr", "nr")  # their change puts ROptEnd on the last r point
 TIME_SLIDER = "t_end"
 NOT_INPUT_KEYS = (SCATTERING_LENGTH, SPECULAR_LENGTH, TIME_SLIDER)  # sliders that are fitted, not copied
-SLIDER_ROWS, SLIDER_COLUMNS = 6, 2
+SLIDER_ROWS, SLIDER_COLUMNS = 5, 3
+VALID_NR = [n for n in range(2, 513) if is_valid_fft_size(n)]  # the values of the nR slider
 TEXT_WIDTH = 66  # characters per line in the verdict and help boxes
 VERDICT_LINES = 20  # at most this many lines of the verdict are shown
 HELP_PROMPT = "Hover over a panel, a slider or a button for its explanation."
@@ -68,7 +71,7 @@ class SliderSpec:
     field: str
     low: float
     high: float
-    step: float
+    step: float | list[int]  # a step, or the list of allowed values (nR)
     initial: float
 
 
@@ -92,6 +95,8 @@ def slider_specs(p: InputParameters) -> list[SliderSpec]:
         ),
         slider("ZOpt length (bohr)", SCATTERING_LENGTH, 1.0, 12.0, 0.02, p.z_opt_end - p.z_opt_start),
         slider("ZSpOpt length (bohr)", SPECULAR_LENGTH, 1.0, 20.0, 0.02, p.zsp_opt_end - p.zsp_opt_start),
+        slider("dR (bohr)", "dr", 0.02, 0.4, 0.01, p.dr),
+        SliderSpec("nR", "nr", VALID_NR[0], VALID_NR[-1], VALID_NR, p.nr),
         slider("ROptStart (bohr)", "r_opt_start", p.r_start, p.r_opt_end, 0.05, p.r_opt_start),
         slider("tEnd (a.u.)", TIME_SLIDER, p.t_start + p.dt_averages, 4.0 * p.t_end, p.dt_averages, p.t_end),
     ]
@@ -142,7 +147,7 @@ class DesignerWindow:
     def add_slider(self, index: int, spec: SliderSpec) -> Slider:
         """A slider in one of two columns below the panels; its black tick marks the input's value."""
         column, row = divmod(index, SLIDER_ROWS)
-        ax = self.figure.add_axes((0.13 + 0.33 * column, 0.385 - 0.042 * row, 0.19, 0.024))
+        ax = self.figure.add_axes((0.11 + 0.225 * column, 0.385 - 0.05 * row, 0.115, 0.024))
         widget = Slider(
             ax, spec.label, spec.low, spec.high, valinit=spec.initial, valstep=spec.step, color=INK_2, initcolor=INK
         )
@@ -172,7 +177,9 @@ class DesignerWindow:
 
     def slider_values(self) -> dict[str, float]:
         """Each slider's value, rounded to 10 decimals: a slider adds its steps in binary (0.39999999999999997)."""
-        return {spec.field: round(float(self.sliders[spec.field].val), 10) for spec in self.specs}
+        values = {spec.field: round(float(self.sliders[spec.field].val), 10) for spec in self.specs}
+        values["nr"] = int(values["nr"])  # an integer key
+        return values
 
     def current_parameters(self) -> InputParameters:
         """The input with the sliders' values. The Z grids are re-fitted only when a grid slider differs from
@@ -182,6 +189,8 @@ class DesignerWindow:
         p = replace(self.original, **{f: v for f, v in values.items() if f not in NOT_INPUT_KEYS})
         if any(values[field] != initial[field] for field in GRID_SLIDERS):
             p = fitted_parameters(p, self.settings, values[SCATTERING_LENGTH], values[SPECULAR_LENGTH])
+        if any(values[field] != initial[field] for field in R_GRID_SLIDERS):
+            p = fitted_r_grid(p)
         if values[TIME_SLIDER] != initial[TIME_SLIDER]:
             p = fitted_time(p, values[TIME_SLIDER])
         return p

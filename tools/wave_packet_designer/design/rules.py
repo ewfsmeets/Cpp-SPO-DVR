@@ -40,7 +40,8 @@ class DesignInput:
     d: DerivedParameters
     grids: SpatialGrids
     angular: AngularGrid | None
-    gas: GasPhase | None
+    gas: GasPhase | None  # as the program computes it
+    gas_reference: GasPhase | None = None  # converged on a finer r grid (only for copied gas-phase potentials)
 
 
 @dataclass(frozen=True)
@@ -180,30 +181,39 @@ def norm_beyond(psi: np.ndarray, dr: float) -> np.ndarray:
     return np.cumsum((psi * psi)[::-1])[::-1] * dr
 
 
-def r_absorber_beyond_bound_states(c: DesignInput) -> DesignCheck | None:
-    """ROptStart lies beyond the analysed bound states: their norm beyond it is small. The README asks for
-    "beyond the extent"; the number BOUND_STATE_TAIL is the designer's. On the 40-point gas-phase grid the
-    norm does not fall much below ~1e-8 (the grid's numerical floor), well below the limit."""
-    gas = c.gas
-    if gas is None or c.angular is None or c.p.nr == 1:
-        return None
+def largest_tail_beyond(gas: GasPhase, angular: AngularGrid, r: float) -> tuple[float, float]:
+    """The largest norm beyond r over the analysed bound states, and that state's norm near the grid's end."""
     dr = gas.r[1] - gas.r[0]
-    first_inside = int(np.searchsorted(gas.r, c.p.r_opt_start - 1e-12))  # first r point >= ROptStart
+    first_inside = int(np.searchsorted(gas.r, r - 1e-12))  # the first grid point >= r
     largest, near_the_end = 0.0, 0.0
-    for v, j in analysed_bound_states(gas, c.angular):
+    for v, j in analysed_bound_states(gas, angular):
         if first_inside < len(gas.r):
             tail = norm_beyond(gas.wave_functions[v, j], dr)
             if tail[first_inside] > largest:
                 largest, near_the_end = float(tail[first_inside]), float(tail[-3])
-    # A tail that hardly falls between ROptStart and the grid's end is the coarse r grid's discretisation (the
-    # program's states have it too), not the molecule's extent: a larger ROptStart cannot remove it.
-    flat = near_the_end > 0.1 * largest
-    advice = (
-        "the tail is flat beyond the well: the discretisation of the 40-point r grid, not the molecule's "
-        "extent; a larger ROptStart does not help (a finer dR would)"
-        if flat
-        else "a larger ROptStart (and r grid)"
-    )
+    return largest, near_the_end
+
+
+def r_absorber_beyond_bound_states(c: DesignInput) -> DesignCheck | None:
+    """ROptStart lies beyond the analysed bound states, as the program represents them on its r grid: their
+    norm beyond it is small. The README asks for "beyond the extent"; the number BOUND_STATE_TAIL is the
+    designer's. What to change follows from the converged states (gas_reference): if they reach beyond
+    ROptStart too, the absorber starts too early; if not, the program's coarse r grid gives its states a flat
+    tail (its discretisation), which a finer dR removes and a larger ROptStart does not."""
+    if c.gas is None or c.angular is None or c.p.nr == 1:
+        return None
+    largest, near_the_end = largest_tail_beyond(c.gas, c.angular, c.p.r_opt_start)
+    if c.gas_reference is not None:
+        converged, _ = largest_tail_beyond(c.gas_reference, c.angular, c.p.r_opt_start)
+        grid_only = converged <= BOUND_STATE_TAIL
+        reason = f"the converged states have {converged:.1e} beyond ROptStart"
+    else:  # no reference: a tail that hardly falls up to the grid's end is the discretisation
+        grid_only = near_the_end > 0.1 * largest
+        reason = "the tail is flat beyond the well"
+    if grid_only:
+        advice = f"{reason}: the r grid's discretisation, not the molecule's extent; a finer dR (not ROptStart)"
+    else:
+        advice = f"{reason}: a larger ROptStart (and r grid)"
     return checked(
         "norm of analysed bound states beyond ROptStart",
         largest,

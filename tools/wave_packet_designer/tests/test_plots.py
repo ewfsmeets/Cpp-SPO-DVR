@@ -41,6 +41,8 @@ def test_panels_draw_their_content(work: Path) -> None:
     check_equal(labels, sorted(f"{a} {x}" for a in ("ROpt", "ZOpt", "ZSpOpt") for x in "RT"), "R and T curves")
     check_equal(sum(1 for t in r.texts if t.get_text().startswith(" v=")), len(e.bound_state_tails), "v labels")
     check("limit 1e-6" in texts(r) and "ROptStart" in texts(r), texts(r))
+    legend = [t.get_text() for t in r.get_legend().get_texts()]
+    check(len(legend) == 2 and "converged" in legend[1], f"r legend {legend}")
     check(len(memory.patches) == 2 and "RAM" in texts(memory) and "free GPU" in texts(memory), texts(memory))
     plt.close(figure)
 
@@ -103,7 +105,8 @@ def test_window_opens_and_resets_to_the_input(work: Path) -> None:
 def test_window_follows_its_sliders(work: Path) -> None:
     """Moving dZ to 0.1 re-fits the Z grids: Zana stays on Z_asymptotic = 15 (point 150), the scattering
     absorber of 4.08 bohr then ends on the last point of nZ 192 (4.1 bohr on that grid); moving tEnd to 25 100
-    gives 25 500 (whole averaging intervals of 500) with nStep 10 200; the program accepts the input."""
+    gives 25 500 (whole averaging intervals of 500) with nStep 10 200; the program accepts the input. dR 0.1
+    with nR 80 moves ROptEnd to the last r point."""
     window = new_window()
     window.sliders["dz"].set_val(0.1)
     window.sliders["t_end"].set_val(25100.0)
@@ -112,6 +115,10 @@ def test_window_follows_its_sliders(work: Path) -> None:
     check_equal((p.dz, p.z_analysis, p.nz, round(p.z_opt_end - p.z_opt_start, 10)), (0.1, 15.0, 192, 4.1), "Z")
     check_equal((p.t_end, p.n_steps), (25500.0, 10200), "tEnd and nStep")
     check(window.evaluation.accepted, f"{window.evaluation.findings}")
+    window.sliders["dr"].set_val(0.1)
+    window.sliders["nr"].set_val(80)
+    window.update()
+    check_equal((window.parameters.nr, window.parameters.r_opt_end), (80, 8.4), "nR 80, dR 0.1: ROptEnd 0.5 + 79 dR")
 
 
 def test_suggest_is_not_clamped_by_the_sliders(work: Path) -> None:

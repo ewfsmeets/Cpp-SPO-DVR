@@ -100,11 +100,12 @@ INITIAL WAVE PACKET (Z)
 "1 − norm inside" is what the program compares with TolSp; here it is the rounding of the whole norm,
 not norm outside the region.
 
-The gas phase comes from the DZ input's gas-phase curve V(r) (Dai-Light H2/Cu(111), hard-coded in
-`dz_gas_phase.py`), solved for the input's masses and JMax on that curve's r grid (0.5–8.3 bohr). It is
-the free H2 molecule's curve, so it serves D2 and HD too. The program solves its own potential's curve on
-the input's r grid; where that differs (another potential, or another RStart, dR or nR), the report marks
-the states as indicative.
+The gas phase is computed as the program does: the potential's V(r) at Z_asymptotic on the input's r
+grid, solved for the input's masses and JMax. For the Dai-Light and hard-wall potentials V(r) is copied
+from the C++ (`program/gas_phase_potentials.py`), so the states are the program's; a second solution on a
+four times finer r grid gives the converged states, and where the two differ the r grid is too coarse. For
+another potential (Persson, the CRP data sets) the DZ input's printed V(r) (`dz_gas_phase.py`) stands in
+and the report marks the states as indicative.
 
 **Design.** The recommendations of [inputs/README.md](../../inputs/README.md) applied to the input, each
 with its value, the recommended limit and the README section: the momentum margins of the packet and of
@@ -192,8 +193,9 @@ flowchart TB
 | `program/angular_grid.py` | θ and φ points, the J range, the rotational basis size | `src/grids/angular_grid.cpp`, `rotational_basis.cpp` |
 | `program/memory_estimate.py` | the CPU and GPU memory, array by array | `src/propagation/memory_estimate.cpp`, `src/cuda/cuda_backend.cpp`, … |
 | `program/gas_phase.py` | the FGH states of V(r), the open channels | `src/gasphase/fourier_grid_hamiltonian.cpp`, `gas_phase.cpp` |
+| `program/gas_phase_potentials.py` | V(r) of the Dai-Light and hard-wall potentials at Z_asymptotic | `src/potential/dai_light_cu111_potential.cpp`, `hard_wall_potential.cpp`, `potential_grid.cpp` |
 | `program/point_group.py` | the φ multiple and order of each point group | `src/symmetry/point_group.cpp` |
-| `dz_gas_phase.py` | the DZ input's V(r), hard-coded (data) | — |
+| `dz_gas_phase.py` | the DZ input's printed V(r): the stand-in for other potentials, and test data | — |
 | `program/potential_systems.py` | Z_asymptotic and point group per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
 | `program/fft_sizes.py`, `real_compare.py`, `unit_conversion.py` | valid FFT sizes; the Fortran's tolerant comparisons and NINT; units and π | `src/fft/fft_sizes.cpp`, `src/core/real_compare.hpp`, `src/core/unit_conversion.hpp`, `src/core/constants.hpp` |
 | `program/findings.py` | an error or warning of the program | `src/core/error.hpp` |
@@ -253,8 +255,9 @@ the window's sliders and buttons without opening a window.
 
 ## Limits
 
-- No potential is evaluated: Z_asymptotic and the point group of a CRP data set must be given, the gas
-  phase uses the DZ input's curve, and the surface-symmetry reduction of the memory must be given
+- No surface potential is evaluated: Z_asymptotic and the point group of a CRP data set must be given, the gas
+  phase of the Persson potential and the CRP data sets is the DZ input's stand-in, and the surface-symmetry
+  reduction of the memory must be given
   (`--representatives`).
 - No fine-analysis memory estimate (an analysis-only run).
 - Not checked, as the program does after the grids: that some operation of the point group is usable on

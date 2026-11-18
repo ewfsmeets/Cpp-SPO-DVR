@@ -132,6 +132,11 @@ def fit_z_grids(
     }
 
 
+def fit_r_grid(p: InputParameters) -> dict[str, float]:
+    """ROptEnd on the last point of the r grid (the window's dR and nR sliders): the r absorber ends there."""
+    return {"r_opt_end": tidy(p.r_start + (p.nr - 1) * p.dr)}
+
+
 def grid_point(z_start: float, dz: float, i: int) -> float:
     """Point i of a Z grid, as the program computes it."""
     return z_start + i * dz

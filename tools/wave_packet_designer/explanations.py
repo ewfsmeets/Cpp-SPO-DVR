@@ -37,10 +37,11 @@ PANELS = {
         "r (the H-H distance): a bound molecule vibrates around r = 1.4 bohr; its wave function falls off "
         "further out. The r grid ends in an absorber (orange) that removes dissociating molecules, and it must "
         "not reach into the bound ones. Each curve: for one analysed vibrational level v, the norm of its most "
-        "extended analysed state beyond r, i.e. what an absorber starting at r would remove. Good: the curves "
-        "are below the 1e-6 limit at ROptStart. Below ~1e-8 they show the numerical floor of the 40-point "
-        "grid, not the molecule. Computed on the DZ input's gas-phase curve: only indicative for another "
-        "potential or r grid. inputs/README.md section 7."
+        "extended analysed state beyond r, i.e. what an absorber starting at r would remove. Black: the states "
+        "as the program computes them on the input's r grid; grey: the same states converged on a finer grid. "
+        "Good: the black curves are below the 1e-6 limit at ROptStart. Where black stays flat above grey, the "
+        "r grid is too coarse (a finer dR), not ROptStart too small. For a potential whose gas phase is not "
+        "copied the DZ input's curve stands in (indicative, no grey). inputs/README.md section 7."
     ),
     "draw_memory": (
         "Memory: the peak memory of the run on the CPU and with --device cuda on the GPU (bars), against what "
@@ -86,6 +87,18 @@ CONTROLS = {
         "Specular absorber length: as long as the strength table allows, L/lambda <= 15 at its target "
         "energy (the report warns beyond). It sees only the incoming channel; extra specular points are "
         "cheap. inputs/README.md section 7."
+    ),
+    "dr": (
+        "dR: the step of the r grid. It must resolve the bound states up to the analysed v and j: on a too "
+        "coarse grid their tails stay flat beyond the well (r panel: the program's curves above the "
+        "converged grey ones), and the r absorber removes that part. Smaller: more r points (memory and time "
+        "grow with nR). pi/dR must also hold the dissociating fragments' momenta. The r absorber keeps "
+        "ending on the last r point. inputs/README.md sections 4 and 7."
+    ),
+    "nr": (
+        "nR: the number of r points (a valid FFT size). With dR it sets the r range, RStart to RStart + "
+        "(nR - 1) dR, which must hold the bound states and leave room for the r absorber. Memory and time grow "
+        "with nR. inputs/README.md sections 7 and 9."
     ),
     "r_opt_start": (
         "ROptStart: where the r absorber starts. Beyond the extent of the analysed bound states (r panel), "

@@ -283,6 +283,12 @@ def draw_r_layout(ax: Axes, e: Evaluation) -> None:
         ax.plot(r, masked(tail, floor), color=INK, lw=1.4, ls=STATE_STYLES[v % len(STATE_STYLES)])
         label_at = int(np.argmax(tail < 10.0 ** -(2 + v)))  # each label at its own level, so they do not overlap
         ax.text(r[label_at], tail[label_at], f" v={v}", fontsize=7.5, color=INK, va="bottom")
+    if e.gas_reference is not None:  # the converged states: where they part from the program's, dR is too coarse
+        for v, tail in enumerate(e.reference_tails):
+            ax.plot(e.gas_reference.r, masked(tail, floor), color=MUTED, lw=1.0, ls=STATE_STYLES[v % len(STATE_STYLES)])
+        ax.plot([], [], color=INK, lw=1.4, label="on the input's r grid (the program's)")
+        ax.plot([], [], color=MUTED, lw=1.0, label="converged (finer r grid)")
+        ax.legend(loc="upper right", fontsize=7.5)
     ax.axhline(1e-6, color=ORANGE, lw=1.0, ls="--")
     ax.text(r[0], 1e-6, " limit 1e-6", va="bottom", fontsize=8, color=INK_2)
     r_absorber = next((a for a in e.absorbers if a.name == "ROpt"), None)

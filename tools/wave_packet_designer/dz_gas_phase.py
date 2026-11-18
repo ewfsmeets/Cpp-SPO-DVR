@@ -1,4 +1,8 @@
-"""The gas-phase potential V(r) of the DZ input, hard-coded: the designer evaluates no potential.
+"""The gas-phase potential V(r) of the DZ input, as the program printed it: a stand-in and test data.
+
+The designer uses it for a potential whose gas phase it does not copy (program/gas_phase_potentials.py: the
+Persson potential, the CRP data sets), as an indicative stand-in; and test case `gas-phase` checks the copied
+Dai-Light formula against it bitwise.
 
 Data layer (README, "Architecture"). Source: the block GAS-PHASE POTENTIAL (lines 142-188) of the committed
 DZ run output docs/validation_thesis_fig5_3_dz/data/logs/cleaned_cuda_strict.txt (2026-11-08), that is, the Dai-Light H2/Cu(111) potential (SystemID H2Cu111DaiLight) at Z = Z_asymptotic = 15 bohr and

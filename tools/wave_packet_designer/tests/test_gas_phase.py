@@ -7,9 +7,11 @@ from pathlib import Path
 from dz_gas_phase import POTENTIAL_EV, dz_gas_phase_curve
 from evaluation import evaluate
 from program.gas_phase import GasPhase
+from program.gas_phase_potentials import gas_phase_potential
+from program.spatial_grids import UniformGrid
 from program.unit_conversion import hartree_to_ev
 from settings import Settings
-from tests.helpers import DZ_INPUT, DZ_LOG, HARDWALL_INPUT, check, check_equal, load_parameters
+from tests.helpers import DZ_INPUT, DZ_LOG, ER_INPUT, HARDWALL_INPUT, REPOSITORY, check, check_equal, load_parameters
 
 # E(v = 0, j = 0 .. 19) and E(v = 1, j = 0) in eV, from the block GAS-PHASE ROVIBRATIONAL STATES of spodvr for
 # the DZ input (provenance: helpers.DZ_INPUT).
@@ -110,12 +112,60 @@ def test_too_small_vana_and_jana_are_reported(work: Path) -> None:
     check_equal(f"{d.confidence_e_max:.6f}", "0.950000", "95% interval (INPUT block: 0.400000 .. 0.950000 eV)")
 
 
-def test_states_are_indicative_off_the_curve(work: Path) -> None:
-    """The states are the program's only for the curve's own potential and r grid: DZ yes; DZ with nR 48 or the
-    hard wall no."""
-    check_equal(evaluate(load_parameters(DZ_INPUT), Settings()).gas_phase_indicative, False, "DZ")
-    check_equal(evaluate(load_parameters(DZ_INPUT, nr=48), Settings()).gas_phase_indicative, True, "nR 48")
-    check_equal(evaluate(load_parameters(HARDWALL_INPUT), Settings()).gas_phase_indicative, True, "hard wall")
+def test_copied_potentials_reproduce_the_programs_tables(work: Path) -> None:
+    """The copied gas-phase potentials give the printed V(r): Dai-Light the DZ run's 40 values bitwise (as eV,
+    after the program's round trip through hartree); the hard wall the Fortran's 56 values of hardwall_small
+    (fortran_setup_stdout.txt) within gate 1a's 1e-14 relative to max(|V|, 1 eV) (52 of them bitwise)."""
+    p = load_parameters(DZ_INPUT)
+    v = [hartree_to_ev(x) for x in gas_phase_potential(p, UniformGrid(p.r_start, p.dr, p.nr))]
+    check_equal(v, list(POTENTIAL_EV), "Dai-Light V(r)")
+    p = load_parameters(HARDWALL_INPUT)
+    v = [hartree_to_ev(x) for x in gas_phase_potential(p, UniformGrid(p.r_start, p.dr, p.nr))]
+    fortran = fortran_gas_phase_table(REPOSITORY / "tests/reference/hardwall_small/fortran_setup_stdout.txt")
+    check_equal(len(fortran), len(v), "hard-wall points")
+    for (r, expected), value in zip(fortran, v, strict=True):
+        check(abs(value - expected) <= 1e-14 * max(abs(expected), 1.0), f"hard wall at r = {r}: {value!r}")
+
+
+def fortran_gas_phase_table(path: Path) -> list[tuple[float, float]]:
+    """The (r, V in eV) rows of the Fortran's "gas phase vibrational potential" table."""
+    text = path.read_text()
+    rows = []
+    for line in text[text.index("The gas phase vibrational potential") :].splitlines()[1:]:
+        try:
+            r, value = (float(x) for x in line.split())
+        except ValueError:  # the header lines, and the end of the table
+            if rows:
+                break
+            continue
+        rows.append((r, value))
+    return rows
+
+
+def test_gas_phase_is_the_programs_where_copied(work: Path) -> None:
+    """For a potential whose gas phase is copied (Dai-Light, the hard wall) the states are the program's on any
+    r grid, with a converged reference; for another (Persson, the ER input) the DZ curve stands in: indicative,
+    without a reference."""
+    for name, p, indicative in (
+        ("DZ", load_parameters(DZ_INPUT), False),
+        ("DZ with nR 48", load_parameters(DZ_INPUT, nr=48), False),
+        ("hard wall", load_parameters(HARDWALL_INPUT), False),
+        ("ER (Persson)", load_parameters(ER_INPUT), True),
+    ):
+        e = evaluate(p, Settings())
+        check_equal((e.gas_phase_indicative, e.gas_reference is None), (indicative, indicative), name)
+    check_equal(len(evaluate(load_parameters(DZ_INPUT, nr=48), Settings()).gas_phase.r), 48, "the input's r grid")
+
+
+def test_reference_tells_the_grid_from_the_extent(work: Path) -> None:
+    """D2 (0.30-1.20 eV) on the DZ r grid: its analysed states keep 8e-6 of their norm beyond ROptStart on the
+    program's grid, but the converged states 1e-12: the advice is a finer dR. With ROptStart 2.0 the converged
+    states reach beyond it too: the advice is a larger ROptStart."""
+    d2 = {"mass1": 2.0141, "mass2": 2.0141, "e_min_wave_packet": 0.3, "e_max_wave_packet": 1.2}
+    for changes, advice in ((d2, "a finer dR"), (d2 | {"r_opt_start": 2.0}, "a larger ROptStart")):
+        e = evaluate(load_parameters(DZ_INPUT, **changes), Settings())
+        rule = next(c for c in e.design if c.name.startswith("norm of analysed"))
+        check(rule.passed is False and advice in rule.advice, f"{changes}: {rule.passed}, {rule.advice}")
 
 
 def test_analysed_levels_follow_vana_and_jana(work: Path) -> None:
@@ -147,7 +197,9 @@ TESTS = [
     test_dz_open_channels,
     test_available_energy_includes_the_initial_state,
     test_too_small_vana_and_jana_are_reported,
-    test_states_are_indicative_off_the_curve,
+    test_copied_potentials_reproduce_the_programs_tables,
+    test_gas_phase_is_the_programs_where_copied,
+    test_reference_tells_the_grid_from_the_extent,
     test_analysed_levels_follow_vana_and_jana,
     test_small_rotational_basis_is_reported,
     test_wave_functions_are_normalised,
