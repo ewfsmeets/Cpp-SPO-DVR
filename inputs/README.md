@@ -8,6 +8,7 @@ throughout (energies converted with 1 Ha = 27.2114 eV, masses with 1 amu = 1822.
 total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
 
 ## 1. Terms
+
 - **Scattering grid**: the full 6D grid (Z, r, x, y, θ, φ). Points `Z_i = ZStart + i·dZ`,
   i = 0 … `nZ`−1; the last point is `ZStart + (nZ−1)·dZ`.
 - **Specular grid**: a (Z, r) grid with the same `ZStart` and `dZ` but `nZSpecular` points,
@@ -29,6 +30,7 @@ total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
   other; a momentum beyond the grid's limit re-appears with the opposite sign.
 
 ### Layout (DZ case, `thesis_fig5_3_dz`)
+
 Both charts use a numeric axis: **1 s on the axis = 1 bohr**. Bars are ranges; vertical marker lines
 are the input positions.
 
@@ -78,6 +80,7 @@ DZ barrier near r ≈ 2.1 bohr). Read the bound-state extent from the gas-phase 
 ends) for the states you analyse.
 
 ## 2. Recipe
+
 Worked example in brackets: H₂, 0.40–0.95 eV, Z_asymp = 15.0 (`thesis_fig5_3_dz`).
 
 1. **Energy range** `EMinWP`/`EMaxWP`: the normal energies you need plus some margin, with
@@ -100,9 +103,11 @@ Worked example in brackets: H₂, 0.40–0.95 eV, Z_asymp = 15.0 (`thesis_fig5_3
 12. **Memory** (section 9), then a **test run** to t ≈ 500 (section 10).
 
 ## 3. The wave packet is set by its energy range
+
 There is no width input: ψ(Z) ∝ exp(−α(Z−Z0)² − ik₀Z) with α = (k₀ − k_min)²/4 (Fortran
 `getAlphaCoeffWavePacket`); σ_k = √α and σ_Z = 1/(2√α) are the widths of |ψ|² in k and Z. The packet
 moves inwards (momentum −k₀) and spreads on a time scale 2Mσ_Z² (~900 a.u. in the example).
+
 - k_min and k_max lie 2σ_k from k₀: the momentum density there is e⁻² ≈ 14% of the peak. Results
   at the ends of the range are weaker and less accurate; keep a margin.
 - The same pair sets the analysis energies (`NrOfEs` points from `EMinWP` to `EMaxWP`).
@@ -114,6 +119,7 @@ moves inwards (momentum −k₀) and spreads on a time scale 2Mσ_Z² (~900 a.u.
   parallel momentum enters the (x, y) phases; the rules here still apply to the normal motion.
 
 ## 4. dZ: the grid must hold the momenta
+
 The Z grid holds |k| ≤ k_grid = π/dZ. The incoming packet's momenta lie around −k₀; whatever lies
 beyond −k_grid re-appears near +k_grid: fast outward motion. It runs into the specular absorber
 (the norm drops from t = 0) and stops the specular analysis line at once. **Require
@@ -128,6 +134,7 @@ tail beyond k_grid):
 | 0.12 | 0.40–0.95 | 9.2 | 1e-20 |
 
 At fixed dZ the only other knob is a narrower energy range. Two further limits:
+
 - **Local momenta**: in wells or the exit channel the molecule is faster; k_grid must exceed
   √(2M(E_max + |V_min|)) wherever the wave goes. Same for r: π/dR must hold √(2μE_r) of the
   dissociating fragments (dR 0.2: E_r up to ~3.6 eV for H₂).
@@ -136,6 +143,7 @@ At fixed dZ the only other knob is a narrower energy range. Two further limits:
   `dtStep`.
 
 ## 5. Z0
+
 - **≥ `Zana` + 8σ_Z.** The input check only needs the norm below `Zana` < `TolSp` (~5.5σ_Z); the
   extra margin keeps the overlap with Z < Z_asymp, where the specular wave is coupled into the
   scattering grid, negligible (~1e-15).
@@ -146,6 +154,7 @@ At fixed dZ the only other knob is a narrower energy range. Two further limits:
   It does not help against wrap-around.
 
 ## 6. The specular analysis line
+
 With `DynamZSpAna: true` the line starts at the last point below `ZSpOptStart`. At the first
 analysis step it jumps inwards to the packet's outer tail: the outermost point where the norm
 between the line and the absorber exceeds the tolerance (max(`TolSp`, initial norm in the specular
@@ -155,10 +164,12 @@ A stop in the first few hundred a.u., near `ZSpOptStart`, means outward momentum
 packet (sections 3, 4). `ZAnaSp` with `DynamZSpAna: false` fixes the line by hand (≥ `Z0`).
 
 ## 7. Absorbers
+
 V_opt = A·(3/2)·((q − start)/L)² on [start, end], zero elsewhere; A from the Vibók–Balint-Kurti
 table at the target energy `…OptEnergy` (`optical_potential_strength`; Z absorbers with M, the r
 absorber with μ). The target is a tuning knob, not the packet energy: a low target transmits fast
 waves, a high one reflects slow ones.
+
 - **Table range**: L/λ = L·√(2m·E_target)/(2π) must lie in (1, 15]. Outside, the strength is
   clamped to the table end, and both codes warn (the C++ set-up names the absorber's energy key and
   L/λ). At exactly 1 no interval of the table matches: the strength is 0, the absorber is off, and
@@ -178,6 +189,7 @@ waves, a high one reflects slow ones.
   L/λ for all three.
 
 ### Low-Z absorbers and the grid-point trap
+
 - **Low-Z absorbers** (`ZOptLow…` on the scattering grid, `ZSpOptLow…` on the specular grid; keys
   of upstream 5.24, [input_schema.md](../docs/input_schema.md)): the mirror image at the start of a
   Z grid, V_opt = A·(3/2)·((end − q)/L)², strongest at Start, with ZStart ≤ Start < End ≤ `Zana`.
@@ -202,6 +214,7 @@ waves, a high one reflects slow ones.
   checked in the same way.
 
 ## 8. Total time and energy grid
+
 The reaction probability is 1 − Σ(reflection probabilities): flux that has not crossed `Zana` by
 `tEnd` is counted as reaction. So `tEnd` sets the lowest outgoing normal energy E_n,min that is
 converged:
@@ -212,11 +225,13 @@ with Z_turn the classical turning point (~2 bohr). Diffraction channels open eve
 (Cu(111): |G|²/2M ≈ 8 meV for H₂), so slow outgoing waves are always present. DZ example: 16·354 +
 13·1290 ≈ 22 000 < 25 000 a.u. for E_n ≥ 0.03 eV. Check the norm left at `tEnd` (averages table):
 it bounds the error in 1 − Σ R.
+
 - **Energy resolution** ≈ 2π/T (6.8 meV at 25 000 a.u.). A finer `NrOfEs` spacing interpolates.
 - **`dtAna`**: 2π/`dtAna` must exceed the span of total energies (incl. internal energy) in the
   analysis (8.5 eV at 20 a.u.).
 
 ## 9. Grid sizes and memory
+
 - FFT sizes (`nZ`, `nZSpecular`, `nR`, `nX`, `nY`): even, 2^h·3^i·5^j·7^k·11^m with i ≤ 2,
   j, k, m ≤ 1 (e.g. 112, 160, 198, 210, 240, 256; not 196, 200, 216, 250, 270).
 - After changing dZ, re-check `Zana` (must be a grid point) and `nzpot`: the potential and the
@@ -227,6 +242,7 @@ it bounds the error in 1 − Σ R.
   (ER case: 7.4 GiB).
 
 ## 10. Verifying a new input
+
 1. `uv run -q --with numpy python -I tools/wave_packet_check.py input.json --zasymp <Z_asymp>`:
    all margins met, absorbers inside the table, R + T small over the relevant energies.
 2. Run to t ≈ 500 a.u.: the total norm drops by ≲ 1e-7 (DZ: 1 − 4.7e-8; with dZ 0.15 it was
@@ -234,7 +250,9 @@ it bounds the error in 1 − Σ R.
 3. At the end: the norm left on the grids (section 8).
 
 ## 11. CRP data sets (`SystemID` `CRPlibrary`)
+
 The data set ([docs/crp_library.md](../docs/crp_library.md)) limits the grids:
+
 - r outside [Rmin, Rmax] and Z below Zmin (the ranges covered by all molecular cuts) are evaluated
   at the nearest end, as in the Fortran: V is constant there. Keep the r range where the dynamics
   happens inside [Rmin, Rmax]; beyond Rmax the r absorber has to do the rest. The `CRP DATA SET`
@@ -248,8 +266,10 @@ The data set ([docs/crp_library.md](../docs/crp_library.md)) limits the grids:
   potential costs microseconds per point; docs/performance.md "CRP library").
 
 ## 12. SCM distorted surface (SystemID `CRPDistrtSurface`)
+
 A CRP data set plus the correction ΔV of one distorted-slab snapshot ([docs/scm.md](../docs/scm.md):
 the model, the files, the set-up report, ensembles and the open questions). Section 11 applies, and:
+
 - **The 6D region must hold all of ΔV.** V is stored only below `zasymp` (the data set's, or
   `ZmaxSwitch` with `UseSwitching`); above it V is V_asy(r). An H atom feels ΔV up to p8 (10.46 bohr
   in the example `params.dat`) above the highest kept atom (the report's "Highest atom": 0.94 bohr),

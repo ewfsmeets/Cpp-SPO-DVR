@@ -9,6 +9,7 @@ Fortran module `PESForCu111DaiLight` (SystemID `H2Cu111DaiLight`, lattice consta
 module's header comment attributes it to "Dai and Light", but the reference is Dai and Zhang.
 
 ## Taken from Table 5.1 (column "DZ PES, H₂")
+
 | Table 5.1 | Value | Input key |
 |---|---|---|
 | r₀, Δr, N_r | 0.5, 0.20, 40 | `RStart`, `dR`, `nR` |
@@ -22,6 +23,7 @@ Table 5.1 gives N_tot = 321 million = 435 rotational functions (even j ≤ 28, a
 so its N_Z is the scattering grid. Here N_tot = 435 × 160·40·12·12 = 400.9 million.
 
 ## Z grid: why ΔZ = 0.12 instead of 0.15
+
 General rules: `../README.md`; check with `tools/wave_packet_check.py`. The packet width is not an input: it follows from `EMinWP`/`EMaxWP` (α = (k₀ − k_min)²/4, Fortran
 `getAlphaCoeffWavePacket`), so its momentum spread σ_k = √α is fixed by the energy range. A grid
 only holds momenta up to π/ΔZ. Whatever lies above wraps around in the FFT to large *outward*
@@ -40,6 +42,7 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
 500 a.u. is 4.7e-8 and the line keeps moving.
 
 ## Deduced or chosen (not in the thesis)
+
 - **Time step** 2.5 a.u. (7 000 steps), as in chapter 6 (Table 6.1). Chapter 4 (Table 4.5) used
   5.0 a.u. with the same SPO code; the smaller step is the safer choice. `dtAna` 20 a.u. (chapter 4).
 - **Total time** 17 500 a.u. instead of the thesis's 25 000, to shorten the CPU and Fortran runs.
@@ -74,6 +77,7 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
   barely return within T.
 
 ## Cost (this machine)
+
 6.0 GiB wave function, 1.3 GiB exp(−iV dt) table (`UseSymmetry`, C6v: 19 of 144 (x, y) points).
 CPU (8 threads): 7.3 GiB during the propagation. GPU (`--device cuda`): 8.8 GiB estimated plus the
 CUDA context; fits the 12 GB RTX 4070 Ti. Measured on this input (7000 steps, 2026-11-07/08,
@@ -82,6 +86,7 @@ CUDA context; fits the 12 GB RTX 4070 Ti. Measured on this input (7000 steps, 20
 (strict build).
 
 ## Fortran reference run
+
 `DVR.inp` is the same input for the Fortran executable (keep it in sync with `input.json`; the
 title is shorter because Fortran strings hold 80 characters). The executable reads `DVR.inp`
 from the current directory and writes there: copy it into an empty run directory and start the

@@ -1,6 +1,7 @@
 # Fortran fine analysis: interpolation bugs and their fix
 
 The fine analysis (Fortran `nread = 2`, input `onlyAnalysis` / `alsoAnalysis`) has two steps:
+
 1. It computes the S-matrix on the spectral grid E_k = k·π/T of the BK time series
    (`gtaife`, `hlftrf`, `probaf`).
 2. It interpolates the grid values linearly to the NrOfEs analysis energies (`StateToStateProbs`,
@@ -15,6 +16,7 @@ Line numbers refer to version 5.19, and so do the counts of wrong values in the 
 ([validation.md](validation.md#reference-data)). Bugs 2 and 3 are still present there.
 
 ## The Fortran code
+
 ```fortran
 interpolation_factor = ( etransZ - ftrans(idat-1) ) / ( ftrans(idat) - ftrans(idat-1) )
 ...
@@ -38,12 +40,15 @@ sreal = sign(sreal, sreal_interpolated)              ! (3) signs taken separatel
 simag = sign(simag, simag_interpolated)
 smtrx(is,iv,knt) = cmplx( sreal, simag )
 ```
+
 s1 and s2 are the S-matrix elements at the grid points below and above E_z. The intent is:
+
 - interpolate |S|² linearly;
 - interpolate the phase linearly;
 - rebuild S from both.
 
 ## What goes wrong
+
 1. **Re S in place of Im S (line 778).** `simag_interpolated` should be
    `s1_imag + (s2_imag - s1_imag)·f`.
    - The value only sets the sign of Im S, so the result has the wrong sign of Im S whenever the
@@ -62,6 +67,7 @@ s1 and s2 are the S-matrix elements at the grid points below and above E_z. The 
    sign.
 
 **Not affected:**
+
 - P = sreal² + simag² = `prob_interpolated` up to rounding. Every probability is therefore
   unaffected: the stdout per-energy blocks, P(v), P(v, j, mJ), the diffraction orders, the
   reaction probability, and all average energies.
@@ -71,7 +77,9 @@ s1 and s2 are the S-matrix elements at the grid points below and above E_z. The 
 `fine_analysis/s_matrix.tsv`.
 
 ## The C++ interpolation
+
 `interpolate_s_matrix` (`src/analysis/fine_analysis.cpp`):
+
 - P = P1 + (P2 − P1)·f, as in the Fortran, so the probabilities stay comparable.
 - φ = arg(s1 + (s2 − s1)·f): the phase of the linearly interpolated S.
   - It is continuous across ±π and needs no special case for a zero end point (a closed channel).
@@ -83,6 +91,7 @@ between neighbouring grid points, the program prints a warning. The interpolatio
 unreliable, and the run should be propagated longer.
 
 ## How the fix is verified (the Fortran code is not modified)
+
 The reference data comes from the unmodified Fortran binary. It runs as an analysis-only run on
 the BK coefficients of its own full hardwall_small run:
 `tools/fortran_reference/run_fine_analysis_reference.sh`, variants `full`, `truncated`, `nen95`,

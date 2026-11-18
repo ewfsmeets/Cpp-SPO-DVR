@@ -71,6 +71,7 @@ under "Additions" at the end.
 ## Additions (found during the work)
 
 ### Inventory: per item, file and precision in each program
+
 F = Fortran (cleaned stdout `logs/fortran.txt` unless noted), C = C++ (CPU and GPU identical
 layout; cleaned logs `logs/cpu.txt`, `logs/gpu.txt`; files in the run directories).
 

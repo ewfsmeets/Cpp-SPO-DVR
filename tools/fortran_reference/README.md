@@ -126,6 +126,7 @@ tools/fortran_reference/build_fortran_reference.sh --check-binary FILE...
 The build checks the pinned commit and tree hash in the mirror, builds from `git archive` of
 `sources.dir` with `GNU.mk`'s `-Ofast -mtune=native -march=native` replaced by `-O3` (the upstream
 default enables fast-math and FMA), and refuses:
+
 - a log with an error line, or with any line outside the allow-lists: PreProcess, compile and
   link lines with exactly the pinned defines and flags, and DoBuild's progress messages;
 - an executable or object with VEX/EVEX instructions, AVX libmvec imports (`_ZGVc`, `_ZGVd`,

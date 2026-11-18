@@ -9,6 +9,7 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
 ## Criteria
 
 ### Verdict words (fixed list)
+
 | Word | Meaning |
 |---|---|
 | **identical** | bitwise equal (or equal integers / text after index conversion) |
@@ -20,12 +21,14 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
 | **n/a** | not comparable (reason given) |
 
 ### Integers, flags, decisions, channels
+
 - Exact after index conversion (C++ 0-based, Fortran 1-based; counts equal).
 - Open/closed channels: exact. Decisions at a threshold: report the margin where an output
   gives it (e.g. the specular analysis line: the C++ log gives Z and t, the Fortran only Z; the
   Fortran step is pinned through fort.21).
 
 ### Printed Fortran values (C++ value at full precision against the Fortran text)
+
 - |Δ| ≤ 1.01 · ½ unit of the last printed digit, floor 1e-20 (`printed_text_tolerance`).
 - P_reaction: |Δ| ≤ max(1.01 · ½ printed unit, 1e-11) absolute (gate 4 floor; P_reaction = 1 − ΣP
   is known only to the absolute accuracy of the sum).
@@ -38,6 +41,7 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
   |Δ| / tolerance and where it occurs.
 
 ### BK coefficients (all analysis steps, all channels, both vibrational levels)
+
 - Global: max |Δc| ≤ 1e-10 · max(max|c|, 1e-4) (gate 4).
 - Per channel: relative error |Δc| / |c| reported for |c| above the floor 1e-6 · max|c|
   (a small channel could be wrong and still pass the global criterion). No pass/fail threshold
@@ -46,6 +50,7 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
   ∝ t systematic bias, a jump = a logic difference, e.g. a different analysis-line step).
 
 ### Potential (identical physical points)
+
 - |ΔV| ≤ 1e-13 · max(|V|, 1 eV) (the `.pes` is in hartree: floor 1 eV = 0.036749… hartree via
   `legacy` 27.2114). Also reported separately for the region V < 2 eV.
 - Different symmetry representatives (C++: first point of an orbit in memory order; Fortran:
@@ -54,6 +59,7 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
 - V_asy(r): ≤ 1e-14 · max(|V|, 1 eV) (gate 1 criterion; both sides at full precision).
 
 ### Full-precision C++ data (CPU↔GPU tables, replay, `onlyAnalysis` pairs)
+
 - P, S (complex, |ΔS|) and P_reaction: ≤ 1e-10 absolute (never relative for P_reaction).
 - Phases only where |S|² > 1e-8, difference wrapped into (−π, π]; Fortran quirk: phase 0 when
   Re S = 0 (reproduced by the C++, so compared as printed).
@@ -62,6 +68,7 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
   threshold beyond the prediction.
 
 ### Thesis (item 17), defined before any run is drawn on the digitised curve
+
 - Digitisation: the dotted curve is extracted from the PDF's vector drawing (pymupdf
   `get_drawings`), axes calibrated on the tick marks. u_dig = the largest calibration residual
   of the ticks (in P and E) plus half the drawn line width, both converted to data units.
@@ -74,6 +81,7 @@ Later changes go to "Criteria changes" at the end, dated, with the reason.
   three codes coincide; it would be marked "open" (set-up), not FINDING.
 
 ### Every comparison reports
+
 n, median, p95, max, and where the max occurs (E, channel, t, grid point).
 
 ## Prediction (written before comparing)
@@ -96,6 +104,7 @@ This grid has the same number of steps (7000) but JMax 28 (435 rotational functi
 somewhat larger (sums of n terms: ~√n ulp).
 
 Predicted for this run:
+
 1. Set-up integers, decisions, channel lists: identical. Printed set-up reals: within the
    printed precision. Grids: ≤ 2 ulp (quad-precision sites). θ nodes ≤ 1e-15 absolute.
 2. Potential at identical points: ≤ 1e-13 · max(|V|, 1 eV) (gate: ≤ 3.6e-14); V_asy ≤ 1e-14.
@@ -120,6 +129,7 @@ this prediction by more than an order of magnitude and would be investigated as 
 logic difference; above the fast-math/FMA level it may motivate a strict-build run (D2).
 
 ## Criteria changes
+
 - 2026-11-07, while writing `setup_items.py` (before looking at its results): three set-up cases
   the list above did not cover.
   1. Set-up scalars that both programs hold in double precision (fort.21 header values, `.pes`

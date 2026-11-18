@@ -21,6 +21,7 @@ The CRP library, its list-directed reader and the SCM sources keep the strict fl
 also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`).
 
 ### The fast-math build (`SPODVR_FAST_MATH`)
+
 - **Flags:** the C++ code gets `-ffast-math -fno-finite-math-only -fcx-fortran-rules` (plus
   `-march`); the CRP library, its reader and the SCM sources keep the strict flags. The CUDA kernels
   get `--use_fast_math --extra-device-vectorization` (for FP64 only the FMA contraction matters),
@@ -63,6 +64,7 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
     repeated.
 
 ### Profile-guided optimisation (11–16 % less time on the medium grid, 2026-10-26)
+
 ```
 cmake -S . -B build-pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_PGO=GENERATE -DSPODVR_PGO_DIR=$PWD/pgo
 cmake --build build-pgo
@@ -70,16 +72,19 @@ cmake --build build-pgo
 cmake -S . -B build-pgo -DSPODVR_PGO=USE
 cmake --build build-pgo
 ```
+
 Results are bitwise identical to the normal build. After changing sources, generate a new profile:
 GCC treats a profile that no longer matches a function as an error (`-Wcoverage-mismatch`).
 
 ### Running a oneMKL build
+
 Inside the build tree the oneMKL library path is in the executable's RPATH. An installed or copied
 executable needs the oneMKL libraries on the library path, e.g. `source /opt/intel/oneapi/setvars.sh`
 or `LD_LIBRARY_PATH=/opt/intel/oneapi/mkl/latest/lib`. The program prints the libraries it uses in its
 header line.
 
 ## Reproducibility
+
 - Results never depend on the number of OpenMP threads (fixed work units, fixed summation order,
   identical per-thread FFT plans).
 - **oneMKL code path (CNR)**: unless the environment variable `MKL_CBWR` is set, the program selects
@@ -94,6 +99,7 @@ header line.
   combination.
 
 ## Memory and NUMA
+
 - Large arrays (`AlignedVector`: wave function, potential grid, exp(−iV dt) table) are 64-byte aligned
   and are *not* zeroed on allocation; they are first written in parallel, per (Z, r) group, with the
   schedule of the loops that use them. On multi-socket (NUMA) machines this places every memory page
@@ -113,6 +119,7 @@ header line.
   2026-10-26).
 
 ## Threads and loop scheduling
+
 - **Single NUMA node** (one socket, e.g. the Ryzen 5800X): dynamic schedule, and only as many threads
   as physical cores (`--threads 8` on the 8-core/16-thread 5800X). Work per (Z, r) point is not
   uniform (see "Fortran vs C++" below), and dynamic scheduling evens it out; hyperthreads add
@@ -138,6 +145,7 @@ header line.
   points), `static,1` vs `dynamic,1` on one node, and a default thread count of the physical cores.
 
 ## Benchmarking checklist
+
 - Use a realistic grid: `tools/benchmark/run_benchmark.sh [build-dir] [threads] [steps]` (the
   "medium" grid below; ~5 GB of memory). The tiny test grids give misleading rankings (on them
   FFTW beats oneMKL; at realistic sizes it is the other way round or equal).
@@ -163,6 +171,7 @@ header line.
   either file fails, naming the first such element).
 
 ## Measurements (AMD Ryzen 7 5800X, 16 threads, WSL2; propagation time only)
+
 Measured 2026-10-26 (GCC 13, static schedule); not re-measured since.
 
 | Case | Baseline (faithful port) | Optimised, oneMKL FFT | Optimised, FFTW | Optimised + PGO (oneMKL) |
@@ -175,6 +184,7 @@ transforms); at realistic sizes oneMKL is as fast or faster. Per time step on th
 threads): T_Z + T_r ≈ 0.4 s, T_xy ≈ 0.17 s, potential (incl. angular transforms) ≈ 0.33 s.
 
 ## Fortran vs C++ (full Dai–Light run, 8 threads, 2026-11-05)
+
 Case `tests/reference/cu111_dailight_small`: 7000 steps on a 176 × 56 × 8 × 8 grid (nZ × nR × nX × nY)
 with 15 rotational states (JMax = MJMax = 4; nθ = 3, nφ = 10), plus the on-the-fly analysis. AMD Ryzen 7
 5800X (8 cores, Zen 3, no AVX-512), WSL2, `OMP_NUM_THREADS=8`, the three runs one after the other on an
@@ -227,6 +237,7 @@ re-measured since.
 - Earlier measurement with 16 threads (hyperthreads, includes test overhead): Fortran 637 s, C++ 816 s.
 
 ## CRP library (SystemID `CRPlibrary`, 2026-11-09)
+
 Setting up the potential of a CRP data set costs microseconds per point, and it dominates the
 set-up. Measurements on the synthetic data sets of the library tests: the gate cases
 `tests/reference/crp_*_synthetic_small` enlarged to nX = nY = 12 and JMax = MJMax = 8 (committed: 6 × 6, C4v
@@ -263,6 +274,7 @@ checked bitwise against the plain path):
   acos/atan2) 12–22 %; the rest the interpolation and the derivatives the QD wrapper discards.
 
 ## What was optimised (and how it relates to the Fortran code)
+
 | Change | Results |
 |---|---|
 | Compiler flags above, LTO, `-march` | bitwise identical |
@@ -276,6 +288,7 @@ checked bitwise against the plain path):
 | oneMKL BLAS/LAPACK and FFTs | ≤ 1e-14 |
 
 Not done:
+
 - FFTW wisdom / `FFTW_MEASURE`: oneMKL (the default) ignores planner flags, and measured plans would
   make results depend on the planning run.
 - BLAS GEMM for the θ sums of the angular transform: the matrices are tiny for the test grids; the
@@ -283,4 +296,5 @@ Not done:
   GEMM can replace them when profiling of production grids shows a need.
 
 ## GPU backend
+
 The CUDA backend (`--device cuda`) is described, with its measurements, in [cuda.md](cuda.md).

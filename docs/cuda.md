@@ -3,6 +3,7 @@
 `spodvr --device cuda` propagates the wave packet on an NVIDIA GPU. The wave packet stays in GPU
 memory for the whole run. After every analysis step only a few small pieces are copied back to the
 host:
+
 - the specular wave;
 - the nr (Z, r) blocks at Zana (the input of the BK analysis);
 - every `dtAve`, one density value per (Z, r) point.
@@ -11,11 +12,13 @@ Everything else is unchanged: set-up, potential, gas phase, analysis, S-matrix, 
 checkpoints and restarts (also from or into Fortran files, and between CPU and GPU runs).
 
 ## Building
+
 ```bash
 cmake -S . -B build-cuda -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON
 cmake --build build-cuda
 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 ```
+
 | Option | Default | Meaning |
 |---|---|---|
 | `SPODVR_USE_CUDA` | `OFF` | build the backend. Without it nothing CUDA-related is compiled, and `--device cuda` stops with a clear error |
@@ -68,9 +71,11 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
     cuFFT links it at plan creation.
 
 ## Running
+
 ```bash
 ./build-cuda/spodvr input.json --device cuda --threads 8 --output-dir run
 ```
+
 - **Before the potential is computed:** the program prints the GPU and the CUDA library versions,
   plus a GPU MEMORY ESTIMATE. It stops if the free GPU memory is too small, so a run never fails
   after a long set-up.
@@ -79,15 +84,18 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 - **Default device:** `--device cpu`. Results never depend silently on the hardware.
 
 ## Design
+
 `PropagationBackend` (`src/propagation/propagation_backend.hpp`) is the boundary. The time loop
 (`WavePacketPropagation::run`) makes one virtual call per analysis step, then reads what the
 analysis needs:
+
 - `CpuBackend` wraps the OpenMP operator stages;
 - `CudaBackend` (`src/cuda/cuda_backend.cpp`) holds the device stages;
 - `src/app/backend_factory.cpp` chooses one of them, and is the only file that knows whether the
   CUDA backend was built.
 
 ### Device layout
+
 On the GPU, ψ is stored as `(izr, irot, ixy)` with izr = ir + nr·iz fastest (`DeviceLayout`). Host
 files and the CPU code keep `(irot, ixy, izr)`. With izr fastest, every stage is either one batched
 cuFFT with one batch dimension or a kernel whose neighbouring threads read neighbouring memory, and
@@ -102,6 +110,7 @@ none of the CPU's gather/scatter code is needed:
 
 Kernels of the interaction region, one slab at a time. The slab is the largest divisor of the
 number of (Z, r) points whose DVR scratch fits in 1 GiB:
+
 1. `absorb_and_transform_to_dvr`: one thread per (Z, r, x, y) column. Absorption, rot(dt/2) and the
    specular wave added to the initial channel, then the Legendre sums FBR → DVR.
 2. cuFFT over φ: length nφ, batch columns·nθ at distance 1. The scratch layout is (col, θ, φ),
@@ -118,7 +127,9 @@ The tables are the CPU's. `potential_step_factors`, `specular_gas_phase_factors`
 `exp_i`, then re-laid out with izr fastest.
 
 ### One method, two executions
+
 The CPU and the GPU backend implement the same method:
+
 - the same operator sequence `T/2 V (T V)^(n-1) T/2`;
 - the same stages within T and V (table above);
 - the same tables;
@@ -129,6 +140,7 @@ fusion of T_xy and V per group, and the GPU's slabs. This keeps every GPU stage 
 CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on.
 
 **Rule for changes to the GPU backend:**
+
 - **Allowed in the GPU backend alone:** a change to *how* a stage runs. Examples: layout, fusing
   adjacent elementwise work into a kernel or a cuFFT callback, streams and overlap, launch shapes.
 - **Never in the GPU backend alone:** a change to *what* is computed: the operator
@@ -139,6 +151,7 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
   the CPU.
 
 **Methodology exceptions:**
+
 1. **Merged kinetic stages** (`DeviceKineticOperator::apply`). The GPU applies T_Z + T_r and T_xy
    as one stage:
    - shift → (Z, r) and (x, y) cuFFTs → one multiplication with both factors → inverses → unshift;
@@ -161,6 +174,7 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
    - all GPU gates pass, the long ones included.
 
 ## Numerics
+
 - **No FMA:** `-fmad=false` everywhere. Complex products are formed as GCC does with
   `-fcx-fortran-rules` (`Complex` in `src/cuda/device_complex.hpp`), and every kernel keeps the CPU
   operation order. For the same input, the elementwise kernels, the Legendre sums and the specular
@@ -182,6 +196,7 @@ CPU twin, and it is what the per-stage CPU-vs-GPU tests in `tests/cuda/` rely on
   unsplit GPU run.
 
 ## Memory
+
 GPU memory estimate for the DZ input (`inputs/thesis_fig5_3_dz`, nZ 160), as printed by its strict
 GPU run of 2026-11-08 ([validation record](validation_thesis_fig5_3_dz/README.md), log
 `data/logs/cleaned_cuda_strict.txt`):
@@ -197,6 +212,7 @@ GPU run of 2026-11-08 ([validation record](validation_thesis_fig5_3_dz/README.md
 | total | 8.8 GiB of the card's 12.0 GiB |
 
 The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is set at start-up).
+
 - **Host memory:** the host allocates ψ only to read a restart or to write the checkpoint at the end.
   The host MEMORY ESTIMATE block still describes a CPU run.
 - **Larger grids** do not fit on one GPU of this class: the ER thesis input needs 14.8 GiB
@@ -205,18 +221,21 @@ The CUDA context needs a few hundred MiB on top (`CUDA_MODULE_LOADING=LAZY` is s
   (not implemented).
 
 ## Performance
+
 The DZ figures of this section were measured on 2026-11-05/06, on the input as of 3c1d91b (nZ 128,
 ψ 4.8 GiB, 8 potential slabs), unless another date is given; the input now has nZ 160 (ψ 6.0 GiB,
 10 slabs). Run times on the current input:
 [validation record](validation_thesis_fig5_3_dz/README.md#performance-as-run).
 
 Measure with `build-cuda/tools/spodvr_cuda_operator_timing <input.json> [repetitions]`. It times:
+
 - each stage and each kernel of the potential stage;
 - a whole analysis step as the program runs it. That step has one kinetic stage more than n
   time steps (`T/2 V (T V)^(n-1) T/2`), so its time per step is what the full program reaches
   (DZ: 625 ms against 588 ms for the sum of the stages).
 
 Profiling:
+
 - **Nsight Systems 2026.1** (`/usr/local/cuda/bin/nsys`) works on this WSL2 machine, for CUDA
   API and kernel traces:
   ```bash
@@ -254,6 +273,7 @@ agree to 1.0e-14 relative, the BK coefficients to 1.8e-15 absolute) (0.65 s per 
 the CPU (305.0 s / 80): **5.9×** (against the CPU stage sum above, 3.57 s: 5.5×). The 10 000 steps that the DZ input then had (tEnd 25 000 a.u.; it now has 7000) would take ≈ 1.8 h instead of ≈ 10 h.
 
 What limits the speed on this card:
+
 - **Memory passes:** one pass over ψ (read + write) takes 25.5 ms (400 GB/s). A 2D (Z, r) cuFFT
   takes 2 passes, a strided 2D (x, y) cuFFT 2.7 (a contiguous one would take 2), and the
   multiplication kernels run at full bandwidth.
@@ -285,6 +305,7 @@ Measured optimisations (DZ, strict build, interleaved A/B, per time step):
 
 Next steps, to be judged on the production GPU (on an A100/H100 the kernels become memory-bound,
 and fewer passes pay off directly):
+
 - **More cuFFT callbacks:** the kinetic multiplication (`multiply_by_kinetic_factors`) as the
   store callback of the forward (x, y) FFT, or as the load callback of the inverse one. That saves
   one more pass over ψ.
@@ -296,6 +317,7 @@ and fewer passes pay off directly):
   passes, but needs more FP64 work for the DFT.
 
 Considered and not done (2026-11-06):
+
 - **Two potential slabs at once on two streams.** The idea: the FP64-bound Legendre kernels of one
   slab overlap the memory-bound φ FFTs of the other. Skipped, because:
   - each Legendre kernel is one wave of 282 blocks × 256 threads (48/46 registers, ≈ 94% of the
@@ -313,10 +335,12 @@ Considered and not done (2026-11-06):
   1 ms per time step.
 
 ### Fast build (`build-cuda-fast`: FMA in the kernels)
+
 ```bash
 cmake -S . -B build-cuda-fast -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON \
       -DSPODVR_FAST_MATH=ON -DSPODVR_ARCH=native
 ```
+
 `SPODVR_FAST_MATH` also switches the kernels to `--use_fast_math --extra-device-vectorization`.
 For our FP64 kernels only the FMA contraction (`-fmad=true`) matters; the rest of
 `--use_fast_math` (flush-to-zero, approximate division, square root and intrinsics) acts on FP32
@@ -337,6 +361,7 @@ The gain is in the Legendre sums only (FFTs and multiplication passes are memory
 larger for larger JMax and smaller on A100/H100, where FP64 is not the limit.
 
 Results, fast against strict build:
+
 - All GPU tests pass, including the Fortran gates 3 and 4 (also the long ones) and the CPU-vs-GPU
   analysis-step tests (≤ 1e-13).
 - Full cu111_dailight_small (7000 steps): norm 2.0e-12 relative, rest norm 3.9e-12, ⟨Z⟩ 2.2e-14,
@@ -356,6 +381,7 @@ So the fast build is within the regression tolerances, but no longer comparable 
 to the last bits; use the strict build when comparing with the CPU or the Fortran code.
 
 ## Files
+
 | File | Content |
 |---|---|
 | `src/cuda/README.md` | guide to the kernels: vocabulary, memory layout, everything one time step launches, the stages with diagrams, rules and recipes for changing a kernel |

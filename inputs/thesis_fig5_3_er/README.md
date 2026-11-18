@@ -6,12 +6,14 @@ Z_asymptotic = 8.0 a₀). The reasoning (why ΔZ = 0.12, the wave-packet width, 
 `../thesis_fig5_3_dz/README.md`; this case follows the same rules (`../README.md`; check with `tools/wave_packet_check.py`).
 
 ## Taken from Table 5.1 (column "ER PES, H₂")
+
 r: 0.5 + 32 × 0.25, N_x = N_y = 16, j_max = 28, T = 15 000 a.u. Table 5.1's Z grid (0.0 + 90 × 0.15,
 N_tot = 435 × 90·32·16·16 = 321 million) is **not used**: ΔZ = 0.15 cannot hold the momentum spread
 of the packet (8e-6 of the norm wraps around to outward momentum for 0.35–1.05 eV, see the DZ
 README). Here N_tot = 435 × 112·32·16·16 = 399 million.
 
 ## Deduced or chosen
+
 - Time step 2.5 a.u. (6000 steps, as in chapter 6), `dtAna` 20 a.u. (chapter 4).
 - Wave packet 0.40–0.95 eV, 111 energies (0.005 eV apart), `Z0` = 11.0 (8σ_Z above `Zana`; the
   1e-7 tail ends at 12.85, 3.2 a₀ below the specular absorber).
@@ -30,6 +32,7 @@ README). Here N_tot = 435 × 112·32·16·16 = 399 million.
   0.529167 Å/bohr but the lattice constant with 0.529177), so the symmetry self-check fails.
 
 ## Cost (this machine)
+
 CPU (8 threads): 5.9 GiB wave function plus 3.7 GiB potential, 9.7 GiB in total. exp(−iV dt)
 exceeds the 4 GiB table limit and is computed in every step. With the 90-point grid a step took
 about 5.8 s (static schedule); this grid has 1.24× the points in Z.

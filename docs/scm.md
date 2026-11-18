@@ -146,6 +146,7 @@ authors; the C++ reproduces the Fortran until they answer.
 | [Q9](scm_open_questions.md#data-we-would-like-to-have-q9): data | one snapshot, no production slabs | the files | the example only |
 
 **In your own runs, until the authors answer:**
+
 - Q1: results use the clamp in bohr, as the Fortran does. On the example snapshot the published clamp
   moves the lowest barrier by +0.14 eV; allow for an uncertainty of that order in barrier-sensitive
   results.

@@ -50,6 +50,7 @@ Fortran code in [docs/fortran_deviations.md](docs/fortran_deviations.md), and th
 compare the two programs in [docs/validation.md](docs/validation.md#gates).
 
 The table lists the features of the Fortran code (5.24 r1713) and their status in the C++:
+
 - **ported**: the C++ does what the Fortran does; a note in parentheses names a Fortran quirk
   that is kept, or a deliberate difference in a single check or edge case (with its ID);
 - **deviation**: ported, but different on purpose;
@@ -188,13 +189,16 @@ program stops with a "not supported" message (exit code 3).
 On Debian/Ubuntu (also under WSL2):
 
 **1. Build tools** (always needed):
+
 ```bash
 sudo apt install build-essential cmake ninja-build pkg-config
 ```
+
 Any C++20 GCC works; the project is tested with GCC 15 (Ubuntu 26.04's default). For another
 compiler, configure a new build directory with e.g. `CXX=g++-14 cmake ...`; nvcc then uses it too.
 
 **2a. Intel oneMKL** (recommended), from Intel's apt repository:
+
 ```bash
 wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
   | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
@@ -204,16 +208,19 @@ echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg]" \
 sudo apt update
 sudo apt install intel-oneapi-mkl-devel
 ```
+
 CMake finds oneMKL in `$MKLROOT` or in `/opt/intel/oneapi/mkl/latest` (no `setvars.sh` needed for
 building). The program always uses the sequential, LP64 oneMKL.
 
 **2b. Without oneMKL**, FFTW3 and LAPACK instead:
+
 ```bash
 sudo apt install libfftw3-dev liblapack-dev
 ```
 
 **3. CUDA** (optional, for `--device cuda`), CUDA 13 from NVIDIA's apt repository (repository
 `wsl-ubuntu` under WSL2, `ubuntu2604` / `ubuntu2404` on a native Ubuntu 26.04 / 24.04):
+
 ```bash
 nvidia-smi                                  # the GPU must be visible; note "CUDA Version" (newest CUDA the driver runs)
 wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb
@@ -221,6 +228,7 @@ sudo dpkg -i cuda-keyring_1.1-1_all.deb
 sudo apt update
 sudo apt install cuda-toolkit-13-3          # newest 13.x not above the driver's CUDA version; installs into /usr/local/cuda
 ```
+
 - Do not install a toolkit newer than the driver supports: it compiles, but the kernels then fail
   at run time.
 - **WSL2:** the GPU driver is the Windows NVIDIA driver (update it in Windows). Never install a
@@ -235,21 +243,25 @@ sudo apt install cuda-toolkit-13-3          # newest 13.x not above the driver's
   `-DCMAKE_CUDA_HOST_COMPILER` to a GCC it accepts.
 
 ## Building
+
 ```bash
 git clone https://github.com/ewfsmeets/Cpp-SPO-DVR.git
 cd Cpp-SPO-DVR
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
 The configure step reports which libraries it uses, e.g.
 `SPO-DVR: BLAS/LAPACK from oneMKL 2026.2 (sequential), FFT library MKL`.
 How to run the tests: see [Testing](#testing).
 
 With the GPU backend:
+
 ```bash
 cmake -S . -B build-cuda -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_USE_CUDA=ON
 cmake --build build-cuda
 ```
+
 The kernels are compiled for the GPU of the build machine (`native`); for another GPU set
 `-DCMAKE_CUDA_ARCHITECTURES` (`89-real` RTX 40xx, `80-real` A100, `90-real` H100). The configure step prints the nvcc version, host compiler and architectures.
 
@@ -269,6 +281,7 @@ Performance notes, reproducibility across machines and the PGO workflow are in
 [docs/performance.md](docs/performance.md).
 
 ### Build variants and `tools/build_all.sh`
+
 The development builds live side by side in git-ignored directories.
 `tools/build_all.sh [variant ...]` configures and builds them (all by default; the CUDA ones only
 when nvcc is found). It does not use PGO; for that, see docs/performance.md:
@@ -291,9 +304,11 @@ the Fortran format (`CheckpointFormat` `"fortran"` or `"both"`, read with `Resta
 `"fortran"`) carry no parameter list and can be used across builds.
 
 ### Formatting and linting
+
 clang-format (C++) and ruff (Python: lint and format, settings in `ruff.toml`) run as git
 pre-commit hooks; clang-tidy is run on demand. All versions are pinned in `.pre-commit-config.yaml`
 and installed by pre-commit itself (no system packages needed):
+
 ```bash
 pipx install pre-commit                                      # once per machine
 pre-commit install                                           # once per clone
@@ -302,12 +317,15 @@ pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build
 ```
 
 ## Testing
+
 ```bash
 OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~9.5 min)
 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1.5 min)
 ```
+
 The times: 809 tests (803 pass, 6 long or reference-less tests skipped) and 24 GPU tests, measured
 2026-11-15 at 8b3df8d with 8 threads on an AMD Ryzen 7 5800X and an RTX 4070 Ti.
+
 - **Run ctest serially** (no `-j`): many tests already use all OpenMP threads. Set
   `OMP_NUM_THREADS` to the number of physical cores (not hyperthreads).
 - **What is tested:**
@@ -371,10 +389,13 @@ The times: 809 tests (803 pass, 6 long or reference-less tests skipped) and 24 G
   With the default (strict) GPU build, all 111 reaction probabilities match the Fortran's 7 printed digits.
 
 ## Running
+
 The program reads one JSON input file:
+
 ```bash
 ./build/spodvr inputs/hardwall_small/input.json --threads 8 --output-dir runs/hardwall_small
 ```
+
 This example (`inputs/hardwall_small`, 7000 time steps) takes about 3 minutes with 8 threads on a
 desktop machine (AMD Ryzen 7 5800X: the long gate `Gate3FullRunLong`, which runs this input, took
 164 s on 2026-11-15). Its set-up prints two
@@ -384,10 +405,12 @@ speed. They are harmless here because the hard wall depends only on Z and r, so 
 stays in the initial rotational state and the specular diffraction channel.
 
 Command-line options:
+
 ```
 spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda] [--output-dir DIR] [--no-color]
        [--help] [--version]
 ```
+
 - `--device cpu|cuda`: propagate on the CPU (default) or on an NVIDIA GPU, where the wave packet
   stays in GPU memory (needs a build with `-DSPODVR_USE_CUDA=ON`; see [docs/cuda.md](docs/cuda.md)).
   The results agree with the CPU's to rounding (≈1e-13, the level of a different FFT library).
@@ -401,6 +424,7 @@ spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda
 - `--output-dir DIR`: where the data files are written (default: the current directory).
 
 Exit codes (`src/app/run.cpp`, `src/app/main.cpp`):
+
 - 0: success (also `--help` and `--version`);
 - 1: any other error, e.g. an output file that cannot be opened;
 - 2: an input error (the message names the key) or a wrong command line;
@@ -409,6 +433,7 @@ Exit codes (`src/app/run.cpp`, `src/app/main.cpp`):
   written with other parameters, or a checkpoint that cannot be written.
 
 Output:
+
 - **Screen:** an input summary, the grids, a memory estimate, the surface symmetry (with
   `UseSymmetry`), the gas-phase states, the initial wave packet, the analysis basis, a table of averages during the propagation (on a terminal with a live progress line:
   step, time per step, estimated remaining time), and compact probability tables (one row per
@@ -438,6 +463,7 @@ to `fine_analysis/` in the output directory. The file formats are described in
 [docs/output_files.md](docs/output_files.md).
 
 ### Continuing a run (restart)
+
 Set `"NewCalc": false`, `"tStart"` to the end time of the earlier run, `"nStep"` to the number of
 steps to add and `"tEnd"` to tStart + nStep·dtStep (the input check requires this), and
 `"RestartDir"` to the earlier run's output directory; use a *different* `--output-dir`. All other
@@ -449,15 +475,19 @@ fort.22/fort.21) and written for it (`"CheckpointFormat": "fortran"` or `"both"`
 [docs/input_schema.md](docs/input_schema.md#checkpoint--restart-keys-c-only).
 
 ### Running a oneMKL build from another location
+
 Inside the build tree the oneMKL library path is built into the executable. If you copy or install
 the executable elsewhere, make the oneMKL libraries findable first:
+
 ```bash
 source /opt/intel/oneapi/setvars.sh        # or: export LD_LIBRARY_PATH=/opt/intel/oneapi/mkl/latest/lib
 ```
+
 Optional: `export MKL_CBWR=AVX2` gives bitwise identical results across machines with different
 vector extensions (see docs/performance.md).
 
 ### Inputs
+
 `inputs/` holds ready-to-run example inputs:
 
 | Directory | Content |
@@ -484,6 +514,7 @@ vector extensions (see docs/performance.md).
   bases need more.
 
 ## Benchmark
+
 Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps on a 176 × 56 × 8 × 8
 (Z, r, x, y) grid with 15 rotational states, plus the on-the-fly analysis. AMD Ryzen 7 5800X
 (8 cores), 8 threads, the three runs one after another; measured 2026-11-05 (GCC 13, Fortran 5.19),
@@ -522,6 +553,7 @@ current 160-point grid the validation record's 7000-step runs took 0.73 s per st
 and the limits of this card in [docs/cuda.md](docs/cuda.md).
 
 ## Repository layout
+
 | Path | Content |
 |---|---|
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend), `crplib/` (the CRP library port), `fortran_text/` (the Fortran list-directed reader shared by `crplib/` and the SCM code) |
@@ -532,5 +564,6 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |
 
 ## License
+
 This program is free software, licensed under the GNU General Public License, version 3. See
 [LICENSE](LICENSE).

@@ -51,10 +51,12 @@ checked 2026-11-14).
 ## 2. The finding that stopped the port: the flux misses the initial channel
 
 ### 2.1 What the Fortran computes (ProjOp = 2)
+
 With two grids throughout (`ProjOp` = 2, the only mode the C++ supports) the wave function is
 ψ = ψ_scat + χ_spec(Z, r)·|J_in, mJ_in⟩·e^(i k_∥·x): `ScatWave` on the scattering grid holds all
 channels, `SpecWave` on the long specular grid the initial channel (initial rotational state times
 the initial parallel plane wave, the specular diffraction order).
+
 - `Potential.f90 PerformEXPPotentialOp` (lines 1261–1298) calls `AddSpecToScat` before the
   interaction and `SubSpecFromScat` after it for every izr ≤ nzpot·nr (lines 1281–1282 and
   1294–1295, the non-MPI branch): at every Z < zasymp and **every r, r_c included**, the initial
@@ -79,6 +81,7 @@ read the scattering wave), and gate 6 found the two in agreement to 1e-11 of the
 (section 5.3).
 
 ### 2.2 The measurement
+
 **Run:** `tests/reference/cu111_dailight_small` (Dai–Light H₂/Cu(111), v = 0, j = 0, normal
 incidence; 176 × 56 × 8 × 8 grid, 15 rotational functions; 7000 steps of 2 a.u.) plus the flux keys
 (41 energies, 0.20–0.60 eV by 0.01 eV, the energies of the S-matrix analysis), once with r_c = 2.0 bohr
@@ -142,6 +145,7 @@ r_c = 4.1 bohr, selected energies (all 41 in [initial_channel_rc4.1.tsv](flux_an
   channel comes from the collision.
 
 ### 2.3 What ProjOp = 1 does
+
 `Main.f90` calls `TwoGrids.f90 CheckOneGridContinuation` at the start of every analysis step when
 nproj = 1 (line 393). Once the specular norm beyond the scattering grid falls below tolsp (or grows
 again: `CheckSpecularNorm`), `ProceedWithOneGrid` adds `SpecWave` into `ScatWave` and sets nproj = 0
@@ -151,6 +155,7 @@ rejects ProjOp 0 and 1 ([input_schema.md](input_schema.md)). **Not run:** a Fort
 run of the same case, which would check P_total independently of the scratch tool.
 
 ### 2.4 Interpretation (not proven)
+
 Near the barrier, part of the wave stretches beyond r_c and comes back. The outward crossing runs
 largely in the initial channel (the specular, j = 0 part), the return in other channels after
 scattering. The net flux of such a crossing vanishes only when all channels are summed; counting the
@@ -159,6 +164,7 @@ back, and the initial channel's share is the 3–9 % that P_spec adds. Either wa
 the wave function is not a reaction probability.
 
 ### 2.5 Not explained
+
 - **The gap at r_c = 4.1 bohr:** P_total falls increasingly short of 1 − ΣR above 0.55 eV (2.5e-3 at
   0.55 eV, 0.0185 at 0.60 eV, about twice the noise), while at r_c = 2.0 the two agree to 2.2e-3
   there. So less flux crosses 4.1 bohr than 2.0 bohr at these energies. Possible causes, none
@@ -169,6 +175,7 @@ the wave function is not a reaction probability.
   inside the noise of 1 − ΣR but not zero; not examined.
 
 ### 2.6 The options that were considered
+
 Put to the user on 2026-11-13: **A**, keep the Fortran method, document what it counts and advise an
 r_c far out (near ROptStart); **B**, an opt-in key that adds the initial channel's flux (CPU and GPU),
 the default reproducing the Fortran; **C**, corrected by default, with a key that reproduces the
@@ -176,7 +183,9 @@ Fortran for the comparison with it (the port fixes Fortran bugs by default). The
 them (2026-11-14): the flux analysis is not ported for now, and is to be rethought as a whole first.
 
 ## 3. What the flux analysis computes
+
 As in `FluxAnalyzor.f90` and as ported (energies in hartree, a.u. throughout):
+
 - **Energies** (`setupFluxAnalyzor`): E_n = EMinFluxAna + n·ΔE, n = 0 … INT((EMax − EMin)/ΔE), the
   energy of the motion normal to the surface, converted with `Constants_eV2Ha`; k_n = √(2 M E_n) with
   M the molecule's mass; E_tot,n = E_n + edifin + eviroi (the initial parallel kinetic energy,
@@ -200,6 +209,7 @@ As in `FluxAnalyzor.f90` and as ported (energies in hartree, a.u. throughout):
   commit messages of `63902f9` and `c3cb1a0`).
 
 ## 4. The port as it was (in `e6d2bf1`)
+
 - **Building blocks** (`src/analysis/flux_analysis.*`, `src/input/wave_packet_params.*`): b(k),
   the energies and A_n (`FluxEnergies`, the division in `flux_transform_factor`), D and the
   r-derivative summed from ir = 0 upwards with the zero term (`flux_derivative_weights`,
@@ -226,10 +236,13 @@ As in `FluxAnalyzor.f90` and as ported (energies in hartree, a.u. throughout):
   `spodvr_strict_objects`), section 7.3.
 
 ## 5. Validation results
+
 ### 5.1 Routine level, against the reference Fortran's own objects
+
 One-off gfortran drivers linked against the objects of the reference install (5.24 r1713, `-O3`)
 called the Fortran routines; C++ programs compared bit patterns (commit messages of `1c62438`,
 `81f2ee5`; recipe in `docs/validation_flux_replay/` of `e6d2bf1`):
+
 - b(k) at 401 momenta: 401 of 401 bitwise; D at nr 56: 56 of 56 bitwise; the energy counts 4, 6, 3
   and 22 of four ranges equal the C++ ones.
 - φ and φ′ after 5 steps on a synthetic ψ: 48 of 48 bitwise; P(E) 3 of 3 and P(x, y; E) 6 of 6 within
@@ -237,6 +250,7 @@ called the Fortran routines; C++ programs compared bit patterns (commit messages
   algorithm only 3 of the 48 values were bitwise equal.
 
 ### 5.2 Replay of one Fortran analysis step (`d4ad897`)
+
 hardwall_small restarted at t = 7000 a.u. for one analysis step with zero-filled flux files: from the
 Fortran's ψ (fort.9), eviroi (fort.21) and t = 7010, the C++ reproduced **all 162 720 complex values**
 of the two flux coefficient files (3 energies × 113 planes × 240 points × 2 files; 32 544 nonzero), by
@@ -244,8 +258,10 @@ value and bit for bit; the C++ writer's files were byte-identical. Control: with
 step's start only the 65 088 zeros of φ agree (worst 0.23 of max |φ|).
 
 ### 5.3 Gate 6: the flux analysis against the Fortran (`c3cb1a0`)
+
 In the gate-3 runs of `cu111_dailight_short` (1000 steps; flux keys r_c 1.7 bohr, 0.2/0.35/0.5 eV),
 CPU and GPU. Three comparisons:
+
 - (a) φ, φ′ element by element within 1e-11·B_n, B_n = |c_n|·Σ_t max|ψ_c(t)| (an upper bound of |φ|),
   recomputed in the test from the run's flux surfaces with the Fortran's eviroi, and the run's own;
 - (b) the run's 195 values of P(E) and P(x, y; E) within max(half a printed unit, 1e-10·prefac·Σ|φ||φ′|);
@@ -266,12 +282,14 @@ by 2e-11·B_n fails at exactly 1 value, off by 0.5e-11·B_n at none; M and μ sw
 printed probabilities. Gates 3 and 4 of the same run were unchanged.
 
 ### 5.4 Choice of r_c for the gate case (`63902f9`)
+
 The cancellation ratio κ_n = |Σ Im(conj(φ)φ′)| / Σ|φ||φ′| (larger κ: gate (b) more sensitive), C++ at
 0.2/0.35/0.5 eV: 1.7 bohr 0.0425/0.0464/0.0474 (P = 1.73e-4, 1.16e-4, 4.38e-4); 2.0 bohr
 0.0324/0.0347/0.0357; 2.3 bohr 0.0386/0.0382/0.0397. Hence 1.7 bohr. At 2.0 bohr the C++ P(E) equalled
 an earlier Fortran run's `flux_reaction.dat` in all 8 printed digits.
 
 ### 5.5 Restart, CPU against GPU, fast-math builds
+
 - **Restart** (`b7a6624`): a split run (cu111_dailight_short_sym with the gate-6 flux keys, 0–60 a.u.
   split at 30) wrote the same bytes as the unsplit run in all flux, checkpoint, BK and probability
   files, for the native and the Fortran restart files; a split GPU run did so for its five flux files
@@ -290,6 +308,7 @@ an earlier Fortran run's `flux_reaction.dat` in all 8 printed digits.
   tests, 735 passed, 6 skipped; Long suite 5 of 5; CUDA ctest including Long 33 of 33.
 
 ## 6. Decisions taken during the port
+
 The reverted code numbered them Q1–Q9. Q1 and Q2 are input checks and are still active
 (flux Q1, flux Q2 in [fortran_deviations.md](fortran_deviations.md), details in
 [fortran_input_bugs.md](fortran_input_bugs.md)). The others, by content:
@@ -305,10 +324,13 @@ The reverted code numbered them Q1–Q9. Q1 and Q2 are input checks and are stil
 | Q9 | b(k) has the phase e^(+iδk·z0), the complex conjugate of the packet's amplitude; P(E) does not depend on it, φ does | kept |
 
 ## 7. Other findings
+
 ### 7.1 The flux density on a skewed grid is not exactly symmetric
+
 P(x, y; E) of the gate case (j = 0, normal incidence, a C6v PES) was meant to be invariant under the
 usable grid operations to 1e-12. That is impossible in either code: the discrete
 T_xy = (k_x² + k_y² − 2 cos 60°·k_x k_y)/2M on the 8 × 8 FFT grid of the 60° cell is not invariant.
+
 - **C2** maps the Nyquist index onto itself (one stored momentum stands for both +4Δk and −4Δk), so
   on the Nyquist row and column the cross term takes the sign of the wrong image.
 - **The two mirrors** usable with nφ = 10 map momenta out of the rhombic FFT box (aliasing). The mirror
@@ -326,6 +348,7 @@ This is a property of the propagation's discretisation, not of the flux analysis
 density derived from ψ on a skewed grid.
 
 ### 7.2 Signed zeros and Smith's complex division
+
 gfortran multiplies a complex number by a real x as by (x, 0); the C++ multiplies both parts by x. The
 values are equal, but an exactly zero part can differ in sign: (−0, −1)·1 gives +0 with gfortran 15.2
 and −0 in the C++ (`81f2ee5`). This holds for every real × complex product of the port (FFT scaling,
@@ -336,6 +359,7 @@ differs by an ulp (3 of 48 values bitwise equal in section 5.1;
 test `FluxTransformFactor.IsSmithsComplexDivision` of the reverted port).
 
 ### 7.3 Strict floating point, no FMA or libmvec in the Fortran's flux routines
+
 The 13 flux routines of the reference executable, `getWaveFuncDerivAtZr` and `getBkCoeffWavePacket`
 contain no FMA and no libmvec call; they call scalar `sin`, `cexp` and `pow` (objdump, 2026-11-13).
 The port compiled `flux_analysis.cpp` with strict flags in every build: the sums must not be
@@ -345,6 +369,7 @@ the fast-math build before the change, 27 of 27 after it). b(k) kept the build's
 per energy; bitwise equal to the strict values at all 401 test momenta in build-fast).
 
 ### 7.4 The χ_vin(r_c) warning rested on a wrong premise
+
 The port printed |χ_vin(r_c)| / max |χ_vin| and warned above 1e-6 (ratio 1.165e-01 at r_c 2.0 bohr on
 hardwall_short, `f902ed1`). Its first wording assumed that only the incoming specular wave
 χ_vin(r)·G(Z) is left out, which scales with χ_vin(r_c). The review of that commit found, in the
@@ -352,6 +377,7 @@ Fortran, that the whole initial channel is left out, including its scattered and
 the collision; the ratio bounds only the incoming part. Section 2 measured the rest.
 
 ## 8. Performance
+
 DZ grid (`inputs/thesis_fig5_3_dz` plus the flux keys, r_c 3.1 bohr, 22 energies, one slot 250.6 MB),
 8 threads, Ryzen 7 5800X and RTX 4070 Ti, 2026-11-14 (`e6d2bf1`, `docs/performance.md` there). Per
 analysis step of 8 time steps:
@@ -376,6 +402,7 @@ analysis step of 8 time steps:
   surface kernel, pinned copies.
 
 ## 9. Open questions for a future design
+
 1. **Include the initial channel.** P_total = P_scat + P_spec as the scratch tool computes it (the
    specular wave's φ_s embedded in the (ichn, x, y) blocks): by default, as an option, or not at all?
    On the GPU the specular wave is already on the host.

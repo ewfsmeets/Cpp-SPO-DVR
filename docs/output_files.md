@@ -6,13 +6,16 @@ energies are in eV in the result tables (`.tsv`, `analysis.json`) and in hartree
 files, unless a column says otherwise (each file's `#` header names the units).
 
 ## Results (tab-separated tables)
+
 Every table starts with `#` comment lines that explain the columns and units, followed by one
 header line and one row per record ("long" format: one quantity per row, labels in columns).
+
 ```python
 import pandas as pd
 s = pd.read_csv("s_matrix.tsv", sep="\t", comment="#")
 s[(s.v == 0) & (s.j == 2)].groupby("E_coll").P.sum()   # P(v=0, j=2) summed over mJ, n, m
 ```
+
 gnuplot: `set datafile separator "\t"; plot "scattering_summary.tsv" using "E_coll":"P_reaction"`.
 
 | File | One row per | Columns |
@@ -59,6 +62,7 @@ lowest V − V_CRP at r outside Rmin .. Rmax on every Z plane, with whether it l
 inside the r absorber (SCM D15, no warning). An analysis-only run checks only the gas-phase points.
 
 ## Data files (space-separated)
+
 The `.dat` files hold plain columns of numbers separated by spaces, after `#` comment lines that
 name the columns and units; `numpy.loadtxt(f)` reads them.
 
@@ -69,6 +73,7 @@ name the columns and units; `numpy.loadtxt(f)` reads them.
 | `gas_phase_states.dat` | rovibrational state (v, j) | v, j, E (hartree), ψ(r) at every r grid point (a `#` line lists the grid) |
 
 ## Correspondence with the Fortran output
+
 | Fortran | C++ |
 |---|---|
 | stdout per-energy blocks (`smatrix_combine`) | screen summary tables; `scattering_summary.tsv`, `probabilities_rovib.tsv`, `probabilities_diffraction.tsv` |
@@ -80,6 +85,7 @@ name the columns and units; `numpy.loadtxt(f)` reads them.
 | fort.21 / fort.22 (BK coefficients) | `bk_coefficients.bin` (or fort.21 with `CheckpointFormat`) |
 
 ## Fine analysis (`onlyAnalysis`, `alsoAnalysis`)
+
 Written to `fine_analysis/` in the output directory, in the same table formats as above:
 
 | Path | Content |
@@ -92,6 +98,7 @@ The interpolated S-matrix elements and phases differ from the Fortran fort.25 be
 bugs are fixed; the probabilities are the same. See `docs/fortran_fine_analysis_bugs.md`.
 
 ## Checkpoint files (binary)
+
 Native files are in host byte order (little-endian on x86-64). Both start with a header: a
 16-byte magic string (`SPODVR-CHECKPNT` / `SPODVR-BKCOEFFS`), a `uint32` format version (2; version 1
 lacked the number of phi points), the

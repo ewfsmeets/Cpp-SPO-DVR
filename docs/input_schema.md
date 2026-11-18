@@ -7,6 +7,7 @@ input: bohr, eV, amu, atomic units of time, degrees. `//` and `/* */` comments a
 Example: `tests/reference/hardwall_small/input.json`.
 
 ## Required keys
+
 These are the fields the Fortran reader pre-registers as compulsory, plus `TolSp`, which has no
 Fortran default.
 
@@ -116,11 +117,13 @@ compared through these statistics, not atom by atom; the data set is not checked
 hold no parameters, so a restart from them checks none of this.
 
 ## Not supported
+
 These keys give a "not supported" error. Logical keys are accepted when set to `false`. The list
 is: `SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`,
 `RCutOff`, `write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`, `PESMixingAlfa`.
 
 ## Validation
+
 All checks of `InputNew.f90` ReadInput/ValidateInput are reproduced, with the same tolerant real
 comparisons (absolute tolerance 1e-12). So are the grid checks of `Setup.f90` and `setupdvr.f90`
 and the nφ checks of `transform.f90` (which are hard errors here). Every check has a unit test,

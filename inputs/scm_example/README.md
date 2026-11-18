@@ -9,6 +9,7 @@ in gates 1–4 ([docs/validation.md](../../docs/validation.md)); that directory'
 Fortran input. Use it to see the SCM keys and the set-up report, and as a template for method tests.
 
 **What it is not: physics.**
+
 - One snapshot, the only one in the example position file. An SCM result is an average over many
   snapshots ([ensembles](../../docs/scm.md#ensembles-by-hand)).
 - Test-sized grids (nX = nY = 6, JMax 4, 3 θ points): the run warns that the rotational and the

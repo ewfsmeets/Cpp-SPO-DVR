@@ -72,6 +72,7 @@ kJ/mol 627.50956·4.184 and J 4.35974434e-18 per Hartree. The program converts t
 Hartree with its own factor 27.2114, as the Fortran does.
 
 The data must satisfy these conditions; `read_data_set` checks them and names the file:
+
 - Atom-surface cuts: exactly 7 (C6v) or 10 (C3v), at least 6 (C4v; all with the same z grid).
 - Molecule-surface cuts: at least 18 (C6v), 29 (C3v) or 16 (C4v). Further cuts are not used, but
   their grids still limit the covered range (a warning). A further cut may lack its file: it is
@@ -117,6 +118,7 @@ any orientation), and the molecular cuts should cover the r and Z grid of the dy
 
 On the dynamics grid the PES is evaluated tens of millions of times (microseconds each; timings in
 [performance.md](performance.md) "CRP library").
+
 - Use `UseSymmetry` (with `nPhisOptimal`): the PES is then evaluated only at the symmetry-unique
   (x, y) points, 4 to 8 times fewer on a 12 × 12 grid. The Fortran switches the symmetry off for
   C3v and C4v. The interpolation is symmetric to rounding (the symmetric images run through
@@ -128,6 +130,7 @@ On the dynamics grid the PES is evaluated tens of millions of times (microsecond
 
 Inside the library, the speed-ups leave every result bitwise unchanged (`crplib::EvaluationOptions`;
 the tests compare with them switched off, `tools/benchmark/crp_timing.cpp` times both):
+
 - **Cluster pruning** (S2). The repulsive sum (MURII, MURO) runs over a fixed cluster (C6v 30
   atoms, C3v 256, C4v 32), but only atoms within the last point of the corrugation function
   contribute. The library sums over the atoms that can be in reach of a point of the fold cell
@@ -181,6 +184,7 @@ here, 2.5 s with `UseSymmetry` (2026-11-09) ([performance.md](performance.md) "C
 The library tests need no real data set (the one in the repository is checked separately, see
 "The real data set" below). The tests (`tests/crplib/`, see its README; the reader of the text
 files is tested in `tests/fortran_text/`, CTest prefix `FortranText.`) use:
+
 - Properties that need no data: splines reproduce cubics, the Fourier tables invert their site
   bases, every site function returns its cut values at the cut orientations, homonuclear and
   surface symmetry, periodicity, gradients against finite differences.
@@ -249,6 +253,7 @@ C3v, Å and eV, a = 2.6015 Å, 4 layers, 10 atom cuts, CutsInterpolation = F (th
 and are skipped, as in the Fortran (two warnings). Checked 2026-11-11 against Fortran 5.19; the
 current reference, 5.24 r1713, gives bitwise the same driver outputs and potential on these cases
 ([validation.md](validation.md#reference-data)):
+
 - **Reading** (`tests/crplib/test_real_data_set.cpp`): every file as gfortran reads it, including the
   trailing comments after the items (`<-- …`, `# …`, `3.4d0  ZCM …`).
 - **The library on it**: V equals the data at 3132 cut knots (cut site and orientation, Z below
@@ -316,6 +321,7 @@ Images: bridge (½, ½) φ+60 and (0, ½) φ−60; hollow (⅔, ⅔) φ+180; t2h
 | 11–16 | t2h (¼, ¼) | 0; 45/225; 45/45; 90/45; 90/135; 45/135 | (¾, ¼) φ−90, (¾, ¾) φ−180, (¼, ¾) φ+90 |
 
 **Atom-surface sites** (`CRPData.3D` takes Cartesian lattice units)
+
 - C6v (7, skewed): (0, 0), (0, ½), (⅓, ⅓), (⅙, ⅙), (⅙, ⅓), (0, ⅙), (0, ⅔).
 - C3v (10, skewed): (0, 0), (½, ½), (⅓, ⅓), (⅙, ⅔), (⅙, ½), (0, ⅙), (0, ⅓), (⅓, ⅚), (½, ⅔), (⅔, ⅔).
 - C4v (6, Cartesian): top (0, 0), hollow (½, ½), bridge (½, 0), t2h (¼, ¼), b2h (½, ¼), t2b (¼, 0).

@@ -23,6 +23,7 @@ the pinned build (`FORTRAN_REF_ID` ≠ `FORTRAN_BUILD_ID`).
 ## Newer upstream commits
 
 With `SPODVR_FORTRAN_MIRROR` set to the local clone of the mirror:
+
 ```bash
 git -C "$SPODVR_FORTRAN_MIRROR" pull                                               # update the mirror
 git -C "$SPODVR_FORTRAN_MIRROR" log --oneline dce0ecc..master                      # commits after the pin
@@ -42,6 +43,7 @@ use only 5.19 features, the operators, absorber formulas, input defaults and fil
 unchanged: built with `-O3`, 5.24 reproduces the 5.19 results bitwise on every gate case (checked
 2026-11-11), except the signs that the `s1_imag` fix changes and the stdout labels. The status is
 one of:
+
 - **ported**: the C++ does what the reference does;
 - **deviation**: the C++ does it differently on purpose; the ID is defined in
   [fortran_deviations.md](fortran_deviations.md);

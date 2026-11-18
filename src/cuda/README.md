@@ -13,6 +13,7 @@ Building, running, benchmarks and the measured optimisations are in
 [`docs/cuda.md`](../../docs/cuda.md).
 
 **Start here.**
+
 1. Read §1 (vocabulary) and §2 (memory layout).
 2. Read §3, the list of everything that runs in one time step.
 3. In the code, follow `CudaBackend::propagate_analysis_step` (`cuda_backend.cpp`) into
@@ -64,12 +65,14 @@ address →
 ```
 
 Why izr innermost:
+
 - Every (irot, ixy) is one contiguous (Z, r) image, so T_Z + T_r is a single batched 2D cuFFT.
   (cuFFT allows only one batch dimension, so the batched images must be evenly spaced.)
 - Thread i usually handles izr = i, so neighbouring threads touch neighbouring addresses.
 
 **Example** (nr = 2, nz = 3, n_rot = 4, nx = ny = 2): take the element iz = 1, ir = 0, irot = 2,
 ix = 1, iy = 0.
+
 - Its indices are izr = 0 + 2·1 = 2 and ixy = 0 + 2·1 = 2.
 - GPU index: 2 + 6·(2 + 4·2) = **62**.
 - Host index: 2 + 4·(2 + 4·2) = **42**.
@@ -170,6 +173,7 @@ FFT then turns slots into φ grid points.
 
 **One thread of `absorb_and_transform_to_dvr`**, worked through for a slab of 3 points starting
 at izr_first = 9 (the fourth slab), with n_xy = 4 (12 columns), thread col = 7:
+
 1. **Its point:** izr = izr_first + col % 3 = 10 and ixy = col / 3 = 2.
 2. **Load:** for every mJ block, it loads ψ(izr = 10, irot, ixy = 2) for each irot of the block
    and multiplies it by the Z absorber and by `before_interaction` (r absorber × rot(dt/2)). In
@@ -200,6 +204,7 @@ code that knows this layout, and both the kernel and the callback use it.
 ## 5. Before you change a kernel
 
 **Rules.**
+
 - **Same order as the CPU twin.** Complex products as in `device_complex.hpp`. No FMA: the
   kernels are built with `-fmad=false`, and the callback uses `__dmul_rn`/`__dadd_rn`.
 - **No atomics, and no reductions whose order depends on scheduling.** A reduction runs in one

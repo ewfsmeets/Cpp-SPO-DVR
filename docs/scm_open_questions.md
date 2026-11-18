@@ -62,6 +62,7 @@ V(X, Y, Z, r, θ, φ) = V_CRP(X/s, Y/s, Z, r, θ, φ)
 
 **The example snapshot** (`examplePosfile.dat`, with `params.dat` and the CRP set
 `H2Cu111SRP_C3v`): one 7 × 7 × 7 slab, position-file version 3, tag `Multiseedv3_New`.
+
 - a_T = 4.88967 bohr is the nearest-neighbour distance of the EAM lattice at 925 K of Smits et al.
   2024 (bulk lattice constant 3.6593 Å: the molecular-dynamics value in the data of their
   Fig. 1(b), 3.65927785611 Å, converts to the file's 4.8896663475 bohr in all 11 digits; their
@@ -127,6 +128,7 @@ results published since 2022 computed with the clamp in bohr?
 pair function stops depending on r below 0.725 bohr and above 1.847 bohr (0.384 and 0.977 Å).
 
 **What Spiering et al. 2018 say.**
+
 - Eq. (8) of Spiering et al. 2018 clamps r_H–H at "the smallest and largest values of r_H–H used in
   the fitting procedure". Table III lists them in Å: 0.725 and 1.847. The fit varied the bond
   length by ±0.3 Å about the barrier geometries (Sec. III A), and these limits are the bridge
@@ -222,6 +224,7 @@ accessible points, also 0.68 eV, lies on the edge u = 0.*
 
 **How large.** The jump is |V(u, 0) − V(u, a_T)| along the edge v = 0, and the same along u = 0:
 the two values the periodic grid joins. The CRP term is periodic, so this is the jump of ΔV.
+
 - Near the barrier, (Z, r) = (2.25, 1.95) bohr, θ = 90°, 12 points per edge and 6 φ, counting
   points where both sides are accessible: the largest jump is 0.68 eV for the example's cell.
   Taking each of the snapshot's 49 top-layer atoms in turn as the origin, this largest jump is
@@ -306,6 +309,7 @@ meant to be supported with SystemIDs `CRPlibrary` and `CRPDistrtSurface`? Were p
 computed on them?
 
 **What the code does.**
+
 - The kinetic operators use the total and the reduced mass (`Setup.f90 MiscellaneousSetup`:
   `rmass`, `rdmass`), so (X, Y, Z) is the centre of mass. `HomoNuc` changes the angular grid and its
   J-parity checks (`angulargrid.f90 InitAngularGrid`, `setupdvr.f90`), not the point at which the
@@ -341,6 +345,7 @@ share this reader's code? Is version 1 still needed? (The C++ port reads version
 rejects version 1, SCM D5.)
 
 **Q8. The gas-phase potential and the `.pes` cache.**
+
 - V_asy(r) is evaluated at (0, 0, Z_asymptotic, r, π/2, 0) (`Potential.f90
   setupTheAsymptoticPotential`). It includes ΔV in runs that compute the potential, but not in
   analysis-only runs (`nread = 2`), which skip `SetupDistPESModule` (`Main.f90`); there

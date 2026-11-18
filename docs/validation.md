@@ -34,6 +34,7 @@ The Fortran output in `tests/reference/`, `tests/crplib/reference/` and `tests/s
 CRP and SCM driver outputs) comes from one build, the
 reference install `r1713-dce0ecc`: upstream 5.24 plus the fine-analysis sign fix (git `dce0ecc`,
 svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream_sync.md)).
+
 - **Why `-O3`:** the upstream default (`-Ofast -mtune=native -march=native`) brings fast-math and
   FMA (CPU-dependent results; the computed machine epsilon underflows to 0, so the code falls back
   to 1e-12). With `-O3`, 5.24 is bitwise identical to 5.19 on every gate case of 5.19 features
@@ -57,6 +58,7 @@ gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `Fortran
 keep the 5.19 model with its `s1_real` typo ([fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md)).
 
 ## Gates
+
 Status on the 5.24 r1713 reference data (measured 2026-11-15 at 8b3df8d with 8 threads; the margins of
 gates 3–5 below were measured at the switch, and the setup data of gates 1 and 2 did not change
 with it): the full ctest, 809 tests = 803 passed + 6 skipped (the five long tests and
@@ -71,6 +73,7 @@ output next to it; the corrugated Cu(111) cases are in their own directories.
 If `DVR.inp` changes, the Fortran reference must be regenerated and the gate values updated; the
 C++ regression tests must use the equivalent JSON input (`tests/reference/hardwall_small/input.json`)
 derived from exactly the same parameters.
+
 1. **Potential** (`tests/test_regression_hardwall.cpp`, `tests/test_regression_pes.cpp`). Gate 1a:
    the gas-phase potential V(r) at Z = zasymp, θ = π/2 (the Fortran table "INFO FROM SETTING UP THE
    ROVIBRATIONAL ASYMPTOTIC POTENTIAL"). Gate 1b: the 6D potential (hartree, before the −dt
