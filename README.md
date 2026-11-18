@@ -291,12 +291,13 @@ the Fortran format (`CheckpointFormat` `"fortran"` or `"both"`, read with `Resta
 `"fortran"`) carry no parameter list and can be used across builds.
 
 ### Formatting and linting
-clang-format runs as a git pre-commit hook; clang-tidy is run on demand. Both versions are pinned
-in `.pre-commit-config.yaml` and installed by pre-commit itself (no system packages needed):
+clang-format (C++) and ruff (Python: lint and format, settings in `ruff.toml`) run as git
+pre-commit hooks; clang-tidy is run on demand. All versions are pinned in `.pre-commit-config.yaml`
+and installed by pre-commit itself (no system packages needed):
 ```bash
 pipx install pre-commit                                      # once per machine
 pre-commit install                                           # once per clone
-pre-commit run --all-files                                   # format everything
+pre-commit run --all-files                                   # format everything, lint the Python files
 pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build/compile_commands.json)
 ```
 

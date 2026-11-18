@@ -1,3 +1,5 @@
 # Bulk reformatting commits, skipped by git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs)
 # Apply clang-format
 35660ca1f9de330a0efbaade1e5343e91e53fa63
+# Apply ruff format
+7fefc883d712e0e3af925067dc8a837f44719524

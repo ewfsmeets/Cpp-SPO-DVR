@@ -10,6 +10,13 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.5                     # Python lint and format; settings in ruff.toml
+    hooks:
+      - id: ruff-check
+        args: [--fix]                # applies the safe fixes only
+      - id: ruff-format
+        types_or: [python, pyi]      # not the Python blocks in Markdown (ruff.toml excludes .md too)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
