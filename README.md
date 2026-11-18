@@ -369,6 +369,9 @@ The times: 809 tests (803 pass, 6 long or reference-less tests skipped) and 24 G
   - the wave-packet designer (`tools/wave_packet_designer/`, Python, names `WavePacketDesigner.…`): its
     copies of the program's rules against the C++ (input keys, checks, grid indices, packet values), its
     design rules and its figure. They need numpy and matplotlib ([Dependencies](#dependencies), step 4).
+    Two C++ tests (`MemoryEstimate.MatchesTheWavePacketDesignerCases` and its `CudaBackend` twin) check the
+    program's grid indices and memory estimates against the designer's `expected_cases.json`: when they
+    fail, the designer's copy needs updating ([how](tools/wave_packet_designer/README.md#the-drift-guard-expected_casesjson)).
 - **Selecting tests** (ctest `-R`/`-E` take a regular expression on the test name;
   `ctest --test-dir build -N` lists them all):
   ```bash

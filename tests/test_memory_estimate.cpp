@@ -10,15 +10,18 @@
 
 #include "analysis/fine_analysis.hpp"
 #include "app/fine_analysis_run.hpp"
+#include "designer_cases.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
+#include "grids/rotational_basis.hpp"
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "potential/potential_symmetry.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
 #include "report/format.hpp"
@@ -152,4 +155,37 @@ TEST(MemoryEstimate, FineAnalysisByHandAndAllocations) {
   // Against the arrays that are allocated.
   const BkSeries series(grid, analysis.basis, 0.0);
   EXPECT_EQ(e.items[0].values, std::size_t(series.n_series()) * series.length());
+}
+
+// The wave-packet designer (tools/wave_packet_designer) copies the grid indices, the angular sizes, the
+// symmetry's use in the estimate and the CPU memory estimate; its expected_cases.json holds its results. When
+// this fails, update the designer's copy and regenerate the file (designer_cases.hpp).
+TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) {
+  using namespace spodvr::testing;
+  for (const nlohmann::json& designer_case : designer_cases()) {
+    SCOPED_TRACE("designer case " + designer_case.at("name").get<std::string>());
+    const RunGrids run(designer_case_input(designer_case));
+    const nlohmann::json& grids = designer_case.at("grids");
+    EXPECT_EQ(run.grids.iz_analysis, grids.at("iz_analysis").get<int>());
+    EXPECT_EQ(run.grids.nz_potential, grids.at("nz_potential").get<int>());
+    expect_designer_range(run.grids.z_optical, grids.at("z_optical"), "z_optical");
+    expect_designer_range(run.grids.z_specular_optical, grids.at("z_specular_optical"), "z_specular_optical");
+    expect_designer_range(run.grids.r_optical, grids.at("r_optical"), "r_optical");
+    expect_designer_range(run.grids.z_optical_low, grids.at("z_optical_low"), "z_optical_low");
+    expect_designer_range(run.grids.z_specular_optical_low, grids.at("z_specular_optical_low"),
+                          "z_specular_optical_low");
+
+    const nlohmann::json& angular = designer_case.at("angular");
+    EXPECT_EQ(run.angular.n_theta(), angular.at("n_theta").get<int>());
+    EXPECT_EQ(run.angular.n_phi(), angular.at("n_phi").get<int>());
+    const InputParameters& p = run.config.input;
+    EXPECT_EQ(RotationalBasis(run.angular, p.j_in, p.mj_in).size(), angular.at("rotational_basis_size").get<int>());
+
+    // The designer takes these two counts from the file (the program's SURFACE SYMMETRY block prints them).
+    const GridSymmetry symmetry = make_grid_symmetry(run.config, run.angular);
+    EXPECT_EQ(symmetry.n_representatives(), designer_case.at("symmetry").at("representatives").get<int>());
+    EXPECT_EQ(symmetry.operations().size(), designer_case.at("symmetry").at("operations").get<std::size_t>());
+
+    expect_designer_estimate(run.estimate(designer_case.at("threads").get<int>()), designer_case.at("cpu"));
+  }
 }

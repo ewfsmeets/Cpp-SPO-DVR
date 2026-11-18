@@ -19,8 +19,9 @@ foreach(source IN LISTS test_sources)
   add_executable(${name} ${source})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})  # shared test headers
   target_link_libraries(${name} PRIVATE spodvr_app GTest::gtest_main spodvr_warnings spodvr_fp)
-  # Fortran reference output of the regression tests.
-  target_compile_definitions(${name} PRIVATE SPODVR_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference")
+  # Fortran reference output of the regression tests; the repository root (designer_cases.hpp).
+  target_compile_definitions(${name} PRIVATE SPODVR_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference"
+                                             SPODVR_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   gtest_discover_tests(${name} DISCOVERY_TIMEOUT 60)
 endforeach()
 
@@ -173,6 +174,7 @@ add_designer_test(Absorbers absorbers)
 add_designer_test(Grids grids)
 add_designer_test(Packet packet)
 add_designer_test(Memory memory)
+add_designer_test(ExpectedCases expected-cases)
 add_designer_test(GasPhase gas-phase)
 add_designer_test(Design design)
 add_designer_test(Plots plots)

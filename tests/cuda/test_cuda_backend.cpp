@@ -18,6 +18,7 @@
 #include "cuda/device_potential_operator.hpp"
 #include "cuda/kernels.hpp"
 #include "cuda_test_setup.hpp"
+#include "designer_cases.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "input/json_input.hpp"
@@ -355,4 +356,22 @@ TEST(CudaBackend, SpecularStepMatchesTheCpuWithALowZAbsorber) {
 TEST(CudaBackend, AnalysisStepMatchesTheCpuWithLowZAbsorbers) {
   SPODVR_REQUIRE_GPU();
   expect_same_step(BackendSetup("hardwall_short", low_z_absorbers), 1e-13);
+}
+
+// The wave-packet designer copies the GPU memory estimate too (designer_cases.hpp). Only arithmetic on the
+// input's sizes: no GPU needed. The program passes the representative count of the run's symmetry.
+TEST(CudaBackend, MemoryEstimateMatchesTheWavePacketDesignerCases) {
+  for (const nlohmann::json& designer_case : designer_cases()) {
+    SCOPED_TRACE("designer case " + designer_case.at("name").get<std::string>());
+    const Config config = build_config(parse_input(designer_case_input(designer_case)));
+    if (config.derived.run_mode == 6) {  // a potential-only run prints no GPU estimate
+      EXPECT_TRUE(designer_case.at("gpu").is_null());
+      continue;
+    }
+    const SpatialGrids grids = make_spatial_grids(config);
+    const AngularGrid angular = make_angular_grid(config);
+    const int n_representatives = make_grid_symmetry(config, angular).n_representatives();
+    expect_designer_estimate(cuda::estimate_gpu_memory(config, grids, angular, n_representatives),
+                             designer_case.at("gpu"));
+  }
 }

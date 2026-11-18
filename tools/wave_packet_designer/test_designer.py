@@ -6,7 +6,9 @@ scratch directory of the case); a test raises TestFailure (tests/helpers.py) whe
 write the function in the case's module and add it to TESTS.
 
 Cases: see CASES below.
-Usage: python3 -I -B tools/wave_packet_designer/test_designer.py <case> <work directory>
+Usage: python3 -I -B tools/wave_packet_designer/test_designer.py <case> <work directory> [--write]
+--write regenerates the expected data of a case that has a `write` function (expected-cases: the drift
+guard's expected_cases.json) instead of testing it.
 Exit status: 0 every test of the case passes, 1 a test fails, 2 usage error.
 Environment: none read. Run time: < 5 s per case. Needs: numpy.
 Docs: tools/wave_packet_designer/README.md ("Tests")
@@ -35,6 +37,7 @@ CASES = {
     "grids": "tests.test_grids",
     "packet": "tests.test_packet",
     "memory": "tests.test_memory",
+    "expected-cases": "tests.test_expected_cases",
     "gas-phase": "tests.test_gas_phase",
     "design": "tests.test_design",
     "plots": "tests.test_plots",
@@ -48,6 +51,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("case", choices=sorted(CASES))
     parser.add_argument("work", type=Path, help="scratch directory (deleted and recreated)")
+    parser.add_argument("--write", action="store_true", help="regenerate the case's expected data")
     args = parser.parse_args()
 
     shutil.rmtree(args.work, ignore_errors=True)
@@ -56,6 +60,8 @@ def main() -> int:
     os.environ["MPLBACKEND"] = "Agg"
     os.environ["MPLCONFIGDIR"] = str(args.work / "matplotlib")
     module = importlib.import_module(CASES[args.case])
+    if args.write:
+        return write_expected_data(module, args.case)
     failures = 0
     for test in module.TESTS:
         try:
@@ -70,6 +76,20 @@ def main() -> int:
         print(f"FAIL: {args.case}: {failures} of {len(module.TESTS)} tests failed")
         return 1
     print(f"PASS: {args.case} ({len(module.TESTS)} tests)")
+    return 0
+
+
+def write_expected_data(module: object, case: str) -> int:
+    """Runs the case's `write` function, which regenerates its expected data from the designer."""
+    if not hasattr(module, "write"):
+        print(f"error: case {case} has no expected data to write", file=sys.stderr)
+        return 2
+    try:
+        module.write()
+    except TestFailure as failure:
+        print(f"FAIL: {case}: {failure}")
+        return 1
+    print(f"WROTE: {case}")
     return 0
 
 

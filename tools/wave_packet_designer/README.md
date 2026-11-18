@@ -211,6 +211,7 @@ flowchart TB
 | `program/gas_phase_potentials.py` | V(r) of the Dai-Light and hard-wall potentials at Z_asymptotic | `src/potential/dai_light_cu111_potential.cpp`, `hard_wall_potential.cpp`, `potential_grid.cpp` |
 | `program/point_group.py` | the φ multiple and order of each point group | `src/symmetry/point_group.cpp` |
 | `dz_gas_phase.py` | the DZ input's printed V(r): the stand-in for other potentials, and test data | — |
+| `expected_cases.json` | the drift guard: twelve cases with the designer's grid indices, angular sizes and memory estimates (written by `test_designer.py expected-cases … --write`) | read by `tests/designer_cases.hpp` for the C++ tests |
 | `program/potential_systems.py` | Z_asymptotic and point group per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
 | `program/fft_sizes.py`, `real_compare.py`, `unit_conversion.py` | valid FFT sizes; the Fortran's tolerant comparisons and NINT; units and π | `src/fft/fft_sizes.cpp`, `src/core/real_compare.hpp`, `src/core/unit_conversion.hpp`, `src/core/constants.hpp` |
 | `program/findings.py` | an error or warning of the program | `src/core/error.hpp` |
@@ -228,7 +229,7 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
   - `packet`, `grids`, `absorbers`: the set-up output of the DZ run (masses, α and kz bitwise, the grid
     indices, the packet's norms and |ψ(k)|, the absorber strengths) and the L/λ the Fortran printed;
   - `memory`: every row of the DZ run's two memory tables, and the hand counts of
-    `tests/test_memory_estimate.cpp`;
+    `tests/test_memory_estimate.cpp`; `expected-cases`: the drift guard (below);
   - `gas-phase`: the DZ run's state energies (to 1e-13 eV) and open channels;
   - `design` checks the rules against the numbers inputs/README.md prints (sections 3, 4, 7, 8).
 
@@ -243,6 +244,34 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
   row in `tests/test_design.py` (`design` fails for a rule without one). Its message cites the README
   section; the physics stays in the README.
 - **a renamed C++ function:** the `Shadows:` line (`structure` fails otherwise).
+
+#### The drift guard: `expected_cases.json`
+
+Most comparisons above use numbers recorded from the program once, so they do not notice a later change
+of the C++. For the grid indices, the angular sizes and the memory estimates, which change whenever the
+program gains or resizes an array, `expected_cases.json` closes that gap. Each of its twelve cases holds a
+definition written by hand (a base input, key changes, the threads, and the symmetry counts the program
+computes) and the designer's results, and both sides are tested against it:
+
+- the case `expected-cases` checks the designer, and that a planted slip (plain `>=` for the tolerant
+  comparison that places nzpot) fails exactly the one case built for it;
+- `MemoryEstimate.MatchesTheWavePacketDesignerCases` (`tests/test_memory_estimate.cpp`) checks the program's
+  grid indices, angular sizes, symmetry counts and CPU estimate, and
+  `CudaBackend.MemoryEstimateMatchesTheWavePacketDesignerCases` (`tests/cuda/`, CUDA builds only) its GPU
+  estimate.
+
+When one of the C++ tests fails, the program has changed something the designer copies; the message names
+the case and the field. Update the copy in `program/` (its `Shadows:` lines say where), then regenerate the
+file and run both sides (`-R WavePacketDesigner` matches the C++ tests too):
+
+```bash
+python3 -I -B tools/wave_packet_designer/test_designer.py expected-cases <scratch directory> --write
+OMP_NUM_THREADS=8 ctest --test-dir build -R WavePacketDesigner --output-on-failure
+```
+
+`--write` keeps each case's definition and recomputes the rest. To add a case, write its definition (for
+`UseSymmetry` the counts from the run's SURFACE SYMMETRY block, or from the C++ test's failure), then run
+`--write`.
 
 ### Conventions
 

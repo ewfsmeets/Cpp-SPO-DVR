@@ -1,0 +1,424 @@
+{
+  "about": "The drift guard of the wave-packet designer (README, Keeping up with the C++). Each case: a base input (relative to the repository root), key changes (null removes a key), the OpenMP threads, and the symmetry counts the program computes (make_grid_symmetry); these are written by hand. The rest is written by test_designer.py expected-cases WORK --write and checked against the C++ by TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) and TEST(CudaBackend, MemoryEstimateMatchesTheWavePacketDesignerCases).",
+  "cases": [
+    {
+      "name": "hardwall_small",
+      "about": "The reference case: no symmetry, every array stored.",
+      "input": "tests/reference/hardwall_small/input.json",
+      "changes": {},
+      "threads": 4,
+      "symmetry": {"representatives": 16, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 113, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 3, "n_phi": 10, "rotational_basis_size": 15},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 3037440, "bytes": 24299520, "during_setup": true, "during_propagation": false},
+          {"name": "exp(-i V dt) table", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 2365440, "bytes": 37847040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 501760, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 39424, "bytes": 2523136, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 111247360,
+        "propagation_bytes": 89470976,
+        "peak_bytes": 111247360
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 2365440, "bytes": 37847040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 250880, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 13440, "bytes": 215040, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4194240, "bytes": 67107840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 739489792,
+        "propagation_bytes": 739489792,
+        "peak_bytes": 739489792
+      }
+    },
+    {
+      "name": "hardwall_potential_only",
+      "about": "Run mode 6: only the potential, and no GPU estimate.",
+      "input": "tests/reference/hardwall_small/input.json",
+      "changes": {"Potential": true},
+      "threads": 4,
+      "symmetry": {"representatives": 16, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 113, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 3, "n_phi": 10, "rotational_basis_size": 15},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 3037440, "bytes": 24299520, "during_setup": true, "during_propagation": false}
+        ],
+        "setup_bytes": 24299520,
+        "propagation_bytes": 0,
+        "peak_bytes": 24299520
+      },
+      "gpu": null
+    },
+    {
+      "name": "hardwall_heteronuclear",
+      "about": "HD: all theta points and both J parities.",
+      "input": "tests/reference/hardwall_small/input.json",
+      "changes": {"Mass2": 2.0141, "HomoNuc": false},
+      "threads": 4,
+      "symmetry": {"representatives": 16, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 113, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 5, "n_phi": 10, "rotational_basis_size": 25},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 5062400, "bytes": 40499200, "during_setup": true, "during_propagation": false},
+          {"name": "exp(-i V dt) table", "values": 5062400, "bytes": 80998400, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 3942400, "bytes": 63078400, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 501760, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 39424, "bytes": 2523136, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 185077760,
+        "propagation_bytes": 147101696,
+        "peak_bytes": 185077760
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 3942400, "bytes": 63078400, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 250880, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 5062400, "bytes": 80998400, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 5062400, "bytes": 80998400, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 22400, "bytes": 358400, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4194000, "bytes": 67104000, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 829659392,
+        "propagation_bytes": 829659392,
+        "peak_bytes": 829659392
+      }
+    },
+    {
+      "name": "hardwall_mjmax_0",
+      "about": "MJMax 0 means MJMax = JMax.",
+      "input": "tests/reference/hardwall_small/input.json",
+      "changes": {"MJMax": 0},
+      "threads": 4,
+      "symmetry": {"representatives": 16, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 113, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 3, "n_phi": 10, "rotational_basis_size": 15},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 3037440, "bytes": 24299520, "during_setup": true, "during_propagation": false},
+          {"name": "exp(-i V dt) table", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 2365440, "bytes": 37847040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 501760, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 39424, "bytes": 2523136, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 111247360,
+        "propagation_bytes": 89470976,
+        "peak_bytes": 111247360
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 2365440, "bytes": 37847040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 250880, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 13440, "bytes": 215040, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4194240, "bytes": 67107840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 739489792,
+        "propagation_bytes": 739489792,
+        "peak_bytes": 739489792
+      }
+    },
+    {
+      "name": "hardwall_mjmax_absent",
+      "about": "No MJMax means MJMax = JMax too.",
+      "input": "tests/reference/hardwall_small/input.json",
+      "changes": {"MJMax": null},
+      "threads": 4,
+      "symmetry": {"representatives": 16, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 113, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 3, "n_phi": 10, "rotational_basis_size": 15},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 3037440, "bytes": 24299520, "during_setup": true, "during_propagation": false},
+          {"name": "exp(-i V dt) table", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 2365440, "bytes": 37847040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 501760, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 39424, "bytes": 2523136, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 111247360,
+        "propagation_bytes": 89470976,
+        "peak_bytes": 111247360
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 2365440, "bytes": 37847040, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 250880, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 3037440, "bytes": 48599040, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 13440, "bytes": 215040, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4194240, "bytes": 67107840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 739489792,
+        "propagation_bytes": 739489792,
+        "peak_bytes": 739489792
+      }
+    },
+    {
+      "name": "dailight_short_sym",
+      "about": "UseSymmetry (C6v, 8 x 8): the potential and the exp table at the representatives only, and the symmetry maps.",
+      "input": "tests/reference/cu111_dailight_short_sym/input.json",
+      "changes": {},
+      "threads": 4,
+      "symmetry": {"representatives": 10, "operations": 12},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 3, "n_phi": 12, "rotational_basis_size": 15},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 2520000, "bytes": 20160000, "during_setup": true, "during_propagation": false},
+          {"name": "Surface symmetry maps", "values": 272, "bytes": 1088, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 2520000, "bytes": 40320000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 9461760, "bytes": 151388160, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 501760, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 56256, "bytes": 3600384, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 212371008,
+        "propagation_bytes": 195811392,
+        "peak_bytes": 212371008
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 9461760, "bytes": 151388160, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 250880, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 2520000, "bytes": 40320000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 16128000, "bytes": 258048000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 53760, "bytes": 860160, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4194240, "bytes": 67107840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 1054845952,
+        "propagation_bytes": 1054845952,
+        "peak_bytes": 1054845952
+      }
+    },
+    {
+      "name": "dailight_short_lowz",
+      "about": "The low-Z absorbers: their index ranges.",
+      "input": "tests/reference/cu111_dailight_short_lowz/input.json",
+      "changes": {},
+      "threads": 4,
+      "symmetry": {"representatives": 64, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [136, 175], "z_specular_optical": [235, 279], "r_optical": [25, 55], "z_optical_low": [0, 125], "z_specular_optical_low": [0, 125]},
+      "angular": {"n_theta": 3, "n_phi": 10, "rotational_basis_size": 15},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 13440000, "bytes": 107520000, "during_setup": true, "during_propagation": false},
+          {"name": "exp(-i V dt) table", "values": 13440000, "bytes": 215040000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 9461760, "bytes": 151388160, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 501760, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 55872, "bytes": 3575808, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 474449920,
+        "propagation_bytes": 370505728,
+        "peak_bytes": 474449920
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 9461760, "bytes": 151388160, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 15680, "bytes": 250880, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 13440000, "bytes": 215040000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 13440000, "bytes": 215040000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 53760, "bytes": 860160, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4194240, "bytes": 67107840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 1186557952,
+        "propagation_bytes": 1186557952,
+        "peak_bytes": 1186557952
+      }
+    },
+    {
+      "name": "dz",
+      "about": "The DZ input as run (UseSymmetry, C6v, 12 x 12, JMax 28): the GPU benchmark.",
+      "input": "inputs/thesis_fig5_3_dz/input.json",
+      "changes": {},
+      "threads": 8,
+      "symmetry": {"representatives": 19, "operations": 12},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [125, 159], "z_specular_optical": [184, 255], "r_optical": [18, 39], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 85500000, "bytes": 684000000, "during_setup": true, "during_propagation": false},
+          {"name": "Surface symmetry maps", "values": 1008, "bytes": 4032, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 194400, "bytes": 24883200, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 8466667712,
+        "propagation_bytes": 7807550912,
+        "peak_bytes": 8466667712
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 163840, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 64800000, "bytes": 1036800000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 2505600, "bytes": 40089600, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4134240, "bytes": 66147840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 9462408192,
+        "propagation_bytes": 9462408192,
+        "peak_bytes": 9462408192
+      }
+    },
+    {
+      "name": "dz_without_symmetry",
+      "about": "Above the 4 GiB table limit: the potential is kept and exp(-i V dt) applied on the fly.",
+      "input": "inputs/thesis_fig5_3_dz/input.json",
+      "changes": {"UseSymmetry": false},
+      "threads": 8,
+      "symmetry": {"representatives": 144, "operations": 1},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [125, 159], "z_specular_optical": [184, 255], "r_optical": [18, 39], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 648000000, "bytes": 5184000000, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 194400, "bytes": 24883200, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 11598663680,
+        "propagation_bytes": 11623546880,
+        "peak_bytes": 11623546880
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 163840, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 648000000, "bytes": 10368000000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 64800000, "bytes": 1036800000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 2505600, "bytes": 40089600, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4134240, "bytes": 66147840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 18462408192,
+        "propagation_bytes": 18462408192,
+        "peak_bytes": 18462408192
+      }
+    },
+    {
+      "name": "dz_64x64",
+      "about": "UseSymmetry above the table limit: on the fly, with each thread's scratch for the exp values.",
+      "input": "inputs/thesis_fig5_3_dz/input.json",
+      "changes": {"nX": 64, "nY": 64},
+      "threads": 8,
+      "symmetry": {"representatives": 374, "operations": 12},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [125, 159], "z_specular_optical": [184, 255], "r_optical": [18, 39], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 1683000000, "bytes": 13464000000, "during_setup": true, "during_propagation": true},
+          {"name": "Surface symmetry maps", "values": 8912, "bytes": 35648, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 11403264000, "bytes": 182452224000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 5866200, "bytes": 750873600, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 195916587328,
+        "propagation_bytes": 196667460928,
+        "peak_bytes": 196667460928
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 11403264000, "bytes": 182452224000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 163840, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 1683000000, "bytes": 26928000000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 36864000, "bytes": 589824000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 71270400, "bytes": 1140326400, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 3563520, "bytes": 57016320, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 211704425472,
+        "propagation_bytes": 211704425472,
+        "peak_bytes": 211704425472
+      }
+    },
+    {
+      "name": "er",
+      "about": "The ER input (Persson PES, no symmetry, 16 x 16).",
+      "input": "inputs/thesis_fig5_3_er/input.json",
+      "changes": {},
+      "threads": 8,
+      "symmetry": {"representatives": 256, "operations": 1},
+      "grids": {"iz_analysis": 67, "nz_potential": 67, "z_optical": [67, 111], "z_specular_optical": [134, 209], "r_optical": [14, 31], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 493977600, "bytes": 3951820800, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 399114240, "bytes": 6385827840, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 6720, "bytes": 215040, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 345600, "bytes": 44236800, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 10337863680,
+        "propagation_bytes": 10382100480,
+        "peak_bytes": 10382100480
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 399114240, "bytes": 6385827840, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 6720, "bytes": 107520, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 493977600, "bytes": 7903641600, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 61747200, "bytes": 987955200, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 3563520, "bytes": 57016320, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4120320, "bytes": 65925120, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 15937344512,
+        "propagation_bytes": 15937344512,
+        "peak_bytes": 15937344512
+      }
+    },
+    {
+      "name": "dz_point_below_z_asymptotic",
+      "about": "A Z point 1e-13 below Z_asymptotic and Zana: the tolerant comparison (rge) places nzpot and the analysis line; the negative test plants plain >= (ZOptStart 15.2 keeps the moved line outside ZOpt).",
+      "input": "inputs/thesis_fig5_3_dz/input.json",
+      "changes": {"ZStart": -1e-13, "ZOptStart": 15.2},
+      "threads": 8,
+      "symmetry": {"representatives": 19, "operations": 12},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [127, 159], "z_specular_optical": [184, 255], "r_optical": [18, 39], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 85500000, "bytes": 684000000, "during_setup": true, "during_propagation": false},
+          {"name": "Surface symmetry maps", "values": 1008, "bytes": 4032, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 194400, "bytes": 24883200, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 8466667712,
+        "propagation_bytes": 7807550912,
+        "peak_bytes": 8466667712
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 163840, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 64800000, "bytes": 1036800000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 2505600, "bytes": 40089600, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4134240, "bytes": 66147840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 9462408192,
+        "propagation_bytes": 9462408192,
+        "peak_bytes": 9462408192
+      }
+    }
+  ]
+}
