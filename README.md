@@ -347,12 +347,13 @@ code block (`text` for program output), and no inline HTML other than comments, 
 ## Testing
 
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~9.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~11 min)
 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1.5 min)
 ```
 
-The times: 809 tests (803 pass, 6 long or reference-less tests skipped) and 24 GPU tests, measured
-2026-11-15 at 8b3df8d with 8 threads on an AMD Ryzen 7 5800X and an RTX 4070 Ti.
+The times: 825 tests (819 pass, 6 long or reference-less tests skipped; 668 s) and 25 GPU tests (23 pass,
+the 2 long ones skipped; 88 s), measured 2026-11-18 at 16bbbb4 with 8 threads on an AMD Ryzen 7 5800X and
+an RTX 4070 Ti.
 
 - **Run ctest serially** (no `-j`): many tests already use all OpenMP threads. Set
   `OMP_NUM_THREADS` to the number of physical cores (not hyperthreads).
