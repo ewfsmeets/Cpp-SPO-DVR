@@ -21,8 +21,10 @@ Two things happen outside the program's stages:
 import math
 from dataclasses import dataclass, replace
 
-from design.rules import DesignCheck, DesignInput, design_checks
-from design.suggest import SUGGESTED_FIELDS, suggest_z_keys
+import numpy as np
+
+from design.rules import DesignCheck, DesignInput, analysed_bound_states, design_checks, memory_fits, norm_beyond
+from design.suggest import SUGGESTED_FIELDS, fit_time, fit_z_grids, suggested_keys
 from design.transmission import AbsorberResponse, absorber_mass, absorber_response, response_window
 from dz_gas_phase import dz_gas_phase_curve
 from program.angular_grid import AngularGrid, make_angular_grid, rotational_basis_size
@@ -75,6 +77,17 @@ class PacketSummary:
 
 
 @dataclass(frozen=True)
+class PacketDensities:
+    """The initial packet as the figure draws it: |psi(Z)|^2 and |psi(k)|^2 (ascending k)."""
+
+    z: np.ndarray  # bohr: the specular grid's points
+    z_density: np.ndarray  # 1/bohr: |psi(Z)|^2
+    k: np.ndarray  # 1/bohr: the grid's momenta, ascending
+    k_density: np.ndarray  # bohr: |psi(k)|^2 with the program's scale dZ / sqrt(2 pi)
+    outward_fraction: float  # the part of the norm at k > 0: moving outwards (own tail plus wrap-around)
+
+
+@dataclass(frozen=True)
 class Resources:
     """The sizes that set the memory of a run, and its CPU and GPU memory."""
 
@@ -105,6 +118,9 @@ class Evaluation:
     # The curve is another potential's, or the input's r grid is not the curve's: then the program's states
     # differ, and these are only indicative.
     gas_phase_indicative: bool = False
+    # Per analysed v: the norm beyond each r of its most extended analysed bound j, on the gas phase's r grid.
+    bound_state_tails: tuple[np.ndarray, ...] = ()
+    densities: PacketDensities | None = None
     design: tuple[DesignCheck, ...] = ()  # the recommendations of inputs/README.md, applied
     absorber_responses: tuple[AbsorberResponse, ...] = ()  # R and T of each absorber that is on
     findings: tuple[Finding, ...] = ()  # the program's errors and warnings, stage by stage
@@ -183,8 +199,11 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         resources=resources,
         gas_phase=gas_phase,
         gas_phase_indicative=not curve_is_the_inputs(p, curve),
-        design=design_checks(DesignInput(p, derived, grids, gas_phase)),
-        absorber_responses=absorber_responses(p, derived, absorbers, gas_phase),
+        bound_state_tails=bound_state_tails(gas_phase, resources),
+        densities=packet_densities(packet, grids),
+        design=design_checks(DesignInput(p, derived, grids, resources.angular, gas_phase))
+        + memory_checks(resources, settings),
+        absorber_responses=absorber_responses(p, derived, grids, absorbers, gas_phase),
         findings=tuple(findings),
         stopped_at=stopped_at,
     )
@@ -204,21 +223,42 @@ def suggest(p: InputParameters, settings: Settings, dz: float | None = None) -> 
     the program's consistency checks accept apart from the keys it sets: otherwise it is blocked, and
     `blockers` lists what to fix first (e.g. EMinWP <= 0, an unknown SystemID)."""
     original = evaluate(p, settings)
-    suggested_keys = {key_of_field(field) for field in SUGGESTED_FIELDS}
+    keys_it_sets = {key_of_field(field) for field in SUGGESTED_FIELDS}
     blockers = tuple(
         f
         for f in original.findings
-        if f.severity is Severity.ERROR and f.origin == "validate_input" and f.key not in suggested_keys
+        if f.severity is Severity.ERROR and f.origin == "validate_input" and f.key not in keys_it_sets
     )
     if original.system is None or blockers:
         return Suggestion({}, original, blockers)
     system = original.system
-    changes = suggest_z_keys(p, build_derived(p, system), effective_z_asymptotic(p, system), dz)
+    changes = suggested_keys(p, build_derived(p, system), effective_z_asymptotic(p, system), dz)
     return Suggestion(changes, evaluate(replace(p, **changes), settings), ())
 
 
+def fitted_parameters(
+    p: InputParameters, settings: Settings, scattering_length: float, specular_length: float
+) -> InputParameters:
+    """`p` with the Z keys that follow from its dZ and ZSpOptStart and the two absorber lengths (bohr), as the
+    recipe places them (design/suggest.py fit_z_grids); `p` itself without system parameters."""
+    system = system_parameters(p.system_id, settings.z_asymptotic, settings.point_group)
+    if system is None:
+        return p
+    z_asymptotic = effective_z_asymptotic(p, system)
+    return replace(p, **fit_z_grids(p, z_asymptotic, scattering_length, specular_length))
+
+
+def fitted_time(p: InputParameters, t_end: float) -> InputParameters:
+    """`p` with tEnd >= `t_end` in whole averaging intervals, nStep to match (design/suggest.py fit_time)."""
+    return replace(p, **fit_time(p, t_end))
+
+
 def absorber_responses(
-    p: InputParameters, d: DerivedParameters, absorbers: tuple[AbsorberSummary, ...], gas: GasPhase | None
+    p: InputParameters,
+    d: DerivedParameters,
+    grids: SpatialGrids,
+    absorbers: tuple[AbsorberSummary, ...],
+    gas: GasPhase | None,
 ) -> tuple[AbsorberResponse, ...]:
     """R and T of each absorber that is on (strength > 0; the r absorber only with nR > 1), over its energies
     (design/transmission.py response_window; without a gas phase the available energy is EMaxWP + EParallel)."""
@@ -228,9 +268,47 @@ def absorber_responses(
         if a.strength <= 0.0 or (a.name == "ROpt" and p.nr == 1):
             continue
         mass = absorber_mass(a.name, d.total_mass, d.reduced_mass)
-        window = response_window(a.name, p, available)
+        window = response_window(a.name, p, available, hartree_to_ev(grids.kr.max_kinetic_energy))
         responses.append(absorber_response(a.name, a.end - a.start, a.strength, mass, window))
     return tuple(responses)
+
+
+def packet_densities(packet: InitialWavePacket | None, grids: SpatialGrids) -> PacketDensities | None:
+    """|psi(Z)|^2 and |psi(k)|^2 of the packet, and its norm at k > 0 (from the sampled spectrum, so it holds
+    the packet's own outward tail and whatever wraps around beyond -pi/dZ)."""
+    if packet is None:
+        return None
+    z = grids.z_specular
+    k = 2.0 * np.pi * np.fft.fftfreq(z.size, z.spacing)
+    order = np.argsort(k)
+    k_density = np.abs(packet.psi_k) ** 2
+    outward = float(k_density[k > 0.0].sum() / k_density.sum())
+    return PacketDensities(np.array(z.points()), np.abs(packet.psi) ** 2, k[order], k_density[order], outward)
+
+
+def bound_state_tails(gas: GasPhase | None, resources: Resources) -> tuple[np.ndarray, ...]:
+    """Per analysed v: at each r the largest norm beyond r over its analysed bound j (design.rules
+    analysed_bound_states): what the r absorber would remove if it started there."""
+    if gas is None:
+        return ()
+    dr = gas.r[1] - gas.r[0]
+    states = analysed_bound_states(gas, resources.angular)
+    tails = []
+    for v in sorted({v for v, _ in states}):
+        tails.append(np.max([norm_beyond(gas.wave_functions[v, j], dr) for vv, j in states if vv == v], axis=0))
+    return tuple(tails)
+
+
+def memory_checks(resources: Resources, settings: Settings) -> tuple[DesignCheck, ...]:
+    """Whether the run fits the memory given in the settings (the RAM, the free GPU memory)."""
+    checks = []
+    if resources.memory is not None and settings.ram_bytes is not None:
+        advice = "surface symmetry (UseSymmetry), a smaller grid, or a machine with more memory"
+        checks.append(memory_fits("CPU", resources.memory.peak_bytes, settings.ram_bytes, advice))
+    if resources.gpu_memory is not None and settings.gpu_bytes is not None:
+        advice = "spodvr refuses --device cuda: surface symmetry, a smaller grid, or --device cpu"
+        checks.append(memory_fits("GPU", resources.gpu_memory.peak_bytes, settings.gpu_bytes, advice))
+    return tuple(checks)
 
 
 def check_settings(p: InputParameters, system: SystemParameters, settings: Settings) -> list[Finding]:

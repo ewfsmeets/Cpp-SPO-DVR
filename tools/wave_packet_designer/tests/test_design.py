@@ -13,19 +13,21 @@ from pathlib import Path
 from design.rules import (
     DesignCheck,
     DesignInput,
+    analysed_bound_states,
     dz_holds_the_momenta,
     energy_range,
     energy_resolution,
     gaussian_tail,
     lowest_converged_energy,
 )
+from design.suggest import fit_time
 from design.transmission import reflection_transmission
 from evaluation import Evaluation, evaluate, suggest
 from program.potential_systems import ANALYTIC_SYSTEMS
 from program.process import build_derived
 from program.unit_conversion import ev_to_hartree
 from settings import Settings
-from tests.helpers import DZ_INPUT, ER_INPUT, check, check_equal, load_parameters
+from tests.helpers import DZ_INPUT, ER_INPUT, HARDWALL_INPUT, check, check_equal, load_parameters
 
 DAI_LIGHT_SYSTEM = ANALYTIC_SYSTEMS["H2Cu111DaiLight"]
 # (InputParameters changes, the name of the check that must fail).
@@ -40,6 +42,8 @@ FAILING = [
     ({"zsp_opt_end": 30.0}, "ZSpOptEnd on the last grid point"),
     ({"r_opt_end": 8.0}, "ROptEnd on the last grid point"),
     ({"r_opt_start": 2.0}, "norm of analysed bound states beyond ROptStart"),
+    # The DZ input itself: its tEnd 17 500 is below the 25 000 of the README's recipe (section 2, step 11).
+    ({}, "lowest outgoing normal energy converged by tEnd"),
 ]
 
 
@@ -54,9 +58,40 @@ def failed_checks(e: Evaluation) -> list[str]:
     return [c.name for c in e.design if c.passed is False]
 
 
-def test_dz_passes_every_rule(work: Path) -> None:
-    """The DZ input, built by the recipe, passes every rule."""
-    check_equal(failed_checks(evaluation_of()), [], "failed checks")
+def test_dz_passes_every_rule_but_its_time(work: Path) -> None:
+    """The DZ input, built by the recipe, passes every rule except the time: its tEnd 17 500 converges outgoing
+    energies down to 0.06 eV, as inputs/README.md notes (step 11: 25 000; "the DZ input uses 17 500"). With
+    tEnd 25 000 it passes that one too."""
+    check_equal(failed_checks(evaluation_of()), ["lowest outgoing normal energy converged by tEnd"], "failed checks")
+    check_equal(failed_checks(evaluation_of(t_end=25000.0, n_steps=10000)), [], "failed checks with tEnd 25 000")
+
+
+def test_time_is_fitted_to_whole_averaging_intervals(work: Path) -> None:
+    """A requested tEnd becomes the next whole number of dtAve intervals (DZ: 500 a.u., 200 steps of 2.5) so the
+    program's time checks hold: 25 000 stays, 25 100 becomes 25 500 with nStep 10 200."""
+    p = load_parameters(DZ_INPUT)
+    for requested, expected in ((25000.0, (25000.0, 10000)), (25100.0, (25500.0, 10200))):
+        fitted = fit_time(p, requested)
+        check_equal((fitted["t_end"], fitted["n_steps"]), expected, f"tEnd {requested}")
+        check(evaluate(replace(p, **fitted), Settings()).accepted, f"tEnd {requested} accepted")
+
+
+def test_memory_must_fit(work: Path) -> None:
+    """With the memory of a 12 GiB GPU given, the ER input (14.8 GiB on the GPU, no symmetry) fails the GPU
+    check, which the program would refuse; DZ with its symmetry counts (8.8 GiB) fits 9 GiB free."""
+    gpu = 12 * 2**30
+    er = evaluate(load_parameters(ER_INPUT), Settings(gpu_bytes=gpu))
+    check("GPU memory: peak" in failed_checks(er), f"ER failed checks {failed_checks(er)}")
+    dz = evaluate(load_parameters(DZ_INPUT), Settings(representatives=19, gpu_bytes=9 * 2**30, ram_bytes=16 * 2**30))
+    check_equal([c.passed for c in dz.design if c.name.endswith("memory: peak")], [True, True], "DZ fits")
+
+
+def test_analysed_states_follow_the_angular_grid(work: Path) -> None:
+    """The analysed j are those of the program's analysis basis: for a homonuclear molecule with odd JIn only odd
+    j (hardwall_small with JIn 1, JMax 5)."""
+    e = evaluate(load_parameters(HARDWALL_INPUT, j_max=5, mj_max=5, j_in=1, mj_in=0), Settings())
+    js = {j for _, j in analysed_bound_states(e.gas_phase, e.resources.angular)}
+    check(js and all(j % 2 == 1 for j in js), f"analysed j {sorted(js)}")
 
 
 def test_each_rule_flags_its_case(work: Path) -> None:
@@ -76,7 +111,9 @@ def rule_value(rule: Callable[[DesignInput], DesignCheck], **changes: object) ->
     put Zana off the grid)."""
     p = load_parameters(DZ_INPUT, **changes)
     base = evaluation_of()
-    return rule(DesignInput(p, build_derived(p, DAI_LIGHT_SYSTEM), base.grids, base.gas_phase)).value
+    return rule(
+        DesignInput(p, build_derived(p, DAI_LIGHT_SYSTEM), base.grids, base.resources.angular, base.gas_phase)
+    ).value
 
 
 def test_momentum_margins_of_the_readme_table(work: Path) -> None:
@@ -105,7 +142,9 @@ def test_lowest_converged_energy_of_the_readme_example(work: Path) -> None:
     check_equal((round(d.total_mass / k_min), round(d.total_mass / k_n, -1)), (354, 1290), "a.u. per bohr")
     t_end = 16.0 * d.total_mass / k_min + 13.0 * d.total_mass / k_n
     e = evaluation_of()  # the rule alone: another tEnd would also need new time keys
-    energy = lowest_converged_energy(DesignInput(replace(e.parameters, t_end=t_end), d, e.grids, e.gas_phase)).value
+    energy = lowest_converged_energy(
+        DesignInput(replace(e.parameters, t_end=t_end), d, e.grids, e.resources.angular, e.gas_phase)
+    ).value
     check(abs(energy - 0.03) <= 1e-12, f"lowest converged energy {energy!r}")
 
 
@@ -169,26 +208,27 @@ def test_limits_hold_at_their_boundary(work: Path) -> None:
     largest_dz = math.pi / (d.kz + 6.0 * math.sqrt(d.wave_packet_alpha))
     base = evaluation_of()
     for dz, passes in ((largest_dz, True), (largest_dz * 1.001, False)):
-        check_equal(dz_holds_the_momenta(DesignInput(replace(p, dz=dz), d, base.grids, None)).passed, passes, f"{dz}")
+        check_equal(
+            dz_holds_the_momenta(DesignInput(replace(p, dz=dz), d, base.grids, None, None)).passed, passes, f"{dz}"
+        )
 
 
 def energy_range_passes(e_min: float, e_max: float) -> bool:
     """Whether the energy-range rule passes for the DZ input with this energy range."""
     p = load_parameters(DZ_INPUT, e_min_wave_packet=e_min, e_max_wave_packet=e_max)
     base = evaluation_of()
-    return energy_range(DesignInput(p, build_derived(p, DAI_LIGHT_SYSTEM), base.grids, None)).passed
+    return energy_range(DesignInput(p, build_derived(p, DAI_LIGHT_SYSTEM), base.grids, None, None)).passed
 
 
 def test_energy_resolution_of_the_readme(work: Path) -> None:
     """Section 8: the energy resolution 2 pi / T is 6.8 meV at 25 000 a.u."""
     e = evaluation_of()
-    c = energy_resolution(DesignInput(replace(e.parameters, t_end=25000.0), e.derived, e.grids, None))
+    c = energy_resolution(DesignInput(replace(e.parameters, t_end=25000.0), e.derived, e.grids, None, None))
     check_equal(f"{c.value * 1000:.1f}", "6.8", "meV")
 
 
 def test_absorber_responses_use_the_right_mass_and_energies(work: Path) -> None:
-    """ROpt is computed with the reduced mass, the Z absorbers with the total mass; the specular absorber over
-    EMinWP .. EMaxWP, the others from 0.05 eV to the available energy (EMaxWP for the DZ ground state)."""
+    """ROpt is computed with the reduced mass, the Z absorbers with the total mass, each over its energies."""
     e = evaluation_of()
     d = e.derived
     for response in e.absorber_responses:
@@ -196,8 +236,10 @@ def test_absorber_responses_use_the_right_mass_and_energies(work: Path) -> None:
         mass = d.reduced_mass if a.name == "ROpt" else d.total_mass
         r, t = reflection_transmission(ev_to_hartree(response.energies[3]), a.end - a.start, a.strength, mass)
         check_equal(response.total[3], r + t, f"R + T of {a.name}")
-        expected = (0.4, 0.95) if a.name == "ZSpOpt" else (0.05, 0.95)
-        window = (round(response.energies[0], 12), round(response.energies[-1], 12))
+        # ZSpOpt: the packet's energies; ZOpt: up to EMaxWP (the DZ ground state has no internal energy to give);
+        # ROpt: up to the r kinetic energy at pi/dR, 3.654734 eV in the program's GRIDS block.
+        expected = {"ZSpOpt": (0.4, 0.95), "ZOpt": (0.05, 0.95), "ROpt": (0.05, 3.654734)}[a.name]
+        window = (round(response.energies[0], 6), round(response.energies[-1], 6))
         check_equal(window, expected, f"energies of {a.name}")
 
 
@@ -208,7 +250,10 @@ def test_suggestion_for_the_er_input(work: Path) -> None:
 
 
 TESTS = [
-    test_dz_passes_every_rule,
+    test_dz_passes_every_rule_but_its_time,
+    test_time_is_fitted_to_whole_averaging_intervals,
+    test_memory_must_fit,
+    test_analysed_states_follow_the_angular_grid,
     test_each_rule_flags_its_case,
     test_every_rule_has_a_failing_case,
     test_momentum_margins_of_the_readme_table,

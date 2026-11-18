@@ -3,14 +3,14 @@
 and estimates the memory of a run.
 
 Usage (from any directory):
-  python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check <input.json>
+  python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check <input.json> [--png FILE]
   python3 -I -B tools/wave_packet_designer/wave_packet_designer.py memory <input.json>
       [--threads N] [--representatives N [--operations N]]     (counts from the SURFACE SYMMETRY block)
   python3 -I -B tools/wave_packet_designer/wave_packet_designer.py suggest <input.json> [--dz D] [--output FILE]
 All take [--zasymp Z --point-group G], required for CRP data sets (SystemID CRPlibrary, CRPDistrtSurface).
 
 Exit status: 0 spodvr accepts the input, 1 spodvr would stop on it, 2 the file or the options are unusable.
-Needs: numpy. Docs: tools/wave_packet_designer/README.md
+Needs: numpy (and matplotlib for --png). Docs: tools/wave_packet_designer/README.md
 """
 
 import argparse
@@ -51,7 +51,8 @@ def main(argv: list[str] | None = None) -> int:
         operations=getattr(args, "operations", None),
     )
     output = Path(args.output) if getattr(args, "output", None) else None
-    return run_command(args.command, Path(args.input), settings, getattr(args, "dz", None), output)
+    png = Path(args.png) if getattr(args, "png", None) else None
+    return run_command(args.command, Path(args.input), settings, getattr(args, "dz", None), output, png)
 
 
 def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
@@ -63,9 +64,10 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     common.add_argument("--point-group", choices=sorted(GROUP_ORDER), help="point group of a CRP data set")
 
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser(
+    check = commands.add_parser(
         "check", parents=[common], help="what spodvr does with the input, and the packet, grids and absorbers"
     )
+    check.add_argument("--png", help="also draw the figure of the window into this PNG file")
     memory = commands.add_parser("memory", parents=[common], help="the CPU and GPU memory of the run")
     memory.add_argument("--threads", type=positive, default=Settings.threads, help="OpenMP threads (default 8)")
     memory.add_argument(
@@ -108,9 +110,15 @@ def positive(text: str) -> int:
 
 
 def run_command(
-    command: str, path: Path, settings: Settings, dz: float | None = None, output: Path | None = None
+    command: str,
+    path: Path,
+    settings: Settings,
+    dz: float | None = None,
+    output: Path | None = None,
+    png: Path | None = None,
 ) -> int:
-    """Prints the report of one input file (and for `suggest` writes `output`); returns the exit status."""
+    """Prints the report of one input file (`suggest` writes `output`, `check` draws `png`); returns the exit
+    status."""
     try:
         input_file = load_input_file(path)
     except InputFileError as error:
@@ -131,7 +139,21 @@ def run_command(
     if command == "suggest":
         return run_suggest(input_file, evaluation, settings, dz, output)
     print(REPORTS[command](evaluation, str(path), parsed.findings), end="")
+    if png is not None:
+        save_figure(evaluation, png)
     return 0 if evaluation.accepted else 1
+
+
+def save_figure(evaluation: Evaluation, png: Path) -> None:
+    """Draws the window's figure into a PNG file. matplotlib is imported only here: the other commands need
+    numpy alone."""
+    import matplotlib
+
+    matplotlib.use("Agg")  # a file, no window
+    from plots import report_figure
+
+    report_figure(evaluation).savefig(png, dpi=110)
+    print(f"\nFigure written to {png}.")
 
 
 def run_suggest(

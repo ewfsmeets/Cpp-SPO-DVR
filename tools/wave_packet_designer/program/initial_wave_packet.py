@@ -37,9 +37,11 @@ class InitialWavePacketInfo:
 
 @dataclass(frozen=True)
 class InitialWavePacket:
-    """psi(Z) on the specular grid and the printed quantities (the Z part of the C++ InitialWavePacket)."""
+    """psi(Z) on the specular grid and the printed quantities (the Z part of the C++ InitialWavePacket), and
+    psi(k), which the C++ only reduces to the printed values (the designer draws it)."""
 
     psi: np.ndarray  # complex, one value per specular point
+    psi_k: np.ndarray  # complex, numpy's FFT order (k = 0, dk, ..., then the negative momenta)
     info: InitialWavePacketInfo
 
 
@@ -81,7 +83,7 @@ def make_initial_wave_packet(
         f"{z.point(i_high)}): 1 - norm = {outside} > tolsp; move Z0, widen the energy range or "
         f"enlarge the specular grid",
     )
-    return InitialWavePacket(np.array(psi), info), checks.findings
+    return InitialWavePacket(np.array(psi), psi_k, info), checks.findings
 
 
 def norm_sum(psi: list[complex], first: int, last: int) -> float:

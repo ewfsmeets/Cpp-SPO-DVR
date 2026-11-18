@@ -29,13 +29,18 @@ class AbsorberResponse:
     total: tuple[float, ...]  # R + T: what the absorber fails to absorb
 
 
-def response_window(name: str, p: InputParameters, available_energy: float) -> tuple[float, float]:
+def response_window(
+    name: str, p: InputParameters, available_energy: float, r_grid_energy: float
+) -> tuple[float, float]:
     """The energies (eV) an absorber must absorb. The specular ones see only the incoming channel, elastically
-    reflected at the packet's energies. The others see every channel, from LOWEST_CHANNEL_ENERGY up to the
-    available energy (eV: EMaxWP plus the initial state's internal and parallel energy). The README sets no
-    range for the r absorber: it is given the same one (the designer's choice)."""
+    reflected at the packet's energies. The scattering ones see every channel, from LOWEST_CHANNEL_ENERGY up
+    to the available energy (EMaxWP plus the initial state's internal and parallel energy). The r absorber
+    sees dissociating fragments, up to the largest r kinetic energy the r grid holds (section 4: "pi/dR must
+    hold sqrt(2 mu E_r) of the dissociating fragments")."""
     if name.startswith("ZSp"):
         return p.e_min_wave_packet, p.e_max_wave_packet
+    if name == "ROpt":
+        return LOWEST_CHANNEL_ENERGY, r_grid_energy
     return LOWEST_CHANNEL_ENERGY, available_energy
 
 

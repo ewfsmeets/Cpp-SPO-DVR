@@ -9,7 +9,7 @@ from pathlib import Path
 from tests.helpers import REPOSITORY, TOOL_DIR, check
 
 # Layer of each module or package of the tool; a module may import only from lower layers, and from its own
-# package (program imports program). Front ends (layer 4) never import each other; the tests sit on top.
+# package (program imports program). Front ends (layer 5) never import each other; the tests sit on top.
 LAYERS = {
     "program": 0,
     "design": 1,
@@ -18,12 +18,17 @@ LAYERS = {
     "dz_gas_phase": 1,
     "evaluation": 2,
     "report": 3,
-    "wave_packet_designer": 4,
-    "tests": 5,
-    "test_designer": 6,
+    "explanations": 3,
+    "plots": 4,  # draws with the report's formats
+    "wave_packet_designer": 5,
+    "gui_mpl": 5,
+    "tests": 6,
+    "test_designer": 7,
 }
-# Third-party packages each layer may use (the standard library is always allowed).
-THIRD_PARTY = {0: {"numpy"}, 1: {"numpy"}, 2: {"numpy"}, 3: {"numpy"}, 4: {"numpy"}, 5: {"numpy"}, 6: set()}
+# Third-party packages each layer may use (the standard library is always allowed): numpy, and matplotlib only
+# from the figure up.
+NUMPY, PLOTTING = {"numpy"}, {"numpy", "matplotlib"}
+THIRD_PARTY = {0: NUMPY, 1: NUMPY, 2: NUMPY, 3: NUMPY, 4: PLOTTING, 5: PLOTTING, 6: PLOTTING, 7: set()}
 
 
 def tool_modules() -> list[Path]:

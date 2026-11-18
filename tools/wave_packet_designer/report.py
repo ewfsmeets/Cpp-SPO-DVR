@@ -8,6 +8,7 @@ Presentation layer (README, "Architecture"): formats what evaluate() computed an
 
 import textwrap
 
+from design.rules import CONSEQUENCES, DesignCheck
 from evaluation import SETTINGS_STAGE, SYMMETRY_GIVEN, SYMMETRY_NOT_GIVEN, Evaluation, Suggestion
 from program.findings import Finding, Severity
 from program.json_input import key_of_field
@@ -257,8 +258,10 @@ def design_section(e: Evaluation) -> list[str]:
 
 def absorber_response_section(e: Evaluation) -> list[str]:
     lines = section("ABSORBERS: REFLECTION + TRANSMISSION (1D, inputs/README.md section 7)")
-    lines.append("  Energies: specular absorbers EMinWP .. EMaxWP; the others 0.05 eV .. the available energy")
-    lines.append("  (for ROpt the designer's choice: the README sets no range).")
+    lines.append(
+        "  Energies: specular absorbers EMinWP .. EMaxWP; scattering absorbers 0.05 eV .. the available energy;"
+    )
+    lines.append("  ROpt 0.05 eV .. the r kinetic energy the r grid holds (section 4).")
     for r in e.absorber_responses:
         lines.append(f"  {r.name:10} E (eV)  " + " ".join(f"{x:8.3f}" for x in r.energies))
         lines.append(f"  {'':10} R + T   " + " ".join(f"{x:8.1e}" for x in r.total))
@@ -276,3 +279,71 @@ def format_bytes(n_bytes: int) -> str:
         size = size / 1024.0
         unit = unit + 1
     return f"{size:.1f} {units[unit]}"
+
+
+# What neither the program's checks nor the recommendations here cover (the window says so).
+NOT_CHECKED = (
+    "Not checked: JMax and MJMax, nX and nY, dtStep (the time step), and the local momenta in wells or the exit "
+    "channel (inputs/README.md section 4)."
+)
+
+
+def status_line(e: Evaluation) -> str:
+    """One line for a title: what spodvr would do (and why it stops), and the recommendations missed."""
+    errors = [f for f in e.findings if f.severity is Severity.ERROR]
+    if e.stopped_at == SETTINGS_STAGE:
+        return f"the designer needs settings: {errors[0].message}"
+    if e.stopped_at is not None:
+        reason = f"{errors[0].key}: {errors[0].message}" if errors else e.stopped_at
+        return f"spodvr stops: {reason}"
+    if not e.design:
+        return "spodvr accepts the input  |  design not checked"
+    missed = [c for c in e.design if c.passed is False]
+    if not missed:
+        return "spodvr accepts the input  |  every recommendation met"
+    worst = min(CONSEQUENCES.index(c.consequence) for c in missed)
+    return f"spodvr accepts the input  |  {len(missed)} recommendation(s) missed, worst: {CONSEQUENCES[worst]}"
+
+
+def verdict_lines(e: Evaluation) -> list[str]:
+    """The window's verdict: the program's errors and warnings, the recommendations missed (worst first, each
+    with its value, its limit and what to do), the key numbers of the design, and what is not checked."""
+    errors = [f for f in e.findings if f.severity is Severity.ERROR]
+    if e.stopped_at == SETTINGS_STAGE:
+        return [f"The designer needs: {f.message}" for f in errors]
+    lines = [f"spodvr stops in {e.stopped_at}:"] if errors else ["spodvr accepts the input."]
+    lines += [f"  {f.key}: {f.message}" for f in errors[:4]]
+    lines += [f"Warning from the set-up, {f.key}: {f.message}" for f in e.findings if f.severity is Severity.WARNING]
+    if not e.design:
+        return lines + ["The design is not checked: the program stops first.", NOT_CHECKED]
+    missed = sorted((c for c in e.design if c.passed is False), key=lambda c: CONSEQUENCES.index(c.consequence))
+    for c in missed:
+        lines.append(f"[{c.consequence}] {c.name}: {check_value(c)}. {c.advice} (section {c.section})")
+    met = sum(1 for c in e.design if c.passed is True)
+    lines.append(f"{met} other recommendations met." if missed else f"All {met} recommendations met.")
+    return lines + key_numbers(e) + [NOT_CHECKED]
+
+
+def check_value(c: DesignCheck) -> str:
+    """'4.3 (needs >= 6)', with the unit, and marked where the limit is the designer's own."""
+    unit = f" {c.unit}" if c.unit else ""
+    if c.relation is None:
+        return f"{c.value:.3g}{unit}"
+    whose = ", the designer's limit" if c.designer_limit else ""
+    return f"{c.value:.3g}{unit} (needs {c.relation} {c.limit:.3g}{whose})"
+
+
+def key_numbers(e: Evaluation) -> list[str]:
+    """The grid sizes, the absorbers as placed (with L/lambda), and tEnd: the values the sliders lead to."""
+    if e.grids is None:
+        return []
+    p, g = e.parameters, e.grids
+    lines = [
+        f"Grids: nZ {p.nz}, nZSpecular {p.nz_specular}, nR {p.nr}; Zana {g.z_analysis:g}, nzpot {g.nz_potential}; "
+        f"tEnd {p.t_end:g} a.u. ({p.n_steps} steps)."
+    ]
+    placed = []
+    for a in e.absorbers:
+        reduced = f", L/lambda {a.reduced_length:.1f}" if a.reduced_length is not None else ", tuned by its factor"
+        placed.append(f"{a.name} {a.start:g}-{a.end:g} ({a.end - a.start:.2f} bohr{reduced})")
+    return lines + ["Absorbers: " + "; ".join(placed) + "."]

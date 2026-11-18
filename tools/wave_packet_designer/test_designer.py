@@ -14,6 +14,7 @@ Docs: tools/wave_packet_designer/README.md ("Tests")
 
 import argparse
 import importlib
+import os
 import shutil
 import sys
 import traceback
@@ -36,6 +37,7 @@ CASES = {
     "memory": "tests.test_memory",
     "gas-phase": "tests.test_gas_phase",
     "design": "tests.test_design",
+    "plots": "tests.test_plots",
     "input-file": "tests.test_input_file",
     "cli": "tests.test_cli",
     "structure": "tests.test_structure",
@@ -50,6 +52,9 @@ def main() -> int:
 
     shutil.rmtree(args.work, ignore_errors=True)
     args.work.mkdir(parents=True)
+    # Figures without a window, and matplotlib's cache in the scratch directory (set before matplotlib loads).
+    os.environ["MPLBACKEND"] = "Agg"
+    os.environ["MPLCONFIGDIR"] = str(args.work / "matplotlib")
     module = importlib.import_module(CASES[args.case])
     failures = 0
     for test in module.TESTS:

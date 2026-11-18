@@ -10,16 +10,52 @@ The physics behind the choices (packet width, momentum margins, absorber lengths
 
 ## Running
 
-From any directory (paths are relative to where you start it); needs `numpy` (the repository's
-`python3` has it):
+Two ways, both from any directory (paths are relative to where you start them):
+
+- **The window** (matplotlib): the figure below with sliders for the recipe's knobs. It needs
+  [uv](https://docs.astral.sh/uv/) (`pipx install uv`, like pre-commit in the repository's README), which
+  installs numpy, matplotlib and PyQt6 from the header of `gui_mpl.py` the first time. Under WSL the window
+  opens through WSLg.
+- **The command line**: text reports; needs `numpy` (the repository's `python3` has it), and matplotlib
+  for `check --png`.
 
 ```bash
+uv run tools/wave_packet_designer/gui_mpl.py                                   # the DZ input
+uv run tools/wave_packet_designer/gui_mpl.py inputs/thesis_fig5_3_er/input.json
 python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json
 ```
+
+The window shows five panels, a verdict and a help box:
+
+- **Z**: the two Z grids as lanes (the scattering grid with its interaction region and absorber, the
+  specular grid with its absorber and the packet's allowed region), and the initial packet |ψ(Z)|².
+- **Z momentum**: |ψ(k)|² against the grid's limits ±π/dZ, with the outward fraction of the norm.
+- **Absorbers**: reflection R and transmission T of each absorber over the energies it must absorb, with
+  the levels of the README's examples.
+- **r**: for each analysed vibrational level, the norm of the bound state beyond r, against the 1e-6
+  limit and ROptStart.
+- **Memory**: the peak memory on the CPU and the GPU against this machine's RAM and free GPU memory.
+
+The verdict (bottom right) says what `spodvr` would do with the input, then each recommendation of
+inputs/README.md it misses, worst first (the run fails, the results suffer, it costs more), with its
+value, limit and what to change; then the grid sizes, the absorbers as placed and tEnd, and what nothing
+here checks. Hovering over a panel, a slider or a button explains it in the help box; **Explain** lays the
+explanations over the panels (the texts are in `explanations.py`).
+
+The window opens on the input as read. The sliders are EMinWP, EMaxWP, dZ, Z0, ZSpOptStart, the lengths
+of the Z absorbers, ROptStart, tEnd and the target energies of the absorbers tuned by energy; each keeps a
+black tick at the input's value. When dZ, ZSpOptStart or an absorber length moves, the Z grids follow as
+the recipe places them (Zana on the first grid point at or beyond Z_asymptotic; nZ and nZSpecular the
+smallest valid FFT sizes that hold the absorbers, which end on their last points); tEnd moves in whole
+averaging intervals dtAve. **Suggest** applies the recipe, **Reset** returns to the input, and **Save**
+writes the changed input to the file named in the box (never over an existing file). Options:
+`--zasymp` and `--point-group` (CRP data sets), `--threads`, `--representatives` and `--operations`
+(memory, as for `memory` below), `--ram` and `--gpu` (GiB, instead of this machine's).
 
 | Command | What it does |
 |---|---|
 | `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers, the r grid, the gas-phase channels, the design checks of inputs/README.md and the absorbers' R + T. |
+| `check <input.json> --png figure.png` | The same, and the window's figure in a PNG file. |
 | `check <input.json> --zasymp Z --point-group G` | The same for a CRP data set (SystemID `CRPlibrary`, `CRPDistrtSurface`), whose Z_asymptotic and point group come from the data set (the program's set-up output prints both). |
 | `memory <input.json> [--threads N]` | The sizes that set the memory (θ and φ points, rotational basis, grid points) and the program's CPU and GPU memory estimates, array by array. `--threads` (default 8): the run's OpenMP threads, each with its own work arrays. |
 | `memory <input.json> --representatives N [--operations N]` | The same for a run with `UseSymmetry`: the (x, y) points at which the program stores the potential, and the operations it uses (default: all of the point group). Its SURFACE SYMMETRY block prints both: "(x, y) points computed / total", and the names under "Operations used" (count them, identity included). Without them the estimate assumes no reduction, an upper bound. |
@@ -28,7 +64,7 @@ python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/th
 Exit status: 0 `spodvr` accepts the input (for `suggest`: the changed input), 1 it would stop on it (or
 `suggest` needs other keys fixed first), 2 the file or the options are unusable (also a CRP data set
 without `--zasymp` and `--point-group`). The tool writes only the file that `suggest --output` names, and
-never replaces an existing file.
+never replaces an existing file, and the PNG that `check --png` names (replaced if it exists).
 
 ## What `check` reports
 
@@ -93,12 +129,19 @@ The code is layered; each layer imports only from the layers below it (checked b
 ```mermaid
 flowchart TB
     cli["wave_packet_designer.py<br/>command line"]
+    window["gui_mpl.py<br/>window (matplotlib)"]
+    plots["plots.py<br/>the figure, one function per panel"]
     report["report.py<br/>text tables"]
     evaluation["evaluation.py<br/>evaluate(parameters, settings) -> Evaluation"]
     program["program/<br/>copies of what spodvr computes or rejects"]
     design["design/<br/>advice from inputs/README.md"]
     data["settings.py, input_file.py, dz_gas_phase.py<br/>options; input files; the gas-phase curve"]
     cli --> report --> evaluation
+    window --> plots --> report
+    plots --> evaluation
+    window --> evaluation
+    window -- "input files, settings" --> data
+    window -- "parse_input, key_of_field" --> program
     cli --> data
     cli -- "parse_input" --> program
     report -- "findings, units" --> program
@@ -129,8 +172,11 @@ flowchart TB
 | Module | Responsibility | Shadows |
 |---|---|---|
 | `wave_packet_designer.py` | command line | — |
+| `gui_mpl.py` | the window: sliders and buttons wired to `evaluate()` and `plots.py` | — |
+| `plots.py` | the figure of an `Evaluation`, one function per panel | — |
+| `explanations.py` | the texts of the help box and of Explain: per panel and per control | — |
 | `report.py` | text report of an `Evaluation` | `src/report/format.cpp` (format_bytes), `sections.cpp` (memory table) |
-| `evaluation.py` | `evaluate()`: the stages, the absorber and packet summaries, the memory, the gas phase, the design checks and R + T; `suggest()` | `src/app/run.cpp` (stage order) |
+| `evaluation.py` | `evaluate()`: the stages, the absorber and packet summaries, the memory, the gas phase, the design checks and R + T; `suggest()`; `fitted_parameters()` and `fitted_time()` for the window | `src/app/run.cpp` (stage order) |
 | `settings.py` | values that are not input keys (Z_asymptotic of a CRP data set, …) | — |
 | `input_file.py` | read input.json; save changed values into a copy of its text | — |
 | `design/rules.py` | the recommendations of inputs/README.md, one function each | — (README sections) |
@@ -201,7 +247,9 @@ python3 -I -B tools/wave_packet_designer/test_designer.py <case> <scratch direct
 
 Each case is a module in `tests/` with a list `TESTS` of small test functions, each with a docstring
 saying what it pins down. To add a test, write the function and add it to `TESTS`; a new case also gets
-a line in `test_designer.py` (`CASES`) and in `tests/CMakeLists.txt`.
+a line in `test_designer.py` (`CASES`) and in `tests/CMakeLists.txt`. The runner selects matplotlib's
+Agg backend and keeps its cache in the scratch directory, so the case `plots` draws every panel and drives
+the window's sliders and buttons without opening a window.
 
 ## Limits
 

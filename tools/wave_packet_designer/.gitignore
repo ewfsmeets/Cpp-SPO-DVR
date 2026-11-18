@@ -1,0 +1,2 @@
+# Python's bytecode cache, if a module is run without -B (the entry files also switch it off).
+__pycache__/
