@@ -137,7 +137,7 @@ authors; the C++ reproduces the Fortran until they answer.
 
 | Question | Size in the example | Source | C++ |
 |---|---|---|---|
-| [Q1](scm_open_questions.md#q1-the-units-of-the-bond-length-clamp): the clamp, in Å in the paper, in bohr in the code (and, as we read them, in the published elbow cuts) | the lowest barrier of the origin cell: 0.501 eV as coded, 0.639 eV with the published clamp (ideal surface 0.625 eV) | [Q] | as coded (bohr) |
+| [Q1](scm_open_questions.md#q1-the-units-of-the-bond-length-clamp): the clamp, in Å in [Spiering et al. 2018](https://doi.org/10.1063/1.5058271), in bohr in the code (and, as we read them, in the published elbow cuts) | the lowest barrier of the origin cell: 0.501 eV as coded, 0.639 eV with the published clamp (ideal surface 0.625 eV) | [Q] | as coded (bohr) |
 | [Q2](scm_open_questions.md#q2-the-jump-at-the-cell-edges): the jump at the cell edges | 0.700 eV on the barrier slice, both sides below the gas phase + 1.5 eV (Q2: 0.68 eV with 30° φ steps; the C++ takes 15°, SCM D10) | `ScmDiagnostics.ScmD10ExampleJumpNearTheBarrier` | reproduced, reported (D10) |
 | [Q3](scm_open_questions.md#q3-deep-holes-where-the-crp-clamps-z-or-r): holes where the CRP clamps Z or r | V − V_CRP −335 eV below Zmin, −232 eV beyond Rmax (Q3 gives V − E_gas on its own sampling) | [run −0.55]; [run] | reproduced, reported (D15) |
 | [Q12](scm_open_questions.md#q12-hd-on-the-crp-and-scm-potentials): HD | both atoms misplaced by r/6 along the bond: V changes by up to 0.52 eV on the barrier slice | [Q] | HD rejected (D13) |

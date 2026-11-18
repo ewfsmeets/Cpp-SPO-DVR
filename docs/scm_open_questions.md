@@ -22,7 +22,7 @@ are listed in order of priority.
 
 | | Question | On the example snapshot |
 |---|---|---|
-| [Q1](#q1-the-units-of-the-bond-length-clamp) | The bond-length clamp is in Å in the paper and in bohr in the code. Were the published QD-SCM results computed with the clamp in bohr? | lowest barrier of the origin cell: 0.501 eV as coded, 0.639 eV with the published clamp (ideal surface: 0.625 eV) |
+| [Q1](#q1-the-units-of-the-bond-length-clamp) | The bond-length clamp is in Å in [Spiering et al. 2018](https://doi.org/10.1063/1.5058271) and in bohr in the code. Were the published QD-SCM results computed with the clamp in bohr? | lowest barrier of the origin cell: 0.501 eV as coded, 0.639 eV with the published clamp (ideal surface: 0.625 eV) |
 | [Q2](#q2-the-jump-at-the-cell-edges) | V steps at the cell edges. Was the effect on the quantum diffraction and specular probabilities checked? | steps up to 0.68 eV near the barrier (0.32–0.92 eV over the snapshot's 49 possible cell origins) |
 | [Q3](#q3-deep-holes-where-the-crp-clamps-z-or-r) | Holes where the CRP clamps Z or r; the published grids reach both regions. Was V capped there, or the amplitude checked? | V down to 255 eV below E_gas at Z ≤ 0, and 344 eV below at r > 4.35 bohr |
 | [Q12](#q12-hd-on-the-crp-and-scm-potentials) | HD on the CRP and SCM potentials: the code's HD → H₂ coordinate shift is not applied. Is HD meant to be supported? | V changes by up to 0.42 eV (ideal surface) and 0.52 eV (SCM) near the barrier |
@@ -116,17 +116,17 @@ more than p8 = 10.46 bohr above the highest kept atom, that is, above Z = 11.40 
 
 ## Q1. The units of the bond-length clamp
 
-**The question.** Spiering et al. 2018 clamp the bond length to the range of their fit,
-0.725–1.847 Å. The code clamps r to 0.725–1.847 bohr. Is the clamp in bohr intended, or a slip in
-units? The elbow cuts published with Smits & Somers 2023 show a kink at r = 1.847 bohr, where the
-clamp in bohr puts one, and none at the published limits. Were the QD-SCM results published since
-2022 computed with the clamp in bohr?
+**The question.** [Spiering et al. 2018](https://doi.org/10.1063/1.5058271) clamp the bond length to
+the range of their fit, 0.725–1.847 Å. The code clamps r to 0.725–1.847 bohr. Is the clamp in bohr
+intended, or a slip in units? The elbow cuts published with Smits & Somers 2023 show a kink at r =
+1.847 bohr, where the clamp in bohr puts one, and none at the published limits. Were the QD-SCM
+results published since 2022 computed with the clamp in bohr?
 
 **What the code does.** `SCM_Types.f90 Setup_3Body_Rydberg_Par` clamps each r grid point (bohr) to
 [P17, P18] = [0.725, 1.847] of `params.dat`, then forms the eight pair parameters from it. So the
 pair function stops depending on r below 0.725 bohr and above 1.847 bohr (0.384 and 0.977 Å).
 
-**What the paper says.**
+**What Spiering et al. 2018 say.**
 - Eq. (8) of Spiering et al. 2018 clamps r_H–H at "the smallest and largest values of r_H–H used in
   the fitting procedure". Table III lists them in Å: 0.725 and 1.847. The fit varied the bond
   length by ±0.3 Å about the barrier geometries (Sec. III A), and these limits are the bridge
