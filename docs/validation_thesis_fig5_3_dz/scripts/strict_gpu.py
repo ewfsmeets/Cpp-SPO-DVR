@@ -21,8 +21,20 @@ import re
 import numpy as np
 import pandas as pd
 
-from common import (DATA, REPO, RUN_DIRS, RUNS, WORK, FortranBk, NativeBk, clean_log_lines, load_item, parse_fortran_real,
-                    printed_half_unit, save_item)
+from common import (
+    DATA,
+    REPO,
+    RUN_DIRS,
+    RUNS,
+    WORK,
+    FortranBk,
+    NativeBk,
+    clean_log_lines,
+    load_item,
+    parse_fortran_real,
+    printed_half_unit,
+    save_item,
+)
 from item13_propagation import averages_vs_fortran, bk_compare
 from item18b_replay import REPLAY, decompose, files_identical, load, s_diff, summary_diff
 from parse_logs import averages_out, cpp_surface_fixed, energy_blocks
@@ -56,8 +68,7 @@ def echo_comparison(a, b):
     over operations); or text differing (an input difference)."""
     out = {"n_lines": len(a), "identical": 0, "numbers_within_1e-13": 0, "numbers_above_1e-13": [], "numbers_max_rel": 0.0,
            "diagnostic": [], "text_differing": []}
-    assert len(a) == len(b)
-    for la, lb in zip(a, b):
+    for la, lb in zip(a, b, strict=True):
         if la == lb:
             out["identical"] += 1
         elif "Self-check" in la:
@@ -105,7 +116,7 @@ def validity(lines):
             "input_unchanged_since_fast_runs": bool(dt.datetime.fromisoformat(input_changed) < started.astimezone()),
             "input_working_tree_clean": sh("git", "status", "--porcelain", "--", INPUT) == "",
             "input_echo_vs_fast_gpu": echo_comparison(input_echo(lines), input_echo(clean_log_lines("gpu"))),
-            "analysis_line": dict(zip(("Z", "t"), cpp_surface_fixed(lines))),
+            "analysis_line": dict(zip(("Z", "t"), cpp_surface_fixed(lines), strict=True)),
             "bk_header_vs_fast_gpu": bk_header_diff(),
             "setup_files_vs_fast_gpu": {f: numeric_diff(STRICT / f, RUN_DIRS["gpu"] / f)
                                         for f in ("asymptotic_potential.dat", "gas_phase_states.dat")}}
@@ -275,7 +286,8 @@ def ratios(res):
     rp = res["replay"]
     fast_kappa = rp["cpu_fast-fortran"]["decomposition"]["kappa_median"]
     strict = rp["strict-fortran"]
-    fam = lambda k: rp[k]["decomposition"]["family_rel_normweighted_by_J"][10]
+    def fam(k):
+        return rp[k]["decomposition"]["family_rel_normweighted_by_J"][10]
     return {"kappa_fast_cpu_over_strict": fast_kappa / strict["decomposition"]["kappa_median"],
             "S_rel_fast_cpu_over_strict": i18["S_relative_normweighted"]["cpu-fortran"] / strict["S_relative_normweighted"],
             "P_reaction_fast_cpu_over_strict": i18["propagation_only"]["cpu-fortran"]["summary"]["P_reaction"]["max"]

@@ -71,7 +71,7 @@ def scm_lines(records):
     if not records:
         return ""
     lines = ["# SCM records (SCM_Wrapper.f90 SetPESVariables_SCM; logicals as 0/1):\n"]
-    for (names, fmt), payload in zip(SCM_RECORDS, records):
+    for (names, fmt), payload in zip(SCM_RECORDS, records, strict=True):
         values = " ".join(format_value(v) for v in unpack(fmt, payload))
         lines.append(f"#   {names}: {values}\n")
     return "".join(lines)

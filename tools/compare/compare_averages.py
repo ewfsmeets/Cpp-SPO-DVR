@@ -54,7 +54,7 @@ def read_rows(path):
 def first_non_finite(rows):
     """(row number, column name, value) of the first value that is not finite, or None."""
     for number, row in enumerate(rows, start=1):
-        for name, value in zip(COLUMNS, row):
+        for name, value in zip(COLUMNS, row, strict=True):
             if not math.isfinite(value):
                 return number, name, value
     return None
@@ -62,7 +62,7 @@ def first_non_finite(rows):
 
 def largest_differences(base, new):
     """The largest relative difference of each column (finite values only, so never NaN)."""
-    return [max(abs(a[k] - b[k]) / max(abs(a[k]), abs(b[k]), TINY) for a, b in zip(base, new))
+    return [max(abs(a[k] - b[k]) / max(abs(a[k]), abs(b[k]), TINY) for a, b in zip(base, new, strict=True))
             for k in range(len(COLUMNS))]
 
 
@@ -78,7 +78,7 @@ def compare(base_path, new_path, tolerance):
             print(f"DIFFERENT: {path}: row {found[0]}, {found[1]}: {found[2]} is not finite")
             return 1
     differences = largest_differences(base, new)
-    for name, difference in zip(COLUMNS, differences):
+    for name, difference in zip(COLUMNS, differences, strict=True):
         print(f"  {name:10s} max relative difference {difference:.3e}")
     worst = max(differences)
     if not worst <= tolerance:  # written so that a NaN would fail too

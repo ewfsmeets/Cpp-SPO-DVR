@@ -58,7 +58,7 @@ def plot_case(ax, data, title):
 
 def main():
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=True, constrained_layout=True)
-    for ax, (name, title) in zip(axes, CASES):
+    for ax, (name, title) in zip(axes, CASES, strict=True):
         plot_case(ax, read_columns(HERE / name), title)
     axes[0].set_ylabel("probability")
     handles, labels = axes[0].get_legend_handles_labels()

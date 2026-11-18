@@ -137,7 +137,8 @@ def fast_theta_sensitivity(codes, J_list):
     dth = th_run - c["thetas"]
     out = np.zeros(len(J_list))
     for i, j in enumerate(J_list):
-        cj = np.zeros(j + 1); cj[j] = np.sqrt(j + 0.5)
+        cj = np.zeros(j + 1)
+        cj[j] = np.sqrt(j + 0.5)
         x = np.cos(c["thetas"])
         dPdx = np.polynomial.legendre.legval(x, np.polynomial.legendre.legder(cj))
         out[i] = np.sum(c["weights"] * np.sqrt(0.5) * (-np.sin(c["thetas"])) * dPdx * dth)
@@ -287,9 +288,10 @@ def main():
     for j in VERDICT_J:
         k = list(J).index(j)
         nphi = codes["fortran"]["nphi"]
+        # called within this loop iteration only, so the loop variables it reads are current
         def dG(a, b):
-            delta = np.array([float(prods[a][t][k] - prods[b][t][k]) for t in range(len(prods[a]))])
-            return nphi * fbar[sel] @ delta
+            delta = np.array([float(prods[a][t][k] - prods[b][t][k]) for t in range(len(prods[a]))])  # noqa: B023
+            return nphi * fbar[sel] @ delta  # noqa: B023
         ratio = dG("strict", "fortran") / dG("strict", "fast")
         ref = dRmat["strict-fortran"][k] / dRmat["strict-fast"][k]
         a = np.abs(ratio)

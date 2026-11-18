@@ -56,7 +56,7 @@ def main():
     px = [i * a * 0.25 for i in range(5)]
     pz = [-1.0, -0.4, 0.3, 1.0, 1.8, 2.7, 3.9, 5.0]
     f3 = []
-    for k, z in enumerate(pz):
+    for z in pz:
         for j in range(5):
             for i in range(5):
                 ii, jj = i % 4, j % 4  # periodic: the last row/column repeats the first

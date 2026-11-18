@@ -8,13 +8,13 @@ from __future__ import annotations
 import math
 
 from common import FIGURES, TABLES, load_item
-from style import PROGRAM, INK_2, MUTED, plt, save, setup
+from style import MUTED, PROGRAM, plt, save, setup
 
 
 def main():
     setup()
     p0 = load_item("phase0")
-    R, H, B = p0["runs"], p0["hardware"], p0["builds"]
+    R, H = p0["runs"], p0["hardware"]
     sv = load_item("strict_gpu")["validity"]
     R = R | {"gpu_strict": {"time": sv["time"], "program_timing": sv["program_timing"]}}
     wall = {k: R[k]["time"]["wall_s"] for k in R}
@@ -42,7 +42,7 @@ def main():
            f"all runs: 8 OpenMP threads, one after another,\nas run (not like-for-like, see table);\nstrict GPU run added 2026-11-08")
     ax.text(0.985, 0.04, box, transform=ax.transAxes, ha="right", va="bottom", multialignment="left", family="DejaVu Sans Mono", fontsize=7.8,
             bbox=dict(boxstyle="round,pad=0.4", fc="#f6f6f4", ec=MUTED, lw=0.6))
-    ax.set_title(f"Execution time of the 7000-step run (7000 × 2.5 a.u.)", loc="left")
+    ax.set_title("Execution time of the 7000-step run (7000 × 2.5 a.u.)", loc="left")
     save(fig, FIGURES / "fig4_execution_time.png")
 
     # table fragment

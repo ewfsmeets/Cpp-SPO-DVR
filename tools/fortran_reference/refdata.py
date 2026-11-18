@@ -119,7 +119,7 @@ def read_tsv(path, columns):
             raise Refusal(f"{path}:{number}: {len(fields)} fields, expected {len(columns)}; "
                           "restore the file from git")
         else:
-            rows.append(dict(zip(columns, fields)))
+            rows.append(dict(zip(columns, fields, strict=True)))
     if not header_seen:
         raise Refusal(f"{path} has no header row; restore the file from git")
     return rows
@@ -561,7 +561,7 @@ def compare_line(diff, rule, where, old, new):
         diff.forbid(f"{where}: text {old.strip()!r} became {new.strip()!r}")
         return
     row_length = 0 if NUMBER.sub("", old).strip() else len(old_numbers)
-    for position, (a, b) in enumerate(zip(old_numbers, new_numbers), start=1):
+    for position, (a, b) in enumerate(zip(old_numbers, new_numbers, strict=True), start=1):
         if a == b:
             continue
         diff.numbers += 1
@@ -583,7 +583,7 @@ def text_differences(old, new, rule):
     a = comparable_lines(old.decode(), labels)
     b = comparable_lines(new.decode(), labels)
     diff = Differences()
-    for (number, x), (_, y) in zip(a, b):
+    for (number, x), (_, y) in zip(a, b, strict=False):  # the common lines; the count is checked below
         if x != y:
             compare_line(diff, rule, f"line {number}", x, y)
     if len(a) != len(b):
@@ -635,7 +635,7 @@ def record_changes(diff, number, old, new):
     """Adds the coefficient changes of two versions of BK record number (1-based) that differ. A
     non-finite coefficient that is not bitwise the old one is never allowed."""
     diff.lines += 1
-    for k, (p, q) in enumerate(zip(coefficients(old), coefficients(new))):
+    for k, (p, q) in enumerate(zip(coefficients(old), coefficients(new), strict=True)):
         if p == q:
             continue
         if not (math.isfinite(abs(p)) and math.isfinite(abs(q))):
@@ -659,7 +659,7 @@ def bk_differences(old, new, rule):
     diff.scale = gate4_scale(a[BK_HEADER_RECORDS:])
     if not math.isfinite(diff.scale):
         diff.forbid("OLD holds a coefficient that is not finite, so the gate-4 scale is undefined")
-    for number, (x, y) in enumerate(zip(a[BK_HEADER_RECORDS:], b[BK_HEADER_RECORDS:]), start=1):
+    for number, (x, y) in enumerate(zip(a[BK_HEADER_RECORDS:], b[BK_HEADER_RECORDS:], strict=True), start=1):
         if x != y:
             record_changes(diff, number, x, y)
     limit = rule.limit * diff.scale if rule.allowed == "bk_scaled" else 0.0

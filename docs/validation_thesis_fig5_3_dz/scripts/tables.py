@@ -43,7 +43,7 @@ def strict_tables():
     """Strict-build GPU run (criteria.md, 2026-11-08): validity and end to end; the composition of
     the propagation-only difference with the strict run beside the fast runs."""
     sg = R["strict_gpu"]
-    v, rp, bk, e2e, vd = sg["validity"], sg["replay"], sg["bk"], sg["end_to_end"], sg["verdicts"]
+    v, rp, bk, e2e = sg["validity"], sg["replay"], sg["bk"], sg["end_to_end"]
     cm = v["build"]["cmake"]
     sv = v["setup_files_vs_fast_gpu"]
     av = sg["averages"]["strict_vs_fortran"]
@@ -105,7 +105,8 @@ def main():
     s, i4, i13, i14 = R["setup"], R["item04"], R["item13"], R["item14_16"]
     i13p, i17, i18a, i18b, i19 = R["item13_psi"], R["item17"], R["item18a"], R["item18b"], R["item19"]
     po = i18b["propagation_only"]
-    q = lambda k: i14["item14"][f"{k}_vs_fortran"]
+    def q(k):
+        return i14["item14"][f"{k}_vs_fortran"]
     bk = i13["bk"]
 
     def pr(tally):   # "n_within+n_explained/n"
@@ -278,7 +279,7 @@ def main():
     write("item13b", table(["t (a.u.)", "\\|c_init\\| Fortran", "\\|c_init\\| C++ CPU", "\\|c_init\\| C++ GPU"],
                            [(f"{t:.0f}", f"{a:.3e}", f"{b_:.3e}", f"{c:.3e}") for t, a, b_, c in
                             zip(al["initial_channel_abs_around_fix"]["t"], al["initial_channel_abs_around_fix"]["fortran"],
-                                al["initial_channel_abs_around_fix"]["cpu"], al["initial_channel_abs_around_fix"]["gpu"])]))
+                                al["initial_channel_abs_around_fix"]["cpu"], al["initial_channel_abs_around_fix"]["gpu"], strict=True)]))
     av_ = bk["amplitude_vs_time"]
     write("item13c", table(["Pair", "max \\|Δc\\|", "/ max\\|c\\|", "at", "per-channel rel. (median / max)", "‖Δc‖/‖c‖ in window (median)",
                             "amplitude part κ(t), window quartile medians"], [
@@ -360,7 +361,8 @@ def main():
          t15[f"{k}_vs_fortran"]["n_outside"], f"{t15[f'{k}_vs_fortran']['worst']['ratio']:.2f}",
          ", ".join(f"{kk} {vv}" for kk, vv in t15[f"{k}_vs_fortran"]["worst"]["where"].items())) for k in ("cpu", "gpu")]))
     t16 = i14["item16"]["cpu_vs_fortran"]
-    loc = lambda w: ", ".join(f"{kk} {(round(vv, 3) if isinstance(vv, float) else vv)}" for kk, vv in w.items())
+    def loc(w):
+        return ", ".join(f"{kk} {(round(vv, 3) if isinstance(vv, float) else vv)}" for kk, vv in w.items())
     write("item16", table(["Column (C++ CPU vs fort.25)", "n", "within ½ unit", "explained", "outside", "worst ratio", "at"], [
         (c, t16[c]["n"], t16[c]["n_within_printed"], t16[c]["n_explained"], t16[c]["n_outside"], f"{t16[c]['worst_ratio']:.2f}",
          loc(t16[c]["worst"])) for c in ("Re S", "Im S", "|S|^2")]
@@ -417,7 +419,7 @@ def main():
     lines = (RESULTS.parent.parent / "data" / "reaction_probability.tsv").read_text().splitlines()[2:]
     rep = (RESULTS.parent.parent / "data" / "replay_reaction_probability.tsv").read_text().splitlines()[2:]
     rows = []
-    for l, r_ in zip(lines, rep):
+    for l, r_ in zip(lines, rep, strict=True):
         a, b_ = l.split("\t"), r_.split("\t")
         rows.append((a[0], f"`{a[1]}`", f"{float(a[4]):.10e}", f"{float(a[5]):.10e}", b_[4], b_[5], a[8]))
     write("appendix_p_reaction", table(["E (eV)", "Fortran (printed)", "C++ CPU", "C++ GPU", "\\|CPU − F\\| (replay, full)",

@@ -19,7 +19,7 @@ import json
 import math
 from fractions import Fraction as Fr
 
-from common import INPUT_DIR, load_item, save_item
+from common import INPUT_DIR, save_item
 
 
 def exact_round_trip(n, fwd, inv):

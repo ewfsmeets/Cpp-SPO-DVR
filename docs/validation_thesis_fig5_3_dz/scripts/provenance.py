@@ -12,7 +12,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from common import RAW_LOGS, REPO, RUN_DIRS, INPUT_DIR, clean_log_lines, save_item
+from common import INPUT_DIR, RAW_LOGS, REPO, RUN_DIRS, clean_log_lines, save_item
 
 BUILDS = {"cpu": REPO / "build-fast", "gpu": REPO / "build-cuda-fast"}
 FORTRAN_EXE = Path.home() / "work/SPO-DVR_v5.19/EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x"

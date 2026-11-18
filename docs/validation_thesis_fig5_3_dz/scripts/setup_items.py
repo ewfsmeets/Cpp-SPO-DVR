@@ -20,11 +20,34 @@ import re
 
 import numpy as np
 
-from common import (CHAEV, INPUT_DIR, RUN_DIRS, TABLES, FortranBk, NativeBk, clean_log_lines, load_item,
-                    parse_fortran_real, printed_half_unit, save_item, WORK)
-from parse_logs import (averages_out, cpp_dotted, cpp_rovib, cpp_section, energy_blocks, equals_fields,
-                        grid_parameters, input_read, internal_parameters, rovib_states, section, star_fields,
-                        vasy_table)
+from common import (
+    CHAEV,
+    INPUT_DIR,
+    RUN_DIRS,
+    TABLES,
+    WORK,
+    FortranBk,
+    NativeBk,
+    clean_log_lines,
+    load_item,
+    parse_fortran_real,
+    printed_half_unit,
+    save_item,
+)
+from parse_logs import (
+    cpp_dotted,
+    cpp_rovib,
+    cpp_section,
+    energy_blocks,
+    equals_fields,
+    grid_parameters,
+    input_read,
+    internal_parameters,
+    rovib_states,
+    section,
+    star_fields,
+    vasy_table,
+)
 
 FULL_REL = 1e-13
 ROWS = []
@@ -359,7 +382,7 @@ def main():
     cv = [l.split() for l in (RUN_DIRS["cpu"] / "asymptotic_potential.dat").read_text().splitlines() if not l.startswith("#")]
     gpu_same = (RUN_DIRS["cpu"] / "asymptotic_potential.dat").read_bytes() == (RUN_DIRS["gpu"] / "asymptotic_potential.dat").read_bytes()
     dv, dr = [], []
-    for (fr, fv), c in zip(vrows, cv):
+    for (fr, fv), c in zip(vrows, cv, strict=True):
         dr.append(float(c[1]) - parse_fortran_real(fr))
         dv.append(abs(float(c[3]) - parse_fortran_real(fv)) / max(abs(parse_fortran_real(fv)), 1.0))
     i = int(np.argmax(dv))
@@ -378,7 +401,7 @@ def main():
     sign_flips = []
     n_cmp = 0
     n_out = []
-    for f, c in zip(frows, crows):
+    for f, c in zip(frows, crows, strict=True):
         assert (f["v"], f["j"]) == (c["v"], c["j"])
         p1, pn = psi_full[(c["v"], c["j"])]
         pairs = {"e": (f["e"], c["e"]), "erel": (f["erel"], c["erel"]), "psi1": (f["psi1"], p1), "psinr": (f["psinr"], pn),
@@ -474,7 +497,7 @@ def main():
     op = star_fields(FL, "INFO FROM SETTING UP THE OPTICAL POTENTIALS", "INFO FROM SETTING UP THE GRID ENERGIES")
     caps = nums(cin["CAP strengths (Z, r, Zsp)"])
     for (lab, text), c, ctext, key in zip(op, caps, cin["CAP strengths (Z, r, Zsp)"].replace(" hartree", "").split(", "),
-                                         ("ZOptFactor (effective)", "ROptFactor (effective)", "ZSpOptFactor (effective)")):
+                                         ("ZOptFactor (effective)", "ROptFactor (effective)", "ZSpOptFactor (effective)"), strict=True):
         add(10, "CAP coefficient: " + lab.replace("Optical potential in ", "").replace(" absorbs with coefficient", ""),
             lab, text, "CAP strengths (log, %.8e)", c, "printed", c_text=ctext)
         add(10, "CAP coefficient (full precision C++)", lab, text, f"bk_coefficients.bin: {key}", nb.parameters[key], "printed")
@@ -528,7 +551,7 @@ def main():
     cols = {h: i for i, h in enumerate(head)}
     egrid = {"E_coll": [], "E_total": [], "E_z": [], "momentum": []}
     mtot = first_num(cin["Total mass"])
-    for b, rr_ in zip(blocks, summ[1:]):
+    for b, rr_ in zip(blocks, summ[1:], strict=True):
         for fkey, ckey in (("trans_energy", "E_coll"), ("total_energy", "E_total"), ("trans_energy_z", "E_z")):
             ft = b[fkey]
             c = float(rr_[cols[ckey]])
@@ -539,7 +562,7 @@ def main():
     out["energy_grid"]["momentum"]["note"] = "derived on the C++ side: k = sqrt(2 M E_coll), M = total mass of the C++ log, legacy eV"
     gsum = (RUN_DIRS["gpu"] / "scattering_summary.tsv").read_text().splitlines()
     out["energy_grid"]["gpu_E_columns_equal"] = all(a.split("\t")[:3] == b.split("\t")[:3] for a, b in zip(
-        (RUN_DIRS["cpu"] / "scattering_summary.tsv").read_text().splitlines(), gsum))
+        (RUN_DIRS["cpu"] / "scattering_summary.tsv").read_text().splitlines(), gsum, strict=True))
 
     # ---------------- GPU vs CPU set-up output: identical text up to the propagation section
     def setup_part(lines):
@@ -556,7 +579,7 @@ def main():
                 keep.append(l)
         return keep
     cpu_setup, gpu_setup = setup_part(CL), setup_part(GL)
-    diff_lines = [(a, b) for a, b in zip(cpu_setup, gpu_setup) if a != b]
+    diff_lines = [(a, b) for a, b in zip(cpu_setup, gpu_setup, strict=True) if a != b]
     out["gpu_vs_cpu_setup_log"] = {"cpu_lines": len(cpu_setup), "gpu_lines": len(gpu_setup), "differing": len(diff_lines),
                                    "first_differences": diff_lines[:3],
                                    "excluded": "GPU MEMORY ESTIMATE block (GPU run only), 'Data files written to' line"}

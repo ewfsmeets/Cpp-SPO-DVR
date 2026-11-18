@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 from common import DATA, FIGURES, load_item, save_item
-from style import PAIR, INK_2, MUTED, plt, save, setup
+from style import INK_2, MUTED, PAIR, plt, save, setup
 
 
 def col(path, name, skip_comment=1):
@@ -102,7 +102,7 @@ def main():
     margin = col(rp, "half_unit") / col(rr, "abs_cpu_minus_F")
     margin_g = col(rp, "half_unit") / col(rr, "abs_gpu_minus_F")
     save_item("ladder", {"print_over_propagation_min": float(margin.min()), "print_over_propagation_min_gpu": float(margin_g.min()), "print_over_propagation_min_at_E": float(E[int(np.argmin(margin))]),
-                         "print_over_propagation_E_le_053_max": float(margin[E <= 0.53 + 1e-9].max()),"medians": dict(zip([l.replace("\n", " ") for l in labels], medians)),
+                         "print_over_propagation_E_le_053_max": float(margin[E <= 0.53 + 1e-9].max()),"medians": dict(zip([l.replace("\n", " ") for l in labels], medians, strict=True)),
                          "gap_ratios_of_medians": gaps, "strict_gpu_vs_fortran_median": strict_median})
     print("medians", [f"{m:.2e}" for m in medians], "gaps", [f"{g:.1f}" for g in gaps])
 

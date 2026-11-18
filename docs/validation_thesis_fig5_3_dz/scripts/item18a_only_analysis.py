@@ -11,7 +11,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from common import DATA, PAIRS, RUNS, WORK, save_item, stats
+from common import DATA, PAIRS, RUNS, save_item, stats
 
 DIRS = {k: RUNS / f"thesis_fig5_3_dz_oa_{k}" / "fine_analysis" for k in ("cpu", "gpu", "fortran")}
 KEYS = ["E_coll", "v", "j", "mJ", "n", "m"]

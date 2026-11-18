@@ -18,7 +18,7 @@ import sys
 
 import numpy as np
 
-from common import DATA, FIGURES, WORK, save_item, load_item
+from common import DATA, FIGURES, WORK, load_item, save_item
 
 THESIS = WORK / "thesis"
 DIGITISED = DATA / "thesis_fig5_3_dz_digitised.tsv"
@@ -64,8 +64,10 @@ def digitise():
     vert = sorted([r for r in longs if (r[3] - r[1]) > 250], key=lambda r: r[0])
     x_left, x_right = (vert[0][0] + vert[0][2]) / 2, (vert[-1][0] + vert[-1][2]) / 2
     y_top, y_bottom = (horiz[0][1] + horiz[0][3]) / 2, (horiz[-1][1] + horiz[-1][3]) / 2
-    w = lambda r: r[2] - r[0]
-    h = lambda r: r[3] - r[1]
+    def w(r):
+        return r[2] - r[0]
+    def h(r):
+        return r[3] - r[1]
     xt = [((r[0] + r[2]) / 2) for r in (d["rect"] for d in fills) if 0.5 < w(r) < 1.1 and abs(h(r) - 3.12) < 0.2]
     yt = [((r[1] + r[3]) / 2) for r in (d["rect"] for d in fills) if 0.5 < h(r) < 1.1 and abs(w(r) - 3.12) < 0.2]
     ax_, bx, xv, xres = calibrate(xt, x_left, x_right, 0.40, 1.00, 0.01)
@@ -76,8 +78,10 @@ def digitise():
     groups = components(inside)
     dots = []
     for g in groups:
-        x0 = min(inside[i][0] for i in g); y0 = min(inside[i][1] for i in g)
-        x1 = max(inside[i][2] for i in g); y1 = max(inside[i][3] for i in g)
+        x0 = min(inside[i][0] for i in g)
+        y0 = min(inside[i][1] for i in g)
+        x1 = max(inside[i][2] for i in g)
+        y1 = max(inside[i][3] for i in g)
         ext = max(x1 - x0, y1 - y0)
         if ext <= 2.2:
             dots.append(((x0 + x1) / 2, (y0 + y1) / 2, ext))
@@ -99,7 +103,7 @@ def digitise():
              f"{info['x_calibration_residual_max_eV']:.1e} eV, {info['y_calibration_residual_max_P']:.1e} in P; "
              f"dot size {size:.2f} pt; uncertainty u_E = {u_E:.4f} eV, u_P = {u_P:.4f}.",
              "E_normal_eV\tP_reaction"]
-    lines += [f"{e:.5f}\t{p:.5f}" for e, p in zip(E, P)]
+    lines += [f"{e:.5f}\t{p:.5f}" for e, p in zip(E, P, strict=True)]
     DATA.mkdir(parents=True, exist_ok=True)
     DIGITISED.write_text("\n".join(lines) + "\n")
     save_item("item17_digitisation", info)
@@ -109,6 +113,7 @@ def digitise():
 
 def check_image(meta, dots, xt, yt, frame):
     import matplotlib.image as mpimg
+
     from style import plt, save, setup
     setup()
     img = mpimg.imread(THESIS / "fig5_3_crop.png")

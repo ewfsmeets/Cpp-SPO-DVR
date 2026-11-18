@@ -18,12 +18,21 @@ data/state_resolved_dP.tsv."""
 from __future__ import annotations
 
 import math
-import re
 
 import numpy as np
 import pandas as pd
 
-from common import DATA, RUN_DIRS, WORK, clean_log_lines, load_item, parse_fortran_real, printed_half_unit, save_item, stats
+from common import (
+    DATA,
+    RUN_DIRS,
+    WORK,
+    clean_log_lines,
+    load_item,
+    parse_fortran_real,
+    printed_half_unit,
+    save_item,
+    stats,
+)
 from parse_logs import energy_blocks, fort25
 
 PRED_DS = 1e-11
@@ -117,7 +126,6 @@ def main():
 
     # ---------------- item 14
     out14 = {}
-    reac_rows = []
     vjm_per_energy = {k: np.zeros(len(E)) for k in ("cpu-fortran", "gpu-fortran", "gpu-cpu")}
     for k in ("cpu", "gpu"):
         ds = ds_meas.get(f"{k}-fortran") or PRED_DS
@@ -263,7 +271,7 @@ def main():
                 ana_ok = np.array([
                     bool(comp) and (comp, float(e), int(vv), int(jj), int(mm), int(nn), int(m2)) in outl
                     and outl[(comp, float(e), int(vv), int(jj), int(mm), int(nn), int(m2))]["explained"]
-                    for e, vv, jj, mm, nn, m2 in zip(both["E_coll"], both["v"], both["j"], both["mJ"], both["n"], both["m"])])
+                    for e, vv, jj, mm, nn, m2 in zip(both["E_coll"], both["v"], both["j"], both["mJ"], both["n"], both["m"], strict=True)])
                 expl = (~within) & (print_ok | ana_ok) & (prop <= 1e-10)
                 unexplained_print = (~within) & ~print_ok & ~ana_ok
             else:

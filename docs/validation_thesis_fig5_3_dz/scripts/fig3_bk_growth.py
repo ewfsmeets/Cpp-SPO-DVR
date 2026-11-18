@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from common import DATA, FIGURES, load_item
-from style import PAIR, INK_2, MUTED, plt, save, setup
+from style import INK_2, MUTED, PAIR, plt, save, setup
 
 
 def main():

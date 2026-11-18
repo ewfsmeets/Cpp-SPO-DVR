@@ -11,13 +11,22 @@ against the build that ran) re-accumulates the S-matrix from each run's BK file.
 Writes data/items/item18b.json and data/replay_reaction_probability.tsv."""
 from __future__ import annotations
 
-import math
-
 import numpy as np
 import pandas as pd
 
-from common import (CHAEV, DATA, RUN_DIRS, WORK, FortranBk, NativeBk, clean_log_lines, parse_fortran_real,
-                    printed_half_unit, save_item, stats)
+from common import (
+    CHAEV,
+    DATA,
+    RUN_DIRS,
+    WORK,
+    FortranBk,
+    NativeBk,
+    clean_log_lines,
+    parse_fortran_real,
+    printed_half_unit,
+    save_item,
+    stats,
+)
 from parse_logs import energy_blocks, fort25
 
 REPLAY = WORK / "replay"
@@ -32,7 +41,8 @@ def s_diff(a, b):
     assert (a[KEYS].to_numpy() == b[KEYS].to_numpy()).all()
     dS = np.abs((a["Re_S"] - b["Re_S"]).to_numpy() + 1j * (a["Im_S"] - b["Im_S"]).to_numpy())
     dP = np.abs((a["P"] - b["P"]).to_numpy())
-    where = lambda i: {k: (float(b[k].iloc[i]) if k == "E_coll" else int(b[k].iloc[i])) for k in KEYS}
+    def where(i):
+        return {k: (float(b[k].iloc[i]) if k == "E_coll" else int(b[k].iloc[i])) for k in KEYS}
     sel = b["P"].to_numpy() > 1e-8
     dph = np.abs(np.angle(np.exp(1j * (a["phase"].to_numpy()[sel] - b["phase"].to_numpy()[sel]))))
     return {"S_abs": stats(dS, where), "P_abs": stats(dP, where), "phase_rad_P_gt_1e-8": stats(dph),
@@ -64,7 +74,7 @@ def analysis_rounding_bound(M):
     nb = NativeBk(RUN_DIRS["cpu"] / "bk_coefficients.bin")
     lab = nb.labels
     index = {(int(lab["J"][i]), int(lab["mJ"][i]), int(lab["n"][i]), int(lab["m"][i])): i for i in range(nb.nstata)}
-    is_ = np.array([index[(int(j), int(mj), int(n), int(m))] for j, mj, n, m in zip(M["j"], M["mJ"], M["n"], M["m"])])
+    is_ = np.array([index[(int(j), int(mj), int(n), int(m))] for j, mj, n, m in zip(M["j"], M["mJ"], M["n"], M["m"], strict=True)])
     v = M["v"].to_numpy()
     e_init_cpp = float([l.split() for l in (RUN_DIRS["cpu"] / "gas_phase_states.dat").read_text().splitlines()
                         if not l.startswith("#")][0][2])
@@ -109,7 +119,7 @@ def analysis_setup_correction(M):
     nb = NativeBk(RUN_DIRS["cpu"] / "bk_coefficients.bin")
     lab = nb.labels
     index = {(int(lab["J"][i]), int(lab["mJ"][i]), int(lab["n"][i]), int(lab["m"][i])): i for i in range(nb.nstata)}
-    is_ = np.array([index[(int(j), int(mj), int(n), int(m))] for j, mj, n, m in zip(M["j"], M["mJ"], M["n"], M["m"])])
+    is_ = np.array([index[(int(j), int(mj), int(n), int(m))] for j, mj, n, m in zip(M["j"], M["mJ"], M["n"], M["m"], strict=True)])
     v = M["v"].to_numpy()
     e_c = nb.energies[v, is_]
     e_f = fb.enymo.reshape(nb.nviba, nb.nstata)[v, is_]
@@ -119,6 +129,7 @@ def analysis_setup_correction(M):
     kz_f = np.sqrt(2 * mass * (e_tot - e_f))
     k0 = np.sqrt(2 * mass * M["E_coll"].to_numpy() / CHAEV)
     import json
+
     from common import INPUT_DIR
     zana = json.loads((INPUT_DIR / "input.json").read_text())["Zana"]
     z0 = json.loads((INPUT_DIR / "input.json").read_text())["Z0"]
@@ -187,7 +198,8 @@ def decompose(A, B_):
               "family_fraction_of_residual_norm2": float(np.sum(resid[fam] ** 2) / res2),
               "residual_rel_normweighted_outside_family": float(np.sqrt(np.sum(resid[~fam] ** 2) / np.sum(np.abs(sb[~fam]) ** 2))),
               "per_J": fam_j}
-    al = np.array([r["alpha"] for r in rows]); be = np.array([r["beta"] for r in rows])
+    al = np.array([r["alpha"] for r in rows])
+    be = np.array([r["beta"] for r in rows])
     kappa_corr_inv_sqrtE = float(np.corrcoef(al, 1 / np.sqrt(np.array([r["E"] for r in rows])))[0, 1])
     ratio = np.array([r["dsumP"] / r["predicted_2alpha_sumP"] for r in rows])
     big = np.abs(sb) ** 2 > 1e-2

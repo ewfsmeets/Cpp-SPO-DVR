@@ -8,7 +8,7 @@ import hashlib
 import os
 from pathlib import Path
 
-from common import DATA, RAW_LOGS, REPO, RUNS, RUN_DIRS
+from common import DATA, RAW_LOGS, REPO, RUN_DIRS, RUNS
 
 STRICT = RUNS / "thesis_fig5_3_dz_cuda"          # strict-build GPU run (strict_gpu.py)
 EXTRA = [REPO / "build-fast" / "spodvr", REPO / "build-cuda-fast" / "spodvr", REPO / "build-cuda" / "spodvr",

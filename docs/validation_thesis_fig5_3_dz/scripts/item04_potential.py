@@ -23,7 +23,7 @@ import sys
 
 import numpy as np
 
-from common import CHAEV, RUN_DIRS, WORK, fortran_record_offsets, read_record, save_item, stats
+from common import CHAEV, RUN_DIRS, WORK, fortran_record_offsets, read_record, save_item
 
 ONE_EV = 1.0 / CHAEV
 TWO_EV = 2.0 / CHAEV
@@ -88,7 +88,6 @@ def read_symmetry(path, ntp, nphi):
             phimap[int(t[1])] = np.array([int(x) for x in t[2:]])
         else:
             rep_of[int(t[0])], op_of[int(t[0])] = int(t[1]), int(t[2])
-    ntheta = ntp // nphi
     itp = np.arange(ntp)
     iphi, itheta = itp % nphi, itp // nphi
     gather = np.empty(ntp * n_xy, dtype=np.int64)       # full (itp, ixy) -> stored (itp', irep)

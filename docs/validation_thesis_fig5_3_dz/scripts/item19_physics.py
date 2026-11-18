@@ -19,7 +19,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from common import CHAEV, RUN_DIRS, WORK, FortranBk, NativeBk, clean_log_lines, parse_fortran_real, save_item
+from common import CHAEV, RUN_DIRS, FortranBk, NativeBk, clean_log_lines, parse_fortran_real, save_item
 from parse_logs import energy_blocks, fort25
 
 KEYS = ["E_coll", "v", "j", "mJ", "n", "m"]
@@ -80,17 +80,14 @@ def per_operation(s):
 def symmetry(s):
     """s: DataFrame with E_coll, v, j, mJ, n, m, P (and order if present)."""
     out = {}
-    pairs = sorted(set(zip(s["n"], s["m"])))
+    pairs = sorted(set(zip(s["n"], s["m"], strict=True)))
     orbit = c6v_orbits(pairs)
-    s = s.assign(orbit=[orbit[(n, m)] for n, m in zip(s["n"], s["m"])])
+    s = s.assign(orbit=[orbit[(n, m)] for n, m in zip(s["n"], s["m"], strict=True)])
     if "order" in s:
         out["order_constant_on_orbits"] = bool((s.groupby("orbit")["order"].nunique() == 1).all())
     out["n_orbits"] = len(set(orbit.values()))
     # mJ <-> -mJ (summed over diffraction)
     pv = s.groupby(["E_coll", "v", "j", "mJ"])["P"].sum()
-    pm = pv.copy()
-    pm.index = pm.index.set_levels(pm.index.levels[3], level=3)
-    neg = pv.rename(index=lambda x: x)
     d = []
     for (E, v, j, mj), p in pv.items():
         q = pv.get((E, v, j, -mj), 0.0)
@@ -158,7 +155,7 @@ def main():
     listed = {}
     for k, t in tables.items():
         arr = np.zeros_like(open_sets["cpp"])
-        for e, v, j, mj, n, m in zip(t["E_coll"], t["v"], t["j"], t["mJ"], t["n"], t["m"]):
+        for e, v, j, mj, n, m in zip(t["E_coll"], t["v"], t["j"], t["mJ"], t["n"], t["m"], strict=True):
             arr[ie_of[float(e)], int(v), idx[(int(j), int(mj), int(n), int(m))]] = True
         listed[k] = arr
     res["thresholds"] = {
@@ -208,8 +205,8 @@ def main():
     low = su[su["E_coll"] <= 0.5 + 1e-9]
     res["subthreshold"] = {"E_max": 0.5, "n": int(len(low)), "P_reaction_min": float(low["P_reaction"].min()),
                            "P_reaction_max": float(low["P_reaction"].max()), "P_reaction_median": float(low["P_reaction"].median()),
-                           "fortran_same_range": [min(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E) if e <= 0.5 + 1e-9),
-                                                  max(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E) if e <= 0.5 + 1e-9)]}
+                           "fortran_same_range": [min(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E, strict=True) if e <= 0.5 + 1e-9),
+                                                  max(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E, strict=True) if e <= 0.5 + 1e-9)]}
     av = [l.split() for l in (RUN_DIRS["cpu"] / "averages.dat").read_text().splitlines() if not l.startswith("#")]
     res["norm_left_at_T"] = {"cpu": float(av[-1][1]),
                              "gpu": float([l.split() for l in (RUN_DIRS["gpu"] / "averages.dat").read_text().splitlines() if not l.startswith("#")][-1][1]),

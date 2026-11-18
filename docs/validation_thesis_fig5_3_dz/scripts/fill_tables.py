@@ -20,10 +20,11 @@ def main():
             continue
         text = path.read_text()
 
+        # called within this loop iteration only, so the loop variables it reads are current
         def repl(m):
             frag = TABLES / f"{m.group(2)}.md"
             if not frag.exists():
-                missing.append(f"{name}: {m.group(2)}")
+                missing.append(f"{name}: {m.group(2)}")  # noqa: B023
                 return m.group(0)
             return m.group(1) + "\n" + frag.read_text().rstrip("\n") + "\n\n" + m.group(4)
         new = PATTERN.sub(repl, text)

@@ -765,7 +765,7 @@ def read_allowlist(path: Path, label: str) -> tuple[list[AllowEntry], list[Findi
             continue
         entries.append(AllowEntry(*cells, line=number))
     keys = [(e.check, e.file, e.match) for e in entries]
-    for previous, entry, key in zip(keys, entries[1:], keys[1:]):
+    for previous, entry, key in zip(keys, entries[1:], keys[1:], strict=False):  # each entry with the one before
         if key < previous:
             problems.append(Finding("allowlist", label, entry.line,
                                     "rows are not sorted (by check, file, match); sort them", ""))

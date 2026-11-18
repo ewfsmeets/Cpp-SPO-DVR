@@ -9,7 +9,7 @@ import json
 import numpy as np
 
 from common import DATA, FIGURES, INPUT_DIR, load_item
-from style import PAIR, PROGRAM, INK_2, MUTED, plt, save, setup
+from style import INK_2, MUTED, PAIR, PROGRAM, plt, save, setup
 
 
 def read_tsv(path, skip):
@@ -25,7 +25,6 @@ def main():
     half = np.array([float(r[3]) for r in rp])
     Pc = np.array([float(r[4]) for r in rp])
     Pg = np.array([float(r[5]) for r in rp])
-    ftext = [r[1] for r in rp]
     rep = read_tsv(DATA / "replay_reaction_probability.tsv", 2)
     d_cf = np.array([float(r[4]) for r in rep])
     d_gf = np.array([float(r[5]) for r in rep])
@@ -59,7 +58,7 @@ def main():
     ax.set_ylim(-0.01, 0.68)
     ax.legend(loc="upper left", fontsize=8.5)
     nsame = i14["p_reaction_same_7_digits"]
-    n_strict_same = int(sum(f"{s:.6e}" == f"{f:.6e}" for s, f in zip(Ps, Pf)))
+    n_strict_same = int(sum(f"{s:.6e}" == f"{f:.6e}" for s, f in zip(Ps, Pf, strict=True)))
     full = max(i14["item14"]["gpu_vs_cpu"]["P_reaction"]["max"], max(d_cf), max(d_gf))
     ax.text(0.015, 0.47,
             f"The curves coincide: |ΔP_reaction| ≤ {full:.1e} between any two\n"
@@ -85,7 +84,7 @@ def main():
                  label=f"{st['label']}, full precision ({est})")
     # printed comparison: both C++ runs vs the Fortran's printed digits
     for k, P, mk in (("cpu", Pc, "x"), ("gpu", Pg, "+")):
-        eq = np.array([f"{c:.6e}" == f"{f:.6e}" for c, f in zip(P, Pf)])
+        eq = np.array([f"{c:.6e}" == f"{f:.6e}" for c, f in zip(P, Pf, strict=True)])
         axb.plot(E[~eq], np.abs(P - Pf)[~eq], ls="none", marker=mk, ms=7, color="#0b0b0b",
                  label=f"{PROGRAM[k]['short']} − Fortran printed value where the 7 digits differ ({(~eq).sum()}; "
                        f"outside ½ unit, explained: item 14)")

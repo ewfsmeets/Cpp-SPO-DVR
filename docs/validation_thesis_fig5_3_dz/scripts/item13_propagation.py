@@ -12,8 +12,20 @@ import sys
 
 import numpy as np
 
-from common import (DATA, PAIRS, RUN_DIRS, FortranBk, NativeBk, clean_log_lines, fortran_record_offsets,
-                    parse_fortran_real, printed_half_unit, read_record, save_item, stats)
+from common import (
+    DATA,
+    PAIRS,
+    RUN_DIRS,
+    FortranBk,
+    NativeBk,
+    clean_log_lines,
+    fortran_record_offsets,
+    parse_fortran_real,
+    printed_half_unit,
+    read_record,
+    save_item,
+    stats,
+)
 from parse_logs import averages_out, cpp_surface_fixed, fortran_surface_fixed
 
 COLS = ["t", "norm", "Z", "r", "rest_norm"]
@@ -24,7 +36,7 @@ def averages_vs_fortran(f, rows):
     per_col = {}
     worst = {"ratio": -1}
     n_out = 0
-    for frow, crow in zip(f, rows):
+    for frow, crow in zip(f, rows, strict=True):
         for j, col in enumerate(COLS):
             if col == "t":
                 continue      # the time stamps are the same by construction; not counted
@@ -110,7 +122,6 @@ def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv", series_out=Non
     """tsv_path: where the Figure 3 time series go (None: not written); series_out: a dict that
     receives the same time series."""
     labels = bk["labels"]
-    ns = bk["nstata"]
     t = bk["times"]
     absmax = {k: float(np.abs(bk[k]).max()) for k in ("fortran", "cpu", "gpu")}
     scale = max(absmax["fortran"], 1e-4)
@@ -170,7 +181,6 @@ def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv", series_out=Non
         }
     # amplitude and phase parts of the difference per analysis step: c_a = c_F (1 + alpha + i beta)
     # on average (|c_F|^2 weighted). A per-step norm bias gives alpha(t) proportional to t.
-    cf = bk["fortran"].reshape(len(t), -1)
     amp = {}
     for a, b in PAIRS:
         ref = bk[b].reshape(len(t), -1)
@@ -181,8 +191,9 @@ def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv", series_out=Non
         w = window
         slope, icpt = np.polyfit(t[w], z.real[w], 1)
         y = z.real[w]
+        # called within this loop iteration only, so the loop variables it reads are current
         def r2(pred):
-            return float(1 - np.sum((y - pred) ** 2) / np.sum((y - y.mean()) ** 2))
+            return float(1 - np.sum((y - pred) ** 2) / np.sum((y - y.mean()) ** 2))  # noqa: B023
         ww = l2[w] ** 2                                    # |c_F(t)|^2 weights
         sw, iw = np.polyfit(t[w], y, 1, w=np.sqrt(ww))
         qs = np.array_split(y, 4)
@@ -250,10 +261,12 @@ def checkpoint_layout(path):
     with open(path, "rb") as f:
         assert f.read(16).startswith(b"SPODVR-CHECKPNT")
         f.read(4)
-        (n,) = struct.unpack("<Q", f.read(8)); f.read(n)
+        (n,) = struct.unpack("<Q", f.read(8))
+        f.read(n)
         (count,) = struct.unpack("<Q", f.read(8))
         for _ in range(count):
-            (n,) = struct.unpack("<Q", f.read(8)); f.read(n + 8)
+            (n,) = struct.unpack("<Q", f.read(8))
+            f.read(n + 8)
         (time,) = struct.unpack("<d", f.read(8))
         nrot, nxy, nzr, nr, nzsp = struct.unpack("<5i", f.read(20))
         idx, prev = struct.unpack("<2i", f.read(8))
@@ -321,8 +334,9 @@ def psi_compare():
 def derive_psi():
     """Physical norms at T (from the averages and the specular vector) and the psi differences
     relative to the initial norm (1): the final psi is the small residual left on the grids."""
-    from common import INPUT_DIR, load_item
     import json
+
+    from common import INPUT_DIR, load_item
     r = load_item("item13_psi")
     if not r:
         return None

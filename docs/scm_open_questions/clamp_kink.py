@@ -21,8 +21,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # python3 -I leaves the script's folder off the path
-import make_figures as mf  # noqa: E402  (the ΔV transcription and the example data)
 import matplotlib.pyplot as plt  # noqa: E402
+
+import make_figures as mf  # noqa: E402  (the ΔV transcription and the example data)
 
 PUBLISHED = [("Cu111_BOSS_briT90P90", "Cu111_Surf252_briT90P90"),
              ("Cu111_BOSS_briT90P90", "Cu111_Surf556_briT90P90"),
