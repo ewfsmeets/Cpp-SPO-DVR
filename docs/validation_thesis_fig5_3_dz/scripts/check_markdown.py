@@ -7,6 +7,7 @@
 - no `$` math; `runs/...` and `~/...` paths are not links;
 - every file in the folder: no trailing whitespace (text files), final newline, <= 5 MB, not
   git-ignored, no __pycache__, binaries only PNG and .gz."""
+
 from __future__ import annotations
 
 import re
@@ -16,8 +17,15 @@ from pathlib import Path
 
 from common import DOC, REPO
 
-MD = ["README.md", "stages.md", "appendix.md", "scripts/criteria.md", "scripts/STATUS.md", "scripts/NOTES.md",
-      "scripts/review_log.md"]
+MD = [
+    "README.md",
+    "stages.md",
+    "appendix.md",
+    "scripts/criteria.md",
+    "scripts/STATUS.md",
+    "scripts/NOTES.md",
+    "scripts/review_log.md",
+]
 problems = []
 
 

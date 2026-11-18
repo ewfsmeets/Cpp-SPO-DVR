@@ -8,6 +8,7 @@ implementation. clamp_kink.py imports it. Writes pair_function.png and edge_jump
 
 Usage: python3 -I -B docs/scm_open_questions/make_figures.py   (run time ≈ 1 s; needs matplotlib)
 """
+
 import math
 from pathlib import Path
 
@@ -19,7 +20,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent.parent / "potentials" / "H2Cu111SRP_C3v.dir"
 HARTREE_TO_EV = 1 / 0.036749308286  # the precise factor of GetCRPDistSurfPotential
-BOHR_IN_ANGSTROM = 0.529177249      # the CRP library's factor
+BOHR_IN_ANGSTROM = 0.529177249  # the CRP library's factor
 A0 = 2.601516559 / BOHR_IN_ANGSTROM  # nearest-neighbour distance of the CRP set H2Cu111SRP_C3v (CRPData line 3), bohr
 
 
@@ -52,7 +53,7 @@ def read_atoms():
 
 def kept_atoms(atoms, cutoff=16.0):
     """The atoms ΔV sums over: layers 1 and 2, displaced position within the cut-off of the origin."""
-    return [a for a in atoms if a[2] <= 2 and sum(x * x for x in a[0]) < cutoff ** 2]
+    return [a for a in atoms if a[2] <= 2 and sum(x * x for x in a[0]) < cutoff**2]
 
 
 def pair_parameters(P, t):
@@ -79,8 +80,11 @@ def delta_v(P, atoms, s, X, Y, Z, r, theta, phi, clamp=None):
     """ΔV in eV at a Cartesian centre (X, Y, Z) with rescaling on; clamp (lo, hi) in bohr, default as coded."""
     lo, hi = clamp or coded_clamp(P)
     p, c = pair_parameters(P, min(max(r, lo), hi))
-    d = (0.5 * r * math.sin(theta) * math.cos(phi), 0.5 * r * math.sin(theta) * math.sin(phi),
-         0.5 * r * math.cos(theta))
+    d = (
+        0.5 * r * math.sin(theta) * math.cos(phi),
+        0.5 * r * math.sin(theta) * math.sin(phi),
+        0.5 * r * math.cos(theta),
+    )
     h = [(X - d[0], Y - d[1], Z - d[2]), (X + d[0], Y + d[1], Z + d[2])]
     centre = [(X / s), (Y / s), Z]
     h_ideal = [tuple(centre[k] - d[k] for k in range(3)), tuple(centre[k] + d[k] for k in range(3))]
@@ -96,10 +100,14 @@ def plot_pair_function(P):
     fig, ax = plt.subplots(figsize=(8.8, 4.4), dpi=100)
     radii = [1.5 + 0.01 * i for i in range(951)]
     upper_published = published_clamp(P)[1]
-    curves = [(1.4, "t = 1.4 bohr: near the H₂ equilibrium bond length (both clamps)"),
-              (P[17], "t = 1.847 bohr: every r ≥ 1.847 bohr as coded"),
-              (upper_published, f"t = {upper_published:.2f} bohr (1.847 Å): every r ≥ {upper_published:.2f} bohr"
-                                " with the published clamp")]
+    curves = [
+        (1.4, "t = 1.4 bohr: near the H₂ equilibrium bond length (both clamps)"),
+        (P[17], "t = 1.847 bohr: every r ≥ 1.847 bohr as coded"),
+        (
+            upper_published,
+            f"t = {upper_published:.2f} bohr (1.847 Å): every r ≥ {upper_published:.2f} bohr with the published clamp",
+        ),
+    ]
     for t, label in curves:
         p, c = pair_parameters(P, t)
         ax.plot(radii, [pair_function(R, p, c) * HARTREE_TO_EV for R in radii], label=label)
@@ -129,8 +137,8 @@ def plot_edge_jump(P, atoms, a_t):
     def at(v):
         return delta_v(P, kept, s, u + 0.5 * v, math.sqrt(3) / 2 * v, Z, r, theta, 0.0)
 
-    periodic = [at((f % 1.0) * a_t) for f in fractions]   # what the periodic x, y grid repeats
-    snapshot = [at(f * a_t) for f in fractions]            # the snapshot itself, around the edge
+    periodic = [at((f % 1.0) * a_t) for f in fractions]  # what the periodic x, y grid repeats
+    snapshot = [at(f * a_t) for f in fractions]  # the snapshot itself, around the edge
     fig, ax = plt.subplots(figsize=(8.8, 4.4), dpi=100)
     ax.plot(fractions, snapshot, label="the snapshot itself", color="0.55", ls="--")
     ax.plot(fractions, periodic, label="the periodic grid (what the run uses)", lw=2)

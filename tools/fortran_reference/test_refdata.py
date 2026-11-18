@@ -56,9 +56,24 @@ REFDATA = TOOLS_DIR / "refdata.py"
 EXPECTED = TOOLS_DIR / "expected" / "r1713.tsv"
 # The install r1713.tsv names; the stub install of these tests takes its id.
 INSTALL_ID = re.search(r"^# install: (\S+)$", EXPECTED.read_text(encoding="utf-8"), re.MULTILINE).group(1)
-CASES = ("expected-file", "allowed", "edited-number", "deleted-file", "unknown-label", "s-magnitude", "bk-limit",
-         "bk-nan", "non-finite-number", "number-count", "provenance", "install-mismatch", "fine-without-fort22",
-         "multi-match", "refusals", "reference-lists")
+CASES = (
+    "expected-file",
+    "allowed",
+    "edited-number",
+    "deleted-file",
+    "unknown-label",
+    "s-magnitude",
+    "bk-limit",
+    "bk-nan",
+    "non-finite-number",
+    "number-count",
+    "provenance",
+    "install-mismatch",
+    "fine-without-fort22",
+    "multi-match",
+    "refusals",
+    "reference-lists",
+)
 EXPECTED_HEADER = "# install: x\nglob\tallowed\tlimit\treason\n"
 
 HARDWALL = "tests/reference/hardwall_small"
@@ -125,8 +140,10 @@ NAN = float("nan")
 
 def bk_file(values=BK_VALUES):
     """A fort.21 of 10 header records and 2 BK records of the given coefficients (re, im)."""
+
     def record(payload):
         return struct.pack("<i", len(payload)) + payload + struct.pack("<i", len(payload))
+
     header = b"".join(record(struct.pack("<2i", k, 2)) for k in range(10))
     return header + b"".join(record(struct.pack("<4d", *values[k], *values[k + 1])) for k in (0, 2))
 
@@ -159,13 +176,15 @@ def old_files():
 def new_files():
     """The NEW tree (5.24 style, every difference allowed by r1713.tsv): path -> content."""
     files = old_files()
-    files.update({
-        f"{HARDWALL}/fortran_stdout.txt": STDOUT_524.format(probability="0.12345678E-03"),
-        f"{HARDWALL}/fortran_fort25.txt": " 0.5 -0.135\n",
-        f"{DAILIGHT_SHORT}/fortran_stdout.txt": STDOUT_524.format(probability="0.11000000E-20"),
-        f"{DAILIGHT_SMALL}/fortran_fort21.bin": changed_bk_file(1, 0.1, -0.2 + 1e-13),
-        f"{DAILIGHT_SMALL}/fine_full/fort.25": FORT25_524,
-    })
+    files.update(
+        {
+            f"{HARDWALL}/fortran_stdout.txt": STDOUT_524.format(probability="0.12345678E-03"),
+            f"{HARDWALL}/fortran_fort25.txt": " 0.5 -0.135\n",
+            f"{DAILIGHT_SHORT}/fortran_stdout.txt": STDOUT_524.format(probability="0.11000000E-20"),
+            f"{DAILIGHT_SMALL}/fortran_fort21.bin": changed_bk_file(1, 0.1, -0.2 + 1e-13),
+            f"{DAILIGHT_SMALL}/fine_full/fort.25": FORT25_524,
+        }
+    )
     del files[f"{KERNELS}/VERSIONS"]
     return files
 
@@ -183,8 +202,9 @@ def write_tree(root, files):
 
 def run(*arguments):
     """(exit status, stdout + stderr) of refdata.py with arguments."""
-    result = subprocess.run([sys.executable, "-I", "-B", str(REFDATA), *map(str, arguments)],
-                            capture_output=True, text=True)
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(REFDATA), *map(str, arguments)], capture_output=True, text=True
+    )
     return result.returncode, result.stdout + result.stderr
 
 
@@ -207,15 +227,28 @@ def record_manifests(work, new, install_id, fine_input=True):
     shutil.copy(install / "BUILDINFO.tsv", copies / f"{install_id}.tsv")
     fort22 = work / "fort.22"
     shutil.copy(new / DAILIGHT_SMALL / "fortran_fort21.bin", fort22)
-    calls = [(HARDWALL, ["fortran_stdout.txt", "fortran_averages.out", "fortran_fort25.txt"], []),
-             (DAILIGHT_SHORT, ["fortran_stdout.txt"], []),
-             (DAILIGHT_SMALL, ["fortran_fort21.bin"], []),
-             (DAILIGHT_SMALL, ["fine_full/fort.25"], ["--input", fort22] if fine_input else []),
-             (KERNELS, ["spline.out"], []),
-             (SCM_EXAMPLE, ["rescaling_on.out"], [])]
+    calls = [
+        (HARDWALL, ["fortran_stdout.txt", "fortran_averages.out", "fortran_fort25.txt"], []),
+        (DAILIGHT_SHORT, ["fortran_stdout.txt"], []),
+        (DAILIGHT_SMALL, ["fortran_fort21.bin"], []),
+        (DAILIGHT_SMALL, ["fine_full/fort.25"], ["--input", fort22] if fine_input else []),
+        (KERNELS, ["spline.out"], []),
+        (SCM_EXAMPLE, ["rescaling_on.out"], []),
+    ]
     for case, files, inputs in calls:
-        status, output = run("manifest", "record", new / case, *files, "--script", "test_refdata.py",
-                             "--install", install, "--binary", install / "bin" / "spodvr.x", *inputs)
+        status, output = run(
+            "manifest",
+            "record",
+            new / case,
+            *files,
+            "--script",
+            "test_refdata.py",
+            "--install",
+            install,
+            "--binary",
+            install / "bin" / "spodvr.x",
+            *inputs,
+        )
         if status:
             raise SystemExit(f"FAIL: manifest record for {case}: {output}")
 
@@ -270,16 +303,24 @@ def stdout_cases(name, old, new):
     """The cases that edit a stdout of NEW (classes labels and abs)."""
     if name == "edited-number":
         edit(new, f"{HARDWALL}/fortran_stdout.txt", "0.12345678E-03", "0.12345679E-03")
-        expect_failure(*compare(old, new, "--no-provenance"), r"labels .*hardwall_small/fortran_stdout.txt.*0\.12345678E-03 became")
+        expect_failure(
+            *compare(old, new, "--no-provenance"), r"labels .*hardwall_small/fortran_stdout.txt.*0\.12345678E-03 became"
+        )
     elif name == "unknown-label":
         edit(new, f"{HARDWALL}/fortran_stdout.txt", "Number of time steps taken", "Number of steps taken")
-        expect_failure(*compare(old, new, "--no-provenance"), r"hardwall_small/fortran_stdout.txt.*text .*Number of time steps")
+        expect_failure(
+            *compare(old, new, "--no-provenance"), r"hardwall_small/fortran_stdout.txt.*text .*Number of time steps"
+        )
     elif name == "non-finite-number":
         edit(new, f"{DAILIGHT_SHORT}/fortran_stdout.txt", "0.11000000E-20", "0.1100000E+999")
-        expect_failure(*compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*not finite")
+        expect_failure(
+            *compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*not finite"
+        )
     elif name == "number-count":
         edit(new, f"{DAILIGHT_SHORT}/fortran_stdout.txt", "   0  0.9440341E-25", "   0.00000000000000")
-        expect_failure(*compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*0\.9440341E-25")
+        expect_failure(
+            *compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*0\.9440341E-25"
+        )
 
 
 def fort25_cases(old, new):
@@ -356,8 +397,10 @@ def refusals_case(work):
         expected.write_text(text, encoding="utf-8")
         expect_refusal(*compare(old, new, expected=expected), pattern)
     shutil.rmtree(new / "tests" / "crplib")
-    expect_refusal(*compare(old, new, "--no-provenance"),
-                   "lacks one of tests/reference, tests/crplib/reference, tests/scm/reference")
+    expect_refusal(
+        *compare(old, new, "--no-provenance"),
+        "lacks one of tests/reference, tests/crplib/reference, tests/scm/reference",
+    )
 
 
 def multi_match_case(work):
@@ -369,8 +412,9 @@ def multi_match_case(work):
     overlap = "tests/reference/*_small/fortran_stdout.txt\tabs\t1e-20\toverlaps the hardwall_* row"
     expected = work / "expected.tsv"
     expected.write_text("\n".join(comments + rows[:1] + sorted(rows[1:] + [overlap])) + "\n", encoding="utf-8")
-    expect_refusal(*compare(old, new, "--no-provenance", expected=expected),
-                   r"hardwall_small/fortran_stdout.txt matches the rows")
+    expect_refusal(
+        *compare(old, new, "--no-provenance", expected=expected), r"hardwall_small/fortran_stdout.txt matches the rows"
+    )
 
 
 def load_module(name, path):
@@ -398,14 +442,20 @@ def list_mismatches(cmake_text, check_docs_trees, config_trees, precommit_exclud
     cmake = cmake_lists(cmake_text)
     edited = tuple(tree for tree in refdata.REFERENCE_TREES if not re.match(precommit_exclude, f"{tree}/MANIFEST.tsv"))
     copies = {
-        "ReferenceManifest.cmake manifest_header": (cmake.get("manifest_header"),
-                                                    ("\t".join(refdata.MANIFEST_COLUMNS),)),
-        "ReferenceManifest.cmake manifest_columns": (cmake.get("manifest_columns"),
-                                                     (str(len(refdata.MANIFEST_COLUMNS)),)),
+        "ReferenceManifest.cmake manifest_header": (
+            cmake.get("manifest_header"),
+            ("\t".join(refdata.MANIFEST_COLUMNS),),
+        ),
+        "ReferenceManifest.cmake manifest_columns": (
+            cmake.get("manifest_columns"),
+            (str(len(refdata.MANIFEST_COLUMNS)),),
+        ),
         "ReferenceManifest.cmake reference_trees": (cmake.get("reference_trees"), refdata.REFERENCE_TREES),
         "ReferenceManifest.cmake not_a_case": (cmake.get("not_a_case"), refdata.NOT_A_CASE),
-        "check_docs.py REFERENCE_TREES": (tuple(tree.rstrip("/") for tree in check_docs_trees),
-                                          refdata.REFERENCE_TREES),
+        "check_docs.py REFERENCE_TREES": (
+            tuple(tree.rstrip("/") for tree in check_docs_trees),
+            refdata.REFERENCE_TREES,
+        ),
         "reference_config.sh FORTRAN_REFERENCE_TREES": (tuple(config_trees), refdata.REFERENCE_TREES),
         "the trees not excluded in .pre-commit-config.yaml": (edited, ()),
     }
@@ -416,16 +466,25 @@ def reference_lists_case():
     """The copies agree with refdata.py; copies with a tree or NOT_A_CASE changed do not."""
     cmake_text = (TOOLS_DIR / "ReferenceManifest.cmake").read_text(encoding="utf-8")
     check_docs_trees = load_module("check_docs", REPO_DIR / "tools" / "check_docs.py").REFERENCE_TREES
-    config_trees = subprocess.run(["bash", "-c", 'source "$0"; printf "%s\\n" "${FORTRAN_REFERENCE_TREES[@]}"',
-                                   str(TOOLS_DIR / "reference_config.sh")],
-                                  capture_output=True, text=True, check=True).stdout.split()
+    config_trees = subprocess.run(
+        [
+            "bash",
+            "-c",
+            'source "$0"; printf "%s\\n" "${FORTRAN_REFERENCE_TREES[@]}"',
+            str(TOOLS_DIR / "reference_config.sh"),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
     precommit = (REPO_DIR / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     exclude = re.search(r"^exclude: (\S+)", precommit, re.MULTILINE).group(1)
     mismatches = list_mismatches(cmake_text, check_docs_trees, config_trees, exclude)
     if mismatches:
         raise SystemExit("FAIL: a copy of a refdata.py list differs:\n" + "\n".join(mismatches))
-    planted = cmake_text.replace(" tests/scm/reference)", ")").replace("set(not_a_case fortran_unformatted)",
-                                                                       "set(not_a_case other)")
+    planted = cmake_text.replace(" tests/scm/reference)", ")").replace(
+        "set(not_a_case fortran_unformatted)", "set(not_a_case other)"
+    )
     found = list_mismatches(planted, check_docs_trees[:2], config_trees[:2], exclude.replace("|scm", ""))
     if len(found) != 5:
         raise SystemExit(f"FAIL: 5 planted differences, {len(found)} reported:\n" + "\n".join(found))
@@ -450,9 +509,15 @@ def run_case(name, work):
     elif name == "provenance":
         provenance_case(work)
     elif name == "install-mismatch":
-        expect_failure(*compare(*make_trees(work, "other-install")), rf"MANIFEST lines name install other-install, not {INSTALL_ID}")
+        expect_failure(
+            *compare(*make_trees(work, "other-install")),
+            rf"MANIFEST lines name install other-install, not {INSTALL_ID}",
+        )
     elif name == "fine-without-fort22":
-        expect_failure(*compare(*make_trees(work, INSTALL_ID, fine_input=False)), r"fine_full/fort.25: a fine-analysis file without input fort.22")
+        expect_failure(
+            *compare(*make_trees(work, INSTALL_ID, fine_input=False)),
+            r"fine_full/fort.25: a fine-analysis file without input fort.22",
+        )
     elif name == "bk-nan":
         bk_nan_case(work)
     elif name == "multi-match":

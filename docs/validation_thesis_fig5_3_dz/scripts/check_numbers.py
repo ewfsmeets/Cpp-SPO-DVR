@@ -3,6 +3,7 @@
 generated tables, code spans and code blocks) must match a value in scripts/results.json at the
 precision written, or be a listed constant (criteria, item numbers, input labels).
 Prints the numbers that match nothing; exit 1 if there are any."""
+
 from __future__ import annotations
 
 import json
@@ -14,9 +15,53 @@ from common import DOC, RESULTS
 FILES = ["README.md", "stages.md", "appendix.md"]
 # constants that are definitions, not results: criteria and tolerances, digits, item numbers,
 # physical labels (v=0, j=0, Fig. 5.3), units and formats, citation volumes and pages
-CONSTANTS = {1e-10, 1e-11, 1e-12, 1e-13, 1e-14, 1e-6, 1e-8, 1e-4, 1e-19, 1e-2, 1.01, 2.0, 5.3, 1e-15, 1e-16,
-             64.0, 880.0, 2026.0, 1.0, 0.5, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
-             17.0, 18.0, 19.0, 20.0, 0.0, 100.0, 1995.0, 6280.0, 102.0, 360.0, 390.0}
+CONSTANTS = {
+    1e-10,
+    1e-11,
+    1e-12,
+    1e-13,
+    1e-14,
+    1e-6,
+    1e-8,
+    1e-4,
+    1e-19,
+    1e-2,
+    1.01,
+    2.0,
+    5.3,
+    1e-15,
+    1e-16,
+    64.0,
+    880.0,
+    2026.0,
+    1.0,
+    0.5,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    0.0,
+    100.0,
+    1995.0,
+    6280.0,
+    102.0,
+    360.0,
+    390.0,
+}
 SUP = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹⁻", "0123456789-")
 
 
@@ -40,6 +85,7 @@ def numbers_in_results():
                     vals.append(float(m))
                 except ValueError:
                     pass
+
     walk(json.loads(RESULTS.read_text()))
     return vals
 
@@ -48,14 +94,16 @@ def prose(text):
     text = re.sub(r"<!-- BEGIN table:(\S+) -->.*?<!-- END table:\1 -->", "", text, flags=re.S)
     text = re.sub(r"```.*?```", "", text, flags=re.S)
     text = re.sub(r"`[^`]*`", "", text)
-    text = re.sub(r"\]\([^)]*\)", "]", text)          # link targets
+    text = re.sub(r"\]\([^)]*\)", "]", text)  # link targets
     text = re.sub(r'<a id="[^"]*"></a>', "", text)
     text = re.sub(r"\(\d{4}\)", "", text)
     text = re.sub(r"^\|.*\|$", "", text, flags=re.M)  # hand-written tables are checked too, see below
     return text
 
 
-TOKEN = re.compile(r"(?<![\w.])([-+−]?\d+(?:[.,]\d+)?(?:[eE][-+−]?\d+)?)(?:\s*×\s*10([⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+))?(\s*%)?(\s+million)?")
+TOKEN = re.compile(
+    r"(?<![\w.])([-+−]?\d+(?:[.,]\d+)?(?:[eE][-+−]?\d+)?)(?:\s*×\s*10([⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+))?(\s*%)?(\s+million)?"
+)
 
 
 def half_unit(written: str) -> float:
@@ -86,8 +134,11 @@ def main():
         text = (DOC / name).read_text()
         body = prose(text)
         # also the hand-written tables (not generated): rows outside table markers
-        tables = "\n".join(l for l in re.sub(r"<!-- BEGIN table:(\S+) -->.*?<!-- END table:\1 -->", "", text, flags=re.S)
-                           .splitlines() if l.startswith("|"))
+        tables = "\n".join(
+            l
+            for l in re.sub(r"<!-- BEGIN table:(\S+) -->.*?<!-- END table:\1 -->", "", text, flags=re.S).splitlines()
+            if l.startswith("|")
+        )
         for part in (body, re.sub(r"`[^`]*`", "", tables)):
             for line in part.splitlines():
                 for m in TOKEN.finditer(line):

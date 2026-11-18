@@ -7,6 +7,7 @@ differs between the strict and the fast builds (by 1 ulp, a fast-math rounding o
 it is an absorber factor of the propagation, not used by the analysis. The copy carries the fast
 build's value in that one header field; the coefficient records are untouched (checked below).
 Writes runs/thesis_fig5_3_dz_validation/strict_bk/bk_coefficients.bin (266 MB, git-ignored)."""
+
 from __future__ import annotations
 
 import shutil
@@ -24,9 +25,9 @@ TARGET = WORK / "strict_bk" / "bk_coefficients.bin"
 def parameter_offset(path, name):
     """Byte offset of the double value of one restart parameter in a native BK file header."""
     with open(path, "rb") as f:
-        f.read(16 + 4)                                  # magic, version
+        f.read(16 + 4)  # magic, version
         (n,) = struct.unpack("<Q", f.read(8))
-        f.read(n)                                       # SystemID
+        f.read(n)  # SystemID
         (count,) = struct.unpack("<Q", f.read(8))
         for _ in range(count):
             (n,) = struct.unpack("<Q", f.read(8))
@@ -50,7 +51,10 @@ def main():
     assert copy.first_offset == strict.first_offset and copy.n_records == strict.n_records
     a = np.memmap(SOURCE, dtype=np.uint8, mode="r")
     b = np.memmap(TARGET, dtype=np.uint8, mode="r")
-    assert np.array_equal(a[strict.first_offset - 8 * strict.nstata * strict.nviba:], b[copy.first_offset - 8 * copy.nstata * copy.nviba:])
+    assert np.array_equal(
+        a[strict.first_offset - 8 * strict.nstata * strict.nviba :],
+        b[copy.first_offset - 8 * copy.nstata * copy.nviba :],
+    )
     print(f"{TARGET}: {NAME} {strict.parameters[NAME]!r} -> {fast.parameters[NAME]!r}; energies and records identical")
 
 

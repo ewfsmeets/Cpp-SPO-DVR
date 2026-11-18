@@ -3,6 +3,7 @@
 (horizontal bars, set-up + rest vs propagation stacked, speed-up against the Fortran at the bar
 ends), and the timing table fragment tables/timing.md. Reads data/items/phase0.json and
 data/items/strict_gpu.json."""
+
 from __future__ import annotations
 
 import math
@@ -18,9 +19,12 @@ def main():
     sv = load_item("strict_gpu")["validity"]
     R = R | {"gpu_strict": {"time": sv["time"], "program_timing": sv["program_timing"]}}
     wall = {k: R[k]["time"]["wall_s"] for k in R}
-    prop = {"fortran": R["fortran"]["program_timing"]["Propagating the wavefunction"],
-            "cpu": R["cpu"]["program_timing"]["propagation_s"], "gpu": R["gpu"]["program_timing"]["propagation_s"],
-            "gpu_strict": R["gpu_strict"]["program_timing"]["propagation_s"]}
+    prop = {
+        "fortran": R["fortran"]["program_timing"]["Propagating the wavefunction"],
+        "cpu": R["cpu"]["program_timing"]["propagation_s"],
+        "gpu": R["gpu"]["program_timing"]["propagation_s"],
+        "gpu_strict": R["gpu_strict"]["program_timing"]["propagation_s"],
+    }
     order = ["gpu", "gpu_strict", "cpu", "fortran"]
     fig, ax = plt.subplots(figsize=(8.8, 4.6))
     for i, k in enumerate(order):
@@ -30,33 +34,65 @@ def main():
         sp = wall["fortran"] / wall[k]
         txt = f"{wall[k] / 3600:.2f} h" + ("" if k == "fortran" else f"   ×{sp:.1f} vs Fortran")
         ax.text(wall[k] / 3600 + 0.2, i, txt, va="center", fontsize=9.5, color="#0b0b0b")
-    ax.set_yticks(range(len(order)), [PROGRAM[k]["short"].replace(" strict", "\nstrict") + ("\n(RTX 4070 Ti)" if k.startswith("gpu") else "\n(8 threads)")
-                                      for k in order], fontsize=9)
-    share = math.floor(1000 * min(prop[k] / wall[k] for k in wall)) / 1000   # rounded down: "≥"
-    ax.set_xlabel(f"Wall-clock time (hours); the propagation is ≥ {100 * share:.1f}% of each run (light end: set-up, analysis, output)")
+    ax.set_yticks(
+        range(len(order)),
+        [
+            PROGRAM[k]["short"].replace(" strict", "\nstrict")
+            + ("\n(RTX 4070 Ti)" if k.startswith("gpu") else "\n(8 threads)")
+            for k in order
+        ],
+        fontsize=9,
+    )
+    share = math.floor(1000 * min(prop[k] / wall[k] for k in wall)) / 1000  # rounded down: "≥"
+    ax.set_xlabel(
+        f"Wall-clock time (hours); the propagation is ≥ {100 * share:.1f}% of each run (light end: set-up, analysis, output)"
+    )
     ax.set_xlim(0, 21.5)
     ax.grid(axis="y", visible=False)
     gpu = H["gpu"].split(",")
-    box = (f"CPU  {H['cpu_model']}\n     {H['cores_per_socket']} cores / {H['logical_cpus']} threads, {H['mem_total_gib']:.1f} GiB RAM\n"
-           f"GPU  {gpu[0].strip()}, {gpu[1].strip()}\nOS   {H['os']} under WSL2\n"
-           f"all runs: 8 OpenMP threads, one after another,\nas run (not like-for-like, see table);\nstrict GPU run added 2026-11-08")
-    ax.text(0.985, 0.04, box, transform=ax.transAxes, ha="right", va="bottom", multialignment="left", family="DejaVu Sans Mono", fontsize=7.8,
-            bbox=dict(boxstyle="round,pad=0.4", fc="#f6f6f4", ec=MUTED, lw=0.6))
+    box = (
+        f"CPU  {H['cpu_model']}\n     {H['cores_per_socket']} cores / {H['logical_cpus']} threads, {H['mem_total_gib']:.1f} GiB RAM\n"
+        f"GPU  {gpu[0].strip()}, {gpu[1].strip()}\nOS   {H['os']} under WSL2\n"
+        f"all runs: 8 OpenMP threads, one after another,\nas run (not like-for-like, see table);\nstrict GPU run added 2026-11-08"
+    )
+    ax.text(
+        0.985,
+        0.04,
+        box,
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        multialignment="left",
+        family="DejaVu Sans Mono",
+        fontsize=7.8,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#f6f6f4", ec=MUTED, lw=0.6),
+    )
     ax.set_title("Execution time of the 7000-step run (7000 × 2.5 a.u.)", loc="left")
     save(fig, FIGURES / "fig4_execution_time.png")
 
     # table fragment
-    ffts = {"fortran": "FFTW 3.3.10, ESTIMATE plans", "cpu": "oneMKL 2026.2 (FFTW3 interface)", "gpu": "cuFFT 12.3 (CUDA 13.3)",
-            "gpu_strict": "cuFFT 12.3 (CUDA 13.3)"}
-    comp = {"fortran": "gfortran 15.2 -O3 -fopenmp -fdefault-real-8", "cpu": "g++ 15.2, fast-math, -march=native, LTO",
-            "gpu": "g++ 15.2 + nvcc 13.3, fast-math (FMA kernels), -march=native",
-            "gpu_strict": "g++ 15.2 + nvcc 13.3, no fast math, no FMA kernels, x86-64-v3"}
-    lines = ["| Run | Wall | Propagation | s/step | User CPU | CPU busy | Max RSS | Compiler, flags | FFT library | Threads |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+    ffts = {
+        "fortran": "FFTW 3.3.10, ESTIMATE plans",
+        "cpu": "oneMKL 2026.2 (FFTW3 interface)",
+        "gpu": "cuFFT 12.3 (CUDA 13.3)",
+        "gpu_strict": "cuFFT 12.3 (CUDA 13.3)",
+    }
+    comp = {
+        "fortran": "gfortran 15.2 -O3 -fopenmp -fdefault-real-8",
+        "cpu": "g++ 15.2, fast-math, -march=native, LTO",
+        "gpu": "g++ 15.2 + nvcc 13.3, fast-math (FMA kernels), -march=native",
+        "gpu_strict": "g++ 15.2 + nvcc 13.3, no fast math, no FMA kernels, x86-64-v3",
+    }
+    lines = [
+        "| Run | Wall | Propagation | s/step | User CPU | CPU busy | Max RSS | Compiler, flags | FFT library | Threads |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
     for k in ("fortran", "cpu", "gpu", "gpu_strict"):
         t = R[k]["time"]
-        lines.append(f"| {PROGRAM[k]['short']} | {t['wall']} ({wall[k]:.0f} s) | {prop[k]:.0f} s | {prop[k] / 7000:.2f} | "
-                     f"{t['user_s']:.0f} s | {t['cpu_percent']:.0f}% | {t['max_rss_gib']:.1f} GiB | {comp[k]} | {ffts[k]} | 8 |")
+        lines.append(
+            f"| {PROGRAM[k]['short']} | {t['wall']} ({wall[k]:.0f} s) | {prop[k]:.0f} s | {prop[k] / 7000:.2f} | "
+            f"{t['user_s']:.0f} s | {t['cpu_percent']:.0f}% | {t['max_rss_gib']:.1f} GiB | {comp[k]} | {ffts[k]} | 8 |"
+        )
     TABLES.mkdir(exist_ok=True)
     (TABLES / "timing.md").write_text("\n".join(lines) + "\n")
     print({k: round(wall["fortran"] / wall[k], 2) for k in wall}, {k: round(prop[k] / 7000, 3) for k in prop})

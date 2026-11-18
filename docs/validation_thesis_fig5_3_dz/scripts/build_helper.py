@@ -9,6 +9,7 @@ includes, -O3 -ffast-math -march=native, LTO). Link: the `spodvr` link line of
 objects, so the machine code is generated at this link: same source and flags as the run, not
 the same machine code (hence the bitwise self-checks). Output (binary and object) goes to
 runs/thesis_fig5_3_dz_validation/helpers/<build>/, never into the build directory."""
+
 from __future__ import annotations
 
 import json
@@ -67,7 +68,8 @@ def main():
     cmd = [compiler, *flags, str(obj), "-o", str(exe), *libs]
     subprocess.run(cmd, check=True, cwd=out_dir)
     (out_dir / f"{name}.build.txt").write_text(
-        "compile: " + " ".join([compiler, *cflags]) + "\nlink: " + " ".join([compiler, *flags, "<obj>", *libs]) + "\n")
+        "compile: " + " ".join([compiler, *cflags]) + "\nlink: " + " ".join([compiler, *flags, "<obj>", *libs]) + "\n"
+    )
     print(f"built {exe.relative_to(REPO)}")
 
 

@@ -52,8 +52,9 @@ def run_with(tool, *arguments):
 def expect(what, status, output, want_status, want_output):
     """Raises if the exit status differs or want_output is not in the output."""
     if status != want_status or want_output not in output:
-        raise AssertionError(f"{what}: exit {status}, output {output!r}; expected exit {want_status} "
-                             f"and {want_output!r}")
+        raise AssertionError(
+            f"{what}: exit {status}, output {output!r}; expected exit {want_status} and {want_output!r}"
+        )
 
 
 def finite_case(tool, work):
@@ -74,25 +75,39 @@ def non_finite_case(tool, work):
     with_nan = list(WAVE)
     with_nan[3] = math.nan
     b = write(work / "b.bin", with_nan)
-    expect("NaN in b", *run(tool, a, b), 1,
-           f"DIFFERENT: non-finite value nan in {b} at element 3 (complex value 1, imaginary part)")
+    expect(
+        "NaN in b",
+        *run(tool, a, b),
+        1,
+        f"DIFFERENT: non-finite value nan in {b} at element 3 (complex value 1, imaginary part)",
+    )
     expect("NaN in b, tolerance 1e300", *run(tool, a, b, "1e300"), 1, "DIFFERENT: non-finite value nan")
     with_inf = list(WAVE)
     with_inf[0] = math.inf
     c = write(work / "c.bin", with_inf)
-    expect("inf in a", *run(tool, c, a), 1,
-           f"DIFFERENT: non-finite value inf in {c} at element 0 (complex value 0, real part)")
-    expect("NaN at the same element of both", *run(tool, b, b), 1,
-           f"DIFFERENT: non-finite value nan in {b} at element 3")
+    expect(
+        "inf in a",
+        *run(tool, c, a),
+        1,
+        f"DIFFERENT: non-finite value inf in {c} at element 0 (complex value 0, real part)",
+    )
+    expect(
+        "NaN at the same element of both", *run(tool, b, b), 1, f"DIFFERENT: non-finite value nan in {b} at element 3"
+    )
 
 
 def arguments_case(tool, work):
     """Bad command lines exit 2 with the usage line; files that cannot be compared are refused."""
     a = write(work / "a.bin", WAVE)
-    for what, arguments in (("one file", [a]), ("four arguments", [a, a, "0", "x"]),
-                            ("tolerance abc", [a, a, "abc"]), ("tolerance 1e-13x", [a, a, "1e-13x"]),
-                            ("tolerance -1e-13", [a, a, "-1e-13"]), ("tolerance nan", [a, a, "nan"]),
-                            ("tolerance inf", [a, a, "inf"])):
+    for what, arguments in (
+        ("one file", [a]),
+        ("four arguments", [a, a, "0", "x"]),
+        ("tolerance abc", [a, a, "abc"]),
+        ("tolerance 1e-13x", [a, a, "1e-13x"]),
+        ("tolerance -1e-13", [a, a, "-1e-13"]),
+        ("tolerance nan", [a, a, "nan"]),
+        ("tolerance inf", [a, a, "inf"]),
+    ):
         expect(what, *run_with(tool, *arguments), 2, "usage: spodvr_compare_wave <a> <b> [tolerance]")
     empty = write(work / "empty.bin", [])
     partial = work / "partial.bin"
@@ -101,7 +116,7 @@ def arguments_case(tool, work):
         status, stderr = run_with(tool, a, other)
         expect(what, status, stderr, 1, f"'{other}'")
         if not stderr.startswith("error: ") or "; give two files written by spodvr_dump_wave" not in stderr:
-            raise AssertionError(f"{what}: {stderr!r} is not \"error: <what>; <fix>\"")
+            raise AssertionError(f'{what}: {stderr!r} is not "error: <what>; <fix>"')
 
 
 def main(argv):

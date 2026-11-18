@@ -4,6 +4,7 @@ printed-precision tolerances, statistics, and readers of the binary run files.
 Every number that appears in the report is computed by a script from the raw run files and
 stored in `scripts/results.json` (via `update_results`) or in a small extract under `data/`.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,11 +20,11 @@ SCRIPTS = Path(__file__).resolve().parent
 DOC = SCRIPTS.parent
 REPO = DOC.parents[1]
 DATA = DOC / "data"
-ITEMS = DATA / "items"          # per-item extracts (JSON), read by the default make_all mode
+ITEMS = DATA / "items"  # per-item extracts (JSON), read by the default make_all mode
 FIGURES = DOC / "figures"
-TABLES = SCRIPTS / "tables"     # generated Markdown table fragments
+TABLES = SCRIPTS / "tables"  # generated Markdown table fragments
 RUNS = REPO / "runs"
-WORK = RUNS / "thesis_fig5_3_dz_validation"   # git-ignored: helper binaries, big intermediates
+WORK = RUNS / "thesis_fig5_3_dz_validation"  # git-ignored: helper binaries, big intermediates
 INPUT_DIR = REPO / "inputs" / "thesis_fig5_3_dz"
 
 RUN_DIRS = {
@@ -44,7 +45,7 @@ PAIR_LABEL = {("cpu", "fortran"): "C++−F", ("gpu", "fortran"): "GPU−F", ("gp
 RESULTS = SCRIPTS / "results.json"
 
 # Units, as used by the codes (UnitConversion legacy / precise)
-CHAEV = 27.2114            # legacy hartree -> eV
+CHAEV = 27.2114  # legacy hartree -> eV
 EV2HA_PRECISE = 0.036749308286
 
 
@@ -145,7 +146,7 @@ def dotted_value(lines: list[str], label: str) -> str:
     for line in lines:
         s = line.strip()
         if s.startswith(label):
-            rest = s[len(label):]
+            rest = s[len(label) :]
             rest = rest.lstrip(" .")
             return rest.strip()
     raise KeyError(label)
@@ -215,7 +216,7 @@ class FortranBk:
     def record(self, k: int) -> np.ndarray:
         """Coefficients of record k (0-based), shape (nviba, nstata) [v, is]."""
         o = self.first_offset + k * self.stride
-        a = np.frombuffer(self._raw[o:o + 8 * self.count], dtype="<f8")
+        a = np.frombuffer(self._raw[o : o + 8 * self.count], dtype="<f8")
         c = a[0::2] + 1j * a[1::2]
         return c.reshape(self.nviba, self.nstata)
 
@@ -241,7 +242,9 @@ class NativeBk:
             self.nstata, self.nviba = struct.unpack("<2i", f.read(8))
             lab = np.frombuffer(f.read(4 * 5 * self.nstata), dtype="<i4").reshape(self.nstata, 5)
             self.labels = {"J": lab[:, 0], "mJ": lab[:, 1], "n": lab[:, 2], "m": lab[:, 3], "order": lab[:, 4]}
-            self.energies = np.frombuffer(f.read(8 * self.nstata * self.nviba), dtype="<f8").reshape(self.nviba, self.nstata)
+            self.energies = np.frombuffer(f.read(8 * self.nstata * self.nviba), dtype="<f8").reshape(
+                self.nviba, self.nstata
+            )
             self.first_offset = f.tell()
         size = os.path.getsize(self.path)
         self.record_bytes = 8 + 16 * self.nstata * self.nviba
@@ -252,13 +255,13 @@ class NativeBk:
 
     def time(self, k: int) -> float:
         o = self.first_offset + k * self.record_bytes
-        return float(np.frombuffer(self._raw[o:o + 8], dtype="<f8")[0])
+        return float(np.frombuffer(self._raw[o : o + 8], dtype="<f8")[0])
 
     def times(self):
         return np.array([self.time(k) for k in range(self.n_records)])
 
     def record(self, k: int) -> np.ndarray:
         o = self.first_offset + k * self.record_bytes + 8
-        a = np.frombuffer(self._raw[o:o + 16 * self.nstata * self.nviba], dtype="<f8")
+        a = np.frombuffer(self._raw[o : o + 16 * self.nstata * self.nviba], dtype="<f8")
         c = a[0::2] + 1j * a[1::2]
         return c.reshape(self.nviba, self.nstata)

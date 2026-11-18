@@ -15,6 +15,7 @@ Comparisons (scaled |dV| = |dV| / max(|V|, 1 eV), V in hartree, 1 eV = 1/27.2114
   asym_cpp / asym_fortran : the PES's own asymmetry, C++ PES at a point vs at the
                representative image chosen by the C++ / Fortran maps
 Writes data/items/item04.json."""
+
 from __future__ import annotations
 
 import hashlib
@@ -46,13 +47,25 @@ def read_pes(path):
     assert {n for _, n in blocks} == {8 * stored}
     stride = blocks[1][0] - blocks[0][0]
     # strided float64 view over the record payloads
-    base = np.memmap(path, dtype="<f8", mode="r", offset=blocks[0][0],
-                     shape=((len(blocks) - 1) * stride // 8 + stored,))
+    base = np.memmap(
+        path, dtype="<f8", mode="r", offset=blocks[0][0], shape=((len(blocks) - 1) * stride // 8 + stored,)
+    )
     values = np.lib.stride_tricks.as_strided(base, shape=(len(blocks), stored), strides=(stride, 8))
-    return {"nzpot": nzpot, "nr": nr, "nx": nx, "ny": ny, "ntheta": ntheta, "nphi": nphi,
-            "grid_ends": {"z1": z1, "r1": r1, "zn": zn, "rn": rn, "x1": x1, "y1": y1, "xn": xn, "yn": yn},
-            "thetas": thetas, "phis": phis, "use_symmetry": use_symmetry, "n_xy_computed": n_xy,
-            "symidx": symidx, "values": values}
+    return {
+        "nzpot": nzpot,
+        "nr": nr,
+        "nx": nx,
+        "ny": ny,
+        "ntheta": ntheta,
+        "nphi": nphi,
+        "grid_ends": {"z1": z1, "r1": r1, "zn": zn, "rn": rn, "x1": x1, "y1": y1, "xn": xn, "yn": yn},
+        "thetas": thetas,
+        "phis": phis,
+        "use_symmetry": use_symmetry,
+        "n_xy_computed": n_xy,
+        "symidx": symidx,
+        "values": values,
+    }
 
 
 def read_grids(path):
@@ -64,7 +77,7 @@ def read_grids(path):
         if len(t) == 2 and not t[0].replace("_", "").isdigit():
             name, n = t[0], int(t[1]) if t[1].isdigit() else None
             if n is not None and name not in ("nz_potential", "iz_analysis"):
-                out[name] = np.array([float(x) for x in lines[i + 1:i + 1 + n]])
+                out[name] = np.array([float(x) for x in lines[i + 1 : i + 1 + n]])
                 i += n + 1
                 continue
             out[name] = int(t[1])
@@ -90,15 +103,21 @@ def read_symmetry(path, ntp, nphi):
             rep_of[int(t[0])], op_of[int(t[0])] = int(t[1]), int(t[2])
     itp = np.arange(ntp)
     iphi, itheta = itp % nphi, itp // nphi
-    gather = np.empty(ntp * n_xy, dtype=np.int64)       # full (itp, ixy) -> stored (itp', irep)
+    gather = np.empty(ntp * n_xy, dtype=np.int64)  # full (itp, ixy) -> stored (itp', irep)
     for ixy in range(n_xy):
         image = phimap[int(op_of[ixy])][iphi] + nphi * itheta
-        gather[ixy * ntp:(ixy + 1) * ntp] = image + ntp * rep_of[ixy]
+        gather[ixy * ntp : (ixy + 1) * ntp] = image + ntp * rep_of[ixy]
     stored_to_full = np.empty(ntp * nrep, dtype=np.int64)  # stored (itp', irep) -> full (itp', rep_xy)
     for irep in range(nrep):
-        stored_to_full[irep * ntp:(irep + 1) * ntp] = itp + ntp * rep_xy[irep]
-    return {"n_xy": n_xy, "n_rep": nrep, "gather": gather, "stored_to_full": stored_to_full,
-            "rep_xy": rep_xy.tolist(), "n_operations_used": len(set(op_of.tolist()))}
+        stored_to_full[irep * ntp : (irep + 1) * ntp] = itp + ntp * rep_xy[irep]
+    return {
+        "n_xy": n_xy,
+        "n_rep": nrep,
+        "gather": gather,
+        "stored_to_full": stored_to_full,
+        "rep_xy": rep_xy.tolist(),
+        "n_operations_used": len(set(op_of.tolist())),
+    }
 
 
 def fortran_representatives(symidx, ntp, n_xy_full, n_xy_red):
@@ -107,7 +126,7 @@ def fortran_representatives(symidx, ntp, n_xy_full, n_xy_red):
     reps = {}
     itp = np.arange(ntp)
     for ixy in range(n_xy_full):
-        s = symidx[ixy * ntp:(ixy + 1) * ntp]
+        s = symidx[ixy * ntp : (ixy + 1) * ntp]
         k = s[0] // ntp
         if np.array_equal(s, itp + ntp * k):
             reps.setdefault(int(k), ixy)
@@ -135,8 +154,12 @@ def describe(a, where_fn, mask=None):
     if a.size == 0:
         return {"n": 0}
     i = int(np.argmax(a))
-    out = {"n": int(a.size), "max": float(a[i]), "argmax": where_fn(int(idx[i]) if idx is not None else i),
-           "n_zero": int(np.count_nonzero(a == 0))}
+    out = {
+        "n": int(a.size),
+        "max": float(a[i]),
+        "argmax": where_fn(int(idx[i]) if idx is not None else i),
+        "n_zero": int(np.count_nonzero(a == 0)),
+    }
     k50, k95 = (a.size - 1) // 2, int(round(0.95 * (a.size - 1)))
     a.partition([k50, k95])
     out["median"] = float(a[k50])
@@ -157,31 +180,55 @@ def main():
     c_full = np.memmap(hdir / "v_full.bin", dtype="<f8", mode="r").reshape(nzr, ntp * nxy)
     f_rep, f_stored_to_full = fortran_representatives(F["symidx"], ntp, nxy, F["n_xy_computed"])
 
-    res = {"build": build, "pes_file": pes_path.name,
-           "dims": {k: F[k] for k in ("nzpot", "nr", "nx", "ny", "ntheta", "nphi", "n_xy_computed", "use_symmetry")},
-           "cpp_n_representatives": sym["n_rep"], "cpp_representatives_xy": sym["rep_xy"],
-           "fortran_representatives_xy": f_rep.tolist(),
-           "n_common_representatives": len(set(sym["rep_xy"]) & set(f_rep.tolist()))}
+    res = {
+        "build": build,
+        "pes_file": pes_path.name,
+        "dims": {k: F[k] for k in ("nzpot", "nr", "nx", "ny", "ntheta", "nphi", "n_xy_computed", "use_symmetry")},
+        "cpp_n_representatives": sym["n_rep"],
+        "cpp_representatives_xy": sym["rep_xy"],
+        "fortran_representatives_xy": f_rep.tolist(),
+        "n_common_representatives": len(set(sym["rep_xy"]) & set(f_rep.tolist())),
+    }
 
     # grids at full precision: .pes header records vs C++ grids.txt (item 2)
     ge = F["grid_ends"]
-    cg = {"z1": g["z_scattering"][0], "zn": g["z_scattering"][nzpot - 1], "r1": g["r"][0], "rn": g["r"][-1],
-          "x1": g["x"][0], "xn": g["x"][-1], "y1": g["y"][0], "yn": g["y"][-1]}
-    res["grid_ends"] = {k: {"fortran": ge[k], "cpp": cg[k], "diff": cg[k] - ge[k],
-                            "ulps": abs(cg[k] - ge[k]) / np.spacing(abs(ge[k])) if ge[k] != 0 else (0.0 if cg[k] == 0 else float("inf"))}
-                        for k in ge}
+    cg = {
+        "z1": g["z_scattering"][0],
+        "zn": g["z_scattering"][nzpot - 1],
+        "r1": g["r"][0],
+        "rn": g["r"][-1],
+        "x1": g["x"][0],
+        "xn": g["x"][-1],
+        "y1": g["y"][0],
+        "yn": g["y"][-1],
+    }
+    res["grid_ends"] = {
+        k: {
+            "fortran": ge[k],
+            "cpp": cg[k],
+            "diff": cg[k] - ge[k],
+            "ulps": abs(cg[k] - ge[k]) / np.spacing(abs(ge[k]))
+            if ge[k] != 0
+            else (0.0 if cg[k] == 0 else float("inf")),
+        }
+        for k in ge
+    }
     dth = g["theta"] - F["thetas"]
     dph = g["phi"] - F["phis"]
-    res["theta"] = {"n": len(dth), "max_abs_diff": float(np.max(np.abs(dth))), "n_identical": int(np.sum(dth == 0)),
-                    "max_ulps": float(np.max(np.abs(dth) / np.spacing(np.abs(F["thetas"]))))}
+    res["theta"] = {
+        "n": len(dth),
+        "max_abs_diff": float(np.max(np.abs(dth))),
+        "n_identical": int(np.sum(dth == 0)),
+        "max_ulps": float(np.max(np.abs(dth) / np.spacing(np.abs(F["thetas"])))),
+    }
     res["phi"] = {"n": len(dph), "max_abs_diff": float(np.max(np.abs(dph))), "n_identical": int(np.sum(dph == 0))}
 
     n_used = nzr * ntp * nxy
     n_same = nzr * ntp * F["n_xy_computed"]
     symidx = F["symidx"]
     gather = sym["gather"]
-    f_image = f_stored_to_full[symidx]          # full point -> Fortran representative image (full index)
-    c_image = sym["stored_to_full"][gather]     # full point -> C++ representative image (full index)
+    f_image = f_stored_to_full[symidx]  # full point -> Fortran representative image (full index)
+    c_image = sym["stored_to_full"][gather]  # full point -> C++ representative image (full index)
     below_2ev = np.empty(n_used, dtype=np.bool_)
     same_below_2ev = np.empty(n_same, dtype=np.bool_)
 
@@ -218,9 +265,17 @@ def main():
         iz, ir = divmod(izr, nr)
         ix, iy = divmod(ixy, ny)
         itheta, iphi = divmod(itp, nphi)
-        return {"iz": iz, "ir": ir, "ix": ix, "iy": iy, "itheta": itheta, "iphi": iphi,
-                "Z": float(g["z_scattering"][iz]), "r": float(g["r"][ir]),
-                "V_eV": float(c_full[izr, rest]) * CHAEV}
+        return {
+            "iz": iz,
+            "ir": ir,
+            "ix": ix,
+            "iy": iy,
+            "itheta": itheta,
+            "iphi": iphi,
+            "Z": float(g["z_scattering"][iz]),
+            "r": float(g["r"][ir]),
+            "V_eV": float(c_full[izr, rest]) * CHAEV,
+        }
 
     def where_same(i):
         izr, rest = divmod(i, ntp * F["n_xy_computed"])
@@ -255,7 +310,9 @@ def main():
     print("same point :", {k: res["same_point"][k] for k in ("n", "median", "p95", "max")}, res["same_point"]["argmax"])
     print("same <2 eV :", {k: res["same_point_v_below_2eV"][k] for k in ("n", "median", "p95", "max")})
     print("used       :", {k: res["used"][k] for k in ("n", "median", "p95", "max")}, res["used"]["argmax"])
-    print("asym C++   :", {k: res["asym_cpp_maps"][k] for k in ("median", "p95", "max")}, res["asym_cpp_maps"]["argmax"])
+    print(
+        "asym C++   :", {k: res["asym_cpp_maps"][k] for k in ("median", "p95", "max")}, res["asym_cpp_maps"]["argmax"]
+    )
     print("asym F     :", {k: res["asym_fortran_maps"][k] for k in ("median", "p95", "max")})
     print("reps C++", sym["rep_xy"], "\nreps F  ", f_rep.tolist(), "common", res["n_common_representatives"])
     print("theta", res["theta"], "phi", res["phi"])

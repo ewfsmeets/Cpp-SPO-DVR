@@ -6,6 +6,7 @@ where ||c(t)|| >= 0.1% of its maximum, with its median per quarter of the signal
 (item13_propagation.py). The strict-build GPU run against the Fortran is added (2026-11-08,
 data/strict_bk_error_vs_time.tsv from strict_gpu.py). Reads data/bk_error_vs_time.tsv,
 data/strict_bk_error_vs_time.tsv, data/items/item13.json."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -37,19 +38,38 @@ def main():
     for key in ("cpu-fortran", "gpu-fortran", "gpu-cpu"):
         st = PAIR[key]
         ax1.plot(t, np.maximum(col[key], 1e-18), color=st["color"], ls=st["ls"], lw=1.3, label=st["label"])
-        sel = col["norm_c_t"] >= 1e-3 * col["norm_c_t"].max()     # where the signal is not noise
+        sel = col["norm_c_t"] >= 1e-3 * col["norm_c_t"].max()  # where the signal is not noise
         a_ = np.where(sel, 1e12 * col[f"{key}_alpha"], np.nan)
         ax2.plot(t, a_, color=st["color"], ls=st["ls"], lw=1.3, label=st["label"])
     st = PAIR["gpu_strict-fortran"]
-    ax1.plot(t, np.maximum(scol["strict-fortran"], 1e-18), color=st["color"], ls=st["ls"], lw=1.3, label=st["label"] + " (added 2026-11-08)")
-    ax2.plot(t, np.where(sel, 1e12 * scol["strict-fortran_alpha"], np.nan), color=st["color"], ls=st["ls"], lw=1.3,
-             label=st["label"] + " (added 2026-11-08)")
+    ax1.plot(
+        t,
+        np.maximum(scol["strict-fortran"], 1e-18),
+        color=st["color"],
+        ls=st["ls"],
+        lw=1.3,
+        label=st["label"] + " (added 2026-11-08)",
+    )
+    ax2.plot(
+        t,
+        np.where(sel, 1e12 * scol["strict-fortran_alpha"], np.nan),
+        color=st["color"],
+        ls=st["ls"],
+        lw=1.3,
+        label=st["label"] + " (added 2026-11-08)",
+    )
     edges = np.linspace(w0, w1, 5)
     for key in ("cpu-fortran", "gpu-cpu"):
         q = b["amplitude_vs_time"][key]["window_quartile_medians"]
         for i in range(4):
-            ax2.plot([edges[i], edges[i + 1]], [1e12 * q[i]] * 2, color=PAIR[key]["color"], lw=4, alpha=0.4,
-                     label="median per quarter of the window" if (i == 0 and key == "cpu-fortran") else None)
+            ax2.plot(
+                [edges[i], edges[i + 1]],
+                [1e12 * q[i]] * 2,
+                color=PAIR[key]["color"],
+                lw=4,
+                alpha=0.4,
+                label="median per quarter of the window" if (i == 0 and key == "cpu-fortran") else None,
+            )
     ax1.axhline(1e-10, color=INK_2, lw=1.0, ls=(0, (6, 3)))
     ax1.text(200, 1.4e-10, "criterion 1e-10 (gate 4)", fontsize=8, color=INK_2)
     ax1.set_yscale("log")
@@ -62,8 +82,15 @@ def main():
     ax2.axhline(0, color=MUTED, lw=0.8)
     ax2.set_ylim(-4, 16)
     ax2.set_ylabel("amplitude part κ(t)  (×10⁻¹²)")
-    ax2.text(0.01, 0.97, "shown where ||c(t)|| ≥ 0.1% of its maximum", transform=ax2.transAxes, fontsize=8, color=INK_2,
-             va="top")
+    ax2.text(
+        0.01,
+        0.97,
+        "shown where ||c(t)|| ≥ 0.1% of its maximum",
+        transform=ax2.transAxes,
+        fontsize=8,
+        color=INK_2,
+        va="top",
+    )
     ax2.set_xlabel("Time t (a.u.)")
     ax2.set_xlim(0, 17500)
     ax2.legend(loc="upper left", bbox_to_anchor=(0.0, 0.92), fontsize=8)

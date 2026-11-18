@@ -3,6 +3,7 @@
 Values are kept as the printed text (Fortran) so that the printed precision can be derived from
 it; C++ values are parsed to float (full precision where the log prints %.16e).
 """
+
 from __future__ import annotations
 
 import re
@@ -113,8 +114,18 @@ def rovib_states(lines):
     for line in sec:
         t = line.split()
         if len(t) == 8 and t[0].isdigit() and t[1].isdigit():
-            rows.append({"v": int(t[0]), "j": int(t[1]), "e": t[2], "erel": t[3], "psi1": t[4],
-                         "psinr": t[5], "norm": t[6], "r": t[7]})
+            rows.append(
+                {
+                    "v": int(t[0]),
+                    "j": int(t[1]),
+                    "e": t[2],
+                    "erel": t[3],
+                    "psi1": t[4],
+                    "psinr": t[5],
+                    "norm": t[6],
+                    "r": t[7],
+                }
+            )
         else:
             m = re.match(r"^\s*(.*?)\s*=\s*(" + NUM + r")\s*$", line)
             if m:
@@ -138,8 +149,9 @@ def energy_blocks(lines):
     current_vjm = None
     for line in lines:
         if " total energy =" in line:
-            blocks.append({"total_energy": line.split()[-1], "p_v": {}, "edif_v": {}, "erot_v": {},
-                           "p_vjm": {}, "p_order": {}})
+            blocks.append(
+                {"total_energy": line.split()[-1], "p_v": {}, "edif_v": {}, "erot_v": {}, "p_vjm": {}, "p_order": {}}
+            )
             sectn = None
             continue
         if not blocks:
@@ -213,7 +225,7 @@ def cpp_section(lines, title):
     for i, line in enumerate(lines):
         if line.strip() == title and i > 0 and lines[i - 1].startswith("====") and lines[i + 1].startswith("===="):
             out = []
-            for l2 in lines[i + 2:]:
+            for l2 in lines[i + 2 :]:
                 if l2.startswith("=" * 40):
                     break
                 out.append(l2)
@@ -249,14 +261,27 @@ def cpp_rovib(lines):
     for line in sec:
         t = line.split()
         if len(t) == 8 and t[0].isdigit() and t[1].isdigit():
-            rows.append({"v": int(t[0]), "j": int(t[1]), "e": float(t[2]), "erel": float(t[3]),
-                         "psi1": float(t[4]), "psinr": float(t[5]), "norm": float(t[6]), "r": float(t[7])})
+            rows.append(
+                {
+                    "v": int(t[0]),
+                    "j": int(t[1]),
+                    "e": float(t[2]),
+                    "erel": float(t[3]),
+                    "psi1": float(t[4]),
+                    "psinr": float(t[5]),
+                    "norm": float(t[6]),
+                    "r": float(t[7]),
+                }
+            )
     return rows, cpp_dotted(sec)
 
 
 def cpp_surface_fixed(lines):
     for line in lines:
-        m = re.search(r"analysis surface on the specular grid fixed at Z = (" + NUM + r") bohr \(t = (" + NUM + r") a\.u\.\)", line)
+        m = re.search(
+            r"analysis surface on the specular grid fixed at Z = (" + NUM + r") bohr \(t = (" + NUM + r") a\.u\.\)",
+            line,
+        )
         if m:
             return float(m.group(1)), float(m.group(2))
     return None

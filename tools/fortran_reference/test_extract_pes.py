@@ -43,8 +43,14 @@ DIGESTS_BEFORE_SCM = {
 # The six SCM records as SetPESVariables_SCM writes them: ParameterVersion; EnableExpansion,
 # EnabReadPosFile; IdLatticeConstant, DistLatticeConstant; CutOff, UsedLayers, NumSlabConfigs;
 # SlabAtomSize(1:3); SCMSlabRefocusMethod.
-SCM_RECORDS = (struct.pack("<i", 2), struct.pack("<2i", 1, 1), struct.pack("<2d", 6.8164, 6.8333),
-               struct.pack("<d2i", 16.0, 2, 1), struct.pack("<3i", 4, 4, 6), struct.pack("<i", 0))
+SCM_RECORDS = (
+    struct.pack("<i", 2),
+    struct.pack("<2i", 1, 1),
+    struct.pack("<2d", 6.8164, 6.8333),
+    struct.pack("<d2i", 16.0, 2, 1),
+    struct.pack("<3i", 4, 4, 6),
+    struct.pack("<i", 0),
+)
 SCM_LINES = """\
 # SCM records (SCM_Wrapper.f90 SetPESVariables_SCM; logicals as 0/1):
 #   ParameterVersion: 2
@@ -72,11 +78,17 @@ def pes_records(kind):
         index = [(ixy % 3) * n_angles + itp + 1 for ixy in range(nx * ny) for itp in range(n_angles)]
     else:
         index = list(range(1, n_angles * nx * ny + 1))
-    header = [struct.pack("<4i", nzpot, nr, nx, ny), struct.pack("<2i", ntheta, nphi),
-              struct.pack("<4d", -1.0, 0.4, 2.0, 1.4), struct.pack("<4d", 0.0, 0.0, 2.4, 3.6),
-              struct.pack(f"<{ntheta}d", 0.7, 2.4), struct.pack(f"<{nphi}d", 0.0, 2.1, 4.2),
-              struct.pack("<i2d", 1, 11.3, 11.9), struct.pack("<2i", int(kind == "symmetric"), n_xy),
-              struct.pack(f"<{len(index)}i", *index)]
+    header = [
+        struct.pack("<4i", nzpot, nr, nx, ny),
+        struct.pack("<2i", ntheta, nphi),
+        struct.pack("<4d", -1.0, 0.4, 2.0, 1.4),
+        struct.pack("<4d", 0.0, 0.0, 2.4, 3.6),
+        struct.pack(f"<{ntheta}d", 0.7, 2.4),
+        struct.pack(f"<{nphi}d", 0.0, 2.1, 4.2),
+        struct.pack("<i2d", 1, 11.3, 11.9),
+        struct.pack("<2i", int(kind == "symmetric"), n_xy),
+        struct.pack(f"<{len(index)}i", *index),
+    ]
     blocks = []
     for izr in range(nzpot * nr):
         if kind == "zr_only":
@@ -94,8 +106,11 @@ def write_pes(path, header, blocks, extra=()):
 
 def extract(work, name):
     """Runs extract_pes.py on WORK/<name>.pes into WORK/<name>.txt: (exit status, stderr)."""
-    result = subprocess.run([sys.executable, "-I", "-B", str(EXTRACT_PES), str(work / f"{name}.pes"),
-                             str(work / f"{name}.txt")], capture_output=True, text=True)
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(EXTRACT_PES), str(work / f"{name}.pes"), str(work / f"{name}.txt")],
+        capture_output=True,
+        text=True,
+    )
     return result.returncode, result.stderr
 
 
@@ -131,8 +146,10 @@ def scm_case(work):
 
 def expect_refusal(work, name, pattern):
     status, stderr = extract(work, name)
-    check(status == 1 and stderr.startswith("error: ") and pattern in stderr and "; name a " in stderr,
-          f"{name}: exit {status}, expected 1 with \"{pattern}\": {stderr}")
+    check(
+        status == 1 and stderr.startswith("error: ") and pattern in stderr and "; name a " in stderr,
+        f'{name}: exit {status}, expected 1 with "{pattern}": {stderr}',
+    )
     check(not (work / f"{name}.txt").exists(), f"{name}: a refused extraction wrote an output file")
     print(f"refused as expected: {stderr.strip()}")
 
@@ -151,7 +168,9 @@ def refusals_case(work):
     write_pes(work / "truncated.pes", header, blocks)
     data = (work / "truncated.pes").read_bytes()
     (work / "truncated.pes").write_bytes(data[:-4])
-    expect_refusal(work, "truncated", f"the record at byte {len(data) - len(record(blocks[-1]))} has no matching end marker")
+    expect_refusal(
+        work, "truncated", f"the record at byte {len(data) - len(record(blocks[-1]))} has no matching end marker"
+    )
     # The trailer of the second record one byte longer than the record.
     write_pes(work / "trailer.pes", header, blocks)
     data = bytearray((work / "trailer.pes").read_bytes())
@@ -170,10 +189,13 @@ def refusals_case(work):
     (work / "empty.pes").write_bytes(b"")
     expect_refusal(work, "empty", "empty.pes: the file holds no records")
     expect_refusal(work, "missing", "No such file or directory")
-    result = subprocess.run([sys.executable, "-I", "-B", str(EXTRACT_PES), "only-one-argument"],
-                            capture_output=True, text=True)
-    check(result.returncode == 2 and result.stderr.startswith("usage: "),
-          f"one argument: exit {result.returncode}, expected 2 with a usage line: {result.stderr}")
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(EXTRACT_PES), "only-one-argument"], capture_output=True, text=True
+    )
+    check(
+        result.returncode == 2 and result.stderr.startswith("usage: "),
+        f"one argument: exit {result.returncode}, expected 2 with a usage line: {result.stderr}",
+    )
 
 
 def main(argv):

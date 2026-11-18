@@ -3,28 +3,36 @@
 plus the strict build's run of the one gate the fast builds fail. Reads the saved ctest output
 in runs/thesis_fig5_3_dz_validation/gates/; writes data/items/gates.json and a copy of the
 summary lines to data/gates_ctest_summary.txt."""
+
 from __future__ import annotations
 
 import re
 
 from common import DATA, WORK, save_item
 
-FILES = {"build-fast": "gates_build-fast.txt", "build-cuda-fast": "gates_build-cuda-fast.txt",
-         "build (strict), hard-wall vasy gate only": "gates_build_hardwall_vasy.txt"}
+FILES = {
+    "build-fast": "gates_build-fast.txt",
+    "build-cuda-fast": "gates_build-cuda-fast.txt",
+    "build (strict), hard-wall vasy gate only": "gates_build_hardwall_vasy.txt",
+}
 
 
 def parse(text: str) -> dict:
     tests = []
     for m in re.finditer(r"Test +#(\d+): (\S+) \.+\s*(\*{0,3}\w+)\s+([\d.]+) sec", text):
-        tests.append({"id": int(m.group(1)), "name": m.group(2), "result": m.group(3).strip("*"),
-                      "seconds": float(m.group(4))})
+        tests.append(
+            {"id": int(m.group(1)), "name": m.group(2), "result": m.group(3).strip("*"), "seconds": float(m.group(4))}
+        )
     failures = []
     for m in re.finditer(r"actual: ([\d.e+-]+) vs ([\d.e+-]+)\n(.*)", text):
         failures.append({"actual": float(m.group(1)), "limit": float(m.group(2)), "detail": m.group(3).strip()})
-    return {"tests": tests, "failures": failures,
-            "passed": sum(t["result"] == "Passed" for t in tests),
-            "failed": sum(t["result"] == "Failed" for t in tests),
-            "skipped": sum(t["result"] == "Skipped" for t in tests)}
+    return {
+        "tests": tests,
+        "failures": failures,
+        "passed": sum(t["result"] == "Passed" for t in tests),
+        "failed": sum(t["result"] == "Failed" for t in tests),
+        "skipped": sum(t["result"] == "Skipped" for t in tests),
+    }
 
 
 def main():
@@ -43,8 +51,10 @@ def main():
     save_item("gates", out)
     (DATA / "gates_ctest_summary.txt").write_text("\n".join(lines).rstrip() + "\n")
     for label, r in out.items():
-        print(f"{label}: passed {r['passed']}, failed {r['failed']}, skipped {r['skipped']}",
-              [f"{f['actual']:.3e}" for f in r["failures"]])
+        print(
+            f"{label}: passed {r['passed']}, failed {r['failed']}, skipped {r['skipped']}",
+            [f"{f['actual']:.3e}" for f in r["failures"]],
+        )
 
 
 if __name__ == "__main__":

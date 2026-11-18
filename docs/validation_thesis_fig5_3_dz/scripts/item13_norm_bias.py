@@ -13,6 +13,7 @@ computes delta of both codes exactly (fractions of the double-precision factors,
 semantics, i.e. without the fast-math reassociation of the C++ build) and the predicted
 amplitude ratio after the 7875 kinetic blocks of the run (9 per analysis step: T/2 V (T V)^7
 T/2). Writes data/items/item13_norm_bias.json."""
+
 from __future__ import annotations
 
 import json
@@ -55,23 +56,41 @@ def main():
     }
     # Fortran (KineticOp.f90 SetupScaleFactors, ffts.f90 InverseComplexFFT): 1D transforms
     sx_f, sy_f = quad_sqrt_ratio(dx, nx), quad_sqrt_ratio(dy, ny)
-    f1 = {d: exact_round_trip(n, s, 1.0 / (s * float(n))) for d, (n, s) in
-          {"z": (nz, sz), "r": (nr, sr), "x": (nx, sx_f), "y": (ny, sy_f), "zsp": (nzsp, sz)}.items()}
-    fortran = {"zr": (1 + f1["z"]) * (1 + f1["r"]) - 1, "xy": (1 + f1["x"]) * (1 + f1["y"]) - 1,
-               "specular": (1 + f1["zsp"]) * (1 + f1["r"]) - 1}
+    f1 = {
+        d: exact_round_trip(n, s, 1.0 / (s * float(n)))
+        for d, (n, s) in {"z": (nz, sz), "r": (nr, sr), "x": (nx, sx_f), "y": (ny, sy_f), "zsp": (nzsp, sz)}.items()
+    }
+    fortran = {
+        "zr": (1 + f1["z"]) * (1 + f1["r"]) - 1,
+        "xy": (1 + f1["x"]) * (1 + f1["y"]) - 1,
+        "specular": (1 + f1["zsp"]) * (1 + f1["r"]) - 1,
+    }
     n_blocks = 875 * 9
-    out = {"n_kinetic_blocks": n_blocks, "scale_factors": {"sz": sz, "sr": sr, "sx_cpp": sx_c, "sx_fortran_quad": sx_f,
-                                                           "sx_ulps_apart": abs(sx_c - sx_f) / math.ulp(sx_c)},
-           "delta_per_block": {}, "predicted_amplitude_ratio_minus_1": {}}
+    out = {
+        "n_kinetic_blocks": n_blocks,
+        "scale_factors": {
+            "sz": sz,
+            "sr": sr,
+            "sx_cpp": sx_c,
+            "sx_fortran_quad": sx_f,
+            "sx_ulps_apart": abs(sx_c - sx_f) / math.ulp(sx_c),
+        },
+        "delta_per_block": {},
+        "predicted_amplitude_ratio_minus_1": {},
+    }
     for g in ("zr", "xy", "specular"):
         out["delta_per_block"][g] = {"cpp": float(cpp[g]), "fortran": float(fortran[g])}
     scat_c = (1 + cpp["zr"]) * (1 + cpp["xy"])
     scat_f = (1 + fortran["zr"]) * (1 + fortran["xy"])
     out["predicted_amplitude_ratio_minus_1"]["scattering_grid"] = float((scat_c / scat_f) ** 1 - 1) * n_blocks
-    out["predicted_amplitude_ratio_minus_1"]["specular_grid"] = float(((1 + cpp["specular"]) / (1 + fortran["specular"])) - 1) * n_blocks
+    out["predicted_amplitude_ratio_minus_1"]["specular_grid"] = (
+        float(((1 + cpp["specular"]) / (1 + fortran["specular"])) - 1) * n_blocks
+    )
     # observed (item18b): alpha from the replays, per energy
-    out["note"] = ("IEEE double semantics for the C++ factors; the run used -ffast-math, which may evaluate "
-                   "divisions as multiplications by reciprocals (different last bits)")
+    out["note"] = (
+        "IEEE double semantics for the C++ factors; the run used -ffast-math, which may evaluate "
+        "divisions as multiplications by reciprocals (different last bits)"
+    )
     save_item("item13_norm_bias", out)
     print(json.dumps(out, indent=1))
 

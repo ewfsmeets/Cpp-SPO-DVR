@@ -49,8 +49,9 @@ def changed(row_index, column, value):
 
 def run(*arguments):
     """(exit status, stdout + stderr) of the tool."""
-    result = subprocess.run([sys.executable, "-I", "-B", str(TOOL), *map(str, arguments)],
-                            capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(TOOL), *map(str, arguments)], capture_output=True, text=True, check=False
+    )
     return result.returncode, result.stdout + result.stderr
 
 
@@ -58,8 +59,9 @@ def expect(outcome, status, pattern):
     """The tool exited with status and printed a line matching pattern."""
     actual_status, output = outcome
     if actual_status != status or not re.search(pattern, output, re.MULTILINE):
-        raise SystemExit(f"FAIL: expected exit {status} and a line matching {pattern!r}, got exit "
-                         f"{actual_status}:\n{output}")
+        raise SystemExit(
+            f"FAIL: expected exit {status} and a line matching {pattern!r}, got exit {actual_status}:\n{output}"
+        )
     print(f"as expected (exit {status}): {pattern}")
 
 
@@ -74,8 +76,16 @@ def equal_case(work):
 
 def non_finite_case(work):
     base = write(work, "base", ROWS)
-    expect(run(base, write(work, "nan", changed(2, 3, "nan")), 1e-13), 1, r"^DIFFERENT: .*nan\.dat: row 3, <r>: nan is not finite$")
-    expect(run(write(work, "inf", changed(0, 1, "inf")), base, 1e-13), 1, r"^DIFFERENT: .*inf\.dat: row 1, norm: inf is not finite$")
+    expect(
+        run(base, write(work, "nan", changed(2, 3, "nan")), 1e-13),
+        1,
+        r"^DIFFERENT: .*nan\.dat: row 3, <r>: nan is not finite$",
+    )
+    expect(
+        run(write(work, "inf", changed(0, 1, "inf")), base, 1e-13),
+        1,
+        r"^DIFFERENT: .*inf\.dat: row 1, norm: inf is not finite$",
+    )
     both = write(work, "both_inf", changed(1, 4, "-inf"))
     expect(run(both, both, 1e-13), 1, r"^DIFFERENT: .*both_inf\.dat: row 2, rest norm: -inf is not finite$")
     expect(run(base, work / "nan.dat", 1e300), 1, r"^DIFFERENT: .*nan\.dat: row 3, <r>: nan is not finite$")
@@ -107,7 +117,9 @@ def main(argv):
     args = parser.parse_args(argv)
     shutil.rmtree(args.work, ignore_errors=True)
     args.work.mkdir(parents=True)
-    {"equal": equal_case, "non-finite": non_finite_case, "rows": rows_case, "arguments": arguments_case}[args.case](args.work)
+    {"equal": equal_case, "non-finite": non_finite_case, "rows": rows_case, "arguments": arguments_case}[args.case](
+        args.work
+    )
     print(f"PASS: {args.case}")
     return 0
 

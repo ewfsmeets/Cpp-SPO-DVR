@@ -56,8 +56,7 @@ from pathlib import Path, PurePosixPath
 
 REPO_DIR = Path(__file__).resolve().parents[2]
 MANIFEST_NAME = "MANIFEST.tsv"
-MANIFEST_COLUMNS = ("path", "sha256", "script", "commit", "fortran_ref", "input_sha", "runtime_drift",
-                    "cpu", "date")
+MANIFEST_COLUMNS = ("path", "sha256", "script", "commit", "fortran_ref", "input_sha", "runtime_drift", "cpu", "date")
 MANIFEST_WRITER_LINES = (
     "# Provenance of the Fortran reference files of this case, written by",
     "# tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.",
@@ -112,12 +111,10 @@ def read_tsv(path, columns):
         fields = line.split("\t")
         if not header_seen:
             if tuple(fields) != columns:
-                raise Refusal(f"{path}:{number}: the header is not {'<TAB>'.join(columns)}; "
-                              "restore the file from git")
+                raise Refusal(f"{path}:{number}: the header is not {'<TAB>'.join(columns)}; restore the file from git")
             header_seen = True
         elif len(fields) != len(columns):
-            raise Refusal(f"{path}:{number}: {len(fields)} fields, expected {len(columns)}; "
-                          "restore the file from git")
+            raise Refusal(f"{path}:{number}: {len(fields)} fields, expected {len(columns)}; restore the file from git")
         else:
             rows.append(dict(zip(columns, fields, strict=True)))
     if not header_seen:
@@ -150,8 +147,11 @@ def is_input(path):
     directory is generated, including fine_<variant>/DVR.inp."""
     parts = PurePosixPath(path).parts
     at_top = len(parts) == 1
-    return (parts[0] == CASE_INPUT_DIR or (at_top and parts[0] in CASE_INPUT_FILES)
-            or (at_top and parts[0].endswith(CASE_INPUT_SUFFIX)))
+    return (
+        parts[0] == CASE_INPUT_DIR
+        or (at_top and parts[0] in CASE_INPUT_FILES)
+        or (at_top and parts[0].endswith(CASE_INPUT_SUFFIX))
+    )
 
 
 def check_case_dir(case_dir):
@@ -167,8 +167,9 @@ def case_relative(case_dir, name):
     if path.is_absolute() or ".." in path.parts or path.name == MANIFEST_NAME or str(path) == ".":
         raise Refusal(f"{name} is not a file path inside {case_dir}; name it relative to the case directory")
     if is_input(path):
-        raise Refusal(f"{name} is a committed input of {case_dir}, not a generated file; "
-                      "record only the files a run wrote")
+        raise Refusal(
+            f"{name} is a committed input of {case_dir}, not a generated file; record only the files a run wrote"
+        )
     return str(path)
 
 
@@ -176,16 +177,18 @@ def git(*arguments):
     """The stripped stdout of a git command in this repository."""
     result = subprocess.run(["git", "-C", str(REPO_DIR), *arguments], capture_output=True, text=True)
     if result.returncode != 0:
-        raise Refusal(f"git {' '.join(arguments)} failed in {REPO_DIR}: {result.stderr.strip()}; "
-                      "run from a git clone or worktree")
+        raise Refusal(
+            f"git {' '.join(arguments)} failed in {REPO_DIR}: {result.stderr.strip()}; run from a git clone or worktree"
+        )
     return result.stdout.strip()
 
 
 def repository_commit():
     """`git describe --always` of this repository, plus "-dirty" when a tracked file outside the
     reference trees differs from it (regenerating changes those trees, so they cannot count)."""
-    changed = git("--no-optional-locks", "status", "--porcelain", "--untracked-files=no", "--", ".",
-                  OUTSIDE_REFERENCE_TREES)
+    changed = git(
+        "--no-optional-locks", "status", "--porcelain", "--untracked-files=no", "--", ".", OUTSIDE_REFERENCE_TREES
+    )
     return git("describe", "--always") + ("-dirty" if changed else "")
 
 
@@ -232,13 +235,18 @@ def cpu_description():
 def provenance(args):
     """The columns after path and sha256, the same for every file of one record call."""
     if args.pre_manifest:
-        values = dict(commit=EMPTY, fortran_ref=PRE_MANIFEST_REF, input_sha=EMPTY,
-                      runtime_drift=EMPTY, cpu=EMPTY, date=EMPTY)
+        values = dict(
+            commit=EMPTY, fortran_ref=PRE_MANIFEST_REF, input_sha=EMPTY, runtime_drift=EMPTY, cpu=EMPTY, date=EMPTY
+        )
     else:
-        values = dict(commit=repository_commit(), fortran_ref=fortran_ref(args.install, args.binary),
-                      input_sha=input_hashes(args.input), runtime_drift=args.runtime_drift,
-                      cpu=cpu_description(),
-                      date=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
+        values = dict(
+            commit=repository_commit(),
+            fortran_ref=fortran_ref(args.install, args.binary),
+            input_sha=input_hashes(args.input),
+            runtime_drift=args.runtime_drift,
+            cpu=cpu_description(),
+            date=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+        )
     values["script"] = args.script
     return {name: checked_field(name, value) for name, value in values.items()}
 
@@ -305,8 +313,7 @@ EXPECTED_INSTALL = re.compile(r"# install: (\S+)")
 # The closed list of classes of the expected-differences file (README "Comparing two reference
 # trees"). The text classes nest: labels allows what volatile allows, and abs, printed_units and
 # signs_only allow what labels allows.
-CLASSES = ("identical", "volatile", "labels", "abs", "bk_scaled", "printed_units", "signs_only", "unread",
-           "removed")
+CLASSES = ("identical", "volatile", "labels", "abs", "bk_scaled", "printed_units", "signs_only", "unread", "removed")
 TEXT_CLASSES = ("volatile", "labels", "abs", "printed_units", "signs_only")
 LIMIT_CLASSES = ("abs", "bk_scaled", "printed_units")  # their limit is a positive number
 
@@ -320,9 +327,11 @@ BK_SCALE_FLOOR = 1e-4
 # Lines that differ between two runs of one build: the version line (build and run dates), the
 # thread count, the set-up timings, and the "iz = N" lines that the potential set-up prints from a
 # parallel loop (their order depends on the threads). Dropped before every text comparison.
-VOLATILE_LINE = re.compile(r"\*\*\* SPO-DVR program version .*|\* Using a maximum number of \d+ threads in this run\."
-                           r"| Total time (?:for potential initialisation|setting up the potential) = .* secs"
-                           r"| +iz = +\d+")
+VOLATILE_LINE = re.compile(
+    r"\*\*\* SPO-DVR program version .*|\* Using a maximum number of \d+ threads in this run\."
+    r"| Total time (?:for potential initialisation|setting up the potential) = .* secs"
+    r"| +iz = +\d+"
+)
 TIMING_TABLE = re.compile(r" CPU TIMES *")  # the timing table that ends a stdout: dropped from here on
 # A CRP driver line "TAG index HEX decimal": the 17-digit decimal determines the double, so the hex
 # word is dropped (its digits would read as numbers such as 4e5123).
@@ -344,8 +353,12 @@ LABELS_519_TO_524 = (
     # The headers of the absorber blocks gained "start" and "end".
     (re.compile(r"( +)(?:start|end) (optical potential in [zr] (?:scat|spec)\.grid:)"), r"\1\2"),
     # The absorber strengths gained "[high end]" and moved to a new column.
-    (re.compile(r"(\* Optical potential in [Zr] )(?:\[high end\] )?((?:specular )?absorbs with coefficient:) +(\S+)"),
-     r"\1\2 \3"),
+    (
+        re.compile(
+            r"(\* Optical potential in [Zr] )(?:\[high end\] )?((?:specular )?absorbs with coefficient:) +(\S+)"
+        ),
+        r"\1\2 \3",
+    ),
 )
 # A number as Fortran prints it (I, F, E or D format), and a right-aligned field of one: a sign
 # change takes a blank of the field, so only the field width must stay.
@@ -368,6 +381,7 @@ class Rule:
     """One row of the expected-differences file. limit: the number of abs, bk_scaled and
     printed_units, else 0; positions: the numbers of a line (1-based) whose sign signs_only lets
     change."""
+
     glob: str
     allowed: str
     limit: float
@@ -383,6 +397,7 @@ UNMATCHED = Rule("(no row)", "identical", 0.0, (), "a file no row matches must b
 class Differences:
     """What differs between two versions of a file, and the first difference its rule does not
     allow ("" if none). For BK files, lines counts records and scale is the gate-4 scale."""
+
     lines: int = 0
     numbers: int = 0
     max_abs: float = 0.0
@@ -399,15 +414,19 @@ class Differences:
     def summary(self):
         """One line: what differs, then what is not allowed."""
         if self.kind == "bk":
-            text = (f"{self.lines} BK records differ, {self.numbers} coefficients; max |Δc| {self.max_abs:.3g} = "
-                    f"{self.max_abs / self.scale:.3g} of the gate-4 scale {self.scale:.3g}")
+            text = (
+                f"{self.lines} BK records differ, {self.numbers} coefficients; max |Δc| {self.max_abs:.3g} = "
+                f"{self.max_abs / self.scale:.3g} of the gate-4 scale {self.scale:.3g}"
+            )
         elif self.kind != "text":
             text = "the files differ"
         elif self.lines == 0 and not self.line_counts:
             text = "differs in volatile lines and whitelisted labels only"
         else:
-            text = (f"{self.lines} lines differ, {self.numbers} numbers; max abs {self.max_abs:.3g}, "
-                    f"max {self.max_units:.3g} printed units")
+            text = (
+                f"{self.lines} lines differ, {self.numbers} numbers; max abs {self.max_abs:.3g}, "
+                f"max {self.max_units:.3g} printed units"
+            )
             text += f"; {self.line_counts}" if self.line_counts else ""
         return text + (f"; not allowed: {self.violation}" if self.violation else "")
 
@@ -441,8 +460,10 @@ def parse_rule(where, row):
         raise Refusal(f"{where}: a row needs a glob and a reason; add them")
     parsed = parse_limit(allowed, limit)
     if parsed is None:
-        raise Refusal(f"{where}: limit {limit!r} does not fit class {allowed} (a positive number for "
-                      f"{', '.join(LIMIT_CLASSES)}; positions like 4,6 for signs_only; else -); fix it")
+        raise Refusal(
+            f"{where}: limit {limit!r} does not fit class {allowed} (a positive number for "
+            f"{', '.join(LIMIT_CLASSES)}; positions like 4,6 for signs_only; else -); fix it"
+        )
     return Rule(row["glob"], allowed, *parsed, row["reason"], glob_pattern(row["glob"]))
 
 
@@ -455,8 +476,10 @@ def read_expected(path):
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     installs = [match.group(1) for match in map(EXPECTED_INSTALL.fullmatch, lines) if match]
     if len(installs) != 1:
-        raise Refusal(f"{path} has {len(installs)} '# install: <id>' lines, not one; name the install whose "
-                      "output the file describes")
+        raise Refusal(
+            f"{path} has {len(installs)} '# install: <id>' lines, not one; name the install whose "
+            "output the file describes"
+        )
     return installs[0], [parse_rule(f"{path}, row {row['glob']}", row) for row in rows]
 
 
@@ -465,8 +488,10 @@ def matching_rule(rules, path):
     are refused: the order of the rows would decide silently."""
     matches = [(index, rule) for index, rule in enumerate(rules) if rule.pattern.fullmatch(path)]
     if len(matches) > 1:
-        raise Refusal(f"{path} matches the rows {' and '.join(rule.glob for _, rule in matches)}; "
-                      "make the globs of the expected file disjoint")
+        raise Refusal(
+            f"{path} matches the rows {' and '.join(rule.glob for _, rule in matches)}; "
+            "make the globs of the expected file disjoint"
+        )
     return matches[0] if matches else (-1, UNMATCHED)
 
 
@@ -528,9 +553,13 @@ def sign_change_allowed(rule, position, old, new, row_length):
     printed digits by at most SIGN_CHANGE_ROUNDING units (the negated value is computed along
     another path)."""
     (digits_old, exponent_old), (digits_new, exponent_new) = printed_digits(old), printed_digits(new)
-    return (row_length >= max(rule.positions) and position in rule.positions
-            and old.startswith("-") != new.startswith("-")
-            and exponent_old == exponent_new and abs(digits_old - digits_new) <= SIGN_CHANGE_ROUNDING)
+    return (
+        row_length >= max(rule.positions)
+        and position in rule.positions
+        and old.startswith("-") != new.startswith("-")
+        and exponent_old == exponent_new
+        and abs(digits_old - digits_new) <= SIGN_CHANGE_ROUNDING
+    )
 
 
 def number_allowed(rule, position, old, new, row_length):
@@ -606,7 +635,7 @@ def read_records(data):
             raise FormatError(f"subrecords (records over 2 GiB) at byte {position} are not supported")
         if end + 4 > len(data) or struct.unpack_from("<i", data, end)[0] != length:
             raise FormatError(f"the record at byte {position} has no matching end marker")
-        records.append(data[position + 4:end])
+        records.append(data[position + 4 : end])
         position = end + 4
     return records
 
@@ -639,7 +668,7 @@ def record_changes(diff, number, old, new):
         if p == q:
             continue
         if not (math.isfinite(abs(p)) and math.isfinite(abs(q))):
-            if old[16 * k:16 * k + 16] != new[16 * k:16 * k + 16]:
+            if old[16 * k : 16 * k + 16] != new[16 * k : 16 * k + 16]:
                 diff.numbers += 1
                 diff.forbid(f"BK record {number}, coefficient {k + 1}: {p} became {q}, not finite")
             continue
@@ -685,8 +714,9 @@ def file_differences(path, old, new, rule):
     if file_kind(path, new) != kind:
         return Differences(kind="binary", violation=f"the {kind} file became {file_kind(path, new)}")
     if (rule.allowed == "bk_scaled" and kind != "bk") or (rule.allowed in TEXT_CLASSES and kind != "text"):
-        return Differences(kind="binary",
-                           violation=f"class {rule.allowed} does not apply to a {kind} file; fix the row")
+        return Differences(
+            kind="binary", violation=f"class {rule.allowed} does not apply to a {kind} file; fix the row"
+        )
     try:
         if kind == "bk":
             diff = bk_differences(old, new, rule)
@@ -744,8 +774,9 @@ def compare_trees(old_root, new_root, rules):
 
 def case_dirs(root):
     """The case directories of the reference trees under root (NOT_A_CASE excluded)."""
-    return sorted(d for tree in REFERENCE_TREES for d in (Path(root) / tree).glob("*")
-                  if d.is_dir() and d.name not in NOT_A_CASE)
+    return sorted(
+        d for tree in REFERENCE_TREES for d in (Path(root) / tree).glob("*") if d.is_dir() and d.name not in NOT_A_CASE
+    )
 
 
 def generated_files(case_dir):
@@ -758,8 +789,9 @@ def buildinfo_copy(root, install_id, cache):
     """The rows (key -> value) of the committed BUILDINFO copy of an install, or None if absent."""
     if install_id not in cache:
         path = Path(root) / BUILDINFO_COPIES / f"{install_id}.tsv"
-        cache[install_id] = ({row["key"]: row["value"] for row in read_tsv(path, BUILDINFO_COLUMNS)}
-                             if path.is_file() else None)
+        cache[install_id] = (
+            {row["key"]: row["value"] for row in read_tsv(path, BUILDINFO_COLUMNS)} if path.is_file() else None
+        )
     return cache[install_id]
 
 
@@ -827,8 +859,10 @@ def provenance_problems(root, install):
             if install_id not in (None, install):
                 others[install_id] = others.get(install_id, 0) + 1
     # The expected differences were measured with one install: another one's output is unchecked.
-    problems += [f"{count} MANIFEST lines name install {other}, not {install} (the expected file's)"
-                 for other, count in sorted(others.items())]
+    problems += [
+        f"{count} MANIFEST lines name install {other}, not {install} (the expected file's)"
+        for other, count in sorted(others.items())
+    ]
     return problems, lines
 
 
@@ -854,8 +888,10 @@ def compare(args):
     outcomes = ", ".join(f"{name} {count}" for name, count in sorted(counts.items()))
     print(f"* {files} files: {outcomes}; NEW's provenance: {provenance}")
     if failures:
-        raise Refusal(f"{failures} differences or provenance problems are not allowed (FAIL lines above); "
-                      f"fix the regeneration, or review the differences and extend {args.expected}")
+        raise Refusal(
+            f"{failures} differences or provenance problems are not allowed (FAIL lines above); "
+            f"fix the regeneration, or review the differences and extend {args.expected}"
+        )
     print("* Every difference is allowed")
 
 
@@ -871,15 +907,29 @@ def parse_arguments(argv):
     add.add_argument("files", metavar="FILE", nargs="+", help="generated file, relative to CASE_DIR")
     add.add_argument("--script", metavar="NAME", required=True, help="the script that generated the files")
     add.add_argument("--install", metavar="DIR", help="the reference install that ran (its BUILDINFO.tsv gives the id)")
-    add.add_argument("--binary", metavar="FILE", help="the program that ran: the install's executable or the CRP driver")
-    add.add_argument("--input", metavar="PATH", action="append", default=[],
-                     help="an input as run (repeatable): a file, or a directory (a data set, hashed as "
-                          "a tree); named by the path as given if relative, else by its last component")
-    add.add_argument("--runtime-drift", metavar="TEXT", default=EMPTY,
-                     help="run-time packages that differ from BUILDINFO.tsv (default: -)")
-    add.add_argument("--pre-manifest", action="store_true",
-                     help=f'files made before MANIFESTs existed: fortran_ref "{PRE_MANIFEST_REF}", "-" '
-                          "for the columns not recorded then")
+    add.add_argument(
+        "--binary", metavar="FILE", help="the program that ran: the install's executable or the CRP driver"
+    )
+    add.add_argument(
+        "--input",
+        metavar="PATH",
+        action="append",
+        default=[],
+        help="an input as run (repeatable): a file, or a directory (a data set, hashed as "
+        "a tree); named by the path as given if relative, else by its last component",
+    )
+    add.add_argument(
+        "--runtime-drift",
+        metavar="TEXT",
+        default=EMPTY,
+        help="run-time packages that differ from BUILDINFO.tsv (default: -)",
+    )
+    add.add_argument(
+        "--pre-manifest",
+        action="store_true",
+        help=f'files made before MANIFESTs existed: fortran_ref "{PRE_MANIFEST_REF}", "-" '
+        "for the columns not recorded then",
+    )
 
     remove = actions.add_parser("delete", help="delete the listed files and the MANIFESTs")
     remove.add_argument("case_dirs", metavar="CASE_DIR", nargs="+", help="a case directory with a MANIFEST.tsv")
@@ -887,10 +937,13 @@ def parse_arguments(argv):
     check = commands.add_parser("compare", help="compare two reference trees against the expected differences")
     check.add_argument("old", metavar="OLD", help="repository checkout with the committed references")
     check.add_argument("new", metavar="NEW", help="repository checkout with the regenerated references")
-    check.add_argument("--expected", metavar="FILE", required=True,
-                       help="the expected-differences file, e.g. tools/fortran_reference/expected/r1713.tsv")
-    check.add_argument("--no-provenance", action="store_true",
-                       help="skip the MANIFEST and BUILDINFO checks of NEW")
+    check.add_argument(
+        "--expected",
+        metavar="FILE",
+        required=True,
+        help="the expected-differences file, e.g. tools/fortran_reference/expected/r1713.tsv",
+    )
+    check.add_argument("--no-provenance", action="store_true", help="skip the MANIFEST and BUILDINFO checks of NEW")
 
     args = parser.parse_args(argv)
     if args.command == "manifest" and args.action == "record":

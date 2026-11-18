@@ -26,6 +26,7 @@ Usage: python3 -I -B make_scm_inputs.py example|synthetic CASE_DIR EXAMPLE_DIR
   EXAMPLE_DIR  potentials/H2Cu111SRP_C3v.dir (params.dat, examplePosfile.dat)
 Environment: none read. Run time: under a second. Docs: tools/fortran_reference/README.md.
 """
+
 import math
 import random
 import struct
@@ -71,18 +72,36 @@ def points(lattice, layer1, seed, random_count):
     # Upright molecule over the origin: the lower H atom at height p_k + delta above the ideal atom.
     for r in (0.6, 1.4, 2.5):
         for k in (7, 8):
-            result += [(0.0, 0.0, switch_distance(layer1, k, r) + 0.5 * r + delta, r, 0.0, 0.0)
-                       for delta in (-1e-3, -1e-9, 1e-9, 1e-3)]
+            result += [
+                (0.0, 0.0, switch_distance(layer1, k, r) + 0.5 * r + delta, r, 0.0, 0.0)
+                for delta in (-1e-3, -1e-9, 1e-9, 1e-3)
+            ]
     result += [(0.0, 0.0, Z_ASYMPTOTIC, r, pi / 2, 0.0) for r in (0.4, 0.8, 1.4, 2.0, 3.0, 4.0)]
     rng = random.Random(seed)
     for _ in range(random_count):
-        result.append((lattice * rng.random(), lattice * rng.random(), -1.0 + 9.0 * rng.random(),
-                       0.3 + 4.2 * rng.random(), pi * rng.random(), 2 * pi * rng.random()))
+        result.append(
+            (
+                lattice * rng.random(),
+                lattice * rng.random(),
+                -1.0 + 9.0 * rng.random(),
+                0.3 + 4.2 * rng.random(),
+                pi * rng.random(),
+                2 * pi * rng.random(),
+            )
+        )
     # Far from the surface; drawn after the points above, which keep their values.
     for k in range(20):
         z = Z_ASYMPTOTIC if k >= 14 else 8.0 + (Z_ASYMPTOTIC - 8.0) * rng.random()
-        result.append((lattice * rng.random(), lattice * rng.random(), z, 0.3 + 4.2 * rng.random(),
-                       pi * rng.random(), 2 * pi * rng.random()))
+        result.append(
+            (
+                lattice * rng.random(),
+                lattice * rng.random(),
+                z,
+                0.3 + 4.2 * rng.random(),
+                pi * rng.random(),
+                2 * pi * rng.random(),
+            )
+        )
     return f"{len(result)}\n" + "".join(hex_line(p) for p in result)
 
 
@@ -154,9 +173,21 @@ def slab_v2(seed):
     rng = random.Random(seed)
     layer1 = [(0, 0), (1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]
     below = [(0, 0), (-1, 0), (0, -1)]
-    order = [(1, layer1[0]), (2, below[0]), (1, layer1[1]), (3, below[0]), (1, layer1[2]), (2, below[1]),
-             (1, layer1[3]), (3, below[1]), (1, layer1[4]), (2, below[2]), (1, layer1[5]), (3, below[2]),
-             (1, layer1[6])]
+    order = [
+        (1, layer1[0]),
+        (2, below[0]),
+        (1, layer1[1]),
+        (3, below[0]),
+        (1, layer1[2]),
+        (2, below[1]),
+        (1, layer1[3]),
+        (3, below[1]),
+        (1, layer1[4]),
+        (2, below[2]),
+        (1, layer1[5]),
+        (3, below[2]),
+        (1, layer1[6]),
+    ]
     lines = ["synthetic_v2 FCC111\n", f" 5 5 3 3 2 {len(order)}\n", f" {SYNTHETIC_V2_LATTICE!r}\n"]
     for _ in range(3):
         for layer, (i, j) in order:
@@ -167,8 +198,13 @@ def slab_v2(seed):
 
 def synthetic_parameters(layer1):
     """params.dat with layer 1 of the example (one record over two lines) and a changed layer 2."""
-    layer2 = ([layer1[0] + 0.35, 0.85 * layer1[1]] + [0.6 * p for p in layer1[2:6]]
-              + [layer1[6] - 0.6, layer1[7] - 0.5] + [0.5 * p for p in layer1[8:16]] + [0.8, 1.7])
+    layer2 = (
+        [layer1[0] + 0.35, 0.85 * layer1[1]]
+        + [0.6 * p for p in layer1[2:6]]
+        + [layer1[6] - 0.6, layer1[7] - 0.5]
+        + [0.5 * p for p in layer1[8:16]]
+        + [0.8, 1.7]
+    )
     text = "VERSION 2\n"
     text += " ".join(repr(p) for p in layer1[:9]) + "\n" + " ".join(repr(p) for p in layer1[9:]) + "\n"
     return text + " ".join(repr(p) for p in layer2) + "\n", layer2

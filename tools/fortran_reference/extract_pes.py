@@ -29,6 +29,7 @@ Exit status: 0 written, 1 a file of another layout or one that cannot be read or
 Environment: none read. Run time: seconds (the reference cases). Called by run_setup_reference.sh;
 docs: tools/fortran_reference/README.md.
 """
+
 import math
 import struct
 import sys
@@ -144,8 +145,9 @@ def extract(pes_path, output_path):
     # Records beyond the header and the nzpot * nr potential blocks: none, or the six of SCM.
     n_extra = len(records) - HEADER_RECORDS - nzpot * nr
     if n_extra not in (0, len(SCM_RECORDS)):
-        raise FormatError(f"{len(records)} records, not {HEADER_RECORDS} + {nzpot * nr} (nzpot * nr) "
-                          f"or {len(SCM_RECORDS)} more (SCM)")
+        raise FormatError(
+            f"{len(records)} records, not {HEADER_RECORDS} + {nzpot * nr} (nzpot * nr) or {len(SCM_RECORDS)} more (SCM)"
+        )
     ntheta, nphi = unpack("<2i", records[1])
     # records[2]: zgrid(1), rgrid(1), zgrid(nzpot), rgrid(nr); records[3]: the x, y grid ends
     thetas = unpack(f"<{ntheta}d", records[4])

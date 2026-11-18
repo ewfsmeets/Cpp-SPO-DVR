@@ -16,6 +16,7 @@ Usage: python3 -I -B docs/scm_open_questions/clamp_kink.py DIR   (run time ≈ 2
 DIR holds the published files Cu111_BOSS_briT90P90.2d.elbow, Cu111_Surf252_briT90P90.2d.elbow, …, from
 https://pubs.tc.lic.leidenuniv.nl/public/bauke.smits/2023_JCP_QDEAMSCM_Quantum/FIG23/
 """
+
 import math
 import sys
 from pathlib import Path
@@ -25,12 +26,14 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 import make_figures as mf  # noqa: E402  (the ΔV transcription and the example data)
 
-PUBLISHED = [("Cu111_BOSS_briT90P90", "Cu111_Surf252_briT90P90"),
-             ("Cu111_BOSS_briT90P90", "Cu111_Surf556_briT90P90"),
-             ("Cu111_BOSS_briT90P90", "Cu111_Surf1012_briT90P90"),
-             ("Cu111_BOSS_t2fAT90P30", "Cu111_Surf252_t2fAT90P30")]
-R_GRID = [0.4 + 0.019 * i for i in range(101)]    # Å, as in the published files
-Z_GRID = [0.25 + 0.0625 * j for j in range(45)]   # Å, the rows up to Z = 3 Å
+PUBLISHED = [
+    ("Cu111_BOSS_briT90P90", "Cu111_Surf252_briT90P90"),
+    ("Cu111_BOSS_briT90P90", "Cu111_Surf556_briT90P90"),
+    ("Cu111_BOSS_briT90P90", "Cu111_Surf1012_briT90P90"),
+    ("Cu111_BOSS_t2fAT90P30", "Cu111_Surf252_t2fAT90P30"),
+]
+R_GRID = [0.4 + 0.019 * i for i in range(101)]  # Å, as in the published files
+Z_GRID = [0.25 + 0.0625 * j for j in range(45)]  # Å, the rows up to Z = 3 Å
 B = mf.BOHR_IN_ANGSTROM
 
 
@@ -56,15 +59,17 @@ def example_delta_v(clamp):
     P = mf.read_parameters()
     atoms, a_t = mf.read_atoms()
     kept, s = mf.kept_atoms(atoms), a_t / mf.A0
-    return {z: [mf.delta_v(P, kept, s, 0.5 * a_t, 0.0, z / B, r / B, math.pi / 2, math.pi / 2, clamp(P))
-                for r in R_GRID] for z in Z_GRID}
+    return {
+        z: [mf.delta_v(P, kept, s, 0.5 * a_t, 0.0, z / B, r / B, math.pi / 2, math.pi / 2, clamp(P)) for r in R_GRID]
+        for z in Z_GRID
+    }
 
 
 def spike_scores(rows):
     """The kink score of every interior r (see the module docstring)."""
     scores = [0.0] * len(R_GRID)
     for dv in rows.values():
-        d2 = [dv[i + 1] - 2 * dv[i] + dv[i - 1] for i in range(1, len(dv) - 1)]   # d2[k] belongs to r[k+1]
+        d2 = [dv[i + 1] - 2 * dv[i] + dv[i - 1] for i in range(1, len(dv) - 1)]  # d2[k] belongs to r[k+1]
         scale = max(abs(x) for x in d2) or 1.0
         for k in range(2, len(d2) - 2):
             scores[k + 1] += abs(d2[k] - 0.5 * (d2[k - 2] + d2[k + 2])) / scale

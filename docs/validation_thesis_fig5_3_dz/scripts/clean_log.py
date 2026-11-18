@@ -4,6 +4,7 @@ progress-bar fragments dropped, trailing whitespace stripped.
 
 Usage: clean_log.py RAW_LOG CLEAN_OUT
 """
+
 import re
 import sys
 

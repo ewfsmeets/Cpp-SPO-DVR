@@ -62,8 +62,10 @@ def first_non_finite(rows):
 
 def largest_differences(base, new):
     """The largest relative difference of each column (finite values only, so never NaN)."""
-    return [max(abs(a[k] - b[k]) / max(abs(a[k]), abs(b[k]), TINY) for a, b in zip(base, new, strict=True))
-            for k in range(len(COLUMNS))]
+    return [
+        max(abs(a[k] - b[k]) / max(abs(a[k]), abs(b[k]), TINY) for a, b in zip(base, new, strict=True))
+        for k in range(len(COLUMNS))
+    ]
 
 
 def compare(base_path, new_path, tolerance):

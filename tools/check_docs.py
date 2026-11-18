@@ -55,8 +55,18 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-CHECKS = ("input-keys", "output-files", "links", "decision-ids", "local-paths", "cli", "gates",
-          "env-vars", "upstream-pin", "numbers")
+CHECKS = (
+    "input-keys",
+    "output-files",
+    "links",
+    "decision-ids",
+    "local-paths",
+    "cli",
+    "gates",
+    "env-vars",
+    "upstream-pin",
+    "numbers",
+)
 # The Fortran reference trees: refdata.py REFERENCE_TREES (ctest FortranReference.ReferenceListsAgree).
 REFERENCE_TREES = ("tests/reference/", "tests/crplib/reference/", "tests/scm/reference/")
 REFERENCE_DATA = REFERENCE_TREES + ("potentials/",)
@@ -73,6 +83,7 @@ ALLOWABLE_CHECKS = tuple(c for c in CHECKS if c != "numbers")  # numbers is repo
 @dataclass(frozen=True)
 class Finding:
     """One finding: where, which check, what is wrong (and the offending source line)."""
+
     check: str
     file: str
     line: int
@@ -102,14 +113,17 @@ class Repo:
     def text_files(self, skip: tuple[str, ...] = ()) -> list[str]:
         """Tracked text files outside the reference data, this checker and the `skip` prefixes."""
         excluded = REFERENCE_DATA + skip
-        return [f for f in self.files if not f.startswith(excluded) and f not in SELF
-                and self.lines(f) is not None]
+        return [f for f in self.files if not f.startswith(excluded) and f not in SELF and self.lines(f) is not None]
 
     def living_docs(self) -> list[str]:
         """README.md, docs/*.md and the other tracked README.md files outside the thesis record."""
-        return [f for f in self.files
-                if f == "README.md" or (f.startswith("docs/") and f.count("/") == 1 and f.endswith(".md"))
-                or (f.endswith("/README.md") and not f.startswith((THESIS_RECORD,) + REFERENCE_DATA))]
+        return [
+            f
+            for f in self.files
+            if f == "README.md"
+            or (f.startswith("docs/") and f.count("/") == 1 and f.endswith(".md"))
+            or (f.endswith("/README.md") and not f.startswith((THESIS_RECORD,) + REFERENCE_DATA))
+        ]
 
 
 def git(root: Path, *args: str) -> str | None:
@@ -178,8 +192,10 @@ def without_code_spans(line: str) -> str:
 # ---------------------------------------------------------------------------------------------
 INPUT_SOURCE = "src/input/json_input.cpp"
 INPUT_SCHEMA = "docs/input_schema.md"
-KEY_FORMS = (re.compile(r'\bin\.\w+\(\s*"(\w+)"'),        # in.read("Key", …), in.contains("Key")
-             re.compile(r'\bInputError\(\s*"(\w+)"'))     # errors name the key they concern
+KEY_FORMS = (
+    re.compile(r'\bin\.\w+\(\s*"(\w+)"'),  # in.read("Key", …), in.contains("Key")
+    re.compile(r'\bInputError\(\s*"(\w+)"'),
+)  # errors name the key they concern
 KEY_LIST = re.compile(r'\{\s*"\w+"(?:\s*,\s*"\w+")*\s*\}')  # {"KeyA", "KeyB"} lists of keys
 STRING = re.compile(r'"(\w+)"')
 
@@ -214,22 +230,37 @@ def check_input_keys(repo: Repo) -> list[Finding]:
     source, schema = repo.lines(INPUT_SOURCE), repo.lines(INPUT_SCHEMA)
     missing = [f for f, lines in ((INPUT_SOURCE, source), (INPUT_SCHEMA, schema)) if lines is None]
     if missing:
-        return [Finding("input-keys", f, 1, "file not found; restore it or update tools/check_docs.py")
-                for f in missing]
+        return [
+            Finding("input-keys", f, 1, "file not found; restore it or update tools/check_docs.py") for f in missing
+        ]
     read = keys_read("\n".join(source))
     mentioned = {m.group(1).strip() for line in schema for m in CODE_SPAN.finditer(line)}
-    findings = [Finding("input-keys", INPUT_SOURCE, line,
-                        f'key "{key}" is read but not documented in {INPUT_SCHEMA}; add it to a key table there',
-                        source[line - 1])
-                for key, line in read.items() if key not in mentioned]
+    findings = [
+        Finding(
+            "input-keys",
+            INPUT_SOURCE,
+            line,
+            f'key "{key}" is read but not documented in {INPUT_SCHEMA}; add it to a key table there',
+            source[line - 1],
+        )
+        for key, line in read.items()
+        if key not in mentioned
+    ]
     for number, cells, header in table_rows(schema):
         if header[0] != "Key":
             continue
         for m in CODE_SPAN.finditer(cells[0]):
             if m.group(1) not in read:
-                findings.append(Finding("input-keys", INPUT_SCHEMA, number,
-                                        f'key "{m.group(1)}" is documented but not read by {INPUT_SOURCE}; '
-                                        "remove the row or read the key", schema[number - 1]))
+                findings.append(
+                    Finding(
+                        "input-keys",
+                        INPUT_SCHEMA,
+                        number,
+                        f'key "{m.group(1)}" is documented but not read by {INPUT_SOURCE}; '
+                        "remove the row or read the key",
+                        schema[number - 1],
+                    )
+                )
     return findings
 
 
@@ -273,16 +304,25 @@ def check_output_files(repo: Repo) -> list[Finding]:
     findings = []
     for name, (f, number, line) in names.items():
         if not re.search(r"(?<![\w.-])" + re.escape(name) + r"(?![\w-])", text):
-            findings.append(Finding("output-files", f, number,
-                                    f'output file "{name}" is written but not named in {OUTPUT_DOC}; document it there',
-                                    line))
+            findings.append(
+                Finding(
+                    "output-files",
+                    f,
+                    number,
+                    f'output file "{name}" is written but not named in {OUTPUT_DOC}; document it there',
+                    line,
+                )
+            )
     written = {PurePosixPath(n).name for n in names}
     for number, line in enumerate(doc, 1):
         for m in CODE_SPAN.finditer(line):
             problem = documented_name_problem(m.group(1).strip(), written, literals)
             if problem:
-                findings.append(Finding("output-files", OUTPUT_DOC, number,
-                                        f"{problem}; remove it from the doc or fix the name", line))
+                findings.append(
+                    Finding(
+                        "output-files", OUTPUT_DOC, number, f"{problem}; remove it from the doc or fix the name", line
+                    )
+                )
     return findings
 
 
@@ -308,8 +348,10 @@ def documented_name_problem(span: str, written: set[str], literals: set[str]) ->
 LINK = re.compile(r'!?\[[^\]]*\]\(\s*<?([^)\s>]*)>?(?:\s+"[^"]*")?\s*\)')
 HTML_LINK = re.compile(r'\b(?:src|href)\s*=\s*"([^"]*)"')
 REFERENCE_LINK = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?")
-LINE_ANCHOR = re.compile(r"(?<![\w./~:-])((?:[\w.~-]+/)*[\w-][\w.-]*\."
-                         r"(?:cpp|hpp|h|cu|cuh|py|sh|cmake|md|f90|F90|f|inp|json|txt)):(\d+)(?:-(\d+))?(?!\d)")
+LINE_ANCHOR = re.compile(
+    r"(?<![\w./~:-])((?:[\w.~-]+/)*[\w-][\w.-]*\."
+    r"(?:cpp|hpp|h|cu|cuh|py|sh|cmake|md|f90|F90|f|inp|json|txt)):(\d+)(?:-(\d+))?(?!\d)"
+)
 HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$")
 HTML_ANCHOR = re.compile(r'<a\s+(?:name|id)\s*=\s*"([^"]+)"')
 
@@ -373,8 +415,10 @@ def anchor_problem(repo: Repo, md: str, path: str, first: int, last: int | None)
     else:
         matches = [f for f in repo.files if PurePosixPath(f).name == path]
     if not matches:
-        return (f'"{path}" is not a file of the repository; drop the line number '
-                "(Fortran anchors are file + routine) or fix the name")
+        return (
+            f'"{path}" is not a file of the repository; drop the line number '
+            "(Fortran anchors are file + routine) or fix the name"
+        )
     if len(matches) > 1:
         return f'"{path}" matches {len(matches)} files ({", ".join(matches[:3])}, …); write its path'
     count = len(repo.lines(matches[0]) or [])
@@ -422,9 +466,15 @@ def defined_ids(repo: Repo) -> tuple[set[str], list[Finding]]:
             continue
         decision = m.group(1) + m.group(2)
         if decision in defined:
-            findings.append(Finding("decision-ids", DEVIATIONS, number,
-                                    f'"{decision}" is defined twice (first at line {defined[decision]}); '
-                                    "give one of them a new ID", line))
+            findings.append(
+                Finding(
+                    "decision-ids",
+                    DEVIATIONS,
+                    number,
+                    f'"{decision}" is defined twice (first at line {defined[decision]}); give one of them a new ID',
+                    line,
+                )
+            )
         defined.setdefault(decision, number)
     return set(defined), findings
 
@@ -437,14 +487,28 @@ def check_decision_ids(repo: Repo) -> list[Finding]:
                 numbers = [m.group(2)] + re.findall(r"\d+", m.group(3))
                 for decision in (m.group(1) + n for n in numbers):
                     if decision not in defined:
-                        findings.append(Finding("decision-ids", f, number,
-                                                f'"{decision}" is not defined in {DEVIATIONS}; define it there '
-                                                "(a heading, list item or table row starting with the ID)", line))
+                        findings.append(
+                            Finding(
+                                "decision-ids",
+                                f,
+                                number,
+                                f'"{decision}" is not defined in {DEVIATIONS}; define it there '
+                                "(a heading, list item or table row starting with the ID)",
+                                line,
+                            )
+                        )
             for m in UNQUALIFIED_ID.finditer(line):
-                findings.append(Finding("decision-ids", f, number,
-                                        f'unqualified decision ID "{m.group(0)}"; name its area (flux Qn, SCM Dn, '
-                                        "CRP Dn, absorber Dn, low-Z Dn, analysis Dn) as defined in "
-                                        f"{DEVIATIONS}", line))
+                findings.append(
+                    Finding(
+                        "decision-ids",
+                        f,
+                        number,
+                        f'unqualified decision ID "{m.group(0)}"; name its area (flux Qn, SCM Dn, '
+                        "CRP Dn, absorber Dn, low-Z Dn, analysis Dn) as defined in "
+                        f"{DEVIATIONS}",
+                        line,
+                    )
+                )
     return findings
 
 
@@ -453,8 +517,10 @@ def check_decision_ids(repo: Repo) -> list[Finding]:
 # ---------------------------------------------------------------------------------------------
 LOCAL_PATH = re.compile(r"(?:~|\$HOME|\$\{HOME\}|/home/[\w.-]+)/work(?:/([^\s`'\")\]>,;]*))?")
 FORTRAN_TREE = re.compile(r"SPO-DVR(?:_v5\.19|_ref)?(?:/.*)?")
-PLAN_WORDS = re.compile(r"(?<![\w.])\(new\)|\b[Ss]tage 0\b|\b[Rr]ound \d+\b"
-                        r"|\b[Pp]hase [A-Z]?\d+[a-z]?(?!\w|\.\d)|\bR-D\d+")
+PLAN_WORDS = re.compile(
+    r"(?<![\w.])\(new\)|\b[Ss]tage 0\b|\b[Rr]ound \d+\b"
+    r"|\b[Pp]hase [A-Z]?\d+[a-z]?(?!\w|\.\d)|\bR-D\d+"
+)
 
 
 def check_local_paths(repo: Repo) -> list[Finding]:
@@ -463,12 +529,22 @@ def check_local_paths(repo: Repo) -> list[Finding]:
         for number, line in enumerate(repo.lines(f), 1):
             for m in LOCAL_PATH.finditer(line):
                 if not FORTRAN_TREE.fullmatch((m.group(1) or "").rstrip(".:")):
-                    findings.append(Finding("local-paths", f, number,
-                                            f'local path "{m.group(0)}"; only the Fortran trees ~/work/SPO-DVR, '
-                                            "~/work/SPO-DVR_v5.19, ~/work/SPO-DVR_ref may be named: drop it", line))
+                    findings.append(
+                        Finding(
+                            "local-paths",
+                            f,
+                            number,
+                            f'local path "{m.group(0)}"; only the Fortran trees ~/work/SPO-DVR, '
+                            "~/work/SPO-DVR_v5.19, ~/work/SPO-DVR_ref may be named: drop it",
+                            line,
+                        )
+                    )
             for m in PLAN_WORDS.finditer(line):
-                findings.append(Finding("local-paths", f, number,
-                                        f'plan vocabulary "{m.group(0)}"; describe the content instead', line))
+                findings.append(
+                    Finding(
+                        "local-paths", f, number, f'plan vocabulary "{m.group(0)}"; describe the content instead', line
+                    )
+                )
     return findings
 
 
@@ -521,21 +597,37 @@ def check_cli(repo: Repo, spodvr: str) -> list[Finding]:
     readme = repo.lines("README.md") or []
     number, block = readme_usage(readme)
     if not block:
-        return [Finding("cli", "README.md", 1, 'no usage block (fenced, starting with "spodvr ") in "## Running"; '
-                        "add it")]
+        return [
+            Finding("cli", "README.md", 1, 'no usage block (fenced, starting with "spodvr ") in "## Running"; add it')
+        ]
     documented, printed = usage_items(block), usage_items(help_usage(spodvr))
     findings = []
     for name in printed.keys() - documented.keys():
-        findings.append(Finding("cli", "README.md", number,
-                                f'option "{printed[name]}" of spodvr --help is missing from the usage block; add it'))
+        findings.append(
+            Finding(
+                "cli",
+                "README.md",
+                number,
+                f'option "{printed[name]}" of spodvr --help is missing from the usage block; add it',
+            )
+        )
     for name in documented.keys() - printed.keys():
-        findings.append(Finding("cli", "README.md", number,
-                                f'option "{documented[name]}" is not an option of spodvr --help; remove it'))
+        findings.append(
+            Finding(
+                "cli", "README.md", number, f'option "{documented[name]}" is not an option of spodvr --help; remove it'
+            )
+        )
     for name in sorted(documented.keys() & printed.keys()):
         if documented[name] != printed[name]:
-            findings.append(Finding("cli", "README.md", number,
-                                    f'usage block has "[{documented[name]}]", spodvr --help "[{printed[name]}]"; '
-                                    "copy the program's form"))
+            findings.append(
+                Finding(
+                    "cli",
+                    "README.md",
+                    number,
+                    f'usage block has "[{documented[name]}]", spodvr --help "[{printed[name]}]"; '
+                    "copy the program's form",
+                )
+            )
     return sorted(findings, key=lambda f: f.what)
 
 
@@ -570,15 +662,28 @@ def check_gates(repo: Repo) -> list[Finding]:
                 for name in m.groups():
                     gate = re.match(r"Gate(\d+)", name)
                     if gate and int(gate.group(1)) not in entries:
-                        findings.append(Finding("gates", f, number,
-                                                f'test {name} names gate {gate.group(1)}, which has no entry in '
-                                                f'"## Gates" of {VALIDATION}; add it or rename the test', line))
+                        findings.append(
+                            Finding(
+                                "gates",
+                                f,
+                                number,
+                                f"test {name} names gate {gate.group(1)}, which has no entry in "
+                                f'"## Gates" of {VALIDATION}; add it or rename the test',
+                                line,
+                            )
+                        )
     # A case directory holds the Fortran input of its case (DVR.inp).
     cases = sorted({f.split("/")[2] for f in repo.files if re.fullmatch(r"tests/reference/[^/]+/DVR\.inp", f)})
     for case in cases:
         if not re.search(r"(?<![\w-])" + re.escape(case) + r"(?![\w-])", text):
-            findings.append(Finding("gates", f"tests/reference/{case}", 1,
-                                    f'reference directory "{case}" is not named in {VALIDATION}; describe it there'))
+            findings.append(
+                Finding(
+                    "gates",
+                    f"tests/reference/{case}",
+                    1,
+                    f'reference directory "{case}" is not named in {VALIDATION}; describe it there',
+                )
+            )
     return findings
 
 
@@ -612,9 +717,16 @@ def check_env_vars(repo: Repo) -> tuple[list[Finding], list[str]]:
     for name, (f, number, line) in sorted(env_vars_read(repo).items()):
         where = [d for d, text in docs.items() if re.search(r"\b" + name + r"\b", text)]
         if not where:
-            findings.append(Finding("env-vars", f, number,
-                                    f"environment variable {name} is read but not documented in a living doc "
-                                    "(README.md, docs/*.md, a README.md); document it", line))
+            findings.append(
+                Finding(
+                    "env-vars",
+                    f,
+                    number,
+                    f"environment variable {name} is read but not documented in a living doc "
+                    "(README.md, docs/*.md, a README.md); document it",
+                    line,
+                )
+            )
         elif len(where) > 1:
             report.append(f"env-vars: {name} is documented in {len(where)} docs: {', '.join(where)}")
     for name in RETIRED_ENV_VARS:
@@ -623,9 +735,15 @@ def check_env_vars(repo: Repo) -> tuple[list[Finding], list[str]]:
                 continue
             for number, line in enumerate(repo.lines(f), 1):
                 if re.search(r"\b" + name + r"\b", line):
-                    findings.append(Finding("env-vars", f, number,
-                                            f"retired variable {name} may appear only in {RETIRED_ENV_HOME}; "
-                                            "drop it", line))
+                    findings.append(
+                        Finding(
+                            "env-vars",
+                            f,
+                            number,
+                            f"retired variable {name} may appear only in {RETIRED_ENV_HOME}; drop it",
+                            line,
+                        )
+                    )
     return findings, report
 
 
@@ -636,10 +754,12 @@ UPSTREAM_SYNC = "docs/upstream_sync.md"
 REFERENCE_CONFIG = "tools/fortran_reference/reference_config.sh"
 # (name, row of the table at the top of upstream_sync.md, pin assignment in reference_config.sh)
 UPSTREAM_ITEMS = (
-    ("commit", re.compile(r"^\|\s*Upstream commit\s*\|\s*`([0-9a-f]{7,40})`\s*\|"),
-     re.compile(r'^FORTRAN_BUILD_COMMIT="([0-9a-f]{40})"$')),
-    ("svn revision", re.compile(r"^\|\s*svn revision\s*\|\s*(r\d+)\s*\|"),
-     re.compile(r'^FORTRAN_BUILD_SVN="(r\d+)"$')),
+    (
+        "commit",
+        re.compile(r"^\|\s*Upstream commit\s*\|\s*`([0-9a-f]{7,40})`\s*\|"),
+        re.compile(r'^FORTRAN_BUILD_COMMIT="([0-9a-f]{40})"$'),
+    ),
+    ("svn revision", re.compile(r"^\|\s*svn revision\s*\|\s*(r\d+)\s*\|"), re.compile(r'^FORTRAN_BUILD_SVN="(r\d+)"$')),
 )
 # The install id reference_config.sh derives from the pin (this check computes it the same way, so
 # the formula must stay), and the install every run uses.
@@ -668,21 +788,35 @@ def check_upstream_pin(repo: Repo) -> list[Finding]:
     for name, row, assignment in UPSTREAM_ITEMS:
         named, pinned = first_match(doc, row), first_match(config, assignment)
         if pinned is None:
-            findings.append(Finding("upstream-pin", REFERENCE_CONFIG, 1,
-                                    f"no pin of the upstream {name} ({assignment.pattern}); "
-                                    "restore it or update tools/check_docs.py"))
+            findings.append(
+                Finding(
+                    "upstream-pin",
+                    REFERENCE_CONFIG,
+                    1,
+                    f"no pin of the upstream {name} ({assignment.pattern}); restore it or update tools/check_docs.py",
+                )
+            )
             continue
         pins[name] = pinned[1]
         if named is None:
-            findings.append(Finding("upstream-pin", UPSTREAM_SYNC, 1,
-                                    f"no table row with the upstream {name} ({row.pattern}); add it"))
+            findings.append(
+                Finding(
+                    "upstream-pin", UPSTREAM_SYNC, 1, f"no table row with the upstream {name} ({row.pattern}); add it"
+                )
+            )
             continue
         agrees = pinned[1].startswith(named[1]) if name == "commit" else named[1] == pinned[1]
         if not agrees:
-            findings.append(Finding("upstream-pin", UPSTREAM_SYNC, named[0],
-                                    f'upstream {name} "{named[1]}" is not the pin "{pinned[1]}" of '
-                                    f"{REFERENCE_CONFIG}:{pinned[0]}; name the pinned one, or move the pin",
-                                    doc[named[0] - 1]))
+            findings.append(
+                Finding(
+                    "upstream-pin",
+                    UPSTREAM_SYNC,
+                    named[0],
+                    f'upstream {name} "{named[1]}" is not the pin "{pinned[1]}" of '
+                    f"{REFERENCE_CONFIG}:{pinned[0]}; name the pinned one, or move the pin",
+                    doc[named[0] - 1],
+                )
+            )
     if len(pins) == len(UPSTREAM_ITEMS):
         findings += check_reference_id(config, f"{pins['svn revision']}-{pins['commit'][:7]}")
     return findings
@@ -693,15 +827,27 @@ def check_reference_id(config: list[str], build_id: str) -> list[Finding]:
     its install (the data would come from another commit than the docs name), or the reverse."""
     ref_id = first_match(config, REF_ID)
     if ref_id is None or BUILD_ID_FORMULA not in config:
-        return [Finding("upstream-pin", REFERENCE_CONFIG, 1,
-                        f"no FORTRAN_REF_ID=\"<id>\" line, or no line {BUILD_ID_FORMULA}; "
-                        "restore it or update tools/check_docs.py")]
+        return [
+            Finding(
+                "upstream-pin",
+                REFERENCE_CONFIG,
+                1,
+                f'no FORTRAN_REF_ID="<id>" line, or no line {BUILD_ID_FORMULA}; '
+                "restore it or update tools/check_docs.py",
+            )
+        ]
     if ref_id[1] == build_id:
         return []
-    return [Finding("upstream-pin", REFERENCE_CONFIG, ref_id[0],
-                    f'FORTRAN_REF_ID "{ref_id[1]}" is not FORTRAN_BUILD_ID "{build_id}" (the pinned build); '
-                    "regenerate with the pinned install and switch FORTRAN_REF_ID, or move the pin back",
-                    config[ref_id[0] - 1])]
+    return [
+        Finding(
+            "upstream-pin",
+            REFERENCE_CONFIG,
+            ref_id[0],
+            f'FORTRAN_REF_ID "{ref_id[1]}" is not FORTRAN_BUILD_ID "{build_id}" (the pinned build); '
+            "regenerate with the pinned install and switch FORTRAN_REF_ID, or move the pin back",
+            config[ref_id[0] - 1],
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -737,6 +883,7 @@ def check_numbers(repo: Repo) -> list[str]:
 @dataclass(frozen=True)
 class AllowEntry:
     """One allow-list row: accept findings of `check` in `file` whose line or source contains `match`."""
+
     check: str
     file: str
     match: str
@@ -744,8 +891,11 @@ class AllowEntry:
     line: int
 
     def accepts(self, finding: Finding) -> bool:
-        return (self.check == finding.check and self.file == finding.file
-                and (self.match in str(finding) or self.match in finding.text))
+        return (
+            self.check == finding.check
+            and self.file == finding.file
+            and (self.match in str(finding) or self.match in finding.text)
+        )
 
 
 def read_allowlist(path: Path, label: str) -> tuple[list[AllowEntry], list[Finding]]:
@@ -754,21 +904,34 @@ def read_allowlist(path: Path, label: str) -> tuple[list[AllowEntry], list[Findi
     lines = read_text_lines(path) or []
     rows = [(n, line) for n, line in enumerate(lines, 1) if line.strip() and not line.startswith("#")]
     if not rows or rows[0][1].split("\t") != ALLOWLIST_HEADER:
-        problems.append(Finding("allowlist", label, rows[0][0] if rows else 1,
-                                "the first row must be the header check<TAB>file<TAB>match<TAB>reason"))
+        problems.append(
+            Finding(
+                "allowlist",
+                label,
+                rows[0][0] if rows else 1,
+                "the first row must be the header check<TAB>file<TAB>match<TAB>reason",
+            )
+        )
     for number, line in rows[1:]:
         cells = line.split("\t")
         if len(cells) != 4 or not all(c.strip() for c in cells) or cells[0] not in ALLOWABLE_CHECKS:
-            problems.append(Finding("allowlist", label, number,
-                                    "row needs 4 non-empty tab-separated cells and a check from "
-                                    f"{', '.join(ALLOWABLE_CHECKS)}", line))
+            problems.append(
+                Finding(
+                    "allowlist",
+                    label,
+                    number,
+                    f"row needs 4 non-empty tab-separated cells and a check from {', '.join(ALLOWABLE_CHECKS)}",
+                    line,
+                )
+            )
             continue
         entries.append(AllowEntry(*cells, line=number))
     keys = [(e.check, e.file, e.match) for e in entries]
     for previous, entry, key in zip(keys, entries[1:], keys[1:], strict=False):  # each entry with the one before
         if key < previous:
-            problems.append(Finding("allowlist", label, entry.line,
-                                    "rows are not sorted (by check, file, match); sort them", ""))
+            problems.append(
+                Finding("allowlist", label, entry.line, "rows are not sorted (by check, file, match); sort them", "")
+            )
             break
     return entries, problems
 
@@ -788,10 +951,17 @@ def apply_allowlist(findings: list[Finding], entries: list[AllowEntry], label: s
         accepted += 1
         if len(matching) == 1:
             needed.add(matching[0])
-    stale = [Finding("allowlist", label, e.line,
-                     f'row "{e.check}  {e.file}  {e.match}" suppresses nothing (or only findings another row '
-                     "also suppresses); delete it")
-             for e in entries if e not in needed]
+    stale = [
+        Finding(
+            "allowlist",
+            label,
+            e.line,
+            f'row "{e.check}  {e.file}  {e.match}" suppresses nothing (or only findings another row '
+            "also suppresses); delete it",
+        )
+        for e in entries
+        if e not in needed
+    ]
     return remaining, accepted, stale
 
 
@@ -800,11 +970,16 @@ def apply_allowlist(findings: list[Finding], entries: list[AllowEntry], label: s
 # ---------------------------------------------------------------------------------------------
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent,
-                        help="repository to check (default: the repository of this script)")
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent,
+        help="repository to check (default: the repository of this script)",
+    )
     parser.add_argument("--spodvr", help="built spodvr program for check cli (default: skip check cli)")
-    parser.add_argument("--allowlist", type=Path,
-                        help="accepted findings (default: <root>/tools/check_docs_allowlist.tsv)")
+    parser.add_argument(
+        "--allowlist", type=Path, help="accepted findings (default: <root>/tools/check_docs_allowlist.tsv)"
+    )
     parser.add_argument("--checks", default=",".join(CHECKS), help="comma-separated checks (default: all)")
     parser.add_argument("--no-report", action="store_true", help="do not print the report-only lists")
     args = parser.parse_args(argv)
@@ -827,9 +1002,15 @@ def run_checks(repo: Repo, args: argparse.Namespace) -> tuple[dict[str, list[Fin
     """Findings per check, report-only lines and notes."""
     findings: dict[str, list[Finding]] = {}
     report, notes = [], []
-    simple = {"input-keys": check_input_keys, "output-files": check_output_files, "links": check_links,
-              "decision-ids": check_decision_ids, "local-paths": check_local_paths, "gates": check_gates,
-              "upstream-pin": check_upstream_pin}
+    simple = {
+        "input-keys": check_input_keys,
+        "output-files": check_output_files,
+        "links": check_links,
+        "decision-ids": check_decision_ids,
+        "local-paths": check_local_paths,
+        "gates": check_gates,
+        "upstream-pin": check_upstream_pin,
+    }
     for check in args.checks:
         if check in simple:
             findings[check] = simple[check](repo)
@@ -856,8 +1037,11 @@ def main(argv: list[str]) -> int:
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
         print(f"error: check cli could not run the program: {error}; build spodvr or pass another --spodvr")
         return 1
-    label = (args.allowlist.resolve().relative_to(args.root).as_posix()
-             if args.allowlist.resolve().is_relative_to(args.root) else str(args.allowlist))
+    label = (
+        args.allowlist.resolve().relative_to(args.root).as_posix()
+        if args.allowlist.resolve().is_relative_to(args.root)
+        else str(args.allowlist)
+    )
     entries, problems = read_allowlist(args.allowlist, label)
     entries = [e for e in entries if e.check in findings]  # rows of skipped checks are not judged
     counts, remaining_all = [], []
@@ -874,8 +1058,10 @@ def main(argv: list[str]) -> int:
         print(note)
     for finding in remaining_all:
         print(finding)
-    print(f"check_docs: {len(remaining_all)} finding(s): {', '.join(counts)}, allowlist {len(problems + stale)}; "
-          f"report-only {len(report)}; {time.monotonic() - start:.1f} s")
+    print(
+        f"check_docs: {len(remaining_all)} finding(s): {', '.join(counts)}, allowlist {len(problems + stale)}; "
+        f"report-only {len(report)}; {time.monotonic() - start:.1f} s"
+    )
     return 1 if remaining_all else 0
 
 

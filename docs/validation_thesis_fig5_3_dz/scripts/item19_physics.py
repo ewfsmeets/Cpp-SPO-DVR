@@ -12,6 +12,7 @@
 (d) sub-threshold reaction floor (P_reaction at 0.40-0.50 eV, where the thesis curve is ~0).
 (e) norm left on the grids at T.
 Writes data/items/item19.json."""
+
 from __future__ import annotations
 
 import math
@@ -28,8 +29,8 @@ KEYS = ["E_coll", "v", "j", "mJ", "n", "m"]
 def c6v_orbits(nm_pairs):
     a1 = np.array([1.0, 0.0])
     a2 = np.array([math.cos(math.pi / 3), math.sin(math.pi / 3)])
-    A = np.array([a1, a2])                      # rows: real-space basis
-    B = np.linalg.inv(A).T                      # rows: reciprocal basis (a_i . b_j = delta_ij)
+    A = np.array([a1, a2])  # rows: real-space basis
+    B = np.linalg.inv(A).T  # rows: reciprocal basis (a_i . b_j = delta_ij)
     ops = []
     for k in range(6):
         c, s = math.cos(k * math.pi / 3), math.sin(k * math.pi / 3)
@@ -72,8 +73,11 @@ def per_operation(s):
                 if q is not None and max(p, q) > 1e-8:
                     rel.append(abs(p - q) / max(p, q))
             rel = np.array(rel)
-            out[f"rot{60 * k}{'_mirror' if mir else ''}"] = {"n": int(rel.size), "median": float(np.median(rel)),
-                                                              "p95": float(np.percentile(rel, 95))}
+            out[f"rot{60 * k}{'_mirror' if mir else ''}"] = {
+                "n": int(rel.size),
+                "median": float(np.median(rel)),
+                "p95": float(np.percentile(rel, 95)),
+            }
     return out
 
 
@@ -95,8 +99,12 @@ def symmetry(s):
         if mx > 1e-8 and mj > 0:
             d.append((abs(p - q) / mx, abs(p - q), E, v, j, mj))
     d.sort(reverse=True)
-    out["mJ_symmetry"] = {"n_pairs": len(d), "max_relative": d[0][0] if d else 0.0, "max_abs": max(x[1] for x in d) if d else 0.0,
-                          "where": {"E": d[0][2], "v": int(d[0][3]), "j": int(d[0][4]), "mJ": int(d[0][5])} if d else None}
+    out["mJ_symmetry"] = {
+        "n_pairs": len(d),
+        "max_relative": d[0][0] if d else 0.0,
+        "max_abs": max(x[1] for x in d) if d else 0.0,
+        "where": {"E": d[0][2], "v": int(d[0][3]), "j": int(d[0][4]), "mJ": int(d[0][5])} if d else None,
+    }
     # the diagonal mirror (n, m) -> (m, n), summed over mJ: the one operation that also maps the
     # parallelogram of FFT momenta in (x, y) (n, m = -nx/2 .. nx/2 - 1) onto itself
     pd_ = s.groupby(["E_coll", "v", "j", "n", "m"])["P"].sum()
@@ -108,8 +116,11 @@ def symmetry(s):
             if mx > 1e-8:
                 dm.append((abs(p - q) / mx, E, v, j, n, m))
     dm.sort(reverse=True)
-    out["diagonal_mirror"] = {"n_pairs": len(dm), "max_relative": float(dm[0][0]),
-                              "where": {"E": float(dm[0][1]), "v": int(dm[0][2]), "j": int(dm[0][3]), "n": int(dm[0][4]), "m": int(dm[0][5])}}
+    out["diagonal_mirror"] = {
+        "n_pairs": len(dm),
+        "max_relative": float(dm[0][0]),
+        "where": {"E": float(dm[0][1]), "v": int(dm[0][2]), "j": int(dm[0][3]), "n": int(dm[0][4]), "m": int(dm[0][5])},
+    }
     # orbits of diffraction channels, summed over mJ
     g = s.groupby(["E_coll", "v", "j", "n", "m", "orbit"])["P"].sum().reset_index()
     spread = []
@@ -119,12 +130,21 @@ def symmetry(s):
             spread.append(((grp["P"].max() - grp["P"].min()) / mx, grp["P"].max() - grp["P"].min(), key, len(grp)))
     spread.sort(key=lambda x: -x[0])
     rel = np.array([x[0] for x in spread])
-    out["diffraction_orbits"] = {"n_orbits_compared": len(spread), "max_relative_spread": float(rel.max()),
-                                 "median_relative_spread": float(np.median(rel)), "p95_relative_spread": float(np.percentile(rel, 95)),
-                                 "max_abs_spread": float(max(x[1] for x in spread)),
-                                 "median_abs_spread": float(np.median([x[1] for x in spread])),
-                                 "where": {"E": float(spread[0][2][0]), "v": int(spread[0][2][1]), "j": int(spread[0][2][2]),
-                                           "orbit": list(spread[0][2][3]), "members": spread[0][3]}}
+    out["diffraction_orbits"] = {
+        "n_orbits_compared": len(spread),
+        "max_relative_spread": float(rel.max()),
+        "median_relative_spread": float(np.median(rel)),
+        "p95_relative_spread": float(np.percentile(rel, 95)),
+        "max_abs_spread": float(max(x[1] for x in spread)),
+        "median_abs_spread": float(np.median([x[1] for x in spread])),
+        "where": {
+            "E": float(spread[0][2][0]),
+            "v": int(spread[0][2][1]),
+            "j": int(spread[0][2][2]),
+            "orbit": list(spread[0][2][3]),
+            "members": spread[0][3],
+        },
+    }
     return out
 
 
@@ -132,7 +152,10 @@ def main():
     res = {}
     E = pd.read_csv(RUN_DIRS["cpu"] / "scattering_summary.tsv", sep="\t", comment="#")["E_coll"].to_numpy()
     tables = {k: pd.read_csv(RUN_DIRS[k] / "s_matrix.tsv", sep="\t", comment="#") for k in ("cpu", "gpu")}
-    F = pd.DataFrame(list(fort25(RUN_DIRS["fortran"] / "fort.25")), columns=["ie", "v", "j", "mJ", "order", "n", "m", "ReS", "ImS", "P", "phase"])
+    F = pd.DataFrame(
+        list(fort25(RUN_DIRS["fortran"] / "fort.25")),
+        columns=["ie", "v", "j", "mJ", "order", "n", "m", "ReS", "ImS", "P", "phase"],
+    )
     F["E_coll"] = E[F["ie"].to_numpy()]
     F["P"] = F["P"].map(parse_fortran_real)
     F["S0"] = (F["ReS"].map(parse_fortran_real) == 0) & (F["ImS"].map(parse_fortran_real) == 0)
@@ -142,11 +165,20 @@ def main():
     nb = NativeBk(RUN_DIRS["cpu"] / "bk_coefficients.bin")
     fb = FortranBk(RUN_DIRS["fortran"] / "fort.21")
     lab = nb.labels
-    e_init_c = float([l.split() for l in (RUN_DIRS["cpu"] / "gas_phase_states.dat").read_text().splitlines() if not l.startswith("#")][0][2])
+    e_init_c = float(
+        [
+            l.split()
+            for l in (RUN_DIRS["cpu"] / "gas_phase_states.dat").read_text().splitlines()
+            if not l.startswith("#")
+        ][0][2]
+    )
     open_sets = {}
     margins = {}
-    for k, ech, einit in (("cpp", nb.energies, e_init_c), ("fortran", fb.enymo.reshape(fb.nviba, fb.nstata), fb.e_initial)):
-        total = E / CHAEV + einit                      # hartree (both codes: E_coll/chaev + eviroi)
+    for k, ech, einit in (
+        ("cpp", nb.energies, e_init_c),
+        ("fortran", fb.enymo.reshape(fb.nviba, fb.nstata), fb.e_initial),
+    ):
+        total = E / CHAEV + einit  # hartree (both codes: E_coll/chaev + eviroi)
         diff = total[:, None, None] - ech[None, :, :]  # (energy, v, is)
         open_sets[k] = diff > 0
         margins[k] = float(np.min(np.abs(diff)))
@@ -159,23 +191,32 @@ def main():
             arr[ie_of[float(e)], int(v), idx[(int(j), int(mj), int(n), int(m))]] = True
         listed[k] = arr
     res["thresholds"] = {
-        "n_open_cpp_by_energy_rule": int(open_sets["cpp"].sum()), "n_open_fortran_by_energy_rule": int(open_sets["fortran"].sum()),
+        "n_open_cpp_by_energy_rule": int(open_sets["cpp"].sum()),
+        "n_open_fortran_by_energy_rule": int(open_sets["fortran"].sum()),
         "rule_sets_equal": bool(np.array_equal(open_sets["cpp"], open_sets["fortran"])),
         "cpu_listed_equals_rule": bool(np.array_equal(listed["cpu"], open_sets["cpp"])),
         "gpu_listed_equals_rule": bool(np.array_equal(listed["gpu"], open_sets["cpp"])),
         "fortran_nonzero_S_subset_of_rule": bool(np.all(~listed["fortran"] | open_sets["fortran"])),
         "fortran_open_with_S_exactly_zero": int(np.sum(open_sets["fortran"] & ~listed["fortran"])),
-        "smallest_margin_hartree": margins, "smallest_margin_eV": {k: v * CHAEV for k, v in margins.items()}}
+        "smallest_margin_hartree": margins,
+        "smallest_margin_eV": {k: v * CHAEV for k, v in margins.items()},
+    }
 
     # (b) bounds
     blocks = energy_blocks(clean_log_lines("fortran"))
     bounds = {}
     for k in ("cpu", "gpu"):
         su = pd.read_csv(RUN_DIRS[k] / "scattering_summary.tsv", sep="\t", comment="#")
-        bounds[k] = {"min_P": float(tables[k]["P"].min()), "max_sum_P": float(su["P_scattered"].max()),
-                     "min_P_reaction": float(su["P_reaction"].min())}
-    bounds["fortran"] = {"min_P": float(tables["fortran"]["P"].min()), "max_sum_P": max(parse_fortran_real(b["p_sum"]) for b in blocks),
-                         "min_P_reaction": min(parse_fortran_real(b["p_reaction"]) for b in blocks)}
+        bounds[k] = {
+            "min_P": float(tables[k]["P"].min()),
+            "max_sum_P": float(su["P_scattered"].max()),
+            "min_P_reaction": float(su["P_reaction"].min()),
+        }
+    bounds["fortran"] = {
+        "min_P": float(tables["fortran"]["P"].min()),
+        "max_sum_P": max(parse_fortran_real(b["p_sum"]) for b in blocks),
+        "min_P_reaction": min(parse_fortran_real(b["p_reaction"]) for b in blocks),
+    }
     res["bounds"] = bounds
 
     # (c) symmetry
@@ -183,12 +224,14 @@ def main():
     ops = per_operation(tables["cpu"])
     res["per_operation_cpu"] = ops
     broken = {k: v for k, v in ops.items() if k not in ("rot0", "rot60_mirror")}
-    res["per_operation_summary"] = {"broken_median_min": min(v["median"] for v in broken.values()),
-                                    "broken_median_max": max(v["median"] for v in broken.values()),
-                                    "broken_p95_min": min(v["p95"] for v in broken.values()),
-                                    "broken_p95_max": max(v["p95"] for v in broken.values()),
-                                    "diagonal_mirror_median": ops["rot60_mirror"]["median"],
-                                    "diagonal_mirror_p95": ops["rot60_mirror"]["p95"]}
+    res["per_operation_summary"] = {
+        "broken_median_min": min(v["median"] for v in broken.values()),
+        "broken_median_max": max(v["median"] for v in broken.values()),
+        "broken_p95_min": min(v["p95"] for v in broken.values()),
+        "broken_p95_max": max(v["p95"] for v in broken.values()),
+        "diagonal_mirror_median": ops["rot60_mirror"]["median"],
+        "diagonal_mirror_p95": ops["rot60_mirror"]["p95"],
+    }
     # the orbit spread is a property of the calculation: compare it between the codes
     sp = {k: v["diffraction_orbits"]["max_relative_spread"] for k, v in res["symmetry"].items()}
     res["symmetry_spread_codes_max_difference"] = float(max(sp.values()) - min(sp.values()))
@@ -196,21 +239,38 @@ def main():
     shell = {}
     t = tables["cpu"]
     for E_ in (0.6, 0.865):
-        g = t[np.isclose(t["E_coll"], E_) & (t["v"] == 0) & (t["j"] == 0) & (t["order"] == 1)].groupby(["n", "m"])["P"].sum()
+        g = (
+            t[np.isclose(t["E_coll"], E_) & (t["v"] == 0) & (t["j"] == 0) & (t["order"] == 1)]
+            .groupby(["n", "m"])["P"]
+            .sum()
+        )
         shell[str(E_)] = {f"({n},{m})": float(p) for (n, m), p in g.items()}
     res["first_order_shell_v0_j0"] = shell
 
     # (d) sub-threshold reaction floor and (e) norm left
     su = pd.read_csv(RUN_DIRS["cpu"] / "scattering_summary.tsv", sep="\t", comment="#")
     low = su[su["E_coll"] <= 0.5 + 1e-9]
-    res["subthreshold"] = {"E_max": 0.5, "n": int(len(low)), "P_reaction_min": float(low["P_reaction"].min()),
-                           "P_reaction_max": float(low["P_reaction"].max()), "P_reaction_median": float(low["P_reaction"].median()),
-                           "fortran_same_range": [min(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E, strict=True) if e <= 0.5 + 1e-9),
-                                                  max(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E, strict=True) if e <= 0.5 + 1e-9)]}
+    res["subthreshold"] = {
+        "E_max": 0.5,
+        "n": int(len(low)),
+        "P_reaction_min": float(low["P_reaction"].min()),
+        "P_reaction_max": float(low["P_reaction"].max()),
+        "P_reaction_median": float(low["P_reaction"].median()),
+        "fortran_same_range": [
+            min(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E, strict=True) if e <= 0.5 + 1e-9),
+            max(parse_fortran_real(b["p_reaction"]) for b, e in zip(blocks, E, strict=True) if e <= 0.5 + 1e-9),
+        ],
+    }
     av = [l.split() for l in (RUN_DIRS["cpu"] / "averages.dat").read_text().splitlines() if not l.startswith("#")]
-    res["norm_left_at_T"] = {"cpu": float(av[-1][1]),
-                             "gpu": float([l.split() for l in (RUN_DIRS["gpu"] / "averages.dat").read_text().splitlines() if not l.startswith("#")][-1][1]),
-                             "fortran_text": [l.split() for l in open(RUN_DIRS["fortran"] / "averages.out") if len(l.split()) == 5][-1][1]}
+    res["norm_left_at_T"] = {
+        "cpu": float(av[-1][1]),
+        "gpu": float(
+            [l.split() for l in (RUN_DIRS["gpu"] / "averages.dat").read_text().splitlines() if not l.startswith("#")][
+                -1
+            ][1]
+        ),
+        "fortran_text": [l.split() for l in open(RUN_DIRS["fortran"] / "averages.out") if len(l.split()) == 5][-1][1],
+    }
     save_item("item19", res)
     print("thresholds:", res["thresholds"])
     print("bounds:", res["bounds"])

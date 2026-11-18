@@ -5,6 +5,7 @@ Usage: python3 -I make_kernel_inputs.py <output_dir>
 Every real value is written as its 16 hexadecimal IEEE digits, so the C++ tests read exactly the
 inputs the Fortran driver got. Deterministic (no randomness).
 """
+
 import math
 import os
 import struct
@@ -61,8 +62,10 @@ def main():
             for i in range(5):
                 ii, jj = i % 4, j % 4  # periodic: the last row/column repeats the first
                 u, v = ii * 0.25, jj * 0.25
-                f3.append(math.exp(-0.9 * z) * (1 + 0.3 * math.cos(2 * math.pi * u) * math.cos(2 * math.pi * v))
-                          + 0.05 * math.sin(2 * math.pi * u) * z)
+                f3.append(
+                    math.exp(-0.9 * z) * (1 + 0.3 * math.cos(2 * math.pi * u) * math.cos(2 * math.pi * v))
+                    + 0.05 * math.sin(2 * math.pi * u) * z
+                )
     d1 = [-0.9 * (1 + 0.1 * ((i % 4) + (j % 4))) for j in range(5) for i in range(5)]
     d2 = [0.002 * (1 + (i % 4) * (j % 4)) for j in range(5) for i in range(5)]
     q3 = [(0.1, 0.2, 0.0), (2.4, 1.1, -0.7), (4.8, 4.8, 5.0), (0.0, 0.0, -1.0), (3.3, 0.7, 2.2), (1.9, 3.9, 4.4)]

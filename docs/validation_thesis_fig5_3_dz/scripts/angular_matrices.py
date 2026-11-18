@@ -14,6 +14,7 @@ Inputs (runs/thesis_fig5_3_dz_validation/angular/<code>/, make_all.sh --heavy):
 each with thetas.bin, weights.bin, matrix.bin, basis.txt, roundtrip.bin; the four BK files; the
 C++ potential on the full grid (item 4, potential/build-fast/v_full.bin) for the robustness check.
 Writes data/items/angular_matrices.json."""
+
 from __future__ import annotations
 
 import json
@@ -27,12 +28,24 @@ from item04_potential import read_pes
 from parse_logs import cpp_section
 
 ANG = WORK / "angular"
-CODES = {"fortran": ANG / "fortran", "strict": ANG / "build-cuda", "fast": ANG / "build-fast",
-         "fast_gpu": ANG / "build-cuda-fast"}
+CODES = {
+    "fortran": ANG / "fortran",
+    "strict": ANG / "build-cuda",
+    "fast": ANG / "build-fast",
+    "fast_gpu": ANG / "build-cuda-fast",
+}
 STRICT = RUNS / "thesis_fig5_3_dz_cuda"
-BK_FILES = {"fortran": RUN_DIRS["fortran"] / "fort.21", "strict": STRICT / "bk_coefficients.bin",
-            "fast": RUN_DIRS["cpu"] / "bk_coefficients.bin", "fast_gpu": RUN_DIRS["gpu"] / "bk_coefficients.bin"}
-LOGS = {"strict": WORK / "logs" / "gpu_strict.txt", "fast": WORK / "logs" / "cpu.txt", "fast_gpu": WORK / "logs" / "gpu.txt"}
+BK_FILES = {
+    "fortran": RUN_DIRS["fortran"] / "fort.21",
+    "strict": STRICT / "bk_coefficients.bin",
+    "fast": RUN_DIRS["cpu"] / "bk_coefficients.bin",
+    "fast_gpu": RUN_DIRS["gpu"] / "bk_coefficients.bin",
+}
+LOGS = {
+    "strict": WORK / "logs" / "gpu_strict.txt",
+    "fast": WORK / "logs" / "cpu.txt",
+    "fast_gpu": WORK / "logs" / "gpu.txt",
+}
 PAIRS = [("strict", "fortran"), ("fast", "fortran"), ("strict", "fast"), ("fast_gpu", "fortran"), ("fast_gpu", "fast")]
 VERDICT_J = (8, 10)
 
@@ -52,17 +65,31 @@ def load_code(path):
     matrix = np.fromfile(path / "matrix.bin", dtype="<f8")
     # matrix order (mJ block, theta, J): the mJ = 0 block follows the blocks of mJ < 0
     start = sum(ntheta * int(np.sum(basis[:, 1] == m)) for m in range(int(basis[:, 1].min()), 0))
-    m0_block = matrix[start:start + ntheta * len(m0)].reshape(ntheta, len(m0))
-    return {"n_rot": n_rot, "nphi": nphi, "ntheta": ntheta, "basis": basis, "m0": m0, "J": basis[m0, 0],
-            "thetas": np.fromfile(path / "thetas.bin", dtype="<f8"), "weights": np.fromfile(path / "weights.bin", dtype="<f8"),
-            "matrix": matrix, "m0_block": m0_block, "roundtrip": rt}
+    m0_block = matrix[start : start + ntheta * len(m0)].reshape(ntheta, len(m0))
+    return {
+        "n_rot": n_rot,
+        "nphi": nphi,
+        "ntheta": ntheta,
+        "basis": basis,
+        "m0": m0,
+        "J": basis[m0, 0],
+        "thetas": np.fromfile(path / "thetas.bin", dtype="<f8"),
+        "weights": np.fromfile(path / "weights.bin", dtype="<f8"),
+        "matrix": matrix,
+        "m0_block": m0_block,
+        "roundtrip": rt,
+    }
 
 
 def ulp_compare(a, b):
     d = np.abs(a - b)
-    return {"n": int(a.size), "n_identical": int(np.sum(a == b)), "max_abs": float(d.max()),
-            "max_rel": float(np.max(d / np.abs(b), where=b != 0, initial=0.0)),
-            "max_ulps": float(np.max(d / np.spacing(np.abs(b)), where=b != 0, initial=0.0))}
+    return {
+        "n": int(a.size),
+        "n_identical": int(np.sum(a == b)),
+        "max_abs": float(d.max()),
+        "max_rel": float(np.max(d / np.abs(b), where=b != 0, initial=0.0)),
+        "max_ulps": float(np.max(d / np.spacing(np.abs(b)), where=b != 0, initial=0.0)),
+    }
 
 
 def round_trip_leak(c):
@@ -98,8 +125,11 @@ def full_round_trip(c):
         eye[k, i] = 1.0
     d = np.abs(c["roundtrip"] - eye)
     off_m0 = np.delete(d, c["m0"], axis=1)
-    return {"max_abs_deviation": float(d.max()), "max_outside_mJ0": float(off_m0.max()),
-            "max_imag": float(np.abs(c["roundtrip"].imag).max())}
+    return {
+        "max_abs_deviation": float(d.max()),
+        "max_outside_mJ0": float(off_m0.max()),
+        "max_imag": float(np.abs(c["roundtrip"].imag).max()),
+    }
 
 
 # ----------------------------------------------------------------------------- validity
@@ -119,13 +149,20 @@ def validity(codes):
         out[f"{k}_weights_equal_run_log"] = bool(np.array_equal(w, codes[k]["weights"]))
         out[f"{k}_thetas_vs_run_log"] = ulp_compare(codes[k]["thetas"], th)
     out["basis_identical"] = all(np.array_equal(codes[k]["basis"], codes["fortran"]["basis"]) for k in codes)
-    out["fast_matrix_equals_fast_gpu_matrix"] = bool(np.array_equal(codes["fast"]["matrix"], codes["fast_gpu"]["matrix"]))
+    out["fast_matrix_equals_fast_gpu_matrix"] = bool(
+        np.array_equal(codes["fast"]["matrix"], codes["fast_gpu"]["matrix"])
+    )
     out["strict_columns_identical"] = (CODES["strict"] / "columns_identical.txt").read_text().strip() == "1"
     # the strict and Fortran tables must be exactly the runs'; the fast-math helper's machine code
     # is generated at its own link (as the replay helper's), so it may differ by an ulp
-    out["valid"] = (out["fortran_thetas_equal_pes_header"] and out["strict_weights_equal_run_log"]
-                    and out["strict_thetas_vs_run_log"]["n_identical"] == out["strict_thetas_vs_run_log"]["n"]
-                    and out["fast_weights_equal_run_log"] and out["basis_identical"] and out["strict_columns_identical"])
+    out["valid"] = (
+        out["fortran_thetas_equal_pes_header"]
+        and out["strict_weights_equal_run_log"]
+        and out["strict_thetas_vs_run_log"]["n_identical"] == out["strict_thetas_vs_run_log"]["n"]
+        and out["fast_weights_equal_run_log"]
+        and out["basis_identical"]
+        and out["strict_columns_identical"]
+    )
     return out
 
 
@@ -151,7 +188,9 @@ def family_bk(J_list):
     n = readers["fortran"].n_records
     assert all(r.n_records == n for r in readers.values())
     lab = readers["fast"].labels
-    idx = [int(np.flatnonzero((lab["J"] == J) & (lab["mJ"] == 0) & (lab["n"] == 0) & (lab["m"] == 0))[0]) for J in J_list]
+    idx = [
+        int(np.flatnonzero((lab["J"] == J) & (lab["mJ"] == 0) & (lab["n"] == 0) & (lab["m"] == 0))[0]) for J in J_list
+    ]
     d = {pair_key(a, b): np.zeros((n, len(J_list)), dtype=complex) for a, b in PAIRS}
     raw = {pair_key(a, b): np.zeros((n, len(J_list)), dtype=complex) for a, b in PAIRS}
     cF = np.zeros((n, len(J_list)), dtype=complex)
@@ -186,11 +225,16 @@ def potential_weights():
     fbar = np.zeros((nzpot * nr, ntheta), dtype=complex)
     vmean = np.zeros(nzpot * nr)
     for s in range(0, nzpot * nr, 250):
-        blk = np.asarray(v[s:s + 250]).reshape(-1, nxy, ntheta, nphi)
-        fbar[s:s + 250] = np.exp(-1j * blk * dt).mean(axis=(1, 3))
-        vmean[s:s + 250] = blk.mean(axis=(1, 2, 3))
-    vasy = np.array([float(l.split()[2]) for l in (pdir / "asymptotic_potential.dat").read_text().splitlines()
-                     if l.strip() and not l.startswith("#")])
+        blk = np.asarray(v[s : s + 250]).reshape(-1, nxy, ntheta, nphi)
+        fbar[s : s + 250] = np.exp(-1j * blk * dt).mean(axis=(1, 3))
+        vmean[s : s + 250] = blk.mean(axis=(1, 2, 3))
+    vasy = np.array(
+        [
+            float(l.split()[2])
+            for l in (pdir / "asymptotic_potential.dat").read_text().splitlines()
+            if l.strip() and not l.startswith("#")
+        ]
+    )
     sel = vmean < vasy.min() + 1.0 / CHAEV
     return fbar, sel, {"n_points": int(fbar.shape[0]), "n_selected": int(sel.sum()), "dt": dt}
 
@@ -214,10 +258,13 @@ def main():
         leak, other = round_trip_leak(c)
         prods[k] = exact_products(c)
         R[k], Rmat[k] = leak, matrix_leak(c, prods[k])
-        res["round_trip"][k] = {"R_J": {int(j): float(leak[i].real) for i, j in enumerate(J)},
-                                "R_J_imag_max": float(np.abs(leak.imag).max()),
-                                "R_J_matrix_only": {int(j): float(Rmat[k][i]) for i, j in enumerate(J)},
-                                "leak_outside_mJ0_max": other, "all_mJ0_functions": full_round_trip(c)}
+        res["round_trip"][k] = {
+            "R_J": {int(j): float(leak[i].real) for i, j in enumerate(J)},
+            "R_J_imag_max": float(np.abs(leak.imag).max()),
+            "R_J_matrix_only": {int(j): float(Rmat[k][i]) for i, j in enumerate(J)},
+            "leak_outside_mJ0_max": other,
+            "all_mJ0_functions": full_round_trip(c),
+        }
     dR = {pair_key(a, b): R[a] - R[b] for a, b in PAIRS}
     dRmat = {pair_key(a, b): Rmat[a] - Rmat[b] for a, b in PAIRS}
     res["delta_R"] = {p: {int(j): float(v[i].real) for i, j in enumerate(J)} for p, v in dR.items()}
@@ -225,18 +272,20 @@ def main():
     res["delta_R_matrix_only"] = {p: {int(j): float(v[i]) for i, j in enumerate(J)} for p, v in dRmat.items()}
 
     # observed family part of the BK differences
-    lab = NativeBk(BK_FILES["fast"]).labels      # the analysed states: J = 2 ... JMax of the analysis
+    lab = NativeBk(BK_FILES["fast"]).labels  # the analysed states: J = 2 ... JMax of the analysis
     fam = (lab["mJ"] == 0) & (lab["n"] == 0) & (lab["m"] == 0)
     Jf = [int(j) for j in J if j > 0 and j in set(lab["J"][fam].tolist())]
     fb = family_bk(Jf)
     w = fb["window"]
     norms = {p: np.sqrt(np.sum(np.abs(v[w]) ** 2, axis=0)) for p, v in fb["d"].items()}
     cnorm = np.sqrt(np.sum(np.abs(fb["cF"][w]) ** 2, axis=0))
-    res["bk_family"] = {"window": {"n": int(w.sum()), "t_first": float(fb["times"][w][0]), "t_last": float(fb["times"][w][-1])},
-                        "norm_c_fortran": {j: float(cnorm[i]) for i, j in enumerate(Jf)},
-                        "norm_d": {p: {j: float(v[i]) for i, j in enumerate(Jf)} for p, v in norms.items()},
-                        "norm_d_rel": {p: {j: float(v[i] / cnorm[i]) for i, j in enumerate(Jf)} for p, v in norms.items()},
-                        "abs_d_max": {p: {j: float(np.abs(v[w, i]).max()) for i, j in enumerate(Jf)} for p, v in fb["d"].items()}}
+    res["bk_family"] = {
+        "window": {"n": int(w.sum()), "t_first": float(fb["times"][w][0]), "t_last": float(fb["times"][w][-1])},
+        "norm_c_fortran": {j: float(cnorm[i]) for i, j in enumerate(Jf)},
+        "norm_d": {p: {j: float(v[i]) for i, j in enumerate(Jf)} for p, v in norms.items()},
+        "norm_d_rel": {p: {j: float(v[i] / cnorm[i]) for i, j in enumerate(Jf)} for p, v in norms.items()},
+        "abs_d_max": {p: {j: float(np.abs(v[w, i]).max()) for i, j in enumerate(Jf)} for p, v in fb["d"].items()},
+    }
 
     # predictions: T_J calibrated on strict - fast, prediction of strict - Fortran
     pred = {}
@@ -248,24 +297,31 @@ def main():
         coll = abs(np.vdot(dsf, dsF)) ** 2 / (np.vdot(dsf, dsf).real * np.vdot(dsF, dsF).real)
         ratio_R = (r_sF / r_sf) if r_sf != 0 else float("nan")
         predicted = norms["strict-fast"][i] * abs(r_sF) / abs(r_sf) if r_sf != 0 else float("nan")
-        pred[j] = {"dR_strict_fortran": float(r_sF.real), "dR_strict_fast": float(r_sf.real), "dR_fast_fortran": float(r_fF.real),
-                   "ratio_dR_strict_fortran_over_strict_fast": float(np.real(ratio_R)),
-                   "observed_norm_strict_fortran": float(norms["strict-fortran"][i]),
-                   "predicted_norm_strict_fortran": float(predicted),
-                   "predicted_over_observed": float(predicted / norms["strict-fortran"][i]),
-                   "transfer_T": float(norms["strict-fast"][i] / abs(r_sf)) if r_sf != 0 else float("nan"),
-                   "collinearity": float(coll), "lambda_fit": [float(lam.real), float(lam.imag)],
-                   "sign_matches": bool(np.sign(lam.real) == np.sign(np.real(ratio_R))),
-                   "ratio_observed_fast_over_strict": float(norms["fast-fortran"][i] / norms["strict-fortran"][i]),
-                   "ratio_predicted_fast_over_strict": float(abs(r_fF) / abs(r_sF)) if r_sF != 0 else float("nan"),
-                   "collinearity_fast_fortran_vs_strict_fast": float(abs(np.vdot(dsf, dfF)) ** 2 /
-                                                                     (np.vdot(dsf, dsf).real * np.vdot(dfF, dfF).real))}
+        pred[j] = {
+            "dR_strict_fortran": float(r_sF.real),
+            "dR_strict_fast": float(r_sf.real),
+            "dR_fast_fortran": float(r_fF.real),
+            "ratio_dR_strict_fortran_over_strict_fast": float(np.real(ratio_R)),
+            "observed_norm_strict_fortran": float(norms["strict-fortran"][i]),
+            "predicted_norm_strict_fortran": float(predicted),
+            "predicted_over_observed": float(predicted / norms["strict-fortran"][i]),
+            "transfer_T": float(norms["strict-fast"][i] / abs(r_sf)) if r_sf != 0 else float("nan"),
+            "collinearity": float(coll),
+            "lambda_fit": [float(lam.real), float(lam.imag)],
+            "sign_matches": bool(np.sign(lam.real) == np.sign(np.real(ratio_R))),
+            "ratio_observed_fast_over_strict": float(norms["fast-fortran"][i] / norms["strict-fortran"][i]),
+            "ratio_predicted_fast_over_strict": float(abs(r_fF) / abs(r_sF)) if r_sF != 0 else float("nan"),
+            "collinearity_fast_fortran_vs_strict_fast": float(
+                abs(np.vdot(dsf, dfF)) ** 2 / (np.vdot(dsf, dsf).real * np.vdot(dfF, dfF).real)
+            ),
+        }
     res["prediction"] = pred
 
     # verdict (criteria.md, 2026-11-08)
     def explains(j):
         p = pred[j]
         return 1 / 1.5 <= p["predicted_over_observed"] <= 1.5 and p["collinearity"] >= 0.9 and p["sign_matches"]
+
     within3 = all(1 / 3 <= pred[j]["predicted_over_observed"] <= 3 for j in VERDICT_J)
     zero = any(pred[j]["dR_strict_fortran"] == 0 for j in VERDICT_J)
     if not zero and all(explains(j) for j in VERDICT_J):
@@ -274,13 +330,23 @@ def main():
         verdict = "partly"
     else:
         verdict = "does not"
-    res["criteria"] = {"factor_explains": 1.5, "factor_partly": 3.0, "collinearity_min": 0.9, "verdict_J": list(VERDICT_J)}
+    res["criteria"] = {
+        "factor_explains": 1.5,
+        "factor_partly": 3.0,
+        "collinearity_min": 0.9,
+        "verdict_J": list(VERDICT_J),
+    }
     res["summary"] = {
         "rounding_part_max_J_gt_0": float(max(np.abs(R[k][1:].real - Rmat[k][1:]).max() for k in codes)),
         "own_leak_max_J_gt_0": {k: float(np.abs(R[k][1:]).max()) for k in codes},
-        "non_collinear_fraction": {j: float(1 - pred[j]["collinearity"]) for j in VERDICT_J}}
-    res["verdict"] = {"value": verdict, "explains_by_J": {j: explains(j) for j in VERDICT_J}, "within_factor_3": within3,
-                      "dR_strict_fortran_zero": zero}
+        "non_collinear_fraction": {j: float(1 - pred[j]["collinearity"]) for j in VERDICT_J},
+    }
+    res["verdict"] = {
+        "value": verdict,
+        "explains_by_J": {j: explains(j) for j in VERDICT_J},
+        "within_factor_3": within3,
+        "dR_strict_fortran_zero": zero,
+    }
 
     # robustness: the leak difference with the averaged exp(-iV dt) (matrix values, exact products)
     fbar, sel, info = potential_weights()
@@ -288,16 +354,22 @@ def main():
     for j in VERDICT_J:
         k = list(J).index(j)
         nphi = codes["fortran"]["nphi"]
+
         # called within this loop iteration only, so the loop variables it reads are current
         def dG(a, b):
             delta = np.array([float(prods[a][t][k] - prods[b][t][k]) for t in range(len(prods[a]))])  # noqa: B023
             return nphi * fbar[sel] @ delta  # noqa: B023
+
         ratio = dG("strict", "fortran") / dG("strict", "fast")
         ref = dRmat["strict-fortran"][k] / dRmat["strict-fast"][k]
         a = np.abs(ratio)
-        rob[j] = {"ratio_abs_min": float(a.min()), "ratio_abs_median": float(np.median(a)), "ratio_abs_max": float(a.max()),
-                  "ratio_without_potential": float(ref),
-                  "median_over_without": float(np.median(a) / abs(ref))}
+        rob[j] = {
+            "ratio_abs_min": float(a.min()),
+            "ratio_abs_median": float(np.median(a)),
+            "ratio_abs_max": float(a.max()),
+            "ratio_without_potential": float(ref),
+            "median_over_without": float(np.median(a) / abs(ref)),
+        }
     res["robustness_potential"] = rob
 
     # post hoc (criteria.md, 2026-11-08, after the results): the same ratio at every (Z, r) point of
@@ -310,35 +382,68 @@ def main():
     for j in VERDICT_J:
         k = list(J).index(j)
         nphi = codes["fortran"]["nphi"]
-        delta = {p: np.array([float(prods[a][t][k] - prods[b][t][k]) for t in range(len(prods[a]))])
-                 for p, (a, b) in {"strict-fortran": ("strict", "fortran"), "strict-fast": ("strict", "fast")}.items()}
+        delta = {
+            p: np.array([float(prods[a][t][k] - prods[b][t][k]) for t in range(len(prods[a]))])
+            for p, (a, b) in {"strict-fortran": ("strict", "fortran"), "strict-fast": ("strict", "fast")}.items()
+        }
         a = np.abs((fbar @ delta["strict-fortran"]) / (fbar @ delta["strict-fast"]))
         classes = {}
         for lo, hi, name in ((0, 1e-2, "anisotropy<1e-2"), (1e-2, 1e-1, "1e-2..1e-1"), (1e-1, 10, "anisotropy>1e-1")):
             m = (aniso >= lo) & (aniso < hi)
-            classes[name] = {"n": int(m.sum()), "ratio_abs_median": float(np.median(a[m])),
-                             "Z_max": float(zr["Z"][m].max() * dz)}
-        post["all_points"][j] = {"ratio_abs_percentiles_1_50_90_99": [float(x) for x in np.percentile(a, [1, 50, 90, 99])],
-                                 "by_anisotropy": classes,
-                                 "nodes_strict_fortran": [int(t) for t in np.flatnonzero(delta["strict-fortran"])],
-                                 "node0_share_strict_fast": float(delta["strict-fast"][0] / delta["strict-fast"].sum())}
+            classes[name] = {
+                "n": int(m.sum()),
+                "ratio_abs_median": float(np.median(a[m])),
+                "Z_max": float(zr["Z"][m].max() * dz),
+            }
+        post["all_points"][j] = {
+            "ratio_abs_percentiles_1_50_90_99": [float(x) for x in np.percentile(a, [1, 50, 90, 99])],
+            "by_anisotropy": classes,
+            "nodes_strict_fortran": [int(t) for t in np.flatnonzero(delta["strict-fortran"])],
+            "node0_share_strict_fast": float(delta["strict-fast"][0] / delta["strict-fast"].sum()),
+        }
     sens, n_nodes = fast_theta_sensitivity(codes, list(VERDICT_J))
     post["fast_helper_thetas"] = {"n_nodes_differing_from_run": n_nodes}
     for i, j in enumerate(VERDICT_J):
         k = list(J).index(j)
-        r_sf_run = dR["strict-fast"][k].real - sens[i]       # strict - fast with the run's nodes
+        r_sf_run = dR["strict-fast"][k].real - sens[i]  # strict - fast with the run's nodes
         p = pred[j]
         p_run = norms["strict-fast"][Jf.index(j)] * abs(p["dR_strict_fortran"]) / abs(r_sf_run)
-        post["fast_helper_thetas"][j] = {"dR_change": float(-sens[i]), "dR_strict_fast_run_nodes": float(r_sf_run),
-                                         "relative_change": float(-sens[i] / dR["strict-fast"][k].real),
-                                         "predicted_over_observed_run_nodes": float(p_run / p["observed_norm_strict_fortran"])}
+        post["fast_helper_thetas"][j] = {
+            "dR_change": float(-sens[i]),
+            "dR_strict_fast_run_nodes": float(r_sf_run),
+            "relative_change": float(-sens[i] / dR["strict-fast"][k].real),
+            "predicted_over_observed_run_nodes": float(p_run / p["observed_norm_strict_fortran"]),
+        }
     res["post_hoc"] = post
 
     save_item("angular_matrices", res)
-    print(json.dumps({"validity": res["validity"], "verdict": res["verdict"],
-                      "prediction": {j: {k_: v for k_, v in pred[j].items() if k_ in ("dR_strict_fortran", "dR_strict_fast",
-                       "observed_norm_strict_fortran", "predicted_norm_strict_fortran", "predicted_over_observed", "collinearity",
-                       "ratio_observed_fast_over_strict", "ratio_predicted_fast_over_strict")} for j in Jf}}, indent=1))
+    print(
+        json.dumps(
+            {
+                "validity": res["validity"],
+                "verdict": res["verdict"],
+                "prediction": {
+                    j: {
+                        k_: v
+                        for k_, v in pred[j].items()
+                        if k_
+                        in (
+                            "dR_strict_fortran",
+                            "dR_strict_fast",
+                            "observed_norm_strict_fortran",
+                            "predicted_norm_strict_fortran",
+                            "predicted_over_observed",
+                            "collinearity",
+                            "ratio_observed_fast_over_strict",
+                            "ratio_predicted_fast_over_strict",
+                        )
+                    }
+                    for j in Jf
+                },
+            },
+            indent=1,
+        )
+    )
 
 
 if __name__ == "__main__":
