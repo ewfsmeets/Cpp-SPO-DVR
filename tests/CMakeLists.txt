@@ -156,6 +156,26 @@ add_compare_averages_test(NonFiniteValueFails non-finite)
 add_compare_averages_test(FileWithoutRowsRefused rows)
 add_compare_averages_test(BadToleranceIsUsageError arguments)
 
+# The wave-packet designer (tools/wave_packet_designer, standalone Python, needs numpy): one test per case of
+# its test_designer.py. They compare the designer's copies of the program's rules with the C++ (key table,
+# check list, grid indices, packet values) and include negative cases.
+set(designer_test ${PROJECT_SOURCE_DIR}/tools/wave_packet_designer/test_designer.py)
+function(add_designer_test name test_case)
+  add_test(NAME WavePacketDesigner.${name}
+           COMMAND ${Python3_EXECUTABLE} -I -B ${designer_test} ${test_case}
+                   ${CMAKE_CURRENT_BINARY_DIR}/wave_packet_designer/${test_case})
+endfunction()
+add_designer_test(FftSizes fft-sizes)
+add_designer_test(RealCompare real-compare)
+add_designer_test(InputReading input-reading)
+add_designer_test(Validate validate)
+add_designer_test(Absorbers absorbers)
+add_designer_test(Grids grids)
+add_designer_test(Packet packet)
+add_designer_test(InputFile input-file)
+add_designer_test(Cli cli)
+add_designer_test(Structure structure)
+
 # Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
 # missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).
 set(reference_manifest_check ${PROJECT_SOURCE_DIR}/tools/fortran_reference/ReferenceManifest.cmake)

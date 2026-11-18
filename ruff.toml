@@ -3,7 +3,13 @@ line-length = 120              # as .clang-format ColumnLimit
 target-version = "py310"       # zip(strict=True) needs 3.10
 extend-exclude = ["*.md"]      # ruff would also format the Python code blocks in Markdown files
 # Directories whose scripts import each other: their modules are first-party (a separate import group).
-src = [".", "docs/scm_open_questions", "docs/validation_thesis_fig5_3_dz/scripts", "tools/fortran_reference"]
+src = [
+    ".",
+    "docs/scm_open_questions",
+    "docs/validation_thesis_fig5_3_dz/scripts",
+    "tools/fortran_reference",
+    "tools/wave_packet_designer",
+]
 
 [lint]
 # Syntax and pyflakes errors (E4, E7, E9, F), import order (I), likely bugs (B, flake8-bugbear).
