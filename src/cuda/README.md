@@ -49,7 +49,7 @@ Building, running, benchmarks and the measured optimisations are in
 
 ψ on the GPU, with the (Z, r) index innermost:
 
-```
+```text
 psi[izr + n_zr * (irot + n_rot * ixy)]        (DeviceLayout, device_complex.hpp)
 ```
 
@@ -57,7 +57,7 @@ The host and the files keep the Fortran order `psi[irot + n_rot * (ixy + n_xy * 
 kernels `host_chunk_to_device` and `device_to_host_chunk` convert between the two (restart and
 checkpoint only).
 
-```
+```text
 address →
 | izr = 0 1 2 … n_zr-1 | izr = 0 1 2 … n_zr-1 | … | izr = 0 1 2 … n_zr-1 | …
 |   irot 0, ixy 0      |   irot 1, ixy 0      | … |   irot 0, ixy 1      | …
@@ -163,7 +163,7 @@ flowchart TB
 **The DVR scratch** of a slab is laid out `(col, θ, φ)` with the column fastest:
 `dvr[col + n_col·(itheta + n_theta·iphi)]`. Along φ (here MJMax = 2, nφ = 6):
 
-```
+```text
 φ slot:   0      1      2      3      4       5
 holds:   mJ=0   mJ=1   mJ=2   zero   mJ=−2   mJ=−1
 ```
@@ -260,7 +260,7 @@ index in y), not the coordinates x, y.
 
 ## Appendix A: files and who owns what
 
-```
+```text
 CudaBackend                      cuda_backend.{hpp,cpp}
 ├── DeviceWavePacket             device_wave_packet.hpp      (scattering + specular ψ)
 ├── DeviceSpecularOperator       device_kinetic_operator.*   (2D FFT pair)

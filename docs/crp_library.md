@@ -289,7 +289,7 @@ current reference, 5.24 r1713, gives bitwise the same driver outputs and potenti
 Sites in lattice units, skewed (u, v) for C3v and C6v, Cartesian for C4v; θ/φ in degrees. The
 "images" are the symmetry-equivalent sites the interpolation also uses, with the rotation of φ.
 
-**C6v molecule (18 cuts)**
+### C6v molecule (18 cuts)
 
 | Cuts | Site | Orientations θ/φ, in cut order |
 |---|---|---|
@@ -301,7 +301,7 @@ Sites in lattice units, skewed (u, v) for C3v and C6v, Cartesian for C4v; θ/φ 
 Images: bridge (½, ½) φ+60 and (0, ½) φ−60; hollow (⅔, ⅔) φ+180; t2h (⅔, ⅙) φ−120,
 (⅙, ⅔) φ+120, (⅚, ⅚) φ+180, (⅓, ⅚) φ+60, (⅚, ⅓) φ−60.
 
-**C3v molecule (29 cuts)**
+### C3v molecule (29 cuts)
 
 | Cuts | Site | Orientations θ/φ, in cut order | Images |
 |---|---|---|---|
@@ -311,7 +311,7 @@ Images: bridge (½, ½) φ+60 and (0, ½) φ−60; hollow (⅔, ⅔) φ+180; t2h
 | 19–24 | t2f (⅓, ⅚) | 0; 90/240; 90/330; 45/150; 45/240; 45/330 | (⅚, ⅚) φ+120, (⅚, ⅓) φ−120 |
 | 25–29 | fcc (⅔, ⅔) | as hcp | — |
 
-**C4v molecule (16 cuts)**
+### C4v molecule (16 cuts)
 
 | Cuts | Site | Orientations θ/φ, in cut order | Images |
 |---|---|---|---|

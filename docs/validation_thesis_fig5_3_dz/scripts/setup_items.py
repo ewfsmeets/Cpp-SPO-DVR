@@ -1295,6 +1295,11 @@ def main():
     )
 
 
+def markdown_text(text):
+    """A program label as Markdown text: '<' escaped, so that a label like <r> is not read as an HTML tag."""
+    return text.replace("<", "\\<")
+
+
 def write_table(rows):
     TABLES.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -1320,8 +1325,8 @@ def write_table(rows):
         cells = [
             str(r["item"]),
             r["quantity"],
-            f"{r['fortran_label']}: `{r['fortran']}`",
-            f"{r['cpp_label']}: `{c}`",
+            f"{markdown_text(r['fortran_label'])}: `{r['fortran']}`",
+            f"{markdown_text(r['cpp_label'])}: `{c}`",
             r["kind"],
             d,
             tol,

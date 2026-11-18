@@ -65,7 +65,7 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
 
 ### Profile-guided optimisation (11–16 % less time on the medium grid, 2026-10-26)
 
-```
+```bash
 cmake -S . -B build-pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_PGO=GENERATE -DSPODVR_PGO_DIR=$PWD/pgo
 cmake --build build-pgo
 ./build-pgo/spodvr <representative input.json> --threads <N>   # a short run (tens of steps) is enough

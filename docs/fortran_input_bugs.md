@@ -77,7 +77,7 @@ and the other dotted operators compare with an absolute tolerance of 1e-12 (`MyO
 
 **Case (a), a range inside the wave packet.** Appended to the base `DVR.inp`:
 
-```
+```text
 doFluxAnalysis : LOGICAL : TRUE;
 rFluxAnalysis : REAL : 3.05;
 EMinFluxAna : REAL : 0.3;
@@ -87,7 +87,7 @@ DeltaEFluxAna : REAL : 0.01;
 
 Both versions stop right after the echo of the input, with exit status 0:
 
-```
+```text
 * Validating the input...
 
 ERROR: EMaxFluxAna < EMinWP
@@ -103,7 +103,7 @@ Both versions accept it:
   `Flux analysis in r performed at ir =   16 (r =  0.30500000E+01)`;
 - the propagating run sets up the flux analysis for 51 energies (0.3 to 0.8 eV in steps of 0.01)
   and propagates, until `timeout` stops it after 60 s (status 124):
-  ```
+  ```text
                  INFO FROM SETTING UP THE FLUX ANALYZOR
   ********************************************************************************
 
@@ -120,13 +120,13 @@ Both versions accept it:
   when EMaxFluxAna > EMaxWP. The test is tolerant (`.RGT.`), the mirror image of the
   EMinFluxAna check.
 - Case (b) is then an input error (exit code 2):
-  ```
+  ```text
   Input error: EMaxFluxAna: EMaxFluxAna > EMaxWP (0.8 eV > 0.6 eV): the flux analysis energies must lie inside the wave packet's energy range; use EMaxFluxAna <= EMaxWP
   ```
 - Case (a) passes the input checks. The flux analysis itself is not ported
   ([flux_analysis_findings.md](flux_analysis_findings.md)), so a propagating run then stops with
   exit code 3:
-  ```
+  ```text
   Not supported: doFluxAnalysis = true: the flux analysis is not implemented yet
   ```
   Analysis-only and potential-only runs accept the flux keys and ignore them.
@@ -178,7 +178,7 @@ This is a plain `<`, so ΔE = 0 passes; the next check (`deltaEFluxAna .RGT.
 **Case (c):** case (b) with `DeltaEFluxAna : REAL : 0.0;`. Both versions pass the input checks and
 set up the flux analysis with the garbage count:
 
-```
+```text
  Computing flux probabilty for **** energies
  Flux analysis performed at ir =   16 (r =  0.30500000E+01)
  Memory required for flux analysis =   0.00 KB
@@ -192,7 +192,7 @@ and no error or warning about the flux analysis. Their flux output files:
 
 - `flux_reaction.dat`, `flux_coeffs.dat` and `flux_coeffs_deriv.dat`: empty (0 bytes);
 - `flux_density.dat`: only the header, with `*****` for the number of energies (`I5`):
-  ```
+  ```text
   *****
    0.15707963E+01  C2v
       4 0.15599150E+01
@@ -205,7 +205,7 @@ and no error or warning about the flux analysis. Their flux output files:
   "≤ 0" checks of grid spacings (dZ, dR).
 - The error names the key (exit code 2). For case (c) with a range inside the wave packet
   (EMaxFluxAna = 0.5, so that the flux Q1 check passes first):
-  ```
+  ```text
   Input error: DeltaEFluxAna: DeltaEFluxAna <= 0 (0 eV): the flux analysis energy grid needs a positive spacing; use DeltaEFluxAna > 0
   ```
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxQ2DeltaZero` and
@@ -251,7 +251,7 @@ the Fortran absorbs with the default strength and prints it as a coefficient. Th
 **Case (d):** `ZOptEnergy : REAL : 0.0;` instead of 0.3, and `Potential : LOGICAL : TRUE;`
 appended. 5.24 runs to the end (exit status 0) and prints the default strength:
 
-```
+```text
 * Optical potential in Z absorbs with coefficient:          0.43800882E-02
 ```
 
@@ -259,7 +259,7 @@ appended. 5.24 runs to the end (exit status 0) and prints the default strength:
 
 - An energy of 0 means no absorption: the strength is 0 and every absorption factor is exactly 1
   (`src/input/process.cpp`, `process_input`). For case (d) the set-up prints
-  ```
+  ```text
   CAP strengths (Z, r, Zsp) ..... 0.00000000e+00, 2.38963250e-02, 1.82989643e-02 hartree
   ```
 - Tests: `tests/test_propagation_tables.cpp` (`PropagationTables.AbsorberD1EnergyZeroGivesNoAbsorption`).
@@ -358,13 +358,13 @@ index lines of `Setup.f90`.
 programs), `ZSpOptLowFactor` 0.01, and a short propagation (`tEnd` 200.0, `nStep` 100). The
 set-up of the absorbers prints the coefficient
 
-```
+```text
 * Optical potential in Z at lower end of specular grid absorbs with coefficient 0.10000000E-01
 ```
 
 and `averages.out` becomes NaN after the first analysis interval:
 
-```
+```text
       time             norm           z              r        rest norm
 
   0.00000000E+00  0.10000000E+01  0.11440000E+02  0.14708348E+01  0.10000000E+01
@@ -386,7 +386,7 @@ mention a low-end absorber, not even the index lines that `Setup.f90` prints whe
 **Case (h), low-Z D4:** the specular grid's absorber alone: `ZSpOptLowStart` −2.0,
 `ZSpOptLowEnd` 6.0, `ZSpOptLowEnergy` 0.3. The printout shows the scattering grid's defaults:
 
-```
+```text
 * Using a quadratic optical potential on the specular grid in Z for low end:
 * Optical potential in low end Z start at (bohr):          -0.10000000E+04
 * Optical potential in low end Z ends at (bohr):           -0.20000000E+04
@@ -400,7 +400,7 @@ while `Setup.f90` prints the right index range (points 1 to 101, Z = −2.0 to 6
 - `src/input/json_input.cpp` (`require_low_z_absorber`) makes the silent cases errors (exit code 2)
   and keeps the Fortran's checks, with the same exact and tolerant comparisons. For cases (e),
   (f) and (g):
-  ```
+  ```text
   Input error: ZOptLowStart: ZOptLowStart > ZOptLowEnd (4 > 3 bohr): the absorber would be empty; use ZOptLowStart < ZOptLowEnd
   Input error: ZSpOptLowStart: ZSpOptLowStart = ZSpOptLowEnd (-2 bohr): the absorber needs a positive length; use ZSpOptLowStart < ZSpOptLowEnd
   Input error: ZOptLowEnd: ZOptLowEnd is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them
@@ -408,7 +408,7 @@ while `Setup.f90` prints the right index range (points 1 to 101, Z = −2.0 to 6
   ```
 - The set-up prints each low-Z absorber's own range and strength, and the points inside it. For
   case (h):
-  ```
+  ```text
   Low-Z CAP in Z (specular) ..... -2.000000 .. 6.000000 bohr, strength 8.98684162e-03 hartree (energy 0.300000 eV)
   ...
   Low-Z optical potential Z specular (indices) .. 0 .. 100
@@ -462,7 +462,7 @@ NrOfEs = −95, `Constants_NEN95`, replaces `enrgi`, `denrgy` and `nenrgy` by th
 their analysis output (stdout from the line `PRINTING SCATTERING AND REACTION PROBABILITIES` on),
 `averages.out` and fort.25 are identical. The input echo and the analysis print:
 
-```
+```text
 * Number of energies that are on-the-fly analysed:             1
 ...
  total energy =             NaN
@@ -483,7 +483,7 @@ times, and no fort.25 is written.
 
 - `src/input/validate.cpp` (`validate_input`) rejects NrOfEs = 0 and 1 after the Fortran's
   `NrOfEs < 0` check (−95 stays valid). Both cases are input errors (exit code 2), e.g. for case (i):
-  ```
+  ```text
   Input error: NrOfEs: NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart
   ```
 - Until this check the C++ behaved as the Fortran: for case (i) its summary table showed

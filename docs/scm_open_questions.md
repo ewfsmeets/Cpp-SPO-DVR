@@ -37,7 +37,7 @@ So that a misreading is easy to spot, here is the model as we understand it from
 V_CRP is the 6D potential of the ideal surface, interpolated with the corrugation-reducing
 procedure (CRP).
 
-```
+```text
 V(X, Y, Z, r, θ, φ) = V_CRP(X/s, Y/s, Z, r, θ, φ)
                     + Σ_{H atoms a = 1, 2} Σ_{Cu atoms j} [ f(|h_a − R_j^displaced|) − f(|h′_a − R_j^ideal|) ]
 ```

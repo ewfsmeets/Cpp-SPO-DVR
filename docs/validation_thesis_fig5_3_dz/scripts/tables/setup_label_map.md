@@ -62,7 +62,7 @@
 | 6 | initial state: rotational energy | rotational energy: `0.000000` | rotational energy: `0` | printed | 0.00e+00 | 5.05e-07 | printed |
 | 6 | initial state: vibrational energy | vibrational energy: `0.132386` | vibrational energy: `0.1323857026244013` | printed | -2.97e-07 | 5.05e-07 | printed |
 | 6 | initial state: rovibrational energy | rovibrational energy: `0.132386` | rovibrational kinetic energy: `0.1323857026244013` | printed | -2.97e-07 | 5.05e-07 | printed |
-| 6 | initial state: expectation value r | expectation value r: `1.442768` | <r>: `1.4427680834424175` | printed | 8.34e-08 | 5.05e-07 | printed |
+| 6 | initial state: expectation value r | expectation value r: `1.442768` | \<r>: `1.4427680834424175` | printed | 8.34e-08 | 5.05e-07 | printed |
 | 6 | initial rovibrational energy (hartree) | fort.21 record 2: eviroi: `-0.16452800307095536` | gas_phase_states.dat E(0,0): `-0.16452800307095652` | full | -1.17e-15 (42 ulp) | 1e-12 rel. | rounding (criterion 1e-12 relative (gate 2: LAPACK vs Jacobi)) |
 | 7 | warning: basis too small | WARNING: Diffractional basis too small to describe all open channels!: `yes` | Warning: the diffraction basis is too small to describe all open channels.: `yes` | text |  | exact | identical |
 | 7 | diffraction channels in basis | ndftow: `144` | Diffraction channels analysed (ndifa): '144 of N': `144` | int | 0 | exact | identical |

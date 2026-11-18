@@ -20,7 +20,7 @@ the repository root; 2026-11-15, build of 5e44ba8); [run −0.55]: the same with
 
 ## The model
 
-```
+```text
 V(X, Y, Z, r, θ, φ) = V_CRP(X/s, Y/s, Z, r, θ, φ)
                     + Σ_{H atoms a = 1, 2} Σ_{Cu atoms j} [ f_L(|h_a − R_j^distorted|) − f_L(|h′_a − R_j^ideal|) ]
 ```

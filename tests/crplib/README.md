@@ -50,7 +50,7 @@ CPU). The `*_pairwise` data sets are also used by the gate cases
 Rerun the driver on the committed data set and point lists (the default, driver only), or
 regenerate a case (data set, point lists and Fortran results) after a change to the generator:
 
-```
+```bash
 tools/fortran_reference/run_crp_reference.sh <case>      # or: kernels
 cmake --build build
 tools/fortran_reference/run_crp_reference.sh --generate <case>

@@ -406,7 +406,7 @@ stays in the initial rotational state and the specular diffraction channel.
 
 Command-line options:
 
-```
+```text
 spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda] [--output-dir DIR] [--no-color]
        [--help] [--version]
 ```

@@ -567,8 +567,8 @@ and 1.9e-12 (GPU vs CPU). Verdict: **printed / explained**; full precision **rou
 
 <!-- END table:item14_full -->
 
-**What the propagation-only difference consists of.** Per energy, S<sub>C++</sub> = S<sub>F</sub> (1 + κ + iβ)
-+ residual, with κ + iβ the |S|²-weighted least-squares factor of that energy (that 2κ·ΣP then
+**What the propagation-only difference consists of.** Per energy, S<sub>C++</sub> = S<sub>F</sub> (1 + κ + iβ) +
+residual, with κ + iβ the |S|²-weighted least-squares factor of that energy (that 2κ·ΣP then
 equals ΔΣP is a first-order identity, not a test). The uniform amplitude part κ is
 5.4e-12…6.9e-12 (median 6.0e-12), the phase part |β| ≤ 6.1e-13. The residual is 57% of ‖ΔS‖:
 4.2e-12 relative outside the specular inelastic channels, 1.0e-11…8.4e-9 in them (j = 2…10), 31–303×
