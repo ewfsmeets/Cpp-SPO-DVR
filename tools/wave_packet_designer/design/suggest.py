@@ -13,7 +13,7 @@ The energy range, the masses, ZStart and Z_asymptotic come from the input; the r
   strength table at EMinWP, L/lambda <= 15 ("as long as the table allows"; more points cost nothing);
 - the target energies 0.2 eV (scattering) and EMinWP (specular), where the input tunes them by energy;
   absorbers tuned by a factor keep it;
-- tEnd: long enough for outgoing normal energies down to 0.03 eV (section 8, step 11), in whole averaging
+- tEnd: long enough for outgoing normal energies down to E_n,min (0.03 eV: section 8, step 11), in whole averaging
   intervals dtAve, so nStep, dtAna and dtAve stay consistent.
 Lengths are rounded to 10 decimals for the eye where the rounded value equals the exact one within the
 program's tolerance (1e-12); otherwise the exact value is kept.
@@ -21,7 +21,7 @@ program's tolerance (1e-12); otherwise the exact value is kept.
 
 import math
 
-from design.rules import LOWEST_OUTGOING_ENERGY, t_end_for
+from design.rules import LOWEST_OUTGOING_ENERGY, TURNING_POINT, t_end_for
 from program.config import DerivedParameters, InputParameters
 from program.fft_sizes import is_valid_fft_size, nearest_fft_size
 from program.real_compare import req, rge
@@ -52,7 +52,12 @@ SUGGESTED_FIELDS = (
 
 
 def suggested_keys(
-    p: InputParameters, d: DerivedParameters, z_asymptotic: float, dz: float | None = None
+    p: InputParameters,
+    d: DerivedParameters,
+    z_asymptotic: float,
+    dz: float | None = None,
+    e_n_min: float = LOWEST_OUTGOING_ENERGY,
+    z_turn: float = TURNING_POINT,
 ) -> dict[str, float | int]:
     """The suggested values of the Z keys and tEnd, as InputParameters field names; dZ = `dz` if given."""
     sigma_k = math.sqrt(d.wave_packet_alpha)
@@ -94,7 +99,7 @@ def suggested_keys(
     if p.zsp_opt_energy is not None:
         changes["zsp_opt_energy"] = p.e_min_wave_packet
     k_min = d.kz - 2.0 * sigma_k  # the slow end of the packet
-    needed = t_end_for(changes["z0"], changes["z_analysis"], d.total_mass, k_min, LOWEST_OUTGOING_ENERGY)
+    needed = t_end_for(changes["z0"], changes["z_analysis"], d.total_mass, k_min, e_n_min, z_turn)
     changes.update(fit_time(p, needed))
     return changes
 

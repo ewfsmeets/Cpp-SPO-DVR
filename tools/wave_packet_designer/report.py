@@ -342,6 +342,13 @@ def key_numbers(e: Evaluation) -> list[str]:
         f"Grids: nZ {p.nz}, nZSpecular {p.nz_specular}, nR {p.nr}; Zana {g.z_analysis:g}, nzpot {g.nz_potential}; "
         f"tEnd {p.t_end:g} a.u. ({p.n_steps} steps)."
     ]
+    b = e.time_budget
+    if b is not None:
+        lines.append(
+            f"Time: the slowest analysed part, reflected elastically at Z_turn {b.z_turn:g}, is back at Zana after "
+            f"{b.t_elastic:.0f} a.u. (a lower bound); outgoing E_n >= {b.lowest_outgoing_energy:g} eV needs "
+            f"{b.t_needed:.0f}; tEnd {b.t_end:.0f}."
+        )
     placed = []
     for a in e.absorbers:
         reduced = f", L/lambda {a.reduced_length:.1f}" if a.reduced_length is not None else ", tuned by its factor"

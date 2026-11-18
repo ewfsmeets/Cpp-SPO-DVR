@@ -23,8 +23,18 @@ from dataclasses import dataclass, replace
 
 import numpy as np
 
-from design.rules import DesignCheck, DesignInput, analysed_bound_states, design_checks, memory_fits, norm_beyond
+from design.rules import (
+    LOWEST_OUTGOING_ENERGY,
+    TURNING_POINT,
+    DesignCheck,
+    DesignInput,
+    analysed_bound_states,
+    design_checks,
+    memory_fits,
+    norm_beyond,
+)
 from design.suggest import SUGGESTED_FIELDS, fit_r_grid, fit_time, fit_z_grids, suggested_keys
+from design.timing import TimeBudget, time_budget
 from design.transmission import AbsorberResponse, absorber_mass, absorber_response, response_window
 from dz_gas_phase import dz_gas_phase_curve
 from program.angular_grid import AngularGrid, make_angular_grid, rotational_basis_size
@@ -127,6 +137,7 @@ class Evaluation:
     reference_tails: tuple[np.ndarray, ...] = ()  # the same for the converged states (gas_reference)
     densities: PacketDensities | None = None
     design: tuple[DesignCheck, ...] = ()  # the recommendations of inputs/README.md, applied
+    time_budget: TimeBudget | None = None  # how long the slow parts of the packet need (section 8)
     absorber_responses: tuple[AbsorberResponse, ...] = ()  # R and T of each absorber that is on
     findings: tuple[Finding, ...] = ()  # the program's errors and warnings, stage by stage
     stopped_at: str | None = None  # the stage where evaluation stops; None if the set-up passes
@@ -184,6 +195,8 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
     # Then the program prints the memory estimates and the gas phase, and a propagating run builds the packet.
     resources = estimate_resources(p, derived, grids, settings)
     gas_phase, gas_reference, gas_phase_indicative = gas_phases(p, derived, grids, resources.angular)
+    z_turn, e_n_min = time_settings(settings)
+    design_input = DesignInput(p, derived, grids, resources.angular, gas_phase, gas_reference, z_turn, e_n_min)
     packet, stopped_at = None, None
     if propagates:
         packet, packet_findings = make_initial_wave_packet(p, derived, grids)
@@ -207,8 +220,8 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         bound_state_tails=bound_state_tails(gas_phase, resources),
         reference_tails=bound_state_tails(gas_reference, resources),
         densities=packet_densities(packet, grids),
-        design=design_checks(DesignInput(p, derived, grids, resources.angular, gas_phase, gas_reference))
-        + memory_checks(resources, settings),
+        design=design_checks(design_input) + memory_checks(resources, settings),
+        time_budget=time_budget(design_input),
         absorber_responses=absorber_responses(p, derived, grids, absorbers, gas_phase),
         findings=tuple(findings),
         stopped_at=stopped_at,
@@ -238,7 +251,8 @@ def suggest(p: InputParameters, settings: Settings, dz: float | None = None) -> 
     if original.system is None or blockers:
         return Suggestion({}, original, blockers)
     system = original.system
-    changes = suggested_keys(p, build_derived(p, system), effective_z_asymptotic(p, system), dz)
+    z_turn, e_n_min = time_settings(settings)
+    changes = suggested_keys(p, build_derived(p, system), effective_z_asymptotic(p, system), dz, e_n_min, z_turn)
     return Suggestion(changes, evaluate(replace(p, **changes), settings), ())
 
 
@@ -339,6 +353,13 @@ def check_settings(p: InputParameters, system: SystemParameters, settings: Setti
             f"{settings.operations} operations, but the point group {system.point_group} has only {order}",
         )
     return checks.findings
+
+
+def time_settings(settings: Settings) -> tuple[float, float]:
+    """The turning point (bohr) and E_n,min (eV) of the time budget: the settings', else design/rules.py's."""
+    z_turn = settings.z_turn if settings.z_turn is not None else TURNING_POINT
+    energy = settings.lowest_outgoing_energy
+    return z_turn, energy if energy is not None else LOWEST_OUTGOING_ENERGY
 
 
 def gas_phases(

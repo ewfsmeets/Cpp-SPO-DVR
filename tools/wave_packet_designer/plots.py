@@ -9,6 +9,7 @@ and labels separate everything else, so identity never rests on colour alone. On
 below a panel's floor are not drawn (masked), so nothing lies along the bottom axis that looks like data.
 """
 
+import textwrap
 from collections.abc import Callable
 
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import NullFormatter
 
 from evaluation import SYMMETRY_GIVEN, SYMMETRY_NOT_GIVEN, Evaluation
-from report import format_bytes, status_line
+from report import format_bytes, status_line, verdict_lines
 
 INK, INK_2, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#8a8985", "#e4e3df", "#ffffff"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
@@ -28,6 +29,7 @@ LOW_Z = ("ZOptLow", "ZSpOptLow")  # drawn hatched, to tell them from the main ab
 STATE_STYLES = ["-", "--", "-.", ":"]  # analysed v; each curve is also labelled with its v
 README_LEVELS = {"ZOpt": 4e-5, "ZSpOpt": 4e-9}  # R + T of the H2 examples, inputs/README.md section 7
 LANE_HEIGHT = 0.07  # axes fraction of each grid lane at the top of the Z panel
+VERDICT_WIDTH, VERDICT_LINES = 54, 26  # characters per line and lines of the verdict panel
 Panel = tuple[Axes, Callable[[Axes, Evaluation], None]]
 
 
@@ -57,20 +59,22 @@ def apply_style() -> None:
 def report_figure(e: Evaluation) -> Figure:
     """A new figure with every panel of the evaluation (`check --png`)."""
     apply_style()
-    figure = plt.figure(figsize=(14.0, 8.5), layout="constrained")
-    draw_panels(add_panels(figure, figure.add_gridspec(2, 3)), e)
+    figure = plt.figure(figsize=(18.0, 8.5), layout="constrained")
+    draw_panels(add_panels(figure, figure.add_gridspec(2, 4)), e)
     figure.suptitle(status_line(e), color=INK, fontsize=10.5)
     return figure
 
 
 def add_panels(figure: Figure, grid: GridSpec) -> list[Panel]:
-    """The panel axes on a 2 x 3 grid of the figure, each with the function that draws it."""
+    """The panel axes on a 2 x 4 grid of the figure, each with the function that draws it."""
     return [
         (figure.add_subplot(grid[0, :2]), draw_z_layout),
         (figure.add_subplot(grid[0, 2]), draw_momentum),
+        (figure.add_subplot(grid[0, 3]), draw_time),
         (figure.add_subplot(grid[1, 0]), draw_absorber_response),
         (figure.add_subplot(grid[1, 1]), draw_r_layout),
         (figure.add_subplot(grid[1, 2]), draw_memory),
+        (figure.add_subplot(grid[1, 3]), draw_verdict),
     ]
 
 
@@ -342,3 +346,52 @@ def draw_memory(ax: Axes, e: Evaluation) -> None:
     ax.text(
         0.99, 0.02, f"{symmetry}; {r.threads} threads", transform=ax.transAxes, ha="right", fontsize=7.5, color=INK_2
     )
+
+
+def draw_time(ax: Axes, e: Evaluation) -> None:
+    """Z against time for the packet's fast, central and slow parts: in from Z0, reflected at Z_turn and, if
+    elastically, out at the same speed; and an outgoing wave of normal energy E_n,min from the slow part's
+    reflection. Against them Zana and tEnd (inputs/README.md section 8)."""
+    ax.set_title("Time: back out across Zana by tEnd?")
+    ax.set_xlabel("t (a.u.)")
+    ax.set_ylabel("Z (bohr)")
+    b = e.time_budget
+    if b is None:
+        return
+    for path, style in zip(b.paths, ("-", "--", ":", "-"), strict=True):
+        slow_out = path is b.paths[-1]
+        ax.plot(
+            path.times,
+            path.z,
+            color=ORANGE if slow_out else INK,
+            ls=style,
+            lw=1.6 if slow_out else 1.2,
+            label=path.label,
+        )
+    ax.axhline(e.grids.z_analysis, color=INK_2, lw=1.0)
+    ax.text(0.0, e.grids.z_analysis, " Zana", va="bottom", fontsize=8, color=INK_2)
+    ax.axhline(b.z_turn, color=INK_2, lw=1.0, ls=":")
+    ax.text(0.0, b.z_turn, " Z_turn", va="bottom", fontsize=8, color=INK_2)
+    mark(ax, b.t_end, "tEnd", 0.5)
+    ax.axvline(b.t_end, color=INK, lw=2.0)
+    for t, name, side in (
+        (b.t_elastic, "elastic", "left"),
+        (b.t_needed, f"E_n {b.lowest_outgoing_energy:g} eV", "right"),
+    ):
+        ax.plot([t], [e.grids.z_analysis], marker="o", color=INK, ms=4)
+        ax.text(t, e.grids.z_analysis, f" {name} \n {t:.0f} ", fontsize=7.5, color=INK, va="top", ha=side)
+    ax.set_xlim(0.0, 1.1 * max(b.t_end, b.t_needed))
+    ax.set_ylim(0.0, 1.7 * e.parameters.z0)  # room above the paths for the legend
+    ax.legend(loc="upper right", fontsize=7, ncols=2)
+
+
+def draw_verdict(ax: Axes, e: Evaluation) -> None:
+    """The verdict as text: what spodvr would do, the recommendations missed, the key numbers (report.py)."""
+    ax.axis("off")
+    ax.set_title("Verdict")
+    lines = []
+    for paragraph in verdict_lines(e):
+        lines += textwrap.wrap(paragraph, VERDICT_WIDTH, subsequent_indent="  ") or [""]
+    if len(lines) > VERDICT_LINES:
+        lines = lines[: VERDICT_LINES - 1] + ["  ... (the full list: `check`)"]
+    ax.text(0.0, 1.0, "\n".join(lines), transform=ax.transAxes, va="top", fontsize=7.0, color=INK)

@@ -25,7 +25,7 @@ uv run tools/wave_packet_designer/gui_mpl.py inputs/thesis_fig5_3_er/input.json
 python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json
 ```
 
-The window shows five panels, a verdict and a help box:
+The window shows six panels, a verdict and a help box:
 
 - **Z**: the two Z grids as lanes (the scattering grid with its interaction region and absorber, the
   specular grid with its absorber and the packet's allowed region), and the initial packet |ψ(Z)|².
@@ -35,22 +35,28 @@ The window shows five panels, a verdict and a help box:
 - **r**: for each analysed vibrational level, the norm of the bound state beyond r, against the 1e-6
   limit and ROptStart.
 - **Memory**: the peak memory on the CPU and the GPU against this machine's RAM and free GPU memory.
+- **Time**: the classical paths Z(t) of the packet's fast, central and slow parts, in from Z0, reflected at
+  a turning point Z_turn and, elastically, back out across Zana; and an outgoing wave of the lowest normal
+  energy E_n,min that tEnd should converge (section 8). The slow part's elastic recrossing is a lower bound
+  for tEnd; E_n,min (0.03 eV by default) sets what tEnd needs for the slow inelastic and diffractive
+  channels.
 
-The verdict (bottom right) says what `spodvr` would do with the input, then each recommendation of
+The verdict (the eighth panel) says what `spodvr` would do with the input, then each recommendation of
 inputs/README.md it misses, worst first (the run fails, the results suffer, it costs more), with its
 value, limit and what to change; then the grid sizes, the absorbers as placed and tEnd, and what nothing
 here checks. Hovering over a panel, a slider or a button explains it in the help box; **Explain** lays the
 explanations over the panels (the texts are in `explanations.py`).
 
 The window opens on the input as read. The sliders are EMinWP, EMaxWP, dZ, Z0, ZSpOptStart, the lengths
-of the Z absorbers, ROptStart, tEnd and the target energies of the absorbers tuned by energy; each keeps a
-black tick at the input's value. When dZ, ZSpOptStart or an absorber length moves, the Z grids follow as
+of the Z absorbers, dR, nR, ROptStart, tEnd, the target energies of the absorbers tuned by energy, and
+E_n,min; each keeps a black tick at the input's value. When dZ, ZSpOptStart or an absorber length moves, the Z grids follow as
 the recipe places them (Zana on the first grid point at or beyond Z_asymptotic; nZ and nZSpecular the
 smallest valid FFT sizes that hold the absorbers, which end on their last points); tEnd moves in whole
 averaging intervals dtAve. **Suggest** applies the recipe, **Reset** returns to the input, and **Save**
 writes the changed input to the file named in the box (never over an existing file). Options:
 `--zasymp` and `--point-group` (CRP data sets), `--threads`, `--representatives` and `--operations`
-(memory, as for `memory` below), `--ram` and `--gpu` (GiB, instead of this machine's).
+(memory, as for `memory` below), `--ram` and `--gpu` (GiB, instead of this machine's), `--zturn` (bohr, the turning point of the time
+budget; 2 by default, ZStart for the worst case).
 
 | Command | What it does |
 |---|---|
@@ -182,6 +188,7 @@ flowchart TB
 | `input_file.py` | read input.json; save changed values into a copy of its text | — |
 | `design/rules.py` | the recommendations of inputs/README.md, one function each | — (README sections) |
 | `design/transmission.py` | R and T of an absorber (1D transfer matrix) | — |
+| `design/timing.py` | the time budget: elastic recrossing, E_n,min, the paths of the time panel | — (README section 8) |
 | `design/suggest.py` | the recipe of README section 2 for the Z keys | — |
 | `program/config.py` | `InputParameters`, `DerivedParameters` | `src/input/config.hpp` |
 | `program/json_input.py` | key table, value types, checks while reading | `src/input/json_input.cpp` |

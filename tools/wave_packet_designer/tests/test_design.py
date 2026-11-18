@@ -66,6 +66,17 @@ def test_dz_passes_every_rule_but_its_time(work: Path) -> None:
     check_equal(failed_checks(evaluation_of(t_end=25000.0, n_steps=10000)), [], "failed checks with tEnd 25 000")
 
 
+def test_time_budget_of_the_readme_example(work: Path) -> None:
+    """Section 8's DZ example by hand: the slowest analysed part (0.40 eV, M/k_min = 354 a.u. per bohr) runs
+    16 bohr in and, reflected elastically, 13 bohr out: 29 x 354 = 10 266 a.u. (the exact M/k_min gives
+    10 252); outgoing E_n = 0.03 eV takes 16 x 354 + 13 x 1290 = 22 434 (22 438). With Z_turn = ZStart = 0:
+    33 bohr, 11 666."""
+    b = evaluation_of().time_budget
+    check(abs(b.t_elastic - 29 * 354) < 20 and abs(b.t_needed - (16 * 354 + 13 * 1290)) < 20, f"{b}")
+    b = evaluate(load_parameters(DZ_INPUT), Settings(z_turn=0.0)).time_budget
+    check_equal(round(b.t_elastic), 11666, "elastic with Z_turn 0")
+
+
 def test_time_is_fitted_to_whole_averaging_intervals(work: Path) -> None:
     """A requested tEnd becomes the next whole number of dtAve intervals (DZ: 500 a.u., 200 steps of 2.5) so the
     program's time checks hold: 25 000 stays, 25 100 becomes 25 500 with nStep 10 200."""
@@ -251,6 +262,7 @@ def test_suggestion_for_the_er_input(work: Path) -> None:
 
 TESTS = [
     test_dz_passes_every_rule_but_its_time,
+    test_time_budget_of_the_readme_example,
     test_time_is_fitted_to_whole_averaging_intervals,
     test_memory_must_fit,
     test_analysed_states_follow_the_angular_grid,

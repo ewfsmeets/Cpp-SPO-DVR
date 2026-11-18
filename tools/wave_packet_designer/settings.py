@@ -26,6 +26,10 @@ class Settings:
     # with --device cuda). None: unknown, no memory check.
     ram_bytes: int | None = None
     gpu_bytes: int | None = None
+    # The time budget (inputs/README.md section 8): the turning point Z_turn (bohr) and the lowest outgoing
+    # normal energy E_n,min (eV) tEnd must converge. None: the defaults of design/rules.py (2 bohr, 0.03 eV).
+    z_turn: float | None = None
+    lowest_outgoing_energy: float | None = None
 
 
 def this_machine() -> tuple[int | None, int | None]:

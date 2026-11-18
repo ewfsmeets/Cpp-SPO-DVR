@@ -27,12 +27,13 @@ def texts(ax: plt.Axes) -> str:
 
 def test_panels_draw_their_content(work: Path) -> None:
     """For the DZ input (with 32 GiB RAM and 9 GiB free GPU memory given): the Z panel has both grid lanes, the
-    packet and its marks; the momentum panel the packet and +-k_grid; the absorber panel R and T of its three
-    absorbers; the r panel one curve per analysed v and the limit; the memory panel a bar and a capacity mark
-    for the CPU and the GPU."""
+    packet and its marks; the momentum panel the packet and +-k_grid; the time panel Zana, Z_turn, tEnd and the
+    elastic and E_n,min recrossings; the absorber panel R and T of its three absorbers; the r panel one curve
+    per analysed v, the limit and the two legend entries; the memory panel a bar and a capacity mark for the
+    CPU and the GPU; the verdict panel the verdict."""
     e = evaluate(load_parameters(DZ_INPUT), Settings(representatives=19, ram_bytes=32 * 2**30, gpu_bytes=9 * 2**30))
     figure = report_figure(e)
-    z, k, absorbers, r, memory = figure.axes
+    z, k, time, absorbers, r, memory, verdict = figure.axes
     for expected in ("scattering grid", "specular grid", "Zana", "Z0", "outer tail", "allowed region"):
         check(expected in texts(z), f"Z panel: {expected} missing")
     check(len(z.lines) >= 1 and len(k.lines) >= 1, "packet curves")
@@ -44,6 +45,9 @@ def test_panels_draw_their_content(work: Path) -> None:
     legend = [t.get_text() for t in r.get_legend().get_texts()]
     check(len(legend) == 2 and "converged" in legend[1], f"r legend {legend}")
     check(len(memory.patches) == 2 and "RAM" in texts(memory) and "free GPU" in texts(memory), texts(memory))
+    for expected in ("Zana", "Z_turn", "tEnd", "elastic", "E_n 0.03 eV"):
+        check(expected in texts(time), f"time panel: {expected} missing")
+    check("spodvr accepts the input." in texts(verdict), "verdict panel")
     plt.close(figure)
 
 
@@ -146,11 +150,22 @@ def test_window_saves_the_changed_keys(work: Path) -> None:
     check("Not written" in window.message.get_text(), window.message.get_text())
 
 
+def test_e_n_min_slider_sets_the_time_check(work: Path) -> None:
+    """The DZ input's tEnd 17 500 converges outgoing energies down to 0.06 eV: with E_n,min 0.03 eV (the default)
+    the time check fails, with 0.07 eV it passes."""
+    window = new_window()
+    rule = "lowest outgoing normal energy converged by tEnd"
+    check(rule in [c.name for c in window.evaluation.design if c.passed is False], "fails at 0.03 eV")
+    window.sliders["lowest_outgoing_energy"].set_val(0.07)
+    window.update()
+    check(rule not in [c.name for c in window.evaluation.design if c.passed is False], "passes at 0.07 eV")
+
+
 def test_everything_has_an_explanation(work: Path) -> None:
     """Every panel, slider and button has an explanation, hovering over one finds it, and Explain lays the
     panel texts over the panels."""
     figure = plt.figure()
-    drawn = [draw.__name__ for _, draw in add_panels(figure, figure.add_gridspec(2, 3))]
+    drawn = [draw.__name__ for _, draw in add_panels(figure, figure.add_gridspec(2, 4))]
     check_equal(sorted(drawn), sorted(PANELS), "panels with an explanation")
     window = new_window()
     for field, widget in window.sliders.items():
@@ -171,5 +186,6 @@ TESTS = [
     test_window_follows_its_sliders,
     test_suggest_is_not_clamped_by_the_sliders,
     test_window_saves_the_changed_keys,
+    test_e_n_min_slider_sets_the_time_check,
     test_everything_has_an_explanation,
 ]

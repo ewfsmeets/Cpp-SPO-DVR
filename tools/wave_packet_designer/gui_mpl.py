@@ -8,7 +8,7 @@ the verdict, and explanations.
 
 Usage (from any directory; uv installs numpy, matplotlib and PyQt6 once, from the header above):
   uv run tools/wave_packet_designer/gui_mpl.py [input.json] [--zasymp Z --point-group G]
-      [--threads N] [--representatives N [--operations N]] [--ram GiB] [--gpu GiB]
+      [--threads N] [--representatives N [--operations N]] [--ram GiB] [--gpu GiB] [--zturn Z]
 Without an input it opens inputs/thesis_fig5_3_dz/input.json. --ram and --gpu replace this machine's RAM and
 free GPU memory (nvidia-smi) in the memory checks.
 
@@ -36,7 +36,15 @@ from matplotlib.backends import BackendFilter, backend_registry  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.widgets import Button, Slider, TextBox  # noqa: E402
 
-from evaluation import SETTINGS_STAGE, evaluate, fitted_parameters, fitted_r_grid, fitted_time, suggest  # noqa: E402
+from evaluation import (  # noqa: E402
+    SETTINGS_STAGE,
+    evaluate,
+    fitted_parameters,
+    fitted_r_grid,
+    fitted_time,
+    suggest,
+    time_settings,
+)
 from explanations import CONTROLS, PANELS  # noqa: E402
 from input_file import InputFile, InputFileError, load_input_file, save_changed_copy  # noqa: E402
 from plots import INK, INK_2, add_panels, apply_style, draw_panels  # noqa: E402
@@ -44,7 +52,7 @@ from program.config import InputParameters  # noqa: E402
 from program.fft_sizes import is_valid_fft_size  # noqa: E402
 from program.json_input import key_of_field, parse_input  # noqa: E402
 from program.point_group import GROUP_ORDER  # noqa: E402
-from report import status_line, verdict_lines  # noqa: E402
+from report import status_line  # noqa: E402
 from settings import Settings, this_machine  # noqa: E402
 
 DEFAULT_INPUT = Path(__file__).resolve().parent.parent.parent / "inputs/thesis_fig5_3_dz/input.json"
@@ -55,11 +63,11 @@ SCATTERING_LENGTH, SPECULAR_LENGTH = "scattering absorber length", "specular abs
 GRID_SLIDERS = ("dz", "zsp_opt_start", SCATTERING_LENGTH, SPECULAR_LENGTH)
 R_GRID_SLIDERS = ("dr", "nr")  # their change puts ROptEnd on the last r point
 TIME_SLIDER = "t_end"
-NOT_INPUT_KEYS = (SCATTERING_LENGTH, SPECULAR_LENGTH, TIME_SLIDER)  # sliders that are fitted, not copied
+E_N_MIN_SLIDER = "lowest_outgoing_energy"  # a setting of the time budget, not an input key
+NOT_INPUT_KEYS = (SCATTERING_LENGTH, SPECULAR_LENGTH, TIME_SLIDER, E_N_MIN_SLIDER)  # fitted or settings
 SLIDER_ROWS, SLIDER_COLUMNS = 5, 3
 VALID_NR = [n for n in range(2, 513) if is_valid_fft_size(n)]  # the values of the nR slider
 TEXT_WIDTH = 66  # characters per line in the verdict and help boxes
-VERDICT_LINES = 20  # at most this many lines of the verdict are shown
 HELP_PROMPT = "Hover over a panel, a slider or a button for its explanation."
 
 
@@ -118,23 +126,23 @@ class DesignerWindow:
 
     def __init__(self, figure: Figure, input_file: InputFile, parameters: InputParameters, settings: Settings):
         self.figure, self.input_file, self.settings, self.original = figure, input_file, settings, parameters
-        grid = figure.add_gridspec(2, 3, left=0.05, right=0.985, top=0.93, bottom=0.47, hspace=0.42, wspace=0.27)
+        grid = figure.add_gridspec(2, 4, left=0.045, right=0.99, top=0.93, bottom=0.47, hspace=0.42, wspace=0.3)
         self.panels = add_panels(figure, grid)
-        self.specs = slider_specs(parameters)
+        e_n_min = time_settings(settings)[1]
+        self.specs = slider_specs(parameters) + [slider("E_n,min (eV)", E_N_MIN_SLIDER, 0.005, 0.3, 0.005, e_n_min)]
         if len(self.specs) > SLIDER_ROWS * SLIDER_COLUMNS:
             raise ValueError(f"{len(self.specs)} sliders do not fit the {SLIDER_ROWS} x {SLIDER_COLUMNS} places")
         self.sliders = {spec.field: self.add_slider(i, spec) for i, spec in enumerate(self.specs)}
         self.explaining = False
         self.add_buttons()
         self.message = figure.text(0.05, 0.05, "", color=INK_2, fontsize=8.5)
-        self.verdict = figure.text(0.70, 0.415, "", color=INK, fontsize=7.8, va="top")
         self.help = figure.text(
-            0.70,
-            0.015,
-            wrapped([self.help_for(None)], 14),
+            0.715,
+            0.405,
+            wrapped([self.help_for(None)], 22),
             color=INK,
             fontsize=7.8,
-            va="bottom",
+            va="top",
             bbox={"facecolor": "#f6f5f2", "edgecolor": "#e4e3df", "pad": 4},
         )
         # A slider move restarts this timer; when it runs out, update() evaluates once.
@@ -198,12 +206,12 @@ class DesignerWindow:
     def update(self, _value: object = None) -> None:
         """Evaluates the current input and redraws the panels, the title, the verdict and the explanations."""
         self.parameters = self.current_parameters()
-        self.evaluation = evaluate(self.parameters, self.settings)
+        self.active_settings = replace(self.settings, lowest_outgoing_energy=self.slider_values()[E_N_MIN_SLIDER])
+        self.evaluation = evaluate(self.parameters, self.active_settings)
         draw_panels(self.panels, self.evaluation)
         if self.explaining:
             self.draw_explanations()
         self.figure.suptitle(status_line(self.evaluation), color=INK, fontsize=10.5)
-        self.verdict.set_text(wrapped(verdict_lines(self.evaluation), VERDICT_LINES))
         self.figure.canvas.draw_idle()
 
     def set_sliders(self, p: InputParameters) -> None:
@@ -221,7 +229,7 @@ class DesignerWindow:
 
     def suggest(self, _event: object = None) -> None:
         """Applies the recipe of inputs/README.md to the current input."""
-        s = suggest(self.parameters, self.settings)
+        s = suggest(self.parameters, self.active_settings)
         if s.blockers:
             self.message.set_text("Suggest needs first: " + "; ".join(f"{f.key}: {f.message}" for f in s.blockers))
             self.figure.canvas.draw_idle()
@@ -230,7 +238,11 @@ class DesignerWindow:
         self.message.set_text("Suggested by the recipe of inputs/README.md, section 2.")
 
     def reset(self, _event: object = None) -> None:
-        """Back to the input as read."""
+        """Back to the input as read (and E_n,min to its default)."""
+        e_n_min = self.sliders[E_N_MIN_SLIDER]
+        e_n_min.eventson = False
+        e_n_min.set_val(time_settings(self.settings)[1])
+        e_n_min.eventson = True
         self.set_sliders(self.original)
         self.message.set_text("Back to the input as read.")
 
@@ -281,7 +293,7 @@ class DesignerWindow:
         for name, button in self.buttons.items():
             if ax is button.ax:
                 return CONTROLS[name]
-        return HELP_PROMPT + "\n" + CONTROLS["verdict"]
+        return HELP_PROMPT
 
     def on_hover(self, event: object) -> None:
         """Shows the explanation of what the mouse is over in the help box."""
@@ -310,6 +322,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--operations", type=positive, help='the names under "Operations used", identity included')
     parser.add_argument("--ram", type=float, help="memory for the run (GiB); default: this machine's RAM")
     parser.add_argument("--gpu", type=float, help="GPU memory for the run (GiB); default: this GPU's free memory")
+    parser.add_argument("--zturn", type=float, help="the turning point Z_turn (bohr) of the time budget; default 2")
     args = parser.parse_args(argv)
     if plt.get_backend().lower() in backend_registry.list_builtin(BackendFilter.NON_INTERACTIVE):
         print(
@@ -330,7 +343,9 @@ def main(argv: list[str] | None = None) -> int:
     ram, gpu = this_machine()
     ram = int(args.ram * 2**30) if args.ram is not None else ram
     gpu = int(args.gpu * 2**30) if args.gpu is not None else gpu
-    settings = Settings(args.zasymp, args.point_group, args.threads, args.representatives, args.operations, ram, gpu)
+    settings = Settings(
+        args.zasymp, args.point_group, args.threads, args.representatives, args.operations, ram, gpu, args.zturn
+    )
     first = evaluate(parsed.parameters, settings)
     if first.stopped_at == SETTINGS_STAGE:  # a CRP data set without its values, or impossible symmetry counts
         for finding in first.findings:

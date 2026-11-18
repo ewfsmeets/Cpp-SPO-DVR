@@ -42,6 +42,8 @@ class DesignInput:
     angular: AngularGrid | None
     gas: GasPhase | None  # as the program computes it
     gas_reference: GasPhase | None = None  # converged on a finer r grid (only for copied gas-phase potentials)
+    z_turn: float = TURNING_POINT  # bohr: the turning point of section 8
+    e_n_min: float = LOWEST_OUTGOING_ENERGY  # eV: the lowest outgoing normal energy tEnd must converge
 
 
 @dataclass(frozen=True)
@@ -227,12 +229,14 @@ def r_absorber_beyond_bound_states(c: DesignInput) -> DesignCheck | None:
     )
 
 
-def t_end_for(z0: float, z_analysis: float, total_mass: float, k_min: float, energy_ev: float) -> float:
+def t_end_for(
+    z0: float, z_analysis: float, total_mass: float, k_min: float, energy_ev: float, z_turn: float = TURNING_POINT
+) -> float:
     """Section 8: T = (Z0 - Z_turn) M / k_min + (Zana - Z_turn) M / k_n, the time (a.u.) the slowest part of
     the packet needs to reach the surface plus the time an outgoing wave of normal energy E_n needs to come
     back out across Zana."""
     k_n = math.sqrt(2.0 * total_mass * ev_to_hartree(energy_ev))
-    return (z0 - TURNING_POINT) * total_mass / k_min + (z_analysis - TURNING_POINT) * total_mass / k_n
+    return (z0 - z_turn) * total_mass / k_min + (z_analysis - z_turn) * total_mass / k_n
 
 
 def lowest_converged_energy(c: DesignInput) -> DesignCheck:
@@ -241,22 +245,22 @@ def lowest_converged_energy(c: DesignInput) -> DesignCheck:
     meV, so slow outgoing waves are always present)."""
     mass = c.d.total_mass
     k_min = c.d.kz - 2.0 * packet_width_k(c)  # the slow end of the packet
-    time_left = c.p.t_end - (c.p.z0 - TURNING_POINT) * mass / k_min
+    time_left = c.p.t_end - (c.p.z0 - c.z_turn) * mass / k_min
     if time_left <= 0.0:
         energy = math.inf
     else:
-        k_n = (c.grids.z_analysis - TURNING_POINT) * mass / time_left
+        k_n = (c.grids.z_analysis - c.z_turn) * mass / time_left
         energy = hartree_to_ev(k_n * k_n / (2.0 * mass))
-    needed = t_end_for(c.p.z0, c.grids.z_analysis, mass, k_min, LOWEST_OUTGOING_ENERGY)
+    needed = t_end_for(c.p.z0, c.grids.z_analysis, mass, k_min, c.e_n_min, c.z_turn)
     advice = (
         f"slower outgoing flux is counted as reaction; tEnd >= {needed:.0f} a.u. converges E_n >= "
-        f"{LOWEST_OUTGOING_ENERGY} eV; check the norm left at tEnd"
+        f"{c.e_n_min:g} eV; check the norm left at tEnd"
     )
     return checked(
         "lowest outgoing normal energy converged by tEnd",
         energy,
         "<=",
-        LOWEST_OUTGOING_ENERGY,
+        c.e_n_min,
         "eV",
         advice,
         "8. Total time",

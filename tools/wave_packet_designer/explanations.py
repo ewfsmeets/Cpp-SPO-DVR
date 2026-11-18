@@ -50,6 +50,21 @@ PANELS = {
         "region. With UseSymmetry the potential is stored at the representatives only: without "
         "--representatives the bars are an upper bound. inputs/README.md section 9; `memory` lists every array."
     ),
+    "draw_time": (
+        "Time: the classical paths Z(t) of the packet's fast, central and slow parts (the momenta of EMaxWP, "
+        "k0 and EMinWP): in from Z0, reflected at the turning point Z_turn, and, if the reflection is elastic, "
+        "out at the same speed. The slow one is back across Zana at 'elastic': a lower bound for tEnd. "
+        "Rotational excitation and diffraction take normal energy, so many outgoing waves are slower; the "
+        "orange path leaves with the lowest normal energy E_n,min you want converged and is back at 'E_n'. "
+        "Good: tEnd (thick line) beyond both. Not included: trapping in wells, the spreading of the packet. "
+        "inputs/README.md section 8."
+    ),
+    "draw_verdict": (
+        "Verdict: first what spodvr would do with this input (its errors and set-up warnings), then the "
+        "recommendations of inputs/README.md that the input misses, worst first: the run fails, the results "
+        "suffer, it costs more than needed. Each with its value, the limit (marked where it is the designer's "
+        "own choice) and what to change. Then the values the sliders led to, and what nothing here checks."
+    ),
 }
 
 # What you are trying to achieve with a slider or button, which way to move it, and what it costs.
@@ -125,11 +140,11 @@ CONTROLS = {
         "0.03 eV in the README's example). Longer: more cost, linear in tEnd. It moves in whole averaging "
         "intervals dtAve. inputs/README.md section 8."
     ),
-    "verdict": (
-        "Verdict: first what spodvr would do with this input (its errors and set-up warnings), then the "
-        "recommendations of inputs/README.md that the input misses, worst first: the run fails, the results "
-        "suffer, it costs more than needed. Each with its value, the limit (marked where it is the designer's "
-        "own choice) and what to change. Then the values the sliders led to, and what nothing here checks."
+    "lowest_outgoing_energy": (
+        "E_n,min: the lowest outgoing normal energy tEnd must converge (a setting of the time budget, not an "
+        "input key). Outgoing waves slower than this have not crossed Zana by tEnd and count as reaction. "
+        "Lower: a longer tEnd (time panel). Near each channel threshold the outgoing waves are arbitrarily "
+        "slow, so some cut is needed; 0.03 eV is the README's example. inputs/README.md section 8."
     ),
     "sliders": (
         "Sliders: each starts at the input's value, which its black tick keeps marking. Moving one changes the "
