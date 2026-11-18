@@ -60,12 +60,13 @@ def format_memory_report(e: Evaluation, source: str, reading_findings: list[Find
     lines += findings_section(reading_findings + list(e.findings), e.stopped_at)
     if e.resources is not None:
         lines += sizes_section(e)
+        worst = " (WORST CASE: no symmetry reduction)" if e.resources.symmetry_source == SYMMETRY_NOT_GIVEN else ""
         if e.resources.memory is None:
             lines.append("  (no estimate: an analysis-only run needs the fine analysis's memory, not copied)")
         else:
-            lines += memory_section("MEMORY ESTIMATE", e.resources.memory)
+            lines += memory_section("MEMORY ESTIMATE" + worst, e.resources.memory)
         if e.resources.gpu_memory is not None:
-            lines += memory_section("GPU MEMORY ESTIMATE (with --device cuda)", e.resources.gpu_memory)
+            lines += memory_section("GPU MEMORY ESTIMATE (with --device cuda)" + worst, e.resources.gpu_memory)
     return "\n".join(lines) + "\n"
 
 
@@ -215,7 +216,7 @@ def sizes_section(e: Evaluation) -> list[str]:
     if r.symmetry_source == SYMMETRY_GIVEN:
         symmetry = f"{r.symmetry.n_representatives} of {n_xy} (x, y) points, {r.symmetry.n_operations} operations"
     elif r.symmetry_source == SYMMETRY_NOT_GIVEN:
-        symmetry = f"not given: all {n_xy} (x, y) points (an upper bound; see --representatives)"
+        symmetry = f"WORST CASE: no symmetry reduction, all {n_xy} (x, y) points (give --representatives)"
     else:
         symmetry = "none (UseSymmetry false)"
     lines.append(row("Surface symmetry of the potential", symmetry))
@@ -342,6 +343,14 @@ def key_numbers(e: Evaluation) -> list[str]:
         f"Grids: nZ {p.nz}, nZSpecular {p.nz_specular}, nR {p.nr}; Zana {g.z_analysis:g}, nzpot {g.nz_potential}; "
         f"tEnd {p.t_end:g} a.u. ({p.n_steps} steps)."
     ]
+    r = e.resources
+    if r is not None and r.symmetry_source == SYMMETRY_NOT_GIVEN:
+        sizes = [f"CPU {format_bytes(r.memory.peak_bytes)}"] if r.memory is not None else []
+        sizes += [f"GPU {format_bytes(r.gpu_memory.peak_bytes)}"] if r.gpu_memory is not None else []
+        lines.append(
+            f"Memory: WORST CASE without the symmetry reduction ({', '.join(sizes)}): the input uses UseSymmetry "
+            "but the number of representatives is not given (--representatives)."
+        )
     b = e.time_budget
     if b is not None:
         lines.append(

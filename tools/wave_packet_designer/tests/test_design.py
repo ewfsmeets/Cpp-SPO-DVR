@@ -26,6 +26,7 @@ from evaluation import Evaluation, evaluate, suggest
 from program.potential_systems import ANALYTIC_SYSTEMS
 from program.process import build_derived
 from program.unit_conversion import ev_to_hartree
+from report import verdict_lines
 from settings import Settings
 from tests.helpers import DZ_INPUT, ER_INPUT, HARDWALL_INPUT, check, check_equal, load_parameters
 
@@ -95,6 +96,16 @@ def test_memory_must_fit(work: Path) -> None:
     check("GPU memory: peak" in failed_checks(er), f"ER failed checks {failed_checks(er)}")
     dz = evaluate(load_parameters(DZ_INPUT), Settings(representatives=19, gpu_bytes=9 * 2**30, ram_bytes=16 * 2**30))
     check_equal([c.passed for c in dz.design if c.name.endswith("memory: peak")], [True, True], "DZ fits")
+
+
+def test_worst_case_memory_is_information_only(work: Path) -> None:
+    """DZ uses UseSymmetry: without --representatives the estimate is the worst case (all 144 (x, y) points,
+    17.2 GiB on the GPU). It cannot prove that the run does not fit, so with 9 GiB free GPU memory the check is
+    information, named as the worst case, and the verdict says so."""
+    e = evaluate(load_parameters(DZ_INPUT), Settings(gpu_bytes=9 * 2**30))
+    gpu = next(c for c in e.design if c.name.startswith("GPU memory"))
+    check(gpu.passed is None and "worst case" in gpu.name, f"{gpu}")
+    check(any("WORST CASE" in line for line in verdict_lines(e)), "verdict")
 
 
 def test_analysed_states_follow_the_angular_grid(work: Path) -> None:
@@ -265,6 +276,7 @@ TESTS = [
     test_time_budget_of_the_readme_example,
     test_time_is_fitted_to_whole_averaging_intervals,
     test_memory_must_fit,
+    test_worst_case_memory_is_information_only,
     test_analysed_states_follow_the_angular_grid,
     test_each_rule_flags_its_case,
     test_every_rule_has_a_failing_case,

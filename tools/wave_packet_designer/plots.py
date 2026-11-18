@@ -29,7 +29,7 @@ LOW_Z = ("ZOptLow", "ZSpOptLow")  # drawn hatched, to tell them from the main ab
 STATE_STYLES = ["-", "--", "-.", ":"]  # analysed v; each curve is also labelled with its v
 README_LEVELS = {"ZOpt": 4e-5, "ZSpOpt": 4e-9}  # R + T of the H2 examples, inputs/README.md section 7
 LANE_HEIGHT = 0.07  # axes fraction of each grid lane at the top of the Z panel
-VERDICT_WIDTH, VERDICT_LINES = 54, 26  # characters per line and lines of the verdict panel
+VERDICT_WIDTH, VERDICT_LINES = 54, 20  # characters per line and lines that fit the verdict panel
 Panel = tuple[Axes, Callable[[Axes, Evaluation], None]]
 
 
@@ -107,7 +107,7 @@ def draw_z_layout(ax: Axes, e: Evaluation) -> None:
     g, d = e.grids, e.densities
     if g is None:
         return
-    floor = 1e-16
+    floor = 1e-12
     if d is not None:
         ax.plot(d.z, masked(d.z_density, floor), color=INK, lw=1.5)
     peak = float(np.nanmax(d.z_density)) if d is not None else 1.0
@@ -178,7 +178,7 @@ def draw_momentum(ax: Axes, e: Evaluation) -> None:
     m, s = e.densities, e.packet_summary
     if m is None or s is None:
         return
-    floor = 1e-20
+    floor = 1e-12
     ax.plot(m.k, masked(m.k_density, floor), color=INK, lw=1.5)
     ax.set_ylim(floor, 1e3 * float(m.k_density.max()))
     ax.set_xlim(-1.08 * s.grid_momentum_limit, 1.08 * s.grid_momentum_limit)
@@ -314,6 +314,8 @@ def draw_memory(ax: Axes, e: Evaluation) -> None:
     r = e.resources
     if r is None:
         return
+    if r.symmetry_source == SYMMETRY_NOT_GIVEN:
+        ax.set_title("Memory: WORST CASE, no symmetry reduction")
     bars = []
     if r.memory is not None:
         bars.append(("CPU", r.memory.peak_bytes, e.settings.ram_bytes, "RAM"))
@@ -341,7 +343,7 @@ def draw_memory(ax: Axes, e: Evaluation) -> None:
     n_xy = e.parameters.nx * e.parameters.ny
     symmetry = {
         SYMMETRY_GIVEN: f"potential at {r.symmetry.n_representatives} of {n_xy} (x, y) points",
-        SYMMETRY_NOT_GIVEN: "UseSymmetry: reduction not given (an upper bound)",
+        SYMMETRY_NOT_GIVEN: f"worst case: potential at all {n_xy} (x, y) points (--representatives)",
     }.get(r.symmetry_source, "no surface symmetry")
     ax.text(
         0.99, 0.02, f"{symmetry}; {r.threads} threads", transform=ax.transAxes, ha="right", fontsize=7.5, color=INK_2

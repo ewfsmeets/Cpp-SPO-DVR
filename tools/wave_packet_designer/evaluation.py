@@ -24,6 +24,7 @@ from dataclasses import dataclass, replace
 import numpy as np
 
 from design.rules import (
+    INFORMATION,
     LOWEST_OUTGOING_ENERGY,
     TURNING_POINT,
     DesignCheck,
@@ -325,7 +326,9 @@ def bound_state_tails(gas: GasPhase | None, resources: Resources) -> tuple[np.nd
 
 
 def memory_checks(resources: Resources, settings: Settings) -> tuple[DesignCheck, ...]:
-    """Whether the run fits the memory given in the settings (the RAM, the free GPU memory)."""
+    """Whether the run fits the memory given in the settings (the RAM, the free GPU memory). With UseSymmetry but
+    no representatives given, the estimate is the worst case (no symmetry reduction): it cannot show that a run
+    does not fit, so the checks are then information only."""
     checks = []
     if resources.memory is not None and settings.ram_bytes is not None:
         advice = "surface symmetry (UseSymmetry), a smaller grid, or a machine with more memory"
@@ -333,6 +336,17 @@ def memory_checks(resources: Resources, settings: Settings) -> tuple[DesignCheck
     if resources.gpu_memory is not None and settings.gpu_bytes is not None:
         advice = "spodvr refuses --device cuda: surface symmetry, a smaller grid, or --device cpu"
         checks.append(memory_fits("GPU", resources.gpu_memory.peak_bytes, settings.gpu_bytes, advice))
+    if resources.symmetry_source == SYMMETRY_NOT_GIVEN:
+        worst_case = (
+            "the worst case, without the symmetry reduction; --representatives (the program's SURFACE SYMMETRY "
+            "block) gives the real value"
+        )
+        checks = [
+            replace(
+                c, name=c.name + " (worst case: no symmetry)", passed=None, consequence=INFORMATION, advice=worst_case
+            )
+            for c in checks
+        ]
     return tuple(checks)
 
 
