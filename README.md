@@ -305,16 +305,23 @@ the Fortran format (`CheckpointFormat` `"fortran"` or `"both"`, read with `Resta
 
 ### Formatting and linting
 
-clang-format (C++) and ruff (Python: lint and format, settings in `ruff.toml`) run as git
-pre-commit hooks; clang-tidy is run on demand. All versions are pinned in `.pre-commit-config.yaml`
-and installed by pre-commit itself (no system packages needed):
+Git pre-commit hooks check every commit: clang-format (C++), ruff (Python: lint and format,
+settings in `ruff.toml`) and pymarkdown (Markdown lint, settings in `.pymarkdown.yaml`); clang-tidy
+is run on demand. All versions are pinned in `.pre-commit-config.yaml` and installed by pre-commit
+itself (no system packages needed):
 
 ```bash
 pipx install pre-commit                                      # once per machine
 pre-commit install                                           # once per clone
-pre-commit run --all-files                                   # format everything, lint the Python files
+pre-commit run --all-files                                   # format and lint everything
 pre-commit run clang-tidy --hook-stage manual --all-files    # lint (needs build/compile_commands.json)
 ```
+
+clang-format and ruff fix what they can and then stop the commit: stage the changed files and
+commit again. pymarkdown only reports. Markdown needs a blank line around
+headings, code blocks and lists (not around a code block inside a list item), a language on every
+code block (`text` for program output), and no inline HTML other than comments, `<a>`, `<br>`,
+`<details>`, `<summary>`, `<sub>` and `<sup>`: outside code, write a literal `<` as `\<`.
 
 ## Testing
 

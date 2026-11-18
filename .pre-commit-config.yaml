@@ -17,6 +17,10 @@ repos:
         args: [--fix]                # applies the safe fixes only
       - id: ruff-format
         types_or: [python, pyi]      # not the Python blocks in Markdown (ruff.toml excludes .md too)
+  - repo: https://github.com/jackdewinter/pymarkdown
+    rev: v0.9.42                     # Markdown lint (reports only, fixes nothing); settings in .pymarkdown.yaml
+    hooks:
+      - id: pymarkdown
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

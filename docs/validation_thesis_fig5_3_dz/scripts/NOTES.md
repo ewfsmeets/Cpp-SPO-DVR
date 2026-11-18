@@ -64,7 +64,8 @@ under "Additions" at the end.
 - **`.gitignore`** ignores `*.dat`, `fort.*`, `fil10*`, `*.o`, `*.a` and `runs/` (not `*.log`,
   not `__pycache__`): rename copies in the docs folder (e.g. `averages_cpu.txt`). pre-commit is
   installed: trailing-whitespace, end-of-file-fixer, check-json and check-yaml run on every
-  commit (clang-format only on C++).
+  commit, clang-format on C++, and since 2026-11-18 ruff (lint and format) on the Python scripts
+  and pymarkdown on the Markdown files (top-level README, "Formatting and linting").
 - **Thesis PDF:** 217 pages, vector figures. The Read tool shows pages (`pages` parameter; find
   Fig. 5.3 via the list of figures). Exact curve extraction: pymupdf `get_drawings` (D1).
 
