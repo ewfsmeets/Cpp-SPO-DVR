@@ -149,7 +149,7 @@ program stops with a "not supported" message (exit code 3).
 | Screen output | input echo, grids, gas-phase states, averages, results per energy | **deviation**: a new layout with the same quantities | [Running](#running) |
 | Result files (fort.25, fil10, unit 3, `averages.out`) | S matrix, probabilities, spectrum and averages on disk | **deviation**: TSV and JSON files (additions below) | [output_files](docs/output_files.md#correspondence-with-the-fortran-output) |
 | CPU timings (`CpuTimings.f90`, fort.99) | the time spent per operator and per stage | **partly ported**: only the times of the potential, the propagation and the fine analysis | [fortran_deviations: Output not reproduced](docs/fortran_deviations.md#output-not-reproduced) |
-| Post-processing tools (upstream `tools.dir`) | read fil10 and fort.25, compare `.pes` files, site-specific reaction (flux density), n-H₂ averaging, plots, FFT sizes, wave-packet set-up | **not ported**: the TSV files need no reader; the input checks FFT sizes; `tools/wave_packet_check.py` checks the wave packet | [inputs/README](inputs/README.md) |
+| Post-processing tools (upstream `tools.dir`) | read fil10 and fort.25, compare `.pes` files, site-specific reaction (flux density), n-H₂ averaging, plots, FFT sizes, wave-packet set-up | **not ported**: the TSV files need no reader; the input checks FFT sizes; `tools/wave_packet_check.py` checks the wave packet; the wave-packet designer (`tools/wave_packet_designer/`) designs and checks the Z and r grids, the packet and the absorbers | [inputs/README](inputs/README.md) |
 | **Parallelism and build** | | | |
 | OpenMP | threads share the grid points | **ported**: the results do not depend on the thread count | [performance](docs/performance.md#threads-and-loop-scheduling) |
 | MPI (`MPI_*.f90`, `USE_MPI`) | distributes the grid over several computers | **not planned**: OpenMP and the GPU instead | [fortran_deviations: Not ported by decision](docs/fortran_deviations.md#not-ported-by-decision) |
@@ -185,6 +185,11 @@ program stops with a "not supported" message (exit code 3).
   CUDA 13 the GPU driver supports (tested with 13.3,
   the first release that accepts GCC 15; nvcc uses the same compiler as the rest of the build). FP64 speed
   matters: data-centre GPUs (A100, H100) run FP64 at 1/2 of the FP32 rate, GeForce cards at 1/64.
+- **Python 3** (≥ 3.10): CMake needs it for the tests that run the scripts in `tools/`. The tests of the
+  wave-packet designer (`WavePacketDesigner.*`) also need numpy and matplotlib in that Python.
+- **Optional, [uv](https://docs.astral.sh/uv/)**: runs the window of the
+  [wave-packet designer](#designing-an-input-the-wave-packet-designer). The window's file lists its
+  packages (numpy, matplotlib, PyQt6), and uv installs them into its own cache on the first run.
 
 On Debian/Ubuntu (also under WSL2):
 
@@ -241,6 +246,22 @@ sudo apt install cuda-toolkit-13-3          # newest 13.x not above the driver's
 - nvcc compiles with the C++ compiler of the build. If the CUDA release rejects that GCC
   ("unsupported GNU version"; GCC 15 needs CUDA ≥ 13.3), set `CUDAHOSTCXX` or
   `-DCMAKE_CUDA_HOST_COMPILER` to a GCC it accepts.
+
+**4. Python** (Ubuntu ships `python3`; numpy and matplotlib for the designer's tests and figures; uv,
+optional, for the designer's window):
+
+```bash
+sudo apt install python3 python3-numpy python3-matplotlib pipx
+pipx install uv                              # once per machine, like pre-commit (Formatting and linting)
+```
+
+- CMake uses the Python 3 it reports at configure time ("Found Python3: …"). numpy and matplotlib must be
+  importable there: in a virtual environment, install them with its pip, or pick another Python with
+  `-DPython3_EXECUTABLE=/path/to/python3`.
+- `pipx install` puts `uv` into `~/.local/bin`; `pipx ensurepath` adds that to `PATH` if it is not
+  there yet.
+- Under WSL2 the designer's window opens through WSLg. If it does not open, Qt names the system library
+  it misses; install that with apt.
 
 ## Building
 
@@ -345,6 +366,9 @@ The times: 809 tests (803 pass, 6 long or reference-less tests skipped) and 24 G
     [docs/validation.md](docs/validation.md);
   - GPU tests (`tests/cuda/`, names `Cuda…`): only in builds with `-DSPODVR_USE_CUDA=ON`. They skip on
     a machine without a GPU.
+  - the wave-packet designer (`tools/wave_packet_designer/`, Python, names `WavePacketDesigner.…`): its
+    copies of the program's rules against the C++ (input keys, checks, grid indices, packet values), its
+    design rules and its figure. They need numpy and matplotlib ([Dependencies](#dependencies), step 4).
 - **Selecting tests** (ctest `-R`/`-E` take a regular expression on the test name;
   `ctest --test-dir build -N` lists them all):
   ```bash
@@ -520,6 +544,26 @@ vector extensions (see docs/performance.md).
   [inputs/thesis_fig5_3_er](inputs/thesis_fig5_3_er/README.md)); finer grids and larger rotational
   bases need more.
 
+### Designing an input: the wave-packet designer
+
+`tools/wave_packet_designer/` designs and checks the Z and r part of an input before any run: the Z
+grids, the initial wave packet, the absorbers, the r grid, tEnd, and the CPU and GPU memory. It applies
+the rules of [inputs/README.md](inputs/README.md), says whether `spodvr` would accept the input, and
+needs no build of the program. The window has sliders for the recipe's knobs and explains each panel and
+slider; it needs uv. The command line needs only Python with numpy
+([Dependencies](#dependencies), step 4):
+
+```bash
+uv run tools/wave_packet_designer/gui_mpl.py inputs/thesis_fig5_3_dz/input.json      # the window
+python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json
+python3 -I -B tools/wave_packet_designer/wave_packet_designer.py memory inputs/thesis_fig5_3_dz/input.json
+```
+
+![The wave-packet designer window on the DZ input](tools/wave_packet_designer/images/window.png)
+
+The window on the DZ input, with the mouse over the Z panel. The panels, the sliders, the commands and
+their options: [tools/wave_packet_designer/README.md](tools/wave_packet_designer/README.md).
+
 ## Benchmark
 
 Full Dai–Light run (`tests/reference/cu111_dailight_small`): 7000 time steps on a 176 × 56 × 8 × 8
@@ -565,7 +609,7 @@ and the limits of this card in [docs/cuda.md](docs/cuda.md).
 |---|---|
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend), `crplib/` (the CRP library port), `fortran_text/` (the Fortran list-directed reader shared by `crplib/` and the SCM code) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`, `tests/crplib/reference/`, `tests/scm/reference/`) |
-| `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker |
+| `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker, the wave-packet designer (`wave_packet_designer/`, Python) |
 | `docs/` | input schema, output files, validation against the Fortran (`validation.md`, `fortran_deviations.md`), the upstream changes and their port status (`upstream_sync.md`), the flux analysis findings (`flux_analysis_findings.md`), the SCM potential (`scm.md`, `scm_open_questions.md`), the CRP library (`crp_library.md`), the Fortran bugs found (`fortran_input_bugs.md`, `fortran_fine_analysis_bugs.md`), performance notes, GPU backend |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |

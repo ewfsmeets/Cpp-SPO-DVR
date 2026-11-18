@@ -45,8 +45,10 @@ def test_panels_draw_their_content(work: Path) -> None:
     legend = [t.get_text() for t in r.get_legend().get_texts()]
     check(len(legend) == 2 and "converged" in legend[1], f"r legend {legend}")
     check(len(memory.patches) == 2 and "RAM" in texts(memory) and "free GPU" in texts(memory), texts(memory))
-    for expected in ("Zana", "Z_turn", "tEnd", "elastic", "E_n 0.03 eV"):
+    for expected in ("Zana", "Z_turn", "tEnd", "elastic", "E_n,min"):
         check(expected in texts(time), f"time panel: {expected} missing")
+    time_legend = [t.get_text() for t in time.get_legend().get_texts()]
+    check(any("0.03 eV" in label for label in time_legend), f"time legend {time_legend}: the E_n,min energy")
     check("spodvr accepts the input." in texts(verdict), "verdict panel")
     plt.close(figure)
 

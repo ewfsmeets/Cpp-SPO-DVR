@@ -2,10 +2,12 @@
 
 How to choose the Z-direction parameters of a new input (`dZ`, `nZ`, `nZSpecular`, `Zana`, `Z0`,
 `EMinWP`/`EMaxWP`, the absorbers, `tEnd`). Section 2 is the recipe; the sections after it explain
-each rule. `tools/wave_packet_check.py` checks an input against all of them. The two worked cases
-are `thesis_fig5_3_dz/` and `thesis_fig5_3_er/` (their READMEs give the numbers). Atomic units
-throughout (energies converted with 1 Ha = 27.2114 eV, masses with 1 amu = 1822.89 mₑ); M is the
-total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
+each rule. `tools/wave_packet_check.py` checks an input against all of them. The wave-packet designer
+([tools/wave_packet_designer](../tools/wave_packet_designer/README.md)) applies them interactively: it
+runs the program's input checks, shows the grids, the packet, the absorbers and the memory, and has
+sliders for the recipe's knobs. The two worked cases are `thesis_fig5_3_dz/` and `thesis_fig5_3_er/`
+(their READMEs give the numbers). Atomic units throughout (energies converted with 1 Ha = 27.2114 eV,
+masses with 1 amu = 1822.89 mₑ); M is the total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
 
 ## 1. Terms
 
@@ -98,7 +100,7 @@ Worked example in brackets: H₂, 0.40–0.95 eV, Z_asymp = 15.0 (`thesis_fig5_3
 9. **End each absorber on the last grid point** (`ZOptEnd`, `ZSpOptEnd`). Starts need not be grid
    points. [15.0–19.08, 22.08–30.60]
 10. **Targets** `ZOptEnergy` ~0.2 eV, `ZSpOptEnergy` ≈ `EMinWP`, `ROptEnergy` ~0.3 eV; check R and
-    T with `tools/wave_packet_check.py` and adjust.
+    T with `tools/wave_packet_check.py` (or the designer's absorber panel) and adjust.
 11. **`tEnd`** from section 8. [25 000; the DZ input uses 17 500]
 12. **Memory** (section 9), then a **test run** to t ≈ 500 (section 10).
 
@@ -237,14 +239,18 @@ it bounds the error in 1 − Σ R.
 - After changing dZ, re-check `Zana` (must be a grid point) and `nzpot`: the potential and the
   exp(−iV dt) table scale with it.
 - **Memory**: start the run (with `--device cuda` for the GPU) and stop it after the MEMORY
-  ESTIMATE / GPU MEMORY ESTIMATE blocks; add a few hundred MiB for the CUDA context. Without
+  ESTIMATE / GPU MEMORY ESTIMATE blocks; add a few hundred MiB for the CUDA context. Without a run:
+  the designer's `memory` command, which copies both estimates (with `UseSymmetry`, give it the
+  representative count of the run's SURFACE SYMMETRY block, else it shows the worst case). Without
   `UseSymmetry` the exp(−iV dt) table holds every (x, y) point and quickly exceeds a 12 GB GPU
   (ER case: 7.4 GiB).
 
 ## 10. Verifying a new input
 
 1. `uv run -q --with numpy python -I tools/wave_packet_check.py input.json --zasymp <Z_asymp>`:
-   all margins met, absorbers inside the table, R + T small over the relevant energies.
+   all margins met, absorbers inside the table, R + T small over the relevant energies. Or
+   `python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check input.json`, which also
+   runs the program's input checks.
 2. Run to t ≈ 500 a.u.: the total norm drops by ≲ 1e-7 (DZ: 1 − 4.7e-8; with dZ 0.15 it was
    1 − 3.3e-6), and no "fixed at" message appears before the packet reaches `Zana`.
 3. At the end: the norm left on the grids (section 8).

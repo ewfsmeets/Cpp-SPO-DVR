@@ -298,7 +298,7 @@ def draw_r_layout(ax: Axes, e: Evaluation) -> None:
     r_absorber = next((a for a in e.absorbers if a.name == "ROpt"), None)
     if r_absorber is not None:
         ax.axvspan(r_absorber.start, r_absorber.end, color=ORANGE, alpha=0.15, lw=0)
-        mark(ax, r_absorber.start, "ROptStart", 0.97)
+        mark(ax, r_absorber.start, "ROptStart", 0.6)  # below the legend; the tails are low out there
     g = e.grids.r
     mark(ax, g.start, "RStart", 0.12, ":")
     ax.axvline(g.last, color=INK_2, ls=":", lw=1.1)
@@ -371,20 +371,24 @@ def draw_time(ax: Axes, e: Evaluation) -> None:
             label=path.label,
         )
     ax.axhline(e.grids.z_analysis, color=INK_2, lw=1.0)
-    ax.text(0.0, e.grids.z_analysis, " Zana", va="bottom", fontsize=8, color=INK_2)
+    ax.text(  # mid-way, where no path crosses Zana
+        0.5, e.grids.z_analysis, " Zana", transform=ax.get_yaxis_transform(), va="bottom", fontsize=8, color=INK_2
+    )
     ax.axhline(b.z_turn, color=INK_2, lw=1.0, ls=":")
     ax.text(0.0, b.z_turn, " Z_turn", va="bottom", fontsize=8, color=INK_2)
-    mark(ax, b.t_end, "tEnd", 0.5)
+    mark(ax, b.t_end, "tEnd", 0.25)  # below the labels at Zana
     ax.axvline(b.t_end, color=INK, lw=2.0)
     for t, name, side in (
         (b.t_elastic, "elastic", "left"),
-        (b.t_needed, f"E_n {b.lowest_outgoing_energy:g} eV", "right"),
+        (b.t_needed, "E_n,min", "right"),  # short, to stay clear of tEnd; the legend gives the energy
     ):
         ax.plot([t], [e.grids.z_analysis], marker="o", color=INK, ms=4)
         ax.text(t, e.grids.z_analysis, f" {name} \n {t:.0f} ", fontsize=7.5, color=INK, va="top", ha=side)
     ax.set_xlim(0.0, 1.1 * max(b.t_end, b.t_needed))
     ax.set_ylim(0.0, 1.7 * e.parameters.z0)  # room above the paths for the legend
-    ax.legend(loc="upper right", fontsize=7, ncols=2)
+    ax.legend(  # opaque, so that the tEnd line does not run through it
+        loc="upper right", fontsize=7, ncols=2, frameon=True, framealpha=1.0, edgecolor="none"
+    )
 
 
 def draw_verdict(ax: Axes, e: Evaluation) -> None:

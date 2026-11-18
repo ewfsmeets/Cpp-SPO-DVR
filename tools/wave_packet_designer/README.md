@@ -25,6 +25,14 @@ uv run tools/wave_packet_designer/gui_mpl.py inputs/thesis_fig5_3_er/input.json
 python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json
 ```
 
+![The designer window on the DZ input: six panels, the verdict, the sliders, the buttons and the help box](images/window.png)
+
+The window on the DZ input (the first command above), with the mouse over the Z panel: the help box at
+the bottom right explains that panel. The memory is the worst case, because the command gives no
+`--representatives`; the RAM and the free GPU memory are those of the machine it ran on. To refresh the
+picture after changing the window, open it the same way, keep the mouse over the Z panel and press `s`
+(matplotlib's save key); the empty strip below the buttons was cropped.
+
 The window shows six panels, a verdict and a help box:
 
 - **Z**: the two Z grids as lanes (the scattering grid with its interaction region and absorber, the
