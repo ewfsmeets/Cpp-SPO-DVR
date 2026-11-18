@@ -14,8 +14,8 @@ Fortran input. Use it to see the SCM keys and the set-up report, and as a templa
 - Test-sized grids (nX = nY = 6, JMax 4, 3 θ points): the run warns that the rotational and the
   diffraction basis are too small for all open channels, and the x, y grid cannot converge across
   the jump of V at the cell edges (SCM D10).
-- The model itself has open questions (the clamp units, the cell-edge jump, the lattice rescaling,
-  …): [docs/scm_open_questions.md](../../docs/scm_open_questions.md).
+- The model itself has open questions (the units of the bond-length clamp, the cell-edge jump, the
+  holes below the CRP's Zmin, …): [docs/scm_open_questions.md](../../docs/scm_open_questions.md).
 
 Do not read its probabilities as an SCM result.
 

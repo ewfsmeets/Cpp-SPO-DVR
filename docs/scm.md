@@ -16,7 +16,7 @@ one example snapshot and no production data: enough for method tests, not for ph
 [inputs/scm_example](../inputs/scm_example/README.md) (its input plus `"Potential": true`, run from
 the repository root; 2026-11-15, build of 5e44ba8); [run −0.55]: the same with `ZStart` −0.55 bohr,
 `nZ` 120, `nZSpecular` 210; a test name: the value that test asserts; [Q]: scm_open_questions.md
-(a prototype or a Python transcription of the Fortran formulas, not re-measured with the C++).
+(measured with the C++ code on the samplings defined there).
 
 ## The model
 
@@ -36,11 +36,11 @@ V(X, Y, Z, r, θ, φ) = V_CRP(X/s, Y/s, Z, r, θ, φ)
 - **The pair function** f_L (layer L's line of `params.dat`) is a modified Rydberg form switched
   smoothly to a constant between p7 and p8 (7.44 and 10.46 bohr: P7, P8 of the example file): an
   atom farther than p8 from both H atoms adds nothing. Its parameters are linear in the bond length
-  r, clamped to [P17, P18] = [0.725, 1.847] bohr as coded (Q1).
+  r, clamped to [P17, P18] = [0.725, 1.847] bohr as coded; the published model clamps in Å (Q1).
 - **Lattice rescaling** (`EnableSurfExpan`, default on): the grid's cell takes the slab's lattice
   constant a_T, V_CRP is evaluated at (X/s, Y/s) with s = a_T/a₀, and the subtracted term uses the
   molecule's centre scaled by 1/s (h′). Example: a_T 4.88967, a₀ 4.91615 bohr, s = 0.994612 [run],
-  a 0.54 % lateral compression of the CRP (Q4).
+  a 0.54 % lateral compression of the CRP, as published (Q4).
 - **What it captures:** a raised atom adds local repulsion, a lowered or shifted one softens or
   moves the corrugation. **What it misses:** every non-pairwise effect of the distortion, atoms
   below layer 2, any change of the H–H interaction.
@@ -84,7 +84,7 @@ input: [inputs/scm_example/input.json](../inputs/scm_example/input.json); how to
 ## Ensembles, by hand
 
 SPO-DVR runs one snapshot; there is no ensemble tool yet. The example position file holds a single
-snapshot, so this procedure needs a production file (Q6).
+snapshot, so this procedure needs a production file (Q9).
 
 1. Write N inputs that differ only in `PosFileSlabNum` (1 … N of one position file) and run each
    with its own `--output-dir`. Paths are relative to the working directory: run all inputs from
@@ -95,9 +95,9 @@ snapshot, so this procedure needs a production file (Q6).
    `analysis` (the same grid and channels); the snapshot statistics (`slab_atoms`,
    `rms_displacement`, `top_layer_shift`, `highest_atom`) differ, so two runs with equal statistics
    most likely used the same snapshot.
-3. Average the linear columns row by row with equal weights (canonical sampling; Q6 asks the
-   production weights): `P_scattered`, `P_reaction`, `P_v…` of `scattering_summary.tsv`, and `P` of
-   `probabilities_rovib.tsv`, `probabilities_diffraction.tsv` and `s_matrix.tsv`. Give the standard
+3. Average the linear columns row by row with equal weights (canonical sampling; the published
+   runs average their 104 slabs, Q6): `P_scattered`, `P_reaction`, `P_v…` of
+   `scattering_summary.tsv`, and `P` of `probabilities_rovib.tsv`, `probabilities_diffraction.tsv` and `s_matrix.tsv`. Give the standard
    error of the mean, s/√N with s the standard deviation over the N runs (N − 1 in its denominator).
 4. Do not average `Re_S`, `Im_S` or `phase`, nor the per-scattered-molecule means `E_vib_mean`,
    `E_rot_mean`, `E_dif_mean` with equal weights: each is Σ P·E / P_scattered of one run i, so the
@@ -130,21 +130,30 @@ The block "SCM DISTORTED SURFACE" follows the CRP data set in the set-up output
 
 Limits of the model (the first from the literature, the others inferred from the model): no
 energy transfer to the lattice; pairwise and two layers only, so it is as good as its fit; not meant
-for slow, trapping-mediated channels; lattice zero-point motion only if the MD sampling has it. "The barrier slice" below is
-(Z, r) = (2.25, 1.95) bohr, near the SRP48 minimum barrier. The questions below are open, see
-[scm_open_questions.md](scm_open_questions.md#the-questions-by-priority); the C++ reproduces the
-Fortran until the authors answer.
+for slow, trapping-mediated channels; lattice zero-point motion only if the MD sampling has it. "The
+barrier slice" below is (Z, r) = (2.25, 1.95) bohr, near the SRP48 minimum barrier.
+[scm_open_questions.md](scm_open_questions.md#the-questions-in-brief) explains the questions to the
+authors; the C++ reproduces the Fortran until they answer.
 
 | Question | Size in the example | Source | C++ |
 |---|---|---|---|
-| [Q2](scm_open_questions.md#q2-the-jump-at-the-cell-edges-and-what-a-11-cell-can-describe): the jump at the cell edges | 0.700 eV on the barrier slice, both sides below the gas phase + 1.5 eV (Q2: 0.68 eV on its own sampling; the C++ takes 15° φ steps, SCM D10) | `ScmDiagnostics.ScmD10ExampleJumpNearTheBarrier` | reproduced, reported (D10) |
-| [Q4](scm_open_questions.md#q4-the-lattice-rescaling): the lattice rescaling | s = 0.994612; the rescaling alone raises ΔV on the barrier slice by 14 meV on average | [run]; [Q] | as coded |
-| [Q1](scm_open_questions.md#q1-the-units-of-the-bond-length-clamp): the clamp in bohr or Å | the lowest V on the barrier slice moves by +0.034 eV (limits in Å) or −0.29 eV (r dependence in Å) | [Q] | as coded (bohr) |
-| [Q11](scm_open_questions.md#q11-re-centring-a-snapshot-and-its-drift): re-centring, drift | the lowest V on the barrier slice: sd 0.061 eV over the 49 cells of the snapshot | [Q] | the example only |
-| [Q3](scm_open_questions.md#q3-deep-holes-where-the-crp-clamps-z-or-r): holes where the CRP clamps Z or r | V − V_CRP −335 eV below Zmin, −232 eV beyond Rmax (Q3: −255 and −357 eV, V relative to the gas phase on its own sample) | [run −0.55]; [run] | reproduced, reported (D15) |
-| [Q12](scm_open_questions.md#q12-hd): HD | both atoms misplaced by r/6 along the bond: V changes by up to 0.52 eV on the barrier slice | [Q] | HD rejected (D13) |
-| [Q6, Q5, Q9](scm_open_questions.md#q6-q5-q9-the-data-production-snapshots-parameters-provenance): data, provenance | one snapshot; identical layer parameters | the files | the example only |
-| [Q7, Q8, Q10, Q13](scm_open_questions.md#technical-questions): technical | ΔV leaves V_asy unchanged (0 of 96 points) | [run] | version 1 rejected (D5), V_asy checked (D3), no `.pes` cache (D11), `UseSymmetry` rejected (D2), cut-off default 16 bohr kept |
+| [Q1](scm_open_questions.md#q1-the-units-of-the-bond-length-clamp): the clamp, in Å in the paper, in bohr in the code (and, as we read them, in the published elbow cuts) | the lowest barrier of the origin cell: 0.501 eV as coded, 0.639 eV with the published clamp (ideal surface 0.625 eV) | [Q] | as coded (bohr) |
+| [Q2](scm_open_questions.md#q2-the-jump-at-the-cell-edges): the jump at the cell edges | 0.700 eV on the barrier slice, both sides below the gas phase + 1.5 eV (Q2: 0.68 eV with 30° φ steps; the C++ takes 15°, SCM D10) | `ScmDiagnostics.ScmD10ExampleJumpNearTheBarrier` | reproduced, reported (D10) |
+| [Q3](scm_open_questions.md#q3-deep-holes-where-the-crp-clamps-z-or-r): holes where the CRP clamps Z or r | V − V_CRP −335 eV below Zmin, −232 eV beyond Rmax (Q3 gives V − E_gas on its own sampling) | [run −0.55]; [run] | reproduced, reported (D15) |
+| [Q12](scm_open_questions.md#q12-hd-on-the-crp-and-scm-potentials): HD | both atoms misplaced by r/6 along the bond: V changes by up to 0.52 eV on the barrier slice | [Q] | HD rejected (D13) |
+| [Q7, Q8, Q10](scm_open_questions.md#technical-points-q7-q8-q10): technical | ΔV leaves V_asy unchanged (0 of 96 points) | [run] | version 1 rejected (D5), V_asy checked (D3), no `.pes` cache (D11), `UseSymmetry` rejected (D2) |
+| [Q4, Q5, Q6, Q11, Q13](scm_open_questions.md#what-the-papers-answer-q4-q5-q6-q11-q13): answered in the papers | s = 0.994612 (the EAM's 925 K lattice over the CRP's 0 K one); identical layer parameters; one cell per slab, centred per trajectory; cut-off 16 bohr | [run]; [Q] | as coded |
+| [Q9](scm_open_questions.md#data-we-would-like-to-have-q9): data | one snapshot, no production slabs | the files | the example only |
+
+**In your own runs, until the authors answer:**
+- Q1: results use the clamp in bohr, as the Fortran does. On the example snapshot the published clamp
+  moves the lowest barrier by +0.14 eV; allow for an uncertainty of that order in barrier-sensitive
+  results.
+- Q2: treat per-snapshot diffraction and specular probabilities as unconverged in nX, nY.
+- Q3: choose the Z grid and the r absorber as [inputs/README.md](../inputs/README.md#12-scm-distorted-surface-systemid-crpdistrtsurface)
+  says (`ZStart` ≥ Zmin, or `ImposeVMin`; r beyond Rmax inside the r absorber).
+- Q11: cells re-centred on another top-layer atom are correlated samples (item 6 of
+  [Ensembles](#ensembles-by-hand)).
 
 ## Links and references
 

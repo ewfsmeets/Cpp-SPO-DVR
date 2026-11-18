@@ -1,11 +1,12 @@
-"""Figures of docs/scm_open_questions.md from the example SCM data (potentials/H2Cu111SRP_C3v.dir).
+"""The pair-function and edge-jump figures of docs/scm_open_questions.md, from the example SCM data
+(potentials/H2Cu111SRP_C3v.dir).
 
 A short Python transcription of the 5.24 SCM pair term (DistortedSurfacePES.dir: SCM_Potential.f90
 SCM_SurfInteract_3Body and Switch_Rydberg_Potential, SCM_Types.f90 Setup_3Body_Rydberg_Par,
 SCM_Wrapper.f90 ConvertCoMToXYZ), accurate to well below 1 meV; for illustration only, not the
-implementation. Writes pair_function.png and edge_jump.png next to this script.
+implementation. clamp_kink.py imports it. Writes pair_function.png and edge_jump.png next to this script.
 
-Usage: python3 -I -B docs/scm_open_questions/make_figures.py   (run time ≈ 20 s; needs matplotlib)
+Usage: python3 -I -B docs/scm_open_questions/make_figures.py   (run time ≈ 1 s; needs matplotlib)
 """
 import math
 from pathlib import Path
@@ -18,13 +19,23 @@ import matplotlib.pyplot as plt  # noqa: E402
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent.parent / "potentials" / "H2Cu111SRP_C3v.dir"
 HARTREE_TO_EV = 1 / 0.036749308286  # the precise factor of GetCRPDistSurfPotential
-BOHR_IN_ANGSTROM = 0.529177249
-A0 = 4.916154  # nearest-neighbour distance of the CRP set H2Cu111SRP_C3v, bohr (2.601516559 Å)
+BOHR_IN_ANGSTROM = 0.529177249      # the CRP library's factor
+A0 = 2.601516559 / BOHR_IN_ANGSTROM  # nearest-neighbour distance of the CRP set H2Cu111SRP_C3v (CRPData line 3), bohr
 
 
 def read_parameters():
     """The 18 parameters of layer 1 (params.dat VERSION 2; both layers are identical)."""
     return [float(x) for x in (DATA / "params.dat").read_text().split()[2:20]]
+
+
+def coded_clamp(P):
+    """The bond-length clamp as the Fortran applies it: [P17, P18] taken as bohr."""
+    return P[16], P[17]
+
+
+def published_clamp(P):
+    """The clamp of Spiering et al. 2018 (Table III): [P17, P18] in Å, converted to bohr."""
+    return P[16] / BOHR_IN_ANGSTROM, P[17] / BOHR_IN_ANGSTROM
 
 
 def read_atoms():
@@ -37,6 +48,11 @@ def read_atoms():
         if f:
             atoms.append((tuple(map(float, f[0:3])), tuple(map(float, f[3:6])), int(f[6])))
     return atoms, a_t
+
+
+def kept_atoms(atoms, cutoff=16.0):
+    """The atoms ΔV sums over: layers 1 and 2, displaced position within the cut-off of the origin."""
+    return [a for a in atoms if a[2] <= 2 and sum(x * x for x in a[0]) < cutoff ** 2]
 
 
 def pair_parameters(P, t):
@@ -59,9 +75,10 @@ def pair_function(R, p, c):
     return v
 
 
-def delta_v(P, atoms, s, X, Y, Z, r, theta, phi):
-    """ΔV in eV at a Cartesian centre (X, Y, Z), as coded (bohr clamp, rescaling on)."""
-    p, c = pair_parameters(P, min(max(r, P[16]), P[17]))
+def delta_v(P, atoms, s, X, Y, Z, r, theta, phi, clamp=None):
+    """ΔV in eV at a Cartesian centre (X, Y, Z) with rescaling on; clamp (lo, hi) in bohr, default as coded."""
+    lo, hi = clamp or coded_clamp(P)
+    p, c = pair_parameters(P, min(max(r, lo), hi))
     d = (0.5 * r * math.sin(theta) * math.cos(phi), 0.5 * r * math.sin(theta) * math.sin(phi),
          0.5 * r * math.cos(theta))
     h = [(X - d[0], Y - d[1], Z - d[2]), (X + d[0], Y + d[1], Z + d[2])]
@@ -75,12 +92,14 @@ def delta_v(P, atoms, s, X, Y, Z, r, theta, phi):
 
 
 def plot_pair_function(P):
-    """f(R) for the bohr reading of the clamp at r = 1.4 and r ≥ 1.847 bohr, and the Å reading at r = 3.49 bohr."""
+    """f(R) at t = 1.4 bohr, at the coded upper clamp (1.847 bohr) and at the published one (3.49 bohr = 1.847 Å)."""
     fig, ax = plt.subplots(figsize=(8.8, 4.4), dpi=100)
     radii = [1.5 + 0.01 * i for i in range(951)]
-    curves = [(1.4, "t = 1.4 bohr: H₂ at its bond length (both readings)"),
-              (P[17], "t = 1.847: every r ≥ 1.847 bohr, as coded (clamp in bohr)"),
-              (P[17] / BOHR_IN_ANGSTROM, "t = 3.49: r = 3.49 bohr if the clamp is in Å")]
+    upper_published = published_clamp(P)[1]
+    curves = [(1.4, "t = 1.4 bohr: near the H₂ equilibrium bond length (both clamps)"),
+              (P[17], "t = 1.847 bohr: every r ≥ 1.847 bohr as coded"),
+              (upper_published, f"t = {upper_published:.2f} bohr (1.847 Å): every r ≥ {upper_published:.2f} bohr"
+                                " with the published clamp")]
     for t, label in curves:
         p, c = pair_parameters(P, t)
         ax.plot(radii, [pair_function(R, p, c) * HARTREE_TO_EV for R in radii], label=label)
@@ -88,24 +107,21 @@ def plot_pair_function(P):
     for x, text in ((p[6], "p7"), (p[7], "p8")):
         ax.axvline(x, color="0.6", lw=0.8, ls="--")
         ax.text(x + 0.08, 0.9, text, color="0.4")
-    ax.axvline(3.27, color="0.85", lw=4, zorder=0)
-    ax.text(3.35, -0.45, "R ≈ 3.3 bohr: H–Cu distance of H in the fcc hollow", color="0.4", fontsize=9)
     ax.axhline(0, color="0.3", lw=0.6)
     ax.set_xlim(1.5, 11)
     ax.set_ylim(-0.5, 2.0)
     ax.set_xlabel("H–Cu distance R (bohr)")
     ax.set_ylabel("pair function f(R) (eV)")
-    ax.set_title("SCM pair function of the example params.dat for three values of the clamped bond length t")
+    ax.set_title("SCM pair function of the example params.dat at three clamped bond lengths t")
     ax.legend(loc="upper right", fontsize=9)
     fig.tight_layout()
     fig.savefig(HERE / "pair_function.png", facecolor="white")
 
 
 def plot_edge_jump(P, atoms, a_t):
-    """ΔV along a line across the cell edge v = 0 at u = (2/3)·a, where the jump at this height is largest (0.68 eV),
-    as the periodic grid sees it and as the snapshot is."""
+    """ΔV along a line across the cell edge v = 0 at u = (2/3)·a_T, as the periodic grid sees it and as the snapshot is."""
     s = a_t / A0
-    kept = [a for a in atoms if a[2] <= 2 and sum(x * x for x in a[0]) < 16.0 ** 2]
+    kept = kept_atoms(atoms)
     u = 2.0 / 3.0 * a_t
     Z, r, theta = 2.25, 1.95, math.pi / 2
     fractions = [-0.5 + 0.01 * i for i in range(101)]
@@ -116,11 +132,11 @@ def plot_edge_jump(P, atoms, a_t):
     periodic = [at((f % 1.0) * a_t) for f in fractions]   # what the periodic x, y grid repeats
     snapshot = [at(f * a_t) for f in fractions]            # the snapshot itself, around the edge
     fig, ax = plt.subplots(figsize=(8.8, 4.4), dpi=100)
-    ax.plot(fractions, snapshot, label="the snapshot (atoms around the actual position)", color="0.55", ls="--")
-    ax.plot(fractions, periodic, label="what the run uses: the origin cell, repeated periodically", lw=2)
+    ax.plot(fractions, snapshot, label="the snapshot itself", color="0.55", ls="--")
+    ax.plot(fractions, periodic, label="the periodic grid (what the run uses)", lw=2)
     ax.axvline(0, color="0.3", lw=0.8)
     ax.text(0.01, max(periodic) - 0.02, "cell edge v = 0", color="0.3", fontsize=9)
-    ax.set_xlabel("v / a (lattice coordinate across the edge, at u = (2/3)·a)")
+    ax.set_xlabel("v / a_T (lattice coordinate across the edge, at u = (2/3)·a_T)")
     ax.set_ylabel("ΔV (eV)")
     ax.set_title("ΔV across a cell edge near the barrier: Z = 2.25, r = 1.95 bohr, θ = 90°, φ = 0")
     ax.legend(loc="lower left", fontsize=9)
