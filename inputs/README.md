@@ -130,7 +130,7 @@ tail beyond k_grid):
 |---|---|---|---|
 | 0.15 | 0.35–1.05 | 4.3 | 8e-6 (norm visibly drops) |
 | 0.15 | 0.40–1.00 | 5.0 | 3e-7 |
-| 0.14 | 0.35–1.05 | 5.2 | 1.3e-7 (still > `TolSp`) |
+| 0.14 | 0.35–1.05 | 5.1 | 1.3e-7 (still > `TolSp`) |
 | 0.12 | 0.40–0.95 | 9.2 | 1e-20 |
 
 At fixed dZ the only other knob is a narrower energy range. Two further limits:

@@ -8,8 +8,9 @@ Presentation layer (README, "Architecture"): formats what evaluate() computed an
 
 import textwrap
 
-from evaluation import SETTINGS_STAGE, SYMMETRY_GIVEN, SYMMETRY_NOT_GIVEN, Evaluation
+from evaluation import SETTINGS_STAGE, SYMMETRY_GIVEN, SYMMETRY_NOT_GIVEN, Evaluation, Suggestion
 from program.findings import Finding, Severity
+from program.json_input import key_of_field
 from program.memory_estimate import MemoryEstimate
 from program.unit_conversion import hartree_to_ev
 
@@ -27,6 +28,28 @@ def format_check_report(e: Evaluation, source: str, reading_findings: list[Findi
         lines += absorbers_section(e)
         lines += r_grid_section(e)
         lines += gas_phase_section(e)
+        lines += design_section(e)
+        lines += absorber_response_section(e)
+    return "\n".join(lines) + "\n"
+
+
+def format_suggestion_report(s: Suggestion, original: Evaluation, source: str) -> str:
+    """The report of the `suggest` command: the changed keys, then the checks of the changed input."""
+    lines = section(f"SUGGESTED Z GRIDS AND ABSORBERS for {source} (inputs/README.md, section 2)")
+    p, new = original.parameters, s.evaluation.parameters
+    lines.append(f"  {'key':14} {'input':>14} {'suggested':>14}")
+    for field in s.changes:
+        old, value = getattr(p, field), getattr(new, field)
+        mark = "" if old == value else "  *"
+        lines.append(f"  {key_of_field(field):14} {old!s:>14} {value!s:>14}{mark}")
+    lines.append("  (* changed)")
+    for key, factor in (("ZOptFactor", p.z_opt_factor), ("ZSpOptFactor", p.zsp_opt_factor)):
+        if factor is not None and key.replace("Factor", "Energy") not in [key_of_field(f) for f in s.changes]:
+            lines.append(f"  {key} {factor:g} kept: the absorber is tuned by its factor, not by an energy")
+    lines.append("  Not checked (section 4): the local momenta in wells or the exit channel, and the time step.")
+    lines += findings_section(list(s.evaluation.findings), s.evaluation.stopped_at)
+    lines += design_section(s.evaluation)
+    lines += absorber_response_section(s.evaluation)
     return "\n".join(lines) + "\n"
 
 
@@ -216,6 +239,29 @@ def memory_section(title: str, estimate: MemoryEstimate) -> list[str]:
         lines.append(row("Setting up the propagation", format_bytes(estimate.setup_bytes)))
         lines.append(row("During the propagation", format_bytes(estimate.propagation_bytes)))
     lines.append("  Small tables and FFT plans are not included.")
+    return lines
+
+
+def design_section(e: Evaluation) -> list[str]:
+    lines = section("DESIGN (the recommendations of inputs/README.md)")
+    for c in e.design:
+        mark = {True: "ok     ", False: "ADVICE ", None: "info   "}[c.passed]
+        source = "the designer's limit" if c.designer_limit else "recommended"
+        limit = "" if c.relation is None else f" ({source} {c.relation} {c.limit:g})"
+        unit = f" {c.unit}" if c.unit else ""
+        lines.append(f"  {mark} {c.name}: {c.value:.4g}{unit}{limit}  [section {c.section}]")
+        if c.passed is not True:
+            lines.append(f"            {c.advice}")
+    return lines
+
+
+def absorber_response_section(e: Evaluation) -> list[str]:
+    lines = section("ABSORBERS: REFLECTION + TRANSMISSION (1D, inputs/README.md section 7)")
+    lines.append("  Energies: specular absorbers EMinWP .. EMaxWP; the others 0.05 eV .. the available energy")
+    lines.append("  (for ROpt the designer's choice: the README sets no range).")
+    for r in e.absorber_responses:
+        lines.append(f"  {r.name:10} E (eV)  " + " ".join(f"{x:8.3f}" for x in r.energies))
+        lines.append(f"  {'':10} R + T   " + " ".join(f"{x:8.1e}" for x in r.total))
     return lines
 
 

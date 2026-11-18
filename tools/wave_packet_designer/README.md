@@ -19,14 +19,16 @@ python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/th
 
 | Command | What it does |
 |---|---|
-| `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers, the r grid and the gas-phase channels. |
+| `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers, the r grid, the gas-phase channels, the design checks of inputs/README.md and the absorbers' R + T. |
 | `check <input.json> --zasymp Z --point-group G` | The same for a CRP data set (SystemID `CRPlibrary`, `CRPDistrtSurface`), whose Z_asymptotic and point group come from the data set (the program's set-up output prints both). |
 | `memory <input.json> [--threads N]` | The sizes that set the memory (θ and φ points, rotational basis, grid points) and the program's CPU and GPU memory estimates, array by array. `--threads` (default 8): the run's OpenMP threads, each with its own work arrays. |
 | `memory <input.json> --representatives N [--operations N]` | The same for a run with `UseSymmetry`: the (x, y) points at which the program stores the potential, and the operations it uses (default: all of the point group). Its SURFACE SYMMETRY block prints both: "(x, y) points computed / total", and the names under "Operations used" (count them, identity included). Without them the estimate assumes no reduction, an upper bound. |
+| `suggest <input.json> [--dz D] [--output new.json]` | The Z grids, Z0, Zana and the Z absorbers by the recipe of inputs/README.md (section 2): prints the suggested values next to the input's and checks the changed input; `--output` writes it to a new file (never over an existing one). `--dz` sets the step; by default the input's if it holds the momenta, else the largest that does (the local momenta and the time step of section 4 are not checked). |
 
-Exit status: 0 `spodvr` accepts the input, 1 it would stop on it, 2 the file or the options are
-unusable (also a CRP data set without `--zasymp` and `--point-group`). The tool never writes into the
-repository.
+Exit status: 0 `spodvr` accepts the input (for `suggest`: the changed input), 1 it would stop on it (or
+`suggest` needs other keys fixed first), 2 the file or the options are unusable (also a CRP data set
+without `--zasymp` and `--point-group`). The tool writes only the file that `suggest --output` names, and
+never replaces an existing file.
 
 ## What `check` reports
 
@@ -68,6 +70,14 @@ the free H2 molecule's curve, so it serves D2 and HD too. The program solves its
 the input's r grid; where that differs (another potential, or another RStart, dR or nR), the report marks
 the states as indicative.
 
+**Design.** The recommendations of [inputs/README.md](../../inputs/README.md) applied to the input, each
+with its value, the recommended limit and the README section: the momentum margins of the packet and of
+dZ, Zana on the first grid point, Z0 and the packet's outer tail, the absorber lengths and ends, the r
+absorber beyond the analysed bound states; for information, the lowest outgoing energy converged by tEnd
+and the energy resolution. Then R + T of each absorber over the energies it must absorb (1D transfer
+matrix, as `tools/wave_packet_check.py`, with the program's strengths). These are advice: they never
+change the exit status.
+
 ## What `memory` reports
 
 The program's MEMORY ESTIMATE and GPU MEMORY ESTIMATE tables, with the same rows and sizes: for the DZ
@@ -86,11 +96,13 @@ flowchart TB
     report["report.py<br/>text tables"]
     evaluation["evaluation.py<br/>evaluate(parameters, settings) -> Evaluation"]
     program["program/<br/>copies of what spodvr computes or rejects"]
+    design["design/<br/>advice from inputs/README.md"]
     data["settings.py, input_file.py, dz_gas_phase.py<br/>options; input files; the gas-phase curve"]
     cli --> report --> evaluation
     cli --> data
     cli -- "parse_input" --> program
     report -- "findings, units" --> program
+    evaluation --> design --> program
     evaluation --> program
     evaluation --> data
 ```
@@ -118,9 +130,12 @@ flowchart TB
 |---|---|---|
 | `wave_packet_designer.py` | command line | — |
 | `report.py` | text report of an `Evaluation` | `src/report/format.cpp` (format_bytes), `sections.cpp` (memory table) |
-| `evaluation.py` | `evaluate()`: the stages, the absorber and packet summaries, the memory and the gas phase | `src/app/run.cpp` (stage order) |
+| `evaluation.py` | `evaluate()`: the stages, the absorber and packet summaries, the memory, the gas phase, the design checks and R + T; `suggest()` | `src/app/run.cpp` (stage order) |
 | `settings.py` | values that are not input keys (Z_asymptotic of a CRP data set, …) | — |
 | `input_file.py` | read input.json; save changed values into a copy of its text | — |
+| `design/rules.py` | the recommendations of inputs/README.md, one function each | — (README sections) |
+| `design/transmission.py` | R and T of an absorber (1D transfer matrix) | — |
+| `design/suggest.py` | the recipe of README section 2 for the Z keys | — |
 | `program/config.py` | `InputParameters`, `DerivedParameters` | `src/input/config.hpp` |
 | `program/json_input.py` | key table, value types, checks while reading | `src/input/json_input.cpp` |
 | `program/validate.py` | the consistency checks | `src/input/validate.cpp` |
@@ -151,7 +166,8 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
     indices, the packet's norms and |ψ(k)|, the absorber strengths) and the L/λ the Fortran printed;
   - `memory`: every row of the DZ run's two memory tables, and the hand counts of
     `tests/test_memory_estimate.cpp`;
-  - `gas-phase`: the DZ run's state energies (to 1e-13 eV) and open channels.
+  - `gas-phase`: the DZ run's state energies (to 1e-13 eV) and open channels;
+  - `design` checks the rules against the numbers inputs/README.md prints (sections 3, 4, 7, 8).
 
   The command of the DZ run is in `tests/helpers.py`; the Fortran values come with the C++ test that
   the test's docstring names.
@@ -160,6 +176,9 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
 - **a consistency check:** a line in `program/validate.py` at the same place as in `validate.cpp`, and a
   violating row in `tests/test_validate.py` (`validate` fails until both exist).
 - **what the report shows:** `report.py` (and `evaluation.py` if a new quantity is needed).
+- **a recommendation of inputs/README.md:** a function in `design/rules.py`, added to `RULES`, and a failing
+  row in `tests/test_design.py` (`design` fails for a rule without one). Its message cites the README
+  section; the physics stays in the README.
 - **a renamed C++ function:** the `Shadows:` line (`structure` fails otherwise).
 
 ### Conventions

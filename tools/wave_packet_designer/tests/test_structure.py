@@ -12,6 +12,7 @@ from tests.helpers import REPOSITORY, TOOL_DIR, check
 # package (program imports program). Front ends (layer 4) never import each other; the tests sit on top.
 LAYERS = {
     "program": 0,
+    "design": 1,
     "settings": 1,
     "input_file": 1,
     "dz_gas_phase": 1,

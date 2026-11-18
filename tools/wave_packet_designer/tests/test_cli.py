@@ -71,6 +71,17 @@ def test_impossible_memory_options_exit_with_2(work: Path) -> None:
         check_equal(run_cli("memory", str(DZ_INPUT), *options).returncode, 2, f"exit status of {options}")
 
 
+def test_suggest_writes_an_accepted_input(work: Path) -> None:
+    """`suggest --output` writes a copy of the input with the suggested Z keys, which `check` accepts; it
+    refuses to replace an existing file (exit 2)."""
+    target = work / "suggested.json"
+    target.unlink(missing_ok=True)
+    result = run_cli("suggest", str(DZ_INPUT), "--dz", "0.12", "--output", str(target))
+    check(result.returncode == 0 and target.exists(), f"{result.returncode}: {result.stdout}{result.stderr}")
+    check_equal(run_check(str(target)).returncode, 0, "exit status of check on the copy")
+    check_equal(run_cli("suggest", str(DZ_INPUT), "--output", str(target)).returncode, 2, "existing file")
+
+
 def test_missing_file_exits_with_2(work: Path) -> None:
     """An unreadable file is a usage problem (exit 2), reported on stderr."""
     result = run_check(str(work / "missing.json"))
@@ -84,5 +95,6 @@ TESTS = [
     test_data_set_system_needs_its_values,
     test_memory_of_the_dz_input,
     test_impossible_memory_options_exit_with_2,
+    test_suggest_writes_an_accepted_input,
     test_missing_file_exits_with_2,
 ]

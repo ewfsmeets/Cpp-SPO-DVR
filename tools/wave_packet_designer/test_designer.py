@@ -35,6 +35,7 @@ CASES = {
     "packet": "tests.test_packet",
     "memory": "tests.test_memory",
     "gas-phase": "tests.test_gas_phase",
+    "design": "tests.test_design",
     "input-file": "tests.test_input_file",
     "cli": "tests.test_cli",
     "structure": "tests.test_structure",

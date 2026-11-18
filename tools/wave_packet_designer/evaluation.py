@@ -7,8 +7,9 @@ The model layer (README, "Architecture"): the front ends call `evaluate` and onl
 follow the reading of the file: validate_input, the derived parameters, the grids, the flux refusal and
 the initial wave packet. A stage runs only when the ones before it passed, so `stopped_at` names the stage
 where spodvr would stop, and `findings` lists that stage's errors (all of them, where spodvr shows the
-first). Once the grids exist it also computes what the program prints later in its set-up: the memory
-estimates and the gas-phase channels.
+first). Once the grids exist it also computes what the program prints later in its set-up (the memory
+estimates and the gas-phase channels) and the advice of inputs/README.md (design/: the design checks and the
+absorbers' R + T). suggest() applies the README's recipe to the Z keys and evaluates the changed input.
 
 Two things happen outside the program's stages:
 - Reading the file (program/json_input.py, parse_input) comes before evaluate(): a front end reads the
@@ -18,19 +19,24 @@ Two things happen outside the program's stages:
 """
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from design.rules import DesignCheck, DesignInput, design_checks
+from design.suggest import SUGGESTED_FIELDS, suggest_z_keys
+from design.transmission import AbsorberResponse, absorber_mass, absorber_response, response_window
 from dz_gas_phase import dz_gas_phase_curve
 from program.angular_grid import AngularGrid, make_angular_grid, rotational_basis_size
 from program.config import DerivedParameters, InputParameters
 from program.findings import Finding, FindingList, Severity, has_errors
 from program.gas_phase import GasPhase, GasPhaseCurve, compute_gas_phase
 from program.initial_wave_packet import InitialWavePacket, make_initial_wave_packet
+from program.json_input import key_of_field
 from program.memory_estimate import MemoryEstimate, SymmetryCounts, estimate_gpu_memory, estimate_memory
 from program.point_group import GROUP_ORDER
 from program.potential_systems import SystemParameters, is_data_set_system, system_parameters
 from program.process import absorber_table_warnings, build_derived, effective_z_asymptotic
 from program.spatial_grids import IndexRange, SpatialGrids, make_spatial_grids
+from program.unit_conversion import hartree_to_ev
 from program.validate import validate_input
 from settings import Settings
 
@@ -99,6 +105,8 @@ class Evaluation:
     # The curve is another potential's, or the input's r grid is not the curve's: then the program's states
     # differ, and these are only indicative.
     gas_phase_indicative: bool = False
+    design: tuple[DesignCheck, ...] = ()  # the recommendations of inputs/README.md, applied
+    absorber_responses: tuple[AbsorberResponse, ...] = ()  # R and T of each absorber that is on
     findings: tuple[Finding, ...] = ()  # the program's errors and warnings, stage by stage
     stopped_at: str | None = None  # the stage where evaluation stops; None if the set-up passes
 
@@ -175,9 +183,54 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         resources=resources,
         gas_phase=gas_phase,
         gas_phase_indicative=not curve_is_the_inputs(p, curve),
+        design=design_checks(DesignInput(p, derived, grids, gas_phase)),
+        absorber_responses=absorber_responses(p, derived, absorbers, gas_phase),
         findings=tuple(findings),
         stopped_at=stopped_at,
     )
+
+
+@dataclass(frozen=True)
+class Suggestion:
+    """Suggested Z keys (design/suggest.py) and what the program and the README make of the changed input."""
+
+    changes: dict[str, float | int]  # InputParameters field -> suggested value; empty if blocked
+    evaluation: Evaluation  # of the input with the changes (of the input itself if blocked)
+    blockers: tuple[Finding, ...]  # the program's errors on keys the suggestion does not set
+
+
+def suggest(p: InputParameters, settings: Settings, dz: float | None = None) -> Suggestion:
+    """The suggestion for the Z grids and absorbers of `p` (with dZ = `dz` if given). It needs an input that
+    the program's consistency checks accept apart from the keys it sets: otherwise it is blocked, and
+    `blockers` lists what to fix first (e.g. EMinWP <= 0, an unknown SystemID)."""
+    original = evaluate(p, settings)
+    suggested_keys = {key_of_field(field) for field in SUGGESTED_FIELDS}
+    blockers = tuple(
+        f
+        for f in original.findings
+        if f.severity is Severity.ERROR and f.origin == "validate_input" and f.key not in suggested_keys
+    )
+    if original.system is None or blockers:
+        return Suggestion({}, original, blockers)
+    system = original.system
+    changes = suggest_z_keys(p, build_derived(p, system), effective_z_asymptotic(p, system), dz)
+    return Suggestion(changes, evaluate(replace(p, **changes), settings), ())
+
+
+def absorber_responses(
+    p: InputParameters, d: DerivedParameters, absorbers: tuple[AbsorberSummary, ...], gas: GasPhase | None
+) -> tuple[AbsorberResponse, ...]:
+    """R and T of each absorber that is on (strength > 0; the r absorber only with nR > 1), over its energies
+    (design/transmission.py response_window; without a gas phase the available energy is EMaxWP + EParallel)."""
+    available = hartree_to_ev(gas.available_energy) if gas is not None else p.e_max_wave_packet + p.e_parallel
+    responses = []
+    for a in absorbers:
+        if a.strength <= 0.0 or (a.name == "ROpt" and p.nr == 1):
+            continue
+        mass = absorber_mass(a.name, d.total_mass, d.reduced_mass)
+        window = response_window(a.name, p, available)
+        responses.append(absorber_response(a.name, a.end - a.start, a.strength, mass, window))
+    return tuple(responses)
 
 
 def check_settings(p: InputParameters, system: SystemParameters, settings: Settings) -> list[Finding]:

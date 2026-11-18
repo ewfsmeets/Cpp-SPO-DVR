@@ -55,6 +55,7 @@ class GasPhase:
     j_max_analysis: int  # highest j analysed (JAna, or j_max_open). Fortran: jana
     warnings: tuple[str, ...]
     curve: GasPhaseCurve  # the V(r) the states were computed for
+    available_energy: float  # hartree above E(0, 0): EMaxWP plus the initial state's internal and parallel energy
 
 
 def compute_gas_phase(p: InputParameters, d: DerivedParameters, angular: AngularGrid, curve: GasPhaseCurve) -> GasPhase:
@@ -87,6 +88,7 @@ def compute_gas_phase(p: InputParameters, d: DerivedParameters, angular: Angular
         j_max_analysis,
         tuple(warnings),
         curve,
+        available_energy,
     )
 
 
