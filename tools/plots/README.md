@@ -1,8 +1,9 @@
 # Plots of a spodvr run
 
 Figures and a report of one `spodvr` run, read from the files the run wrote: the run verdict (is the run
-complete and converged?), the results against energy, the averages, the gas phase and the Balint-Kurti
-coefficients. A run split into restart segments is one run: give every segment's directory and the plots
+complete and converged?), the results against energy, the final rovibrational states, diffraction and the
+scattering angles, time delays, the fine analysis, the Balint-Kurti coefficients, the averages and the gas
+phase. A run split into restart segments is one run: give every segment's directory and the plots
 join them. The wave-packet designer ([tools/wave_packet_designer](../wave_packet_designer/README.md)) checks
 an input before a run; this tool looks at what the run produced.
 
@@ -17,6 +18,13 @@ uv run python -I -B tools/plots/spodvr_plot.py verdict RUN...             # the 
 uv run python -I -B tools/plots/spodvr_plot.py plot results RUN... --out DIR
 uv run python -I -B tools/plots/spodvr_plot.py report RUN... --out DIR    # report.md + every figure
 ```
+
+![The results figure of the oblique Dai-Light test run](images/results.png)
+
+`plot` and `report` take `--energy EV` (the panels at one energy show the analysis energy nearest it; default
+the middle one), `--channels N` (how many channels or levels the line plots show, at least 1; default 6) and
+`--azimuth DEG` (the in-plane direction at normal incidence; default 0, the first lattice vector; ignored at
+oblique incidence, where the plane of incidence is used).
 
 - `RUN...` is the run's output directory, or every segment's directory of a restarted run, in any order.
   Segments that do not join (one does not start where another ended) are refused; a segment whose
@@ -37,10 +45,15 @@ is a bug of the tool.
 | Figure | Shows | Needs |
 |---|---|---|
 | `verdict` | the run verdict as a text panel (the report prints it as text) | whatever the run has |
-| `results` | P_scattered and P_reaction, P(v') (when two or more levels are scattered into) and the mean final energies against the collision energy | scattering_summary.tsv |
+| `results` | P_scattered; P_reaction on its own axis with the unitarity-error band; the mean final energies; P(v') (when two or more levels are scattered into) | scattering_summary.tsv |
+| `state_to_state` | P(v', j') against energy and at one energy; P(mJ') and the alignment A0(2) (quantisation axis the surface normal) | s_matrix.tsv |
+| `diffraction` | the spots at their Cartesian parallel momentum at one energy; P per order and the fraction out of the plane against energy | s_matrix.tsv |
+| `scattering_angles` | polar and azimuthal angle of every open final state (summed over mJ') at one energy, and the specular direction | s_matrix.tsv, bk_coefficients.bin |
+| `time_delay` | d arg S / dE of the strongest channels (each S referred to its analysis line), relative to a reflection at Z = 0, where the channel carries weight; their probabilities | bk_coefficients.bin, checkpoint.bin |
+| `fine_analysis` | P_scattered of the on-the-fly and the fine analysis, and their difference | scattering_summary.tsv, fine_analysis/ |
 | `averages` | norm, 1 − norm, rest norm, ⟨Z⟩ and ⟨r⟩ against time | averages.dat |
 | `gas_phase` | V_asy(r) with the levels of the initial j and the r absorber; \|ψ(r)\| of the lowest levels on a log axis | gas_phase_states.dat, asymptotic_potential.dat |
-| `bk` | \|c(t)\|² of the strongest channels; P_scattered(E; t) / P_scattered(E; tEnd) | bk_coefficients.bin (one record at least) |
+| `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
 Every figure also reads `run_info.json` (the run's metadata). The file formats:
 [docs/output_files.md](../../docs/output_files.md).
@@ -59,11 +72,14 @@ judgement); `verdict.py` reads the run's files for them.
 | unanalysed flux, upper bound | warning | more than 1e-3 of the norm still inside the analysis lines at tEnd (`checkpoint.bin`), summed over all energies |
 | P_scattered still moving | warning | P_scattered changed by more than max(1e-3 P_s, 1e-4) over the last 10 % of the run at some energy: the check per energy |
 | unitarity error | warning | P_reaction below −1e-4 |
+| flux at the edge of the basis | warning | more than 1e-3 of P_scattered in j′ = JMax, or in the outermost analysed diffraction channels (s_matrix.tsv) |
+| gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
 | not checked: … | information | a check the run's files do not allow: no checkpoint.bin (`CheckpointFormat` `fortran`), fewer than two BK records, or a run that does not propagate (potential only, analysis only) |
 
-E_n,min is a lower bound on the time a run needs: "P_scattered still moving" is the empirical check.
+E_n,min is a lower bound on the time a run needs: "P_scattered still moving" is the empirical check. The
+report shows the verdict as a table; `verdict` prints it as text.
 
 ## Architecture
 
@@ -85,10 +101,14 @@ flowchart LR
 | `readers/tables.py` | averages.dat and the tab-separated tables (read by column name), the gas-phase files | `src/report/propagation_report.cpp`, `analysis_files.cpp`, `sections.cpp` |
 | `readers/binary.py` | bk_coefficients.bin, checkpoint.bin (memory-mapped); the byte layouts as named struct formats | `src/io/checkpoint.cpp` |
 | `readers/run_info.py` | run_info.json as `RunInfo` | `src/report/run_info_file.cpp` |
+| `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/segments.py` | restart segments in time order; records joined (a repeated record must be bitwise equal) | — |
-| `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors, from run_info.json | — |
+| `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
+| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice | `src/input/process.cpp` (in its docstring) |
+| `compute/states.py` | P(v', j'), P(mJ'), the alignment A0(2) and its limits, the (v', j') map | — |
+| `compute/diffraction.py` | P per channel and order, in and out of plane, the scattering angles (summed over mJ') | — |
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
-| `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t | — |
+| `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
 | `verdict.py` | the verdict of a run: reads what its files allow, a missing file is a finding | — |
@@ -184,5 +204,6 @@ BK reader, the time sums, the prefactor and the phases are right.
 
 - One run at a time (its restart segments joined); no comparison of runs.
 - Only what the run's files hold: the wave packet itself is not plotted yet.
-- The results are the on-the-fly analysis (`scattering_summary.tsv`); the fine analysis (`fine_analysis/`,
-  also of an `onlyAnalysis` run) is not plotted yet.
+- The fine analysis is compared with the on-the-fly results of the same run; an `onlyAnalysis` run (its
+  results only in `fine_analysis/`) is not plotted yet.
+- Time delays are in atomic units of time, like every time axis of the tool (1 a.u. = 0.0242 fs).

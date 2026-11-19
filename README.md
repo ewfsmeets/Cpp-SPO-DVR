@@ -305,9 +305,9 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure       
   tool's runs (`PlotRuns.*`). Use it while
   working on a change; run everything before committing a change to the code
   ([when](docs/CONTRIBUTING.md#testing)).
-- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 792 tests, 786 pass and 6 long or
-  reference-less tests skip, about 760 s (of which the propagation gates 365 s and the plot tool's
-  runs and tests 220 s); the quick tier 774 tests (2 skip), about 175 s; 25 GPU tests, 23 pass and the 2
+- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 796 tests, 790 pass and 6 long or
+  reference-less tests skip, about 775 s (of which the propagation gates 365 s and the plot tool's
+  runs and tests 250 s); the quick tier 776 tests (2 skip), about 175 s; 25 GPU tests, 23 pass and the 2
   long ones skip, about 90 s.
 - The regression tests compare with Fortran output stored in the repository; they do not need the
   Fortran code. The Python tests (the tools' and the wave-packet designer's, `ctest -L python`) run
