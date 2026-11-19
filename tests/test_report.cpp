@@ -14,6 +14,7 @@
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
+#include "report/analysis_report.hpp"
 #include "report/format.hpp"
 #include "report/potential_report.hpp"
 #include "report/propagation_report.hpp"
@@ -289,6 +290,15 @@ TEST(Report, ScmBlockWarnings) {
   EXPECT_EQ(line_with(analysis_only, "(SCM D15)"), "");
   EXPECT_EQ(line_with(analysis_only, "Rmax"), "");
   EXPECT_EQ(line_with(analysis_only, "Largest |V - V_CRP|"), "");
+}
+
+// Up to 50 energies are all printed; longer lists are thinned, and the note says so in words
+// (it used to print "Every 3th energy", e.g. for the 111 energies of the thesis inputs).
+TEST(Report, ThinnedEnergyListIsAnnouncedInWords) {
+  EXPECT_EQ(energy_thinning_note(0), "");
+  EXPECT_EQ(energy_thinning_note(50), "");
+  EXPECT_EQ(energy_thinning_note(51), "One energy in 2 is shown; all are in the data files.");
+  EXPECT_EQ(energy_thinning_note(111), "One energy in 3 is shown; all are in the data files.");
 }
 
 }  // namespace

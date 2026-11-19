@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ostream>
+#include <string>
 
 #include "analysis/analysis_basis.hpp"
 #include "analysis/s_matrix.hpp"
@@ -19,5 +20,9 @@ void print_analysis_setup(std::ostream& out, const Style& style, const Config& c
 // of the initial (v, j). Replaces the per-energy blocks of Fortran smatrix_combine.
 void print_scattering_results(std::ostream& out, const Style& style, const Config& config, const AnalysisBasis& basis,
                               const ScatteringResults& results);
+
+// The note above the result tables when they show only every k-th of more than 50 energies,
+// e.g. "One energy in 3 is shown; all are in the data files."; empty when every energy is shown.
+[[nodiscard]] std::string energy_thinning_note(int n_energies);
 
 }  // namespace spodvr

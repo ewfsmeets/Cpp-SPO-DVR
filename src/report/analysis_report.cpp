@@ -150,12 +150,17 @@ void print_analysis_setup(std::ostream& out, const Style& style, const Config& c
         << ": the diffraction basis is too small to describe all open channels.\n";
 }
 
+std::string energy_thinning_note(int n_energies) {
+  const int stride = energy_stride(n_energies);
+  if (stride <= 1) return "";
+  return "One energy in " + std::to_string(stride) + " is shown; all are in the data files.";
+}
+
 void print_scattering_results(std::ostream& out, const Style& style, const Config& config, const AnalysisBasis& basis,
                               const ScatteringResults& results) {
   print_section(out, style, "SCATTERING PROBABILITIES");
-  if (energy_stride(static_cast<int>(results.energies.size())) > 1)
-    out << "  Every " << energy_stride(static_cast<int>(results.energies.size()))
-        << "th energy is shown; all are in the data files.\n\n";
+  const std::string thinning_note = energy_thinning_note(static_cast<int>(results.energies.size()));
+  if (!thinning_note.empty()) out << "  " << thinning_note << "\n\n";
   out << style.emphasis("  Summary per energy") << "\n\n";
   print_summary_table(out, style, basis, results);
   out << '\n' << style.emphasis("  Rovibrational state-resolved probabilities") << "\n\n";
