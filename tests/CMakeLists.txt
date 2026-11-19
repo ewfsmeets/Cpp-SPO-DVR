@@ -1,5 +1,6 @@
 # One test program per tests/test_*.cpp file (plus tests/cuda/test_*.cpp with the GPU backend;
-# those skip when no GPU is present). ctest runs every GoogleTest case as its own test.
+# those skip when no GPU is present). ctest runs every GoogleTest case as its own test, except the
+# suites with a shared set-up registered below the loop (one ctest per suite).
 FetchContent_Declare(googletest
   GIT_REPOSITORY https://github.com/google/googletest.git
   GIT_TAG v1.14.0
@@ -14,6 +15,9 @@ if(SPODVR_USE_CUDA)
   list(APPEND test_sources ${cuda_test_sources})
 endif()
 
+# Test programs whose ctest tests are registered below the loop.
+set(tests_registered_below test_restart test_regression_pes)
+
 foreach(source IN LISTS test_sources)
   get_filename_component(name ${source} NAME_WE)
   add_executable(${name} ${source})
@@ -22,8 +26,29 @@ foreach(source IN LISTS test_sources)
   # Fortran reference output of the regression tests; the repository root (designer_cases.hpp).
   target_compile_definitions(${name} PRIVATE SPODVR_REFERENCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/reference"
                                              SPODVR_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  gtest_discover_tests(${name} DISCOVERY_TIMEOUT 60)
+  if(NOT name IN_LIST tests_registered_below)
+    gtest_discover_tests(${name} DISCOVERY_TIMEOUT 60)
+  endif()
 endforeach()
+
+# Suites whose cases share an expensive set-up (a function-local static in the test file: program runs,
+# potential grids) run as one ctest in one process, so the set-up is computed once instead of once per case
+# (docs/CONTRIBUTING.md "Selecting tests"). Such a test fails when a case skips (ctest's
+# SKIP_REGULAR_EXPRESSION would mark it skipped even when another case failed: it ignores the exit code) or
+# when its filter selects nothing (gtest passes an empty run). Disabled cases run, as gtest_discover_tests
+# runs them.
+function(add_one_process_test name target filter)
+  add_test(NAME ${name} COMMAND ${target} --gtest_filter=${filter} --gtest_also_run_disabled_tests)
+  set_tests_properties(${name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[  SKIPPED \\];Running 0 tests from")
+endfunction()
+add_one_process_test(Restart test_restart "Restart.*")
+add_one_process_test(FineAnalysisRuns test_restart "FineAnalysisRuns.*")
+# The other suites of test_restart stay one ctest per case (RestartFiles skips one case when run as root).
+gtest_discover_tests(test_restart DISCOVERY_TIMEOUT 60 TEST_FILTER "-Restart.*:FineAnalysisRuns.*")
+# The negative tests on their own: one of them is a known failure of the fast-math build
+# (docs/performance.md), which must not hide the gates of the other suites there.
+add_one_process_test(RegressionPes test_regression_pes "-RegressionPesScmNegative.*")
+add_one_process_test(RegressionPesScmNegative test_regression_pes "RegressionPesScmNegative.*")
 
 # The CRP library's own tests (they link only spodvr_crplib, with its spodvr_fortran_text), and
 # those of the Fortran text reader (they link only spodvr_fortran_text).

@@ -95,6 +95,16 @@ ctest --test-dir build -R Gate3                # gates 3 and 4 (propagation, on-
 - The last line runs one test program directly (GoogleTest's own filter).
 - `-E Regression` took about 2.5 min on 2026-11-15; the wave-packet designer's tests, added since,
   take another 88 s (`ctest -R WavePacketDesigner`, 2026-11-18).
+- **Suites run as one test:** ctest runs most GoogleTest cases as tests of their own, but four
+  suites whose cases share an expensive set-up (a function-local static: program runs, potential
+  grids) run as one test each, in one process, so the set-up is computed once:
+  `Restart` and `FineAnalysisRuns` (`tests/test_restart.cpp`; its other suites stay one test per
+  case), `RegressionPes` (every case of `tests/test_regression_pes.cpp` but the negative tests) and
+  `RegressionPesScmNegative`. Such a test fails when one of its cases fails or skips, or when its
+  filter selects no case. To run one case, run the program with GoogleTest's filter, e.g.
+  `./build/tests/test_regression_pes --gtest_filter='Scm/*'`; `-R Gate1` selects only the hard
+  wall's gate-1 tests, `-R RegressionPes` the PES gates. A new suite with such a set-up gets an
+  `add_one_process_test` line in `tests/CMakeLists.txt`.
 
 ### Long tests
 
@@ -115,8 +125,9 @@ The regular expression selects the names that end in `Long` (or whose suite does
 ### Skipped regression tests and reference data
 
 - A regression test skips (it does not fail) when its Fortran reference file is missing; the tests
-  of the SCM cases `scm_cu111_srp48_small*` fail instead. A missing optional file (the BK file, the
-  restart output) only drops that comparison.
+  of the SCM cases `scm_cu111_srp48_small*` fail instead, and so do the PES gates, which ctest runs
+  as one test that fails on a skip ([Suites run as one test](#selecting-tests)). A missing optional
+  file (the BK file, the restart output) only drops that comparison.
 - The scripts in `tools/fortran_reference/` regenerate the files; they need a Fortran reference
   install ([tools/fortran_reference/README.md](../tools/fortran_reference/README.md); how to get the
   Fortran code: [there](../tools/fortran_reference/README.md#getting-the-fortran-code)). Running the

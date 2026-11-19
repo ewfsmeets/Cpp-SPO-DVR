@@ -1,5 +1,8 @@
 // Tests: checkpoint / restart. A run split by a restart must give bitwise the same results as
 // the unsplit run; damaged or mismatching checkpoints are clear errors.
+// The program runs the cases compare (runs(), first_run(), fine_runs(), low_z_runs(), scm_runs())
+// are function-local statics, made once per process: ctest runs the suites Restart and
+// FineAnalysisRuns each in one process (tests/CMakeLists.txt), so their cases share them.
 #include <gtest/gtest.h>
 
 #include <array>
@@ -287,6 +290,8 @@ TEST(Restart, TruncatedCheckpointIsAnError) {
   EXPECT_NE(err.find("checkpoint"), std::string::npos) << err;
 }
 
+// run() writes its input.json into the shared first run's directory; the program never reads a
+// RestartDir's input.json, so the other cases of the suite are not affected.
 TEST(Restart, OutputDirectoryMustDifferFromRestartDir) {
   const FirstRun& r = first_run();
   ASSERT_EQ(r.code, 0) << r.err;

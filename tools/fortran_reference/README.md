@@ -171,7 +171,7 @@ commit its `commit` column names (git history).
 
 `ctest -R ReferenceManifest` checks that every case directory has a `MANIFEST.tsv` and that every
 listed file exists with its recorded sha256: a missing or edited reference, or a case left without
-MANIFEST by an interrupted regeneration, fails there, where the regression tests would skip
+MANIFEST by an interrupted regeneration, fails there, where most regression tests would skip
 (`FilesMatch`; `ChangedOrMissingFileFails` shows that it catches one changed byte, one deleted file
 and a deleted MANIFEST). Its MANIFEST header, list of reference trees and `NOT_A_CASE` are copies
 of refdata.py's, as are the tree lists of `reference_config.sh`, `tools/check_docs.py` and the

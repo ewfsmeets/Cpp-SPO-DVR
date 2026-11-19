@@ -4,7 +4,10 @@
 //   pes_reference.txt         6D subsample of the potential and the angular grid (gate 1)
 //   debug_asyp.dat            rovibrational energies and eigenvectors (gate 2)
 // Tests are skipped when a reference file is missing, except those of the SCM cases, which fail.
-// The SCM cases also have the tests behind their looser gate 1b (the section at the end).
+// ctest runs this program as two tests, RegressionPes and RegressionPesScmNegative, each in one
+// process so that a case's calculation is computed once (calculation()); a skipped case fails
+// them (tests/CMakeLists.txt). The SCM cases also have the tests behind their looser gate 1b (the
+// section at the end).
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -92,6 +95,7 @@ double potential_tolerance_of(const std::string& name) {
 
 fs::path case_dir(const std::string& name) { return fs::path(SPODVR_REFERENCE_DIR) / directory_of(name); }
 
+// The calculation of a case, computed once per process and shared by every test of the case.
 const Calculation& calculation(const std::string& name) {
   static std::map<std::string, std::unique_ptr<Calculation>> cache;
   auto& entry = cache[name];
@@ -126,7 +130,8 @@ class RegressionPes : public ::testing::TestWithParam<std::string> {
   [[nodiscard]] fs::path reference(const std::string& file) const { return case_dir(GetParam()) / file; }
 };
 
-// A missing reference file of a case skips the test, or fails it if the case's references are required.
+// A missing reference file of a case skips the test, or fails it if the case's references are required
+// (ctest fails on a skip too: see the top of the file).
 #define REQUIRE_CASE_REFERENCE(name, file)                                                     \
   if (const fs::path missing_file = case_dir(name) / (file); !fs::exists(missing_file)) {      \
     if (references_required(name)) FAIL() << "reference file " << missing_file << " missing";  \

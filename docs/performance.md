@@ -50,7 +50,10 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
     boundary of the overlap falls inside it (9 overlapping points instead of 8).
   - `RegressionPesScmNegative.TestPotentialWithTheOwnDeltaVIsTheProgramsBitwise`: the test's own
     V_CRP + ΔV (`ScmPotentialWithDeltaV` in the test source, compiled with fast-math) differs in
-    the last bits from the program's (`src/potential/scm/`, always strict) at 6895 points.
+    the last bits from the program's (`src/potential/scm/`, always strict) at 6895 points. Since
+    the PES tests run as suites ([CONTRIBUTING: Selecting tests](CONTRIBUTING.md#selecting-tests)),
+    ctest reports this as the failure of the test `RegressionPesScmNegative`; its output names the
+    failing case.
   - `PotentialOperator.PrecomputedAndOnTheFlyExponentialsAreBitwiseIdentical` and
     `SymmetricPotentialOperator.BitwiseEqualToTheExpandedPotential` (on-the-fly case only): the
     on-the-fly exp(−iV dt) path is compiled differently from the precomputed one; they differ by up
