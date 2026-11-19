@@ -59,8 +59,10 @@ differences are in [validation.md](validation.md).
   accepted and ignored: the C++ always writes them to `gas_phase_states.dat`.
 - <a id="surface-symmetry-deviations"></a>Surface symmetry, deviations: the Fortran switches `UseSymmetry` off with a warning for C2v and
   C4v (complete but never validated code) and has no code for C3v/C3; C++ supports all five
-  (gates for those: C++ with vs without symmetry). nX or nY = 1 with UseSymmetry and a trivial
-  usable group are errors (Fortran: warn and continue). Representatives differ from the Fortran
+  (gates for those: C++ with vs without symmetry). In the C++, a usable group with no operation but
+  the identity (e.g. nφ not a multiple the group needs) is an input error. The Fortran's warning for
+  nX or nY = 1 (`C6vSurfaceSymmetry.f90`: symmetry switched off) is never reached: both codes reject
+  1 earlier as an FFT size. Representatives differ from the Fortran
   regions (triangle A / 1, rectangle A): equal values up to PES rounding. The PES self-check (θ, Z and r at grid points, x, y, φ anywhere; until 2026-11-09 θ was sampled anywhere too, which could reach geometries the grid never uses)
   (`SymmetryTolerance`, default 1e-5 eV) is not in the Fortran. Native checkpoint format 2 adds
   the number of φ points to the restart parameters.
