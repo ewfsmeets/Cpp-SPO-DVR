@@ -44,7 +44,8 @@ std::string read_file(const fs::path& path) {
 }
 
 // Runs the program on `json` with output into `dir`; returns the exit code (stderr in err,
-// stdout in out).
+// stdout in out). No --threads: the run uses OMP_NUM_THREADS like every other test, and leaves the
+// process's thread count as it was.
 int run(const nlohmann::json& json, const fs::path& dir, std::string& err, std::string& out) {
   fs::create_directories(dir);
   const fs::path input = dir / "input.json";
@@ -52,7 +53,6 @@ int run(const nlohmann::json& json, const fs::path& dir, std::string& err, std::
   CommandLine cl;
   cl.input_file = input;
   cl.output_dir = dir;
-  cl.threads = 2;
   std::ostringstream output;
   std::ostringstream errors;
   const int code = run_program(cl, output, errors, false);
