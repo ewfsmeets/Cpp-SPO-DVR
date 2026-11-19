@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from copies.real_compare import rne
-from readers.arrays import read_series
+from readers.arrays import read_arrays, read_series
 from readers.binary import BK_MAGIC, CHECKPOINT_MAGIC, FORMAT_VERSION, read_bk_coefficients, read_checkpoint
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
@@ -278,3 +278,25 @@ def test_series_manifest_errors(tmp_path: Path) -> None:
             (path / "manifest.json").write_text(text, encoding="utf-8")
         with pytest.raises(ReadError, match=message):
             read_series(path)
+
+
+def test_arrays_written_once(tmp_path: Path) -> None:
+    """An array directory (time_dependent false): each dataset one array of its shape; a file that is cut, a time
+    series and a missing file are each a ReadError."""
+    path = tmp_path / "arrays"
+    path.mkdir()
+    datasets = {"v": {"file": "v.bin", "dtype": "<f8", "shape": [2, 3]}}
+    manifest = {"format_version": 1, "time_dependent": False, "datasets": datasets}
+    (path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (path / "v.bin").write_bytes(np.arange(6, dtype="<f8").tobytes())
+    assert read_arrays(path).arrays["v"].tolist() == [[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]]
+    (path / "v.bin").write_bytes(np.arange(5, dtype="<f8").tobytes())
+    with pytest.raises(ReadError, match="40 bytes, not 48"):
+        read_arrays(path)
+    (path / "manifest.json").write_text(json.dumps({**manifest, "time_dependent": True}), encoding="utf-8")
+    with pytest.raises(ReadError, match="time_dependent is not false"):
+        read_arrays(path)
+    (path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (path / "v.bin").unlink()
+    with pytest.raises(ReadError, match="no such file"):
+        read_arrays(path)

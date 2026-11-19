@@ -91,3 +91,36 @@ def read_series(directory: Path) -> Series:
         else:
             arrays[name] = np.zeros(shape, dtype=spec["dtype"])
     return Series(directory, manifest, times, arrays, first_non_finite_record(times, arrays))
+
+
+@dataclass
+class Arrays:
+    """An array directory written once (manifest time_dependent false, no times.bin): every dataset as one
+    array of its manifest shape."""
+
+    directory: Path
+    manifest: dict
+    arrays: dict[str, np.ndarray]
+
+
+def read_arrays(directory: Path) -> Arrays:
+    """An array directory written once, the datasets memory-mapped; ReadError when it is a time series or a
+    file does not hold exactly its dataset's bytes (the run stopped while writing it).
+
+    Source: <run>/<directory>/ (docs/output_files.md, "Series directories").
+    """
+    manifest = read_manifest(directory)
+    if manifest.get("time_dependent") is not False:
+        raise ReadError(f"{directory / 'manifest.json'}: not arrays written once (time_dependent is not false)")
+    arrays = {}
+    for name, spec in manifest.get("datasets", {}).items():
+        path = directory / spec["file"]
+        expected = record_bytes(spec)
+        if not path.is_file():
+            raise ReadError(f"{path}: no such file; the run stopped before writing it, run it again")
+        if path.stat().st_size != expected:
+            raise ReadError(
+                f"{path}: {path.stat().st_size} bytes, not {expected}; the run stopped while writing it, run it again"
+            )
+        arrays[name] = np.memmap(path, dtype=spec["dtype"], mode="r", shape=tuple(spec["shape"]))
+    return Arrays(directory, manifest, arrays)
