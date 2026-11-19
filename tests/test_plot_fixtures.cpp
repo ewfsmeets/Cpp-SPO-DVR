@@ -1,0 +1,184 @@
+// The runs that the plot tool's tests read (tools/plots, ctest PlotRuns.*): real spodvr runs of small
+// inputs, written by the current program into SPODVR_PLOT_FIXTURES_DIR. One ctest in one process
+// (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
+// directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
+//   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
+//   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
+//   dailight_oblique          cu111_dailight_small with nX = nY = 4, JMax = MJMax = 2, EParallel 0.1 eV at
+//                             17 degrees, nZ 192, the Z absorber at 10.16-13.28 (its length, ending on the last
+//                             point) and tEnd 14000 (JMax 2: a run takes about 65 s; with JMax 4 it took 183 s)
+//   dailight_oblique_split    the same in two segments, split at the multiple of 100 a.u. nearest the time
+//                             of minimum <Z> of dailight_oblique (split_time.txt)
+//   potential_only            hardwall_tiny with Potential: true
+#include <gtest/gtest.h>
+
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+#include <nlohmann/json.hpp>
+
+#include "app/cli.hpp"
+#include "app/run.hpp"
+
+using namespace spodvr;
+namespace fs = std::filesystem;
+
+namespace {
+
+const fs::path fixtures_dir = SPODVR_PLOT_FIXTURES_DIR;
+
+nlohmann::json reference_input(const std::string& name) {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/" + name + "/input.json");
+  return nlohmann::json::parse(file);
+}
+
+// Runs the program on `json` into `dir` (recreated; the input is kept there as input.json); threads:
+// OMP_NUM_THREADS, as every test. Returns the exit code; the program's error output goes to the test log.
+int run(const nlohmann::json& json, const fs::path& dir) {
+  fs::remove_all(dir);
+  fs::create_directories(dir);
+  std::ofstream(dir / "input.json") << json.dump(1);
+  CommandLine cl;
+  cl.input_file = dir / "input.json";
+  cl.output_dir = dir;
+  std::ostringstream out;
+  std::ostringstream err;
+  const int code = run_program(cl, out, err, false);
+  std::ofstream(dir / "stdout.txt") << out.str();
+  if (code != 0) std::cerr << err.str();
+  return code;
+}
+
+// The times of a run: tStart, tEnd and nStep for steps of dtStep.
+nlohmann::json with_times(nlohmann::json json, double t_start, double t_end) {
+  const double dt = json["dtStep"];
+  json["tStart"] = t_start;
+  json["tEnd"] = t_end;
+  json["nStep"] = static_cast<int>(std::lround((t_end - t_start) / dt));
+  return json;
+}
+
+// The second segment of a split run: a restart from `first`.
+nlohmann::json restart_from(nlohmann::json json, const fs::path& first) {
+  json["NewCalc"] = false;
+  json["RestartDir"] = first.string();
+  return json;
+}
+
+nlohmann::json hardwall_tiny() {
+  nlohmann::json json = reference_input("hardwall_small");
+  json["nX"] = 2;
+  json["nY"] = 2;
+  json["JMax"] = 2;
+  json["MJMax"] = 2;
+  json["ImposeVMax"] = false;
+  json["alsoAnalysis"] = true;
+  json["writeProbs"] = true;
+  json["writeRDProbs"] = true;
+  return with_times(json, 0.0, 10000.0);
+}
+
+const double dailight_t_end = 14000.0;
+
+nlohmann::json dailight_oblique() {
+  nlohmann::json json = reference_input("cu111_dailight_small");
+  json["nX"] = 4;
+  json["nY"] = 4;
+  json["JMax"] = 2;
+  json["MJMax"] = 2;
+  json["EParallel"] = 0.1;
+  json["PhiParallel"] = 17.0;
+  json["nZ"] = 192;  // last point -2 + 191 * 0.08 = 13.28
+  json["ZOptStart"] = 10.16;
+  json["ZOptEnd"] = 13.28;
+  json["alsoAnalysis"] = true;
+  return with_times(json, 0.0, dailight_t_end);
+}
+
+// The time of the smallest <Z> in averages.dat (columns t, norm, <Z>, <r>, rest norm).
+double time_of_minimum_z(const fs::path& averages) {
+  std::ifstream in(averages);
+  std::string line;
+  double best_time = NAN;
+  double best_z = INFINITY;
+  while (std::getline(in, line)) {
+    if (line.empty() || line[0] == '#') continue;
+    std::istringstream row(line);
+    double t = NAN;
+    double norm = NAN;
+    double z = NAN;
+    row >> t >> norm >> z;
+    if (z < best_z) {
+      best_z = z;
+      best_time = t;
+    }
+  }
+  return best_time;
+}
+
+// The files every run with alsoAnalysis writes. (A run that stopped early has only run_info.json, the
+// gas-phase files and part of bk_coefficients.bin: the plot tool's tests make such a copy themselves.)
+void expect_run_files(const fs::path& dir) {
+  for (const char* name :
+       {"run_info.json", "averages.dat", "bk_coefficients.bin", "checkpoint.bin", "scattering_summary.tsv",
+        "s_matrix.tsv", "gas_phase_states.dat", "asymptotic_potential.dat"})
+    EXPECT_TRUE(fs::exists(dir / name)) << dir / name;
+  EXPECT_TRUE(fs::exists(dir / "fine_analysis")) << dir;
+}
+
+}  // namespace
+
+TEST(PlotRuns, HardwallTiny) {
+  const fs::path dir = fixtures_dir / "hardwall_tiny";
+  ASSERT_EQ(run(hardwall_tiny(), dir), 0);
+  expect_run_files(dir);
+}
+
+TEST(PlotRuns, HardwallTinySplit) {
+  const fs::path root = fixtures_dir / "hardwall_tiny_split";
+  const double split = 4000.0;  // the packet near the wall; on the dtAve grid
+  fs::remove_all(root);
+  fs::create_directories(root);
+  std::ofstream(root / "split_time.txt") << split << '\n';
+  ASSERT_EQ(run(with_times(hardwall_tiny(), 0.0, split), root / "first"), 0);
+  ASSERT_EQ(run(restart_from(with_times(hardwall_tiny(), split, 10000.0), root / "first"), root / "second"), 0);
+  expect_run_files(root / "first");
+  expect_run_files(root / "second");
+}
+
+TEST(PlotRuns, DailightOblique) {
+  const fs::path dir = fixtures_dir / "dailight_oblique";
+  ASSERT_EQ(run(dailight_oblique(), dir), 0);
+  expect_run_files(dir);
+}
+
+// After DailightOblique (declaration order; one process): the split time comes from its averages.
+TEST(PlotRuns, DailightObliqueSplit) {
+  const fs::path unsplit = fixtures_dir / "dailight_oblique" / "averages.dat";
+  ASSERT_TRUE(fs::exists(unsplit)) << "run PlotRuns.DailightOblique first";
+  const double split = 100.0 * std::round(time_of_minimum_z(unsplit) / 100.0);
+  ASSERT_GT(split, 0.0);
+  ASSERT_LT(split, dailight_t_end);
+  const fs::path root = fixtures_dir / "dailight_oblique_split";
+  fs::remove_all(root);
+  fs::create_directories(root);
+  std::ofstream(root / "split_time.txt") << split << '\n';
+  ASSERT_EQ(run(with_times(dailight_oblique(), 0.0, split), root / "first"), 0);
+  const nlohmann::json second = restart_from(with_times(dailight_oblique(), split, dailight_t_end), root / "first");
+  ASSERT_EQ(run(second, root / "second"), 0);
+  expect_run_files(root / "first");
+  expect_run_files(root / "second");
+}
+
+TEST(PlotRuns, PotentialOnly) {
+  nlohmann::json json = hardwall_tiny();
+  json["Potential"] = true;
+  json.erase("alsoAnalysis");
+  const fs::path dir = fixtures_dir / "potential_only";
+  ASSERT_EQ(run(json, dir), 0);
+  EXPECT_TRUE(fs::exists(dir / "run_info.json"));
+  EXPECT_FALSE(fs::exists(dir / "averages.dat"));
+}

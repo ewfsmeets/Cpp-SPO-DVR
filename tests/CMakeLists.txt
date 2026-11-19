@@ -16,7 +16,7 @@ if(SPODVR_USE_CUDA)
 endif()
 
 # Test programs whose ctest tests are registered below the loop.
-set(tests_registered_below test_restart test_regression_pes)
+set(tests_registered_below test_restart test_regression_pes test_plot_fixtures)
 
 foreach(source IN LISTS test_sources)
   get_filename_component(name ${source} NAME_WE)
@@ -49,6 +49,12 @@ gtest_discover_tests(test_restart DISCOVERY_TIMEOUT 60 TEST_FILTER "-Restart.*:F
 # (docs/performance.md), which must not hide the gates of the other suites there.
 add_one_process_test(RegressionPes test_regression_pes "-RegressionPesScmNegative.*")
 add_one_process_test(RegressionPesScmNegative test_regression_pes "RegressionPesScmNegative.*")
+# The runs that the plot tool's tests read (tests/test_plot_fixtures.cpp): one process, the fixture of
+# every PlotRuns.* pytest test, named PlotRuns so that the quick tier leaves it out (README "Testing").
+set(plot_fixtures_dir ${CMAKE_CURRENT_BINARY_DIR}/plot_fixtures)
+target_compile_definitions(test_plot_fixtures PRIVATE SPODVR_PLOT_FIXTURES_DIR="${plot_fixtures_dir}")
+add_one_process_test(PlotRuns.Fixtures test_plot_fixtures "PlotRuns.*")
+set_tests_properties(PlotRuns.Fixtures PROPERTIES FIXTURES_SETUP plot_fixtures)
 
 # The CRP library's own tests (they link only spodvr_crplib, with its spodvr_fortran_text), and
 # those of the Fortran text reader (they link only spodvr_fortran_text).
@@ -242,6 +248,22 @@ add_pytest_test(NAME WavePacketDesigner.Plots TOOL tools/wave_packet_designer SE
 add_pytest_test(NAME WavePacketDesigner.InputFile TOOL tools/wave_packet_designer SELECT tests/test_input_file.py)
 add_pytest_test(NAME WavePacketDesigner.Cli TOOL tools/wave_packet_designer SELECT tests/test_cli.py)
 add_pytest_test(NAME WavePacketDesigner.Structure TOOL tools/wave_packet_designer SELECT tests/test_structure.py)
+
+# The plot tool (tools/plots): one ctest per test module, found by the glob so that a new module is never
+# left out. Modules named test_runs_* read the fixture runs: they are PlotRuns.<name> (out of the quick tier)
+# and require the fixture writer; the others are Plots.<name> and run without it.
+file(GLOB plot_test_modules CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tools/plots/tests/test_*.py)
+foreach(module IN LISTS plot_test_modules)
+  get_filename_component(stem ${module} NAME_WE)
+  if(stem MATCHES "^test_runs_(.+)$")
+    add_pytest_test(NAME PlotRuns.${CMAKE_MATCH_1} TOOL tools/plots SELECT tests/${stem}.py
+                    ARGS --fixture-runs=${plot_fixtures_dir})
+    set_tests_properties(PlotRuns.${CMAKE_MATCH_1} PROPERTIES FIXTURES_REQUIRED plot_fixtures)
+  else()
+    string(REGEX REPLACE "^test_" "" name ${stem})
+    add_pytest_test(NAME Plots.${name} TOOL tools/plots SELECT tests/${stem}.py)
+  endif()
+endforeach()
 
 # Every pytest test is selected by exactly one ctest (tools/check_python_tests.py), and the check finds a
 # test without a ctest and a test with two (--plant-faults).

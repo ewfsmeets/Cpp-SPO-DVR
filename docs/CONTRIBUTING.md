@@ -60,9 +60,10 @@ The commands for the whole suite, the quick tier and the GPU tests, with their r
 counts (measured at 1f58b73), are in the [README](../README.md#testing). Run ctest serially (no
 `-j`), with `OMP_NUM_THREADS` set to the number of physical cores.
 
-- **Quick tier:** `ctest --test-dir build -E RegressionPropagation` runs everything but the
-  propagation gates (gates 3 and 4 against the Fortran, 23–86 s each; the regular expression
-  also leaves out their GPU twins `CudaRegressionPropagation.*`). Run it while working on a change;
+- **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` runs everything but
+  the propagation gates (gates 3 and 4 against the Fortran, 23–86 s each; the regular expression
+  also leaves out their GPU twins `CudaRegressionPropagation.*`) and the plot tool's runs and the tests
+  that read them (`PlotRuns.*`, about 160 s for the runs). Run it while working on a change;
   run the full suite before every commit that touches `src/`, `tests/`, the build files or reference
   data (the quick tier is enough for a commit of docs or Python tools only), and always before
   merging into `main`.
@@ -115,7 +116,7 @@ ctest `-R`/`-E` take a regular expression on the test name; `ctest --test-dir bu
 all:
 
 ```bash
-ctest --test-dir build -E RegressionPropagation   # quick tier: everything but the propagation gates
+ctest --test-dir build -E 'RegressionPropagation|PlotRuns'   # quick tier: no propagation gates, no plot runs
 ctest --test-dir build -E Regression              # everything except the Fortran regression tests
 ctest --test-dir build -R Gate3                   # gates 3 and 4 (propagation, on-the-fly analysis)
 ./build/tests/test_input --gtest_filter='Input.*'
@@ -123,12 +124,13 @@ ctest --test-dir build -R Gate3                   # gates 3 and 4 (propagation, 
 
 - The last line runs one test program directly (GoogleTest's own filter).
 - The wave-packet designer's tests take about 47 s (`ctest -R WavePacketDesigner`, 2026-11-19).
-- **Suites run as one test:** ctest runs most GoogleTest cases as tests of their own, but four
+- **Suites run as one test:** ctest runs most GoogleTest cases as tests of their own, but five
   suites whose cases share an expensive set-up (a function-local static: program runs, potential
   grids) run as one test each, in one process, so the set-up is computed once:
   `Restart` and `FineAnalysisRuns` (`tests/test_restart.cpp`; its other suites stay one test per
   case), `RegressionPes` (every case of `tests/test_regression_pes.cpp` but the negative tests) and
-  `RegressionPesScmNegative`. Such a test fails when one of its cases fails or skips, or when its
+  `RegressionPesScmNegative`, and `PlotRuns.Fixtures` (`tests/test_plot_fixtures.cpp`: the runs that
+  the plot tool's tests read). Such a test fails when one of its cases fails or skips, or when its
   filter selects no case. To run one case, run the program with GoogleTest's filter, e.g.
   `./build/tests/test_regression_pes --gtest_filter='Scm/*'`; `-R Gate1` selects only the hard
   wall's gate-1 tests, `-R RegressionPes` the PES gates. A new suite with such a set-up gets an

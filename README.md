@@ -294,14 +294,15 @@ extensions ([reproducibility](docs/performance.md#reproducibility)).
 ### Testing
 
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                          # everything (~8.5 min)
-OMP_NUM_THREADS=8 ctest --test-dir build -E RegressionPropagation --output-on-failure  # quick tier (~2.5 min)
-OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure             # GPU tests (~1.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                                      # everything (~10 min)
+OMP_NUM_THREADS=8 ctest --test-dir build -E 'RegressionPropagation|PlotRuns' --output-on-failure  # quick tier (~2.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure                         # GPU tests (~1.5 min)
 ```
 
 - Run ctest serially (no `-j`): many tests already use all OpenMP threads. Set `OMP_NUM_THREADS` to
   the number of physical cores.
-- The quick tier leaves out the propagation gates (gates 3 and 4 against the Fortran). Use it while
+- The quick tier leaves out the propagation gates (gates 3 and 4 against the Fortran) and the plot
+  tool's runs (`PlotRuns.*`). Use it while
   working on a change; run everything before committing a change to the code
   ([when](docs/CONTRIBUTING.md#testing)).
 - On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 780 tests, 774 pass and 6 long or
