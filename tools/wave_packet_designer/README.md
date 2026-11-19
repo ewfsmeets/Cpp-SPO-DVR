@@ -295,7 +295,9 @@ Each case is a module in `tests/` with a list `TESTS` of small test functions, e
 saying what it pins down. To add a test, write the function and add it to `TESTS`; a new case also gets
 a line in `test_designer.py` (`CASES`) and in `tests/CMakeLists.txt`. The runner selects matplotlib's
 Agg backend and keeps its cache in the scratch directory, so the case `plots` draws every panel and drives
-the window's sliders and buttons without opening a window.
+the window's sliders and buttons without opening a window. Its window tests skip the idle redraws (on Agg
+each one redraws the whole figure at once, and every slider change asks for one) and draw the states they
+check (`draw_window` in `tests/test_plots.py`).
 
 ## Limits
 

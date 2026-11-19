@@ -88,11 +88,23 @@ def test_check_draws_the_figure(work: Path) -> None:
 
 
 def new_window(path: Path = DZ_INPUT) -> DesignerWindow:
-    """The window on an input, drawn on a figure of the Agg backend."""
+    """The window on an input, on a figure of the Agg backend that skips idle redraws: Agg redraws the whole
+    figure at once on every `draw_idle` (about 0.4 s), and every `Slider.set_val` asks for one, also with events
+    off (16 when the window opens, 16 per Reset or Suggest). The tests check the artists, and draw the states they
+    check with draw_window."""
     input_file = load_input_file(path)
     apply_style()
     parameters = parse_input(input_file.values).parameters
-    return DesignerWindow(plt.figure(figsize=(16.0, 11.0)), input_file, parameters, Settings())
+    figure = plt.figure(figsize=(16.0, 11.0))
+    # Hides FigureCanvasAgg.draw_idle for this figure (the sliders and DesignerWindow call it).
+    figure.canvas.draw_idle = lambda *args, **kwargs: None
+    return DesignerWindow(figure, input_file, parameters, Settings())
+
+
+def draw_window(window: DesignerWindow) -> None:
+    """Draws the window for real (new_window skips the idle redraws): an error that shows only when drawn fails
+    the test."""
+    window.figure.canvas.draw()
 
 
 def test_window_opens_and_resets_to_the_input(work: Path) -> None:
@@ -104,8 +116,10 @@ def test_window_opens_and_resets_to_the_input(work: Path) -> None:
         window.sliders["dz"].set_val(0.1)
         window.update()  # the timer that does this after a slider move does not run on the Agg backend
         check(window.parameters != window.original, "changed by the slider")
+        draw_window(window)
         window.reset()
         check_equal(window.parameters, window.original, f"{path.parent.name} after Reset")
+        draw_window(window)
 
 
 def test_window_follows_its_sliders(work: Path) -> None:
@@ -125,6 +139,7 @@ def test_window_follows_its_sliders(work: Path) -> None:
     window.sliders["nr"].set_val(80)
     window.update()
     check_equal((window.parameters.nr, window.parameters.r_opt_end), (80, 8.4), "nR 80, dR 0.1: ROptEnd 0.5 + 79 dR")
+    draw_window(window)
 
 
 def test_suggest_is_not_clamped_by_the_sliders(work: Path) -> None:
@@ -137,6 +152,7 @@ def test_suggest_is_not_clamped_by_the_sliders(work: Path) -> None:
     window.suggest()
     check_equal(window.parameters, expected, "the window after Suggest")
     check(window.evaluation.accepted, f"{window.evaluation.findings}")
+    draw_window(window)
 
 
 def test_window_saves_the_changed_keys(work: Path) -> None:
@@ -150,6 +166,7 @@ def test_window_saves_the_changed_keys(work: Path) -> None:
     check_equal(parse_input(load_input_file(target).values).parameters, window.parameters, "the saved copy")
     window.save()
     check("Not written" in window.message.get_text(), window.message.get_text())
+    draw_window(window)
 
 
 def test_e_n_min_slider_sets_the_time_check(work: Path) -> None:
@@ -161,6 +178,7 @@ def test_e_n_min_slider_sets_the_time_check(work: Path) -> None:
     window.sliders["lowest_outgoing_energy"].set_val(0.07)
     window.update()
     check(rule not in [c.name for c in window.evaluation.design if c.passed is False], "passes at 0.07 eV")
+    draw_window(window)
 
 
 def test_everything_has_an_explanation(work: Path) -> None:
@@ -177,6 +195,7 @@ def test_everything_has_an_explanation(work: Path) -> None:
     check_equal(window.help_for(window.panels[0][0]), PANELS["draw_z_layout"], "the Z panel")
     window.toggle_explanations()
     check(any(t.get_text().startswith("Z: the two") for t in window.panels[0][0].texts), "Explain shows the text")
+    draw_window(window)
 
 
 TESTS = [

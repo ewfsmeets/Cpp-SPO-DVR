@@ -10,7 +10,8 @@ Usage: python3 -I -B tools/wave_packet_designer/test_designer.py <case> <work di
 --write regenerates the expected data of a case that has a `write` function (expected-cases: the drift
 guard's expected_cases.json) instead of testing it.
 Exit status: 0 every test of the case passes, 1 a test fails, 2 usage error.
-Environment: none read. Run time: < 5 s per case. Needs: numpy.
+Environment: none read. Run time: about 20 s (plots), 10 s (design), under 5 s for the other cases.
+Needs: numpy and matplotlib.
 Docs: tools/wave_packet_designer/README.md ("Tests")
 """
 
