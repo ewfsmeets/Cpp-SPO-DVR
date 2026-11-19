@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
 from compute.diffraction import diffraction
-from compute.potential import cell_geometry
+from compute.grids import cell_geometry
 from compute.series import evenly_spaced_records
 from explanations import FIGURES, TITLES
 from figures import (
@@ -22,6 +22,7 @@ from figures import (
     figure_averages,
     figure_densities,
     figure_density_movie,
+    figure_elbows,
     figure_potential_maps,
     has_files,
 )
@@ -29,7 +30,7 @@ from readers.arrays import read_series
 from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.potential import read_potential
-from readers.run_info import RunInfo, read_run_info
+from readers.run_info import RunInfo, lattice_of, read_run_info
 from readers.segments import joined_info, ordered_segments
 from readers.tables import read_s_matrix
 from report import save
@@ -293,35 +294,51 @@ def test_a_movie_draws_its_frames_into_a_gif(fixture_runs: Path, stopped_run: Pa
 
 
 def test_potential_figures_content(fixture_runs: Path, stopped_run: Path) -> None:
-    """The oblique run's sites (top, bridge): the maps draw the unit cell's outline and mark both sites on both
-    maps, the left one titled as the lowest barrier's point, under one colour bar open at the bottom only; the
-    elbows show both sites' V_min with their path and barrier mark above V at the barrier's orientation; the
-    orientation figure is one map of every DVR node."""
+    """The oblique run's sites: the maps (the barrier of each point, V_min at the lowest barrier's (Z, r), V_min at
+    the bond length) draw the unit cell's outline and mark every site and the lowest barrier's point; the elbows
+    show each site's V_min with its barrier at the run's nodes above V at that barrier's node with its own; the
+    orientation map marks every DVR node."""
     runs, info = run_of("oblique", fixture_runs, stopped_run)
     potential = read_potential(runs[-1])
+    names = [site.name for site in potential.sites]
     maps = drawn("potential_maps", "oblique", fixture_runs, stopped_run)
-    panels = [ax for ax in maps.axes if ax.get_title().startswith("V_min at Z")]
-    assert len(panels) == 2 and panels[0].get_title().endswith("(lowest barrier)")
-    (bar,) = [ax for ax in maps.axes if ax.get_label() == "<colorbar>"]
-    assert bar._colorbar.extend == "min"
-    outline = cell_geometry(potential.nx, potential.ny, info.data["lattice"])
+    panels = [ax for ax in maps.axes if ax.get_label() != "<colorbar>"]
+    assert len(panels) == 3 and panels[0].get_title().startswith("Barrier")
+    assert panels[1].get_title().endswith("(lowest barrier)")
+    outline = cell_geometry(potential.nx, potential.ny, lattice_of(info))
     for ax in panels:
-        assert {"top", "bridge"} <= set(annotations(ax))
+        marked = set(annotations(ax))
+        assert set(names) <= marked and any(m.startswith("lowest barrier (x") for m in marked)
         assert np.allclose(ax.get_lines()[0].get_xdata(), outline.outline_x_bohr)
     elbows = drawn("elbows", "oblique", fixture_runs, stopped_run)
     titles = [ax.get_title() for ax in elbows.axes if ax.get_title()]
-    assert [t.split(":")[0] for t in titles] == ["top", "bridge", "top", "bridge"]
-    assert all("barrier" in t for t in titles[:2]) and all(": V at theta" in t for t in titles[2:])
-    assert all(len(ax.get_lines()) == 2 for ax in elbows.axes[:2])  # the path and the barrier's mark
+    top, bottom = titles[: len(names)], titles[len(names) :]
+    assert [t.split(":")[0] for t in top] == names and all("at the run's nodes" in t for t in top)
+    assert [t.split(", theta")[0] for t in bottom] == names
+    assert all(len(ax.get_lines()) == 2 for ax in elbows.axes[: len(names)])  # the path and the barrier's mark
     orientation = drawn("orientation", "oblique", fixture_runs, stopped_run)
-    (marks,) = orientation.axes[0].get_lines()
-    assert len(marks.get_xdata()) == len(potential.theta_rad) * len(potential.phi_rad)
+    (nodes,) = orientation.axes[0].get_lines()
+    assert len(nodes.get_xdata()) == len(potential.theta_rad) * len(potential.phi_rad)
 
 
 def test_potential_map_follows_z_and_r(fixture_runs: Path, stopped_run: Path) -> None:
-    """--z and --r move the left map to the nearest grid point (and drop "(lowest barrier)")."""
+    """--z and --r move the middle map to the nearest grid point (and drop "(lowest barrier)")."""
     runs, info = run_of("oblique", fixture_runs, stopped_run)
     options = default_options()
-    options.z_bohr, options.r_bohr = 3.01, 1.4  # the Z grid: -2 + 0.08 k; 3.04 is nearest
+    options.z_bohr, options.r_bohr = 3.01, 1.4  # the grids: Z = -2 + 0.08 k, so 3.04; r = 0.8 + 0.15 k, so 1.40
     ((_, fig),) = figure_potential_maps(runs, info, options)
-    assert fig.axes[0].get_title() == "V_min at Z = 3.04, r = 1.40 bohr"
+    assert fig.axes[1].get_title() == "V_min at Z = 3.04,\nr = 1.40 bohr"
+
+
+def test_potential_figures_without_sites(no_sites_run: Path) -> None:
+    """A run without PlotSites (the hard wall: V only rises up to r_c): one row of elbows at the lowest pass's (x, y)
+    point, titled as having no saddle, that point marked on the maps, and no orientation figure (it needs a
+    site)."""
+    info = read_run_info(no_sites_run)
+    ((_, elbows),) = figure_elbows([no_sites_run], info, default_options())
+    panels = [ax for ax in elbows.axes if ax.get_label() != "<colorbar>"]
+    title = panels[0].get_title()
+    assert len(panels) == 1 and title.startswith("lowest barrier (x") and "no saddle before r_c" in title
+    ((_, maps),) = figure_potential_maps([no_sites_run], info, default_options())
+    assert any(m.startswith("lowest barrier (x") for m in annotations(maps.axes[0]))
+    assert not has_files(no_sites_run, next(needed for name, _, needed in PLOTS if name == "orientation"))

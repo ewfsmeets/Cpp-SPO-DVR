@@ -1,13 +1,10 @@
-"""The run's potential (potential/) for plots: energies relative to the gas-phase minimum, the (x, y) grid and the
-unit cell in Cartesian coordinates, and the minimax (mountain-pass) barrier on V(Z, r) at one (x, y) point.
+"""The run's potential (potential/) for plots: energies relative to the gas-phase minimum, the minimax
+(mountain-pass) barrier on V(Z, r) at one (x, y) point and at every one, the points the figures show (and their
+Cartesian positions), and the cell edges of the DVR nodes. The Cartesian map and the cell geometry are in
+compute/grids.py.
 
-Cartesian positions: grid point (ix, iy) lies at x = ix a / nx along the first lattice vector and y = iy b / ny
-along the second (src/grids/spatial_grids.cpp: the x grid starts at 0; src/input/process.cpp: dx = a / nx), which
-makes the skew angle gamma with the first: R = (x + y cos(gamma), y sin(gamma)). The program's PES uses the inverse
-of this map: it splits a bond (cos(phi), sin(phi)) into the skewed components (sin(gamma - phi), sin(phi)) /
-sin(gamma) (src/potential/dai_light_cu111_potential.cpp, value). The reciprocal axes of compute/grids.py,
-(sin(gamma), -cos(gamma)) and (0, 1), are perpendicular to the lattice vectors (cos(gamma), sin(gamma)) and (1, 0),
-as reciprocal axes must be.
+V_min, the minimum over the DVR nodes at fixed (x, y), is the lower envelope over the run's orientations: each point
+has its own orientation, its contours kink where the node changes, and it holds no rotational or zero-point energy.
 """
 
 import heapq
@@ -15,11 +12,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from readers.potential import PotentialData, PotentialLimits, Site
+from compute.grids import cartesian_bohr
+from readers.potential import PotentialData, PotentialLimits
+from readers.run_info import Lattice
+from readers.sites import Site
 from readers.tables import AsymptoticPotential
 
 ENERGY_CAP_EV = 3.0  # heuristic: maps and elbows show V up to this above the gas-phase minimum (walls reach keV)
-CONTOUR_STEP_EV = 0.1  # the elbows' contour spacing
+CONTOUR_STEP_EV = 0.1  # the elbows' filled-contour spacing
+CONTOUR_LINE_EVERY = 5  # a contour line every this many filled steps
+MAX_ELBOW_SITES = 4  # the elbows of the first this many sites of PlotSites
 V_MAX_CLAMP_RTOL = 1e-12  # relative: a barrier this close to VMax is the clamp, not the surface
 
 
@@ -29,7 +31,8 @@ def relative_ev(v_hartree: np.ndarray, reference_hartree: float, hartree_to_ev: 
 
 
 def gas_phase_minimum_hartree(asymptotic: AsymptoticPotential) -> float:
-    """min V_asy(r): the reference of the potential plots (hartree)."""
+    """The reference of the potential plots (hartree): the lowest value on the r grid of asymptotic_potential.dat,
+    V(r) at Z = zasymp (with switching: ZmaxSwitch), theta = pi/2, at the program's x = y = 0."""
     return float(np.min(asymptotic.v_hartree))
 
 
@@ -43,62 +46,24 @@ def bond_length_index(asymptotic: AsymptoticPotential, r_bohr: np.ndarray) -> in
     return nearest_index(r_bohr, float(asymptotic.r_bohr[int(np.argmin(asymptotic.v_hartree))]))
 
 
-def cartesian_bohr(fx: np.ndarray, fy: np.ndarray, lattice: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Cartesian (X, Y) in bohr of fractional coordinates (fx, fy) along the lattice vectors (run_info.json's
-    lattice: a, b, skew_angle_rad)."""
-    x = np.asarray(fx) * lattice["a"]
-    y = np.asarray(fy) * lattice["b"]
-    gamma = lattice["skew_angle_rad"]
-    return x + y * np.cos(gamma), y * np.sin(gamma)
-
-
-@dataclass
-class CellGeometry:
-    """The (x, y) grid drawn in Cartesian bohr, periodically: the corners of the cells around the grid points
-    ix = 0 .. nx and iy = 0 .. ny (the last row and column repeat the first), and the unit cell's outline."""
-
-    corners_x_bohr: np.ndarray  # (nx + 2, ny + 2): cell (ix, iy) spans fractions (ix -+ 1/2) / nx, (iy -+ 1/2) / ny
-    corners_y_bohr: np.ndarray
-    outline_x_bohr: np.ndarray  # (5,): the unit cell, closed
-    outline_y_bohr: np.ndarray
-
-
-def cell_geometry(nx: int, ny: int, lattice: dict) -> CellGeometry:
-    """The periodic cells around the (x, y) grid points (half a step before and after each, one more row and column
-    so that they cover the unit cell) and the unit cell's outline."""
-    fx, fy = np.meshgrid((np.arange(nx + 2) - 0.5) / nx, (np.arange(ny + 2) - 0.5) / ny, indexing="ij")
-    corners_x, corners_y = cartesian_bohr(fx, fy, lattice)
-    outline_x, outline_y = cartesian_bohr(np.array([0, 1, 1, 0, 0]), np.array([0, 0, 1, 1, 0]), lattice)
-    return CellGeometry(corners_x, corners_y, outline_x, outline_y)
-
-
-def periodic(values: np.ndarray) -> np.ndarray:
-    """(nx, ny) values of the grid points with the first row and column repeated at the end: (nx + 1, ny + 1), the
-    values of the cells of cell_geometry."""
-    nx, ny = values.shape
-    return np.asarray(values)[np.arange(nx + 1) % nx][:, np.arange(ny + 1) % ny]
-
-
-def site_positions_bohr(sites: list[Site], lattice: dict) -> list[tuple[str, float, float]]:
-    """(name, X, Y) of each site in Cartesian bohr."""
-    positions = []
-    for site in sites:
-        x, y = cartesian_bohr(np.array(site.x), np.array(site.y), lattice)
-        positions.append((site.name, float(x), float(y)))
-    return positions
+SADDLE, AT_R_C, AT_START, UNREACHED = "saddle", "at r_c", "at the start", "unreached"  # where the highest point is
 
 
 @dataclass
 class Barrier:
-    """The minimax barrier of V(Z, r): the lowest possible highest point of a path over the grid from the gas-phase
-    side to the dissociated side, where it lies, and one path that reaches it (not a minimum-energy path: below the
-    barrier any route will do)."""
+    """The minimax pass of V(Z, r): the lowest possible highest point of a path over the grid from the gas-phase
+    side to the dissociated side, where it lies, and one path that reaches it (not a minimum-energy path: below it
+    any route will do). Only when that highest point lies inside the path is it a barrier (a saddle); it can also be
+    the path's end at r_c (no saddle before the dissociated side; a lower hump may lie before it) or its start (V
+    falls from the gas-phase side: no barrier)."""
 
     height_hartree: float  # inf when the dissociated side cannot be reached
-    iz: int  # the barrier's point (the path's start when there is no path)
+    iz: int  # the highest point (the path's start when there is no path)
     ir: int
     path: list[tuple[int, int]]  # (iz, ir) from the start to the first point with r >= r_c the search reaches
-    at_v_max: bool  # the barrier is the VMax clamp
+    kind: str  # SADDLE, AT_R_C, AT_START or UNREACHED
+    saddle: bool  # kind == SADDLE: the highest point is a barrier (inside the path)
+    at_v_max: bool  # the highest point is the VMax clamp
 
 
 def minimax_path(v: np.ndarray, start: tuple[int, int], is_product: np.ndarray) -> tuple[float, list[tuple[int, int]]]:
@@ -144,77 +109,107 @@ def barrier_on(v_zr_hartree: np.ndarray, ir_c: int, limits: PotentialLimits) -> 
     v = np.asarray(v_zr_hartree, dtype=float)
     last = v.shape[0] - 1
     if np.all(np.isnan(v[last])):
-        return Barrier(float("inf"), last, 0, [], False)
+        return Barrier(float("inf"), last, 0, [], UNREACHED, False, False)
     start = (last, int(np.nanargmin(v[last])))
     is_product = np.zeros(v.shape, dtype=bool)
     is_product[:, ir_c:] = True
     height, path = minimax_path(v, start, is_product)
     if not path:
-        return Barrier(height, start[0], start[1], [], False)
+        return Barrier(height, start[0], start[1], [], UNREACHED, False, False)
     heights = [v[cell] for cell in path]
-    iz, ir = path[int(np.argmax(heights))]
+    highest = int(np.argmax(heights))  # the first of equal ones
+    iz, ir = path[highest]
+    kind = AT_START if highest == 0 else AT_R_C if highest == len(path) - 1 else SADDLE  # only the end has r >= r_c
     at_v_max = limits.impose_v_max and height >= limits.v_max_clamp_hartree * (1 - V_MAX_CLAMP_RTOL)
-    return Barrier(height, iz, ir, path, bool(at_v_max))
+    return Barrier(height, iz, ir, path, kind, kind == SADDLE, bool(at_v_max))
 
 
 @dataclass
-class ElbowPoint:
-    """An (x, y) point whose elbow is drawn: a site (isite its index) or, without sites, the lowest barrier's point
-    (isite None)."""
+class PointOfInterest:
+    """An (x, y) grid point a figure shows: a site of PlotSites (name and isite set) or the grid point with the
+    lowest barrier (name and isite None), with its fractions and its barrier on V_min(Z, r)."""
 
-    name: str
+    name: str | None
     ix: int
     iy: int
+    fraction_x: float
+    fraction_y: float
     barrier: Barrier
     isite: int | None
 
 
-def lowest_barrier(potential: PotentialData, ir_c: int) -> ElbowPoint:
-    """The (x, y) grid point whose V_min(Z, r) has the lowest minimax barrier (the first in (ix, iy) order), named
-    by its fractional coordinates."""
-    lowest = None
-    for ix in range(potential.nx):
-        for iy in range(potential.ny):
-            barrier = barrier_on(potential.v_min_hartree[:, :, ix, iy], ir_c, potential.limits)
-            if lowest is None or barrier.height_hartree < lowest.barrier.height_hartree:
-                name = f"lowest barrier (x {ix / potential.nx:g}, y {iy / potential.ny:g})"
-                lowest = ElbowPoint(name, ix, iy, barrier, None)
-    return lowest
+def barriers_on_grid(potential: PotentialData, ir_c: int) -> list[list[Barrier]]:
+    """The minimax barrier on V_min(Z, r) at every (x, y) grid point: [ix][iy]."""
+    return [
+        [barrier_on(potential.v_min_hartree[:, :, ix, iy], ir_c, potential.limits) for iy in range(potential.ny)]
+        for ix in range(potential.nx)
+    ]
 
 
-def elbow_points(potential: PotentialData, ir_c: int) -> list[ElbowPoint]:
-    """The sites with their barriers on V_min(Z, r); without sites, the grid point with the lowest barrier."""
-    if not potential.sites:
-        return [lowest_barrier(potential, ir_c)]
+def lowest_barrier(potential: PotentialData, barriers: list[list[Barrier]]) -> PointOfInterest:
+    """The (x, y) grid point of barriers_on_grid with the lowest saddle (the first in (ix, iy) order); without any
+    saddle, the one with the lowest pass."""
+    ranks = [(not b.saddle, b.height_hartree, ix, iy) for ix, row in enumerate(barriers) for iy, b in enumerate(row)]
+    _, _, ix, iy = min(ranks)
+    return PointOfInterest(None, ix, iy, ix / potential.nx, iy / potential.ny, barriers[ix][iy], None)
+
+
+def site_points(potential: PotentialData, ir_c: int) -> list[PointOfInterest]:
+    """The sites of PlotSites with their barriers on V_min(Z, r)."""
     points = []
     for k, site in enumerate(potential.sites):
         barrier = barrier_on(potential.v_min_hartree[:, :, site.ix, site.iy], ir_c, potential.limits)
-        points.append(ElbowPoint(site.name, site.ix, site.iy, barrier, k))
+        points.append(PointOfInterest(site.name, site.ix, site.iy, site.fraction_x, site.fraction_y, barrier, k))
     return points
 
 
-def lowest_site(potential: PotentialData, ir_c: int) -> ElbowPoint:
-    """The site with the lowest barrier on V_min(Z, r) (the first of equal ones)."""
-    points = elbow_points(potential, ir_c)
-    return points[int(np.argmin([p.barrier.height_hartree for p in points]))]
+def lowest_site(points: list[PointOfInterest]) -> PointOfInterest:
+    """The site with the lowest saddle (the first of equal ones); without any saddle, the one with the lowest pass."""
+    return min(points, key=lambda p: (not p.barrier.saddle, p.barrier.height_hartree))
+
+
+def positions_bohr(
+    points: list[Site | PointOfInterest], lattice: Lattice
+) -> list[tuple[Site | PointOfInterest, float, float]]:
+    """Each site or point with its Cartesian (X, Y) in bohr."""
+    positions = []
+    for point in points:
+        x, y = cartesian_bohr(np.array(point.fraction_x), np.array(point.fraction_y), lattice)
+        positions.append((point, float(x), float(y)))
+    return positions
 
 
 def map_point(
-    potential: PotentialData, lowest: ElbowPoint, z_bohr: float | None, r_bohr: float | None
+    potential: PotentialData, lowest: PointOfInterest, z_bohr: float | None, r_bohr: float | None
 ) -> tuple[int, int]:
-    """(iz, ir) of the left potential map: the grid points nearest to the asked Z and r, by default the lowest
-    barrier's."""
+    """(iz, ir) of the V_min map: the grid points nearest to the asked Z and r, by default the lowest barrier's."""
     iz = lowest.barrier.iz if z_bohr is None else nearest_index(potential.z_bohr, z_bohr)
     ir = lowest.barrier.ir if r_bohr is None else nearest_index(potential.r_bohr, r_bohr)
     return iz, ir
 
 
-def orientation_at(potential: PotentialData, point: ElbowPoint, iz: int, ir: int) -> tuple[int, int]:
-    """(itheta, iphi) of the lowest V over the orientations at an (x, y) point's (Z, r) point (v_min_node)."""
+def orientation_at(potential: PotentialData, point: PointOfInterest, iz: int, ir: int) -> tuple[int, int]:
+    """(itheta, iphi) of the lowest V over the orientations at a point's (Z, r) (v_min_node; the first of equal
+    nodes)."""
     node = potential.v_min_node[iz, ir, point.ix, point.iy]
     return int(node[0]), int(node[1])
 
 
-def point_as_site(potential: PotentialData, point: ElbowPoint) -> Site:
-    """An elbow point as a site to mark on the maps (its fractional coordinates from its grid point)."""
-    return Site(point.name, point.ix / potential.nx, point.iy / potential.ny, point.ix, point.iy)
+def node_edges_deg(theta_rad: np.ndarray, phi_rad: np.ndarray, homonuclear: bool) -> tuple[np.ndarray, np.ndarray]:
+    """The edges (deg) of the cells around the DVR nodes: theta from 0 to 90 (homonuclear) or 180, midway between
+    nodes; phi half a step around each node (the nodes are equally spaced)."""
+    theta = np.degrees(theta_rad)
+    theta_edges = np.concatenate([[0.0], (theta[1:] + theta[:-1]) / 2, [90.0 if homonuclear else 180.0]])
+    phi = np.degrees(phi_rad)
+    step = 360.0 / len(phi)
+    return theta_edges, np.concatenate([phi - step / 2, [phi[-1] + step / 2]])
+
+
+def count_not_finite(values: np.ndarray) -> int:
+    """How many values are NaN or inf (drawn hatched, like the walls above the cap)."""
+    return int(np.count_nonzero(~np.isfinite(np.asarray(values))))
+
+
+def saddle_heights_hartree(barriers: list[list[Barrier]]) -> np.ndarray:
+    """(nx, ny): the barrier heights of barriers_on_grid, NaN where the pass has no saddle (or r_c is not reached)."""
+    return np.array([[b.height_hartree if b.saddle else np.nan for b in row] for row in barriers])

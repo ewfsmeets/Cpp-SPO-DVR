@@ -12,6 +12,7 @@ from readers.arrays import read_arrays, read_series
 from readers.binary import BK_MAGIC, CHECKPOINT_MAGIC, FORMAT_VERSION, read_bk_coefficients, read_checkpoint
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
+from readers.potential import read_potential
 from readers.run_info import read_run_info
 from readers.segments import join_records, joined_first_non_finite
 from readers.tables import read_averages, read_gas_phase_states, read_table
@@ -300,3 +301,80 @@ def test_arrays_written_once(tmp_path: Path) -> None:
     (path / "v.bin").unlink()
     with pytest.raises(ReadError, match="no such file"):
         read_arrays(path)
+
+
+def small_potential_manifest() -> dict:
+    """The manifest of a small valid potential/: 2 Z x 2 r points, a 2 x 1 (x, y) grid, 1 x 2 nodes, one site."""
+    datasets = {
+        "v_min": {"file": "v_min.bin", "dtype": "<f8", "shape": [2, 2, 2, 1], "axes": ["Z", "r", "x", "y"]},
+        "v_min_node": {
+            "file": "v_min_node.bin",
+            "dtype": "<i4",
+            "shape": [2, 2, 2, 1, 2],
+            "axes": ["Z", "r", "x", "y", "node"],
+        },
+        "v_sites": {
+            "file": "v_sites.bin",
+            "dtype": "<f8",
+            "shape": [1, 2, 2, 1, 2],
+            "axes": ["site", "Z", "r", "theta", "phi"],
+        },
+    }
+    limits = {"use_switching": False, "z_min_switch": 6.0, "z_max_switch": 8.0, "impose_v_min": False}
+    limits |= {"v_min_hartree": -0.2, "impose_v_max": False, "v_max_hartree": 0.4}
+    return {
+        "format_version": 1,
+        "time_dependent": False,
+        "datasets": datasets,
+        "grids": {"z_start": 0.0, "dz": 1.0, "nz_potential": 2, "r_start": 1.0, "dr": 0.5, "nr": 2, "nx": 2, "ny": 1},
+        "theta_nodes_rad": [1.5707963267948966],
+        "phi_nodes_rad": [0.0, 3.141592653589793],
+        "homonuclear": True,
+        "sites": [{"name": "top", "x": 0.0, "y": 0.0, "ix": 0, "iy": 0, "ixy": 0}],
+        "limits": limits,
+    }
+
+
+def changed(manifest: dict, path: str, value: object) -> None:
+    """Replaces the field at a dotted path (list items by index) by value; None deletes it."""
+    *parents, last = path.split(".")
+    target = manifest
+    for key in parents:
+        target = target[int(key)] if isinstance(target, list) else target[key]
+    if value is None:
+        del target[last]
+    else:
+        target[int(last) if isinstance(target, list) else last] = value
+
+
+def potential_directory(run: Path, change: dict | None = None) -> Path:
+    """small_potential_manifest's potential/ in `run`, with fields changed (changed), and zero-filled datasets."""
+    directory = run / "potential"
+    directory.mkdir(parents=True)
+    manifest = small_potential_manifest()
+    for path, value in (change or {}).items():
+        changed(manifest, path, value)
+    (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    for spec in manifest.get("datasets", {}).values():
+        count = int(np.prod(spec["shape"]))
+        (directory / spec["file"]).write_bytes(np.zeros(count, dtype=spec["dtype"]).tobytes())
+    return run
+
+
+def test_potential_reader_refuses_what_it_cannot_index(tmp_path: Path) -> None:
+    """A valid potential/ is read; a dropped field, swapped axes, a wrong shape, a wrong ixy and a missing v_sites
+    with sites are each a ReadError naming the manifest (an x/y mix-up would otherwise go unnoticed)."""
+    potential = read_potential(potential_directory(tmp_path / "valid"))
+    assert potential.v_min_hartree.shape == (2, 2, 2, 1) and potential.sites[0].name == "top"
+    cases = {
+        "'impose_v_max'": {"limits.impose_v_max": None},
+        "axes": {"datasets.v_min.axes": ["Z", "r", "y", "x"]},
+        "shape": {"grids.nx": 1},
+        "ixy": {"sites.0.ixy": 1},
+        "datasets": {"datasets.v_sites": None},
+        "'axes'": {"datasets.v_min.axes": None},
+        "'datasets'": {"datasets": None},
+    }
+    for k, (reason, change) in enumerate(cases.items()):
+        with pytest.raises(ReadError, match=reason):
+            read_potential(potential_directory(tmp_path / f"case{k}", change))

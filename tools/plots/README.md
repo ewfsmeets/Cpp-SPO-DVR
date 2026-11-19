@@ -58,8 +58,8 @@ is a bug of the tool.
 | `densities` | the probability per bohr of Z and of r against time (carpets; the specular analysis line on the Z one), the norm per region (r beyond r_c; Z bands up to zasymp, Zana, the grids' ends), 1 − norm and the probability inside each absorber | densities/ (`writeDensities`) |
 | `density_movie` | ρ(Z, r) in bohr⁻², the scattering and the specular wave summed, on one log scale, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb and the specular analysis line (at most 30 frames) | densities/ (`writeDensities`) |
 | `gas_phase` | V_asy(r) with the levels of the initial j and the r absorber; \|ψ(r)\| of the lowest levels on a log axis | gas_phase_states.dat, asymptotic_potential.dat |
-| `potential_maps` | V_min (V minimised over the DVR orientations) over the unit cell: left at the lowest barrier's (Z, r) or `--z`, `--r`, right at that Z and the gas-phase bond length; the sites marked | potential/ (`writePotential`), asymptotic_potential.dat |
-| `elbows` | V_min(Z, r) at the first four sites (or the lowest barrier's point) with the minimax barrier and a path to it; V at the barrier's orientation | potential/, asymptotic_potential.dat |
+| `potential_maps` | over the unit cell: the minimax barrier of each (x, y) point; V_min (V minimised over the DVR nodes) at the lowest barrier's (Z, r) or `--z`, `--r`; V_min at that Z and the gas-phase bond length; the sites and the lowest barrier's point marked | potential/ (`writePotential`), asymptotic_potential.dat |
+| `elbows` | V_min(Z, r) at the first four sites (or the lowest barrier's point) with the minimax barrier at the run's nodes and a path to it (or "no saddle"); V at the barrier's node with its own barrier | potential/, asymptotic_potential.dat |
 | `orientation` | V at every DVR node (θ, φ), as a map, at the barrier point of the site with the lowest barrier | potential/ with `PlotSites`, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
@@ -112,17 +112,18 @@ flowchart LR
 | `readers/run_info.py` | run_info.json as `RunInfo` | `src/report/run_info_file.cpp` |
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
-| `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes, sites and limits | `src/report/potential_files.cpp` |
+| `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes and limits; the datasets' axes and shapes checked | `src/report/potential_files.cpp` |
+| `readers/sites.py` | the sites of PlotSites as the plot data record them (fractions, grid point, the ixy check) | `src/input/validate_outputs.cpp` |
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
 | `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must equal the kept one to 1e-12 of its largest value) | — |
 | `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
-| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
+| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; Cartesian positions and periodic cells of the (x, y) grid; the r absorber's first point; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
 | `compute/states.py` | P(v', j'), P(mJ'), the alignment A0(2) and its limits, the (v', j') map | — |
 | `compute/diffraction.py` | P per channel and order, in and out of plane, the scattering angles (summed over mJ') | — |
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
 | `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
-| `compute/potential.py` | energies relative to the gas-phase minimum, the (x, y) grid's periodic cells and the unit cell in Cartesian coordinates, the minimax barrier on V(Z, r) and the points the figures show | — |
+| `compute/potential.py` | energies relative to the gas-phase minimum, the minimax barrier on V(Z, r) (at one and at every (x, y) point), the points the figures show, the DVR nodes' cells | — |
 | `compute/series.py` | any series: the records before a NaN or inf (with a note), records evenly spaced for a movie | — |
 | `compute/densities.py` | from densities/: both waves summed, Z and r profiles, the norm per region and inside each absorber, the specular line, the marks of a map | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
@@ -222,14 +223,19 @@ one raises. The S matrix rebuilt from `bk_coefficients.bin` with `copies/s_matri
 BK reader, the time sums, the prefactor and the phases are right. The densities/ records must sum to the norm of
 averages.dat (1e-13), give its ⟨Z⟩ and ⟨r⟩ (1e-12), equal the probability per cell of the wave function in
 `checkpoint.bin` (1e-12 of the largest cell, also mid-run, in a restart's first segment), and a split run's
-segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`).
+segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`). potential/ must hold V_min equal to
+the minimum of each site's values over the nodes and the stored node's value (bitwise), and the hard wall's V equal
+to its formula, computed in numpy, within 1e-15 of d + V_z (`tests/test_runs_potential.py`).
 
 ## Limits
 
 - One run at a time (its restart segments joined); no comparison of runs.
-- The potential is the run's: at its grid points of Z < zasymp and its DVR orientations only (no interpolation);
-  V_min is a classical lowest orientation at fixed (x, y), not an adiabatic potential; the minimax barrier is
-  taken on that grid, from the gas-phase side to r >= r_c (the r absorber's start).
+- The potential is the run's: at its grid points of Z < zasymp and its DVR nodes only (no interpolation); V_min is
+  the lower envelope over the nodes at fixed (x, y) (no rotational or zero-point energy), and the minimax barrier
+  is taken on that grid at those nodes, from the gas-phase side to r >= r_c (the r absorber's first point): the
+  PES's own barrier can be lower when the best orientation lies between nodes. The barrier search is plain
+  Python: on a 16 x 16 (x, y) grid of 160 x 64 (Z, r) points the barrier map takes up to about 5 s (measured with
+  every point explored).
 - Only what the run's files hold: the wave packet is seen through its (Z, r) density (`writeDensities`); its
   structure in x, y and the angles is not plotted yet.
 - The fine analysis is compared with the on-the-fly results of the same run; an `onlyAnalysis` run (its

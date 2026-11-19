@@ -2,7 +2,7 @@
 per dataset (docs/output_files.md, "Series directories"). The program appends a record's data before its
 time, so the complete records are n = min(len(times), file size / record bytes) of every dataset.
 
-Shadows: src/io/series_writer.cpp (SeriesWriter::SeriesWriter, SeriesWriter::append)
+Shadows: src/io/series_writer.cpp (SeriesWriter::SeriesWriter, SeriesWriter::append, ArraysWriter::ArraysWriter)
 """
 
 import json
@@ -114,8 +114,12 @@ def read_arrays(directory: Path) -> Arrays:
         raise ReadError(f"{directory / 'manifest.json'}: not arrays written once (time_dependent is not false)")
     arrays = {}
     for name, spec in manifest.get("datasets", {}).items():
-        path = directory / spec["file"]
-        expected = record_bytes(spec)
+        try:
+            path, expected = directory / spec["file"], record_bytes(spec)
+        except (KeyError, TypeError, ValueError) as error:
+            raise ReadError(
+                f"{directory / 'manifest.json'}: dataset {name} without a valid {error}; update the tool"
+            ) from None
         if not path.is_file():
             raise ReadError(f"{path}: no such file; the run stopped before writing it, run it again")
         if path.stat().st_size != expected:

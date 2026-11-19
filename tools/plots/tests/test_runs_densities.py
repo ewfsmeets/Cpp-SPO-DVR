@@ -12,10 +12,10 @@ from compute.densities import (
     band_edges,
     band_norms,
     combined_probability,
-    r_absorber_first_index,
     region_norms,
     specular_inside_line,
 )
+from compute.grids import r_absorber_first_index
 from readers.arrays import read_series
 from readers.binary import read_checkpoint
 from readers.densities import DensityGrids, density_grids, read_densities

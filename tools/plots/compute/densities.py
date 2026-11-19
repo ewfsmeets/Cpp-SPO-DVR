@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from compute.grids import density_per_volume
+from compute.grids import density_per_volume, r_absorber_first_index
 from readers.arrays import Series
 from readers.densities import DensityGrids
 from readers.errors import ReadError
@@ -32,20 +32,6 @@ def combined_probability(series: Series, records: np.ndarray | None = None) -> n
     scattering = series.arrays["prob_scat_zr"][chosen]
     combined[:, : scattering.shape[1], :] += scattering
     return combined
-
-
-def r_absorber(info: RunInfo) -> dict | None:
-    """The r absorber (ROpt) of run_info.json's absorber list, or None."""
-    return next((a for a in info.data["absorbers"]["list"] if a["coordinate"] == "r"), None)
-
-
-def r_absorber_first_index(info: RunInfo, nr: int) -> int:
-    """The first r point of the r absorber (its points in run_info.json): r_c, where the outer r region starts;
-    nr (no outer region) without one."""
-    absorber = r_absorber(info)
-    if absorber is None or absorber["points"] is None:
-        return nr
-    return int(absorber["points"]["first"])
 
 
 def band_edges(info: RunInfo, grids: DensityGrids) -> list[tuple[str, int, int]]:

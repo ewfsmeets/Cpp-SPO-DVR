@@ -56,3 +56,19 @@ def read_run_info(directory: Path) -> RunInfo:
         raise ReadError(f"{path}: no field {error}; the file is damaged or from another program version") from None
     except (TypeError, ValueError) as error:
         raise ReadError(f"{path}: a field has the wrong type ({error}); the file is damaged") from None
+
+
+@dataclass
+class Lattice:
+    """The surface lattice of a run (run_info.json lattice): the lengths of the two lattice vectors and the skew
+    angle between them."""
+
+    a_bohr: float
+    b_bohr: float
+    skew_angle_rad: float
+
+
+def lattice_of(info: RunInfo) -> Lattice:
+    """The run's surface lattice."""
+    lattice = info.data["lattice"]
+    return Lattice(float(lattice["a"]), float(lattice["b"]), float(lattice["skew_angle_rad"]))

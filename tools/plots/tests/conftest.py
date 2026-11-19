@@ -103,3 +103,18 @@ def no_density_record_run(fresh_run: Path, tmp_path_factory: pytest.TempPathFact
     shutil.rmtree(run / "densities")
     copy_densities_up_to(fresh_run / "densities", run / "densities", 0)
     return run
+
+
+@pytest.fixture(scope="session")
+def no_sites_run(fixture_runs: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """hardwall_tiny with potential/ as written without PlotSites (no sites, no v_sites; its run_info.json still
+    lists the sites, which the potential figures do not read)."""
+    run = tmp_path_factory.mktemp("no_sites") / "hardwall_tiny_no_sites"
+    shutil.copytree(fixture_runs / "hardwall_tiny", run, ignore=shutil.ignore_patterns("checkpoint.bin"))
+    manifest_path = run / "potential" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["sites"] = []
+    del manifest["datasets"]["v_sites"]
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    (run / "potential" / "v_sites.bin").unlink()
+    return run

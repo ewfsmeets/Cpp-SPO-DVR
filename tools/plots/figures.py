@@ -8,6 +8,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 
@@ -15,8 +16,6 @@ from compute.analysis import analysis_energies
 from compute.densities import (
     combined_probability,
     density_marks,
-    r_absorber,
-    r_absorber_first_index,
     r_profile_per_bohr,
     region_norms,
     specular_line_bohr,
@@ -24,23 +23,34 @@ from compute.densities import (
 )
 from compute.diffraction import diffraction, out_of_plane_fraction, p_per_order, scattering_angles
 from compute.gas_phase import levels
-from compute.grids import density_per_volume, incident_parallel_momentum
+from compute.grids import (
+    cell_geometry,
+    density_per_volume,
+    incident_parallel_momentum,
+    periodic,
+    r_absorber,
+    r_absorber_first_index,
+)
 from compute.potential import (
+    CONTOUR_LINE_EVERY,
     CONTOUR_STEP_EV,
     ENERGY_CAP_EV,
-    ElbowPoint,
+    MAX_ELBOW_SITES,
+    PointOfInterest,
+    barrier_on,
+    barriers_on_grid,
     bond_length_index,
-    cell_geometry,
-    elbow_points,
+    count_not_finite,
     gas_phase_minimum_hartree,
     lowest_barrier,
     lowest_site,
     map_point,
+    node_edges_deg,
     orientation_at,
-    periodic,
-    point_as_site,
+    positions_bohr,
     relative_ev,
-    site_positions_bohr,
+    saddle_heights_hartree,
+    site_points,
 )
 from compute.results import matched_differences, results
 from compute.series import evenly_spaced_records, usable_records
@@ -67,9 +77,10 @@ from panels.gas_phase import draw_potential_and_levels, draw_wave_functions
 from panels.potential import (
     add_potential_colorbar,
     barrier_title,
+    draw_cell_map,
     draw_elbow,
     draw_orientation,
-    draw_vmin_map,
+    point_label,
     potential_color_scale,
 )
 from panels.results import (
@@ -94,7 +105,7 @@ from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
 from readers.potential import PotentialData, read_potential
-from readers.run_info import RunInfo
+from readers.run_info import RunInfo, lattice_of
 from readers.segments import read_joined_averages
 from readers.tables import read_asymptotic_potential, read_gas_phase_states, read_s_matrix, read_scattering_summary
 from style import Movie, add_info_box, density_color_scale, info_lines, new_figure
@@ -325,89 +336,118 @@ def figure_density_movie(runs: list[Path], info: RunInfo, options: argparse.Name
     return [("density_movie", Movie(fig, update, len(records)))]
 
 
-MAX_ELBOW_SITES = 4  # sites drawn as elbows at most (the first ones of PlotSites)
-MIN_OVER_ORIENTATIONS = "V_min = min over the DVR orientations at fixed (x, y), classical; V relative to min V_asy"
+MIN_OVER_ORIENTATIONS = "V_min = the lower envelope of V over the DVR nodes at fixed (x, y); V relative to min V_asy"
+CONTOURS = (CONTOUR_STEP_EV, CONTOUR_LINE_EVERY)
 
 
 def figure_potential_maps(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """V_min over the unit cell: left at the lowest barrier's (Z, r) or --z, --r; right at that Z and the bond length."""
+    """The barrier of each (x, y) point, and V_min over the unit cell at the lowest barrier's (Z, r) and the bond length."""
     potential = read_potential(runs[-1])
     asymptotic = read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat")
-    lowest = lowest_barrier(potential, r_absorber_first_index(info, len(potential.r_bohr)))
+    reference, to_ev = gas_phase_minimum_hartree(asymptotic), info.hartree_to_ev
+    barriers = barriers_on_grid(potential, r_absorber_first_index(info, len(potential.r_bohr)))
+    lowest = lowest_barrier(potential, barriers)
     iz, ir = map_point(potential, lowest, options.z_bohr, options.r_bohr)
     ir_bond = bond_length_index(asymptotic, potential.r_bohr)
-    v = relative_ev(potential.v_min_hartree, gas_phase_minimum_hartree(asymptotic), potential.hartree_to_ev)
-    lattice = info.data["lattice"]
+    v = relative_ev(potential.v_min_hartree, reference, to_ev)
+    heights = relative_ev(saddle_heights_hartree(barriers), reference, to_ev)
+    lattice = lattice_of(info)
     cell = cell_geometry(potential.nx, potential.ny, lattice)
-    marks = site_positions_bohr(potential.sites or [point_as_site(potential, lowest)], lattice)
+    marks = [(site.name, x, y) for site, x, y in positions_bohr(potential.sites, lattice)]
+    marks += [(point_label(p), x, y) for p, x, y in positions_bohr([lowest], lattice)]
     scale = potential_color_scale(ENERGY_CAP_EV)
-    fig = new_figure(n_notes=1)
-    left, right = fig.subplots(1, 2)
+    notes = (MIN_OVER_ORIENTATIONS, *not_finite_notes(potential.v_min_hartree))
+    fig = new_figure(n_notes=len(notes), width_in=10.0)
+    axes = fig.subplots(1, 3)
     z, r, r_bond = potential.z_bohr[iz], potential.r_bohr[ir], potential.r_bohr[ir_bond]
     default = " (lowest barrier)" if options.z_bohr is None and options.r_bohr is None else ""
-    draw_vmin_map(left, cell, periodic(v[iz, ir]), scale, marks, f"V_min at Z = {z:.2f}, r = {r:.2f} bohr{default}")
-    draw_vmin_map(
-        right, cell, periodic(v[iz, ir_bond]), scale, marks, f"V_min at Z = {z:.2f}, r = {r_bond:.2f} bohr (bond)"
+    draw_cell_map(
+        axes[0], cell, periodic(heights), scale, marks, "Barrier on V_min(Z, r) of each\n(x, y) point (hatched: none)"
     )
-    add_potential_colorbar(fig, [left, right], scale)
-    add_info_box(fig, info, ["potential/", "asymptotic_potential.dat", "run_info.json"], notes=(MIN_OVER_ORIENTATIONS,))
+    draw_cell_map(axes[1], cell, periodic(v[iz, ir]), scale, marks, f"V_min at Z = {z:.2f},\nr = {r:.2f} bohr{default}")
+    draw_cell_map(
+        axes[2], cell, periodic(v[iz, ir_bond]), scale, marks, f"V_min at Z = {z:.2f},\nr = {r_bond:.2f} bohr (bond)"
+    )
+    add_potential_colorbar(fig, list(axes), scale)
+    add_info_box(fig, info, ["potential/", "asymptotic_potential.dat", "run_info.json"], notes=notes)
     return [("potential_maps", fig)]
 
 
+def not_finite_notes(values: np.ndarray) -> tuple[str, ...]:
+    """A note when V holds NaN or inf (drawn hatched, like the walls above the cap)."""
+    n = count_not_finite(values)
+    return (f"{n} values of V_min are NaN or inf: hatched like the walls",) if n else ()
+
+
 def figure_elbows(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """V_min(Z, r) at the sites (or the lowest barrier's point) with the minimax path, and V at the barrier's orientation."""
+    """V_min(Z, r) at the sites (or the lowest barrier's point) with the minimax path, and V at the barrier's node."""
     potential = read_potential(runs[-1])
     reference = gas_phase_minimum_hartree(read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat"))
-    points = elbow_points(potential, r_absorber_first_index(info, len(potential.r_bohr)))
-    shown = points[:MAX_ELBOW_SITES]
-    rows = 2 if all(p.isite is not None for p in shown) else 1  # V at a node needs a site's v_sites
-    notes = (MIN_OVER_ORIENTATIONS,) + (
-        (f"elbows of the first {len(shown)} of {len(points)} sites",) if len(points) > len(shown) else ()
-    )
-    fig = new_figure(n_notes=len(notes), height_in=6.5 if rows == 2 else 4.0)
-    axes = fig.subplots(rows, len(shown), squeeze=False)
+    ir_c = r_absorber_first_index(info, len(potential.r_bohr))
+    sites = site_points(potential, ir_c)
+    points = sites[:MAX_ELBOW_SITES] if sites else [lowest_barrier(potential, barriers_on_grid(potential, ir_c))]
+    more = (f"elbows of the first {len(points)} of {len(sites)} sites",) if len(sites) > len(points) else ()
+    notes = (MIN_OVER_ORIENTATIONS, *more, *not_finite_notes(potential.v_min_hartree))
+    fig = new_figure(n_notes=len(notes), height_in=6.5 if sites else 4.0)
+    axes = fig.subplots(2 if sites else 1, len(points), squeeze=False)
     scale = potential_color_scale(ENERGY_CAP_EV)
-    for k, point in enumerate(shown):
-        draw_elbow_column(axes[:, k], potential, point, reference, scale)
+    for k, point in enumerate(points):
+        bottom = axes[1, k] if sites else None
+        elbow_column(axes[0, k], bottom, potential, point, (reference, info.hartree_to_ev), ir_c, scale)
     add_potential_colorbar(fig, list(axes.ravel()), scale)
     add_info_box(fig, info, ["potential/", "asymptotic_potential.dat", "run_info.json"], notes=notes)
     return [("elbows", fig)]
 
 
-def draw_elbow_column(
-    axes: np.ndarray, potential: PotentialData, point: ElbowPoint, reference: float, scale: Normalize
+def elbow_column(
+    top: Axes,
+    bottom: Axes | None,
+    potential: PotentialData,
+    point: PointOfInterest,
+    energy: tuple[float, float],
+    ir_c: int,
+    scale: Normalize,
 ) -> None:
-    """One point's elbows: V_min(Z, r) with the minimax path (top) and, for a site, V at the barrier's orientation."""
+    """One point's elbows: V_min(Z, r) with its minimax pass (top) and, for a site, V at that pass's highest point's
+    node with its own pass (bottom). energy: the reference (hartree) and the hartree-to-eV factor."""
+    reference_hartree, to_ev = energy
+    z, r, label = potential.z_bohr, potential.r_bohr, point_label(point)
     barrier = point.barrier
-    v_min = relative_ev(potential.v_min_hartree[:, :, point.ix, point.iy], reference, potential.hartree_to_ev)
-    height_ev = float(relative_ev(barrier.height_hartree, reference, potential.hartree_to_ev))
-    title = barrier_title(point.name, barrier, potential.z_bohr, potential.r_bohr, height_ev)
-    draw_elbow(axes[0], potential.z_bohr, potential.r_bohr, v_min, scale, CONTOUR_STEP_EV, barrier, title)
-    if len(axes) == 2:
-        itheta, iphi = orientation_at(potential, point, barrier.iz, barrier.ir)
-        v_node = relative_ev(
-            potential.v_sites_hartree[point.isite, :, :, itheta, iphi], reference, potential.hartree_to_ev
-        )
-        theta, phi = np.degrees(potential.theta_rad[itheta]), np.degrees(potential.phi_rad[iphi])
-        title = f"{point.name}: V at theta {theta:.0f}, phi {phi:.0f} deg"
-        draw_elbow(axes[1], potential.z_bohr, potential.r_bohr, v_node, scale, CONTOUR_STEP_EV, None, title)
+    v_min = relative_ev(potential.v_min_hartree[:, :, point.ix, point.iy], reference_hartree, to_ev)
+    title = barrier_title(label, barrier, z, r, float(relative_ev(barrier.height_hartree, reference_hartree, to_ev)))
+    draw_elbow(top, z, r, v_min, scale, CONTOURS, barrier, title)
+    if bottom is None:
+        return
+    itheta, iphi = orientation_at(potential, point, barrier.iz, barrier.ir)
+    v_node_hartree = potential.v_sites_hartree[point.isite, :, :, itheta, iphi]
+    node_barrier = barrier_on(v_node_hartree, ir_c, potential.limits)
+    node = f"{label}, theta {np.degrees(potential.theta_rad[itheta]):.0f} phi {np.degrees(potential.phi_rad[iphi]):.0f}"
+    height = float(relative_ev(node_barrier.height_hartree, reference_hartree, to_ev))
+    v_node = relative_ev(v_node_hartree, reference_hartree, to_ev)
+    draw_elbow(bottom, z, r, v_node, scale, CONTOURS, node_barrier, barrier_title(node, node_barrier, z, r, height))
 
 
 def figure_orientation(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """V over the DVR orientations (theta, phi) at the barrier point of the site with the lowest barrier."""
+    """V over the DVR nodes (theta, phi) at the barrier point of the site with the lowest barrier."""
     potential = read_potential(runs[-1])
     reference = gas_phase_minimum_hartree(read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat"))
-    site = lowest_site(potential, r_absorber_first_index(info, len(potential.r_bohr)))
+    site = lowest_site(site_points(potential, r_absorber_first_index(info, len(potential.r_bohr))))
     barrier = site.barrier
-    values = relative_ev(
-        potential.v_sites_hartree[site.isite, barrier.iz, barrier.ir], reference, potential.hartree_to_ev
-    )
-    z, r = potential.z_bohr[barrier.iz], potential.r_bohr[barrier.ir]
+    values = relative_ev(potential.v_sites_hartree[site.isite, barrier.iz, barrier.ir], reference, info.hartree_to_ev)
+    edges = node_edges_deg(potential.theta_rad, potential.phi_rad, potential.homonuclear)
+    nodes = (np.degrees(potential.theta_rad), np.degrees(potential.phi_rad))
     scale = potential_color_scale(ENERGY_CAP_EV)
     fig = new_figure()
     ax = fig.add_subplot()
-    title = f"{site.name}, at its barrier (Z = {z:.2f}, r = {r:.2f} bohr)"
-    draw_orientation(ax, np.degrees(potential.theta_rad), np.degrees(potential.phi_rad), values, scale, title)
+    z, r = potential.z_bohr[barrier.iz], potential.r_bohr[barrier.ir]
+    draw_orientation(
+        ax,
+        edges,
+        nodes,
+        values,
+        scale,
+        f"{site.name} (the site with the lowest barrier), at Z = {z:.2f}, r = {r:.2f} bohr",
+    )
     add_potential_colorbar(fig, [ax], scale)
     add_info_box(fig, info, ["potential/", "asymptotic_potential.dat", "run_info.json"])
     return [("orientation", fig)]

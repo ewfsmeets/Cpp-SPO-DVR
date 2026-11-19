@@ -1,13 +1,13 @@
 """potential/ (writePotential) on the fixture runs, each check with its negative test: V_min at each site is the
 minimum of the site's V over the orientations and its node holds it; the hard wall's V equals its formula, computed
-here in numpy; the hard wall's minimax barrier is its gas-phase V at r_c just below zasymp."""
+here in numpy; the hard wall's minimax path ends at its gas-phase V at r_c just below zasymp without a saddle."""
 
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from compute.densities import r_absorber_first_index
+from compute.grids import r_absorber_first_index
 from compute.potential import barrier_on
 from readers.potential import read_potential
 from readers.run_info import read_run_info
@@ -64,12 +64,13 @@ def test_hard_wall_equals_its_formula(fixture_runs: Path) -> None:
     switch fails exactly at the points 0.1778 <= Z < 7 where the switch changes V by more than that."""
     run = fixture_runs / "hardwall_tiny"
     p = read_potential(run)
+    hartree_to_ev = read_run_info(run).hartree_to_ev
     assert not (p.limits.use_switching or p.limits.impose_v_min or p.limits.impose_v_max)
     expected, v_z = hard_wall_ev(p.z_bohr, p.r_bohr)
     tolerance = FORMULA_TOLERANCE * (HARD_WALL_D_EV + np.abs(v_z))
-    got_min = np.asarray(p.v_min_hartree) * p.hartree_to_ev
+    got_min = np.asarray(p.v_min_hartree) * hartree_to_ev
     assert np.all(np.abs(got_min - expected[:, :, None, None]) <= tolerance[:, :, None, None])
-    got_sites = np.asarray(p.v_sites_hartree) * p.hartree_to_ev
+    got_sites = np.asarray(p.v_sites_hartree) * hartree_to_ev
     assert np.all(np.abs(got_sites - expected[None, :, :, None, None]) <= tolerance[None, :, :, None, None])
     unswitched, _ = hard_wall_ev(p.z_bohr, p.r_bohr, switched=False)
     failing = ~(np.abs(got_min[:, :, 0, 0] - unswitched) <= tolerance)
@@ -77,15 +78,17 @@ def test_hard_wall_equals_its_formula(fixture_runs: Path) -> None:
     assert changed.any() and np.array_equal(failing, changed)
 
 
-def test_hard_wall_barrier_is_the_gas_phase_at_r_c(fixture_runs: Path) -> None:
-    """The hard wall's wall term falls with Z, so the lowest way to r >= r_c runs along the last Z row: the barrier
-    is V there at the r absorber's first point (the program's index, run_info.json), a value of the file exactly;
-    negative test: a start at the first Z row (the wrong side of the grid) gives a higher barrier."""
+def test_hard_wall_pass_ends_at_the_gas_phase_at_r_c(fixture_runs: Path) -> None:
+    """The hard wall's wall term falls with Z, so the lowest way to r >= r_c runs along the last Z row: the highest
+    point is V there at the r absorber's first point (the program's index, run_info.json), a value of the file
+    exactly, and it is no saddle (V_asy rises up to r_c); negative test: a start at the first Z row (the wrong side
+    of the grid) gives a higher value."""
     run = fixture_runs / "hardwall_tiny"
     p = read_potential(run)
     ir_c = r_absorber_first_index(read_run_info(run), len(p.r_bohr))
     v = np.asarray(p.v_min_hartree[:, :, 0, 0])
     barrier = barrier_on(v, ir_c, p.limits)
     assert barrier.height_hartree == v[-1, ir_c] and (barrier.iz, barrier.ir) == (v.shape[0] - 1, ir_c)
+    assert not barrier.saddle
     wrong_side = barrier_on(v[::-1], ir_c, p.limits)
     assert wrong_side.height_hartree > barrier.height_hartree

@@ -159,7 +159,7 @@ Z < zasymp (`nz_potential` points), in hartree, read through the same surface-sy
 
 | File | Type and shape | Meaning |
 |---|---|---|
-| `v_min.bin` | `<f8` [nZpot, nR, nX, nY] | the minimum of V over the DVR orientations (the θ and φ nodes) at each grid point: a classical lowest orientation, not a quantum adiabat |
+| `v_min.bin` | `<f8` [nZpot, nR, nX, nY] | the minimum of V over the DVR orientations (the θ and φ nodes) at each grid point: the lower envelope over the run's nodes (each point its own orientation; no rotational or zero-point energy) |
 | `v_min_node.bin` | `<i4` [nZpot, nR, nX, nY, 2] | the orientation of that minimum, (iθ, iφ): indices into `theta_nodes_rad` and `phi_nodes_rad` (the first in iθ, then iφ order; a NaN anywhere gives NaN and its node) |
 | `v_sites.bin` | `<f8` [nSites, nZpot, nR, nθ, nφ] | V at every orientation at the (x, y) grid point of each site of `PlotSites` (only with sites) |
 
