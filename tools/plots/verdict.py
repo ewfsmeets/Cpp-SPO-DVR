@@ -8,11 +8,13 @@ from pathlib import Path
 import numpy as np
 
 from compute.analysis import analysis_energies, analysis_time_step_au, channel_energy_of_rows, energy_of_rows
+from compute.densities import density_grids, region_norms
 from compute.diagnostics import (
     Finding,
     diverged,
     lowest_converged_normal_energy_ev,
     moving_window_start,
+    norm_by_region,
     norm_inside_analysis_lines,
     norm_left,
     not_checked,
@@ -30,6 +32,7 @@ from compute.diagnostics import (
 )
 from compute.results import Results, results
 from compute.time_series import p_scattered_stopped_at
+from readers.arrays import read_series
 from readers.binary import BkCoefficients, read_bk_coefficients, read_checkpoint
 from readers.run_info import RunInfo
 from readers.segments import read_joined_averages
@@ -61,8 +64,21 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
         unitarity(run_results.unitarity_error, worst_unitarity_energy(run_results)),
         *basis_edges(last, info),
         norm_left(averages.norm[-1]),
+        regions_at_end(runs, info),
     ]
     return sorted_findings(findings)
+
+
+def regions_at_end(runs: list[Path], info: RunInfo) -> Finding | None:
+    """The norm by region at the last densities/ record (writeDensities), or nothing without one."""
+    if not (runs[-1] / "densities" / "manifest.json").is_file():
+        return None
+    series = read_series(runs[-1] / "densities")
+    if len(series.times_au) == 0:
+        return None
+    regions = region_norms(series, info, density_grids(series))
+    at_end = {label: float(values[-1]) for label, values in regions.regions.items()}
+    return norm_by_region(float(series.times_au[-1]), at_end)
 
 
 def worst_unitarity_energy(run_results: Results) -> float:

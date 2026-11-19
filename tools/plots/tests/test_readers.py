@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from copies.real_compare import rne
+from readers.arrays import read_series
 from readers.binary import BK_MAGIC, CHECKPOINT_MAGIC, FORMAT_VERSION, read_bk_coefficients, read_checkpoint
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
@@ -175,3 +176,52 @@ def test_fine_grid(tmp_path: Path) -> None:
     path.write_text(json.dumps(fields), encoding="utf-8")
     with pytest.raises(ReadError, match="first_index"):
         read_fine_grid(path)
+
+
+def series_directory(path: Path, times: list[float], values: list[float], extra_bytes: int = 0) -> Path:
+    """A series directory with a scalar <f8 dataset "x" and a scalar <i4 dataset "k" (k = the record's index),
+    and `extra_bytes` of x from a record being written."""
+    path.mkdir(parents=True)
+    datasets = {
+        "x": {"file": "x.bin", "dtype": "<f8", "shape": []},
+        "k": {"file": "k.bin", "dtype": "<i4", "shape": []},
+    }
+    (path / "manifest.json").write_text(json.dumps({"format_version": 1, "datasets": datasets}), encoding="utf-8")
+    (path / "times.bin").write_bytes(np.array(times, "<f8").tobytes())
+    (path / "x.bin").write_bytes(np.array(values, "<f8").tobytes() + b"\0" * extra_bytes)
+    (path / "k.bin").write_bytes(np.arange(len(values), dtype="<i4").tobytes())
+    return path
+
+
+def test_series_reads_only_complete_records(tmp_path: Path) -> None:
+    """Records a program still writing leaves incomplete are left out: (a) the data of a third record and part of
+    a fourth written, but not their times; (b) a third time without its data (the program writes data first,
+    but the reader does not rely on it)."""
+    series = read_series(series_directory(tmp_path / "a", [0.0, 100.0], [1.0, 2.0, 3.0], extra_bytes=4))
+    assert list(series.times_au) == [0.0, 100.0] and list(series.arrays["x"]) == [1.0, 2.0]
+    series = read_series(series_directory(tmp_path / "b", [0.0, 100.0, 200.0], [1.0, 2.0]))
+    assert len(series.times_au) == 2 and series.arrays["k"].dtype == np.dtype("<i4")
+
+
+def test_series_without_records(tmp_path: Path) -> None:
+    """A run stopped before its first record: zero records, each dataset of its own dtype, nothing non-finite."""
+    series = read_series(series_directory(tmp_path / "empty", [], []))
+    assert (
+        len(series.times_au) == 0 and series.arrays["x"].shape == (0,) and series.arrays["k"].dtype == np.dtype("<i4")
+    )
+    assert series.first_non_finite is None
+
+
+def test_series_records_the_first_non_finite_record(tmp_path: Path) -> None:
+    """A NaN (or inf) in a dataset marks its record; the data are returned as written."""
+    series = read_series(series_directory(tmp_path / "nan", [0.0, 100.0, 200.0], [1.0, np.nan, np.inf]))
+    assert series.first_non_finite == 1 and np.isnan(series.arrays["x"][1])
+    assert read_series(series_directory(tmp_path / "finite", [0.0, 100.0], [1.0, 2.0])).first_non_finite is None
+
+
+def test_records_of_segments_off_the_record_grid_concatenate() -> None:
+    """Segments whose boundary falls between records share no record: join_records concatenates them."""
+    times, values = join_records(
+        [np.array([0.0, 100.0]), np.array([150.0, 250.0])], [np.array([1.0, 2.0]), np.array([3.0, 4.0])], "x"
+    )
+    assert list(times) == [0.0, 100.0, 150.0, 250.0] and list(values) == [1.0, 2.0, 3.0, 4.0]

@@ -76,6 +76,7 @@ judgement); `verdict.py` reads the run's files for them.
 | gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
+| norm by region at the end | information | where the norm left sits at the last densities/ record: below Zana it is flux not yet analysed; beyond Zana the scattering wave's has been analysed, the specular wave's only beyond its own analysis line |
 | not checked: … | information | a check the run's files do not allow: no checkpoint.bin (`CheckpointFormat` `fortran`), fewer than two BK records, or a run that does not propagate (potential only, analysis only) |
 
 E_n,min is a lower bound on the time a run needs: "P_scattered still moving" is the empirical check. The
@@ -102,14 +103,16 @@ flowchart LR
 | `readers/binary.py` | bk_coefficients.bin, checkpoint.bin (memory-mapped); the byte layouts as named struct formats | `src/io/checkpoint.cpp` |
 | `readers/run_info.py` | run_info.json as `RunInfo` | `src/report/run_info_file.cpp` |
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
-| `readers/segments.py` | restart segments in time order; records joined (a repeated record must be bitwise equal) | — |
+| `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record | `src/io/series_writer.cpp` |
+| `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must be bitwise equal) | — |
 | `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
-| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice | `src/input/process.cpp` (in its docstring) |
+| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
 | `compute/states.py` | P(v', j'), P(mJ'), the alignment A0(2) and its limits, the (v', j') map | — |
 | `compute/diffraction.py` | P per channel and order, in and out of plane, the scattering angles (summed over mJ') | — |
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
 | `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
+| `compute/densities.py` | from densities/: the grids, both waves summed, Z and r profiles, mean positions, the norm per region and per absorber, the specular line, the movie's frames | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
 | `verdict.py` | the verdict of a run: reads what its files allow, a missing file is a finding | — |
 | `style.py` | colours, rcParams, the scale rule, the info box, saving | the designer's colours (`tools/wave_packet_designer/plots.py`) |
@@ -198,7 +201,10 @@ uv run python -I -B -m pytest -c tools/plots/pytest.ini --rootdir=tools/plots to
 The fixtures are small and not fully converged; `tests/test_runs_diagnostics.py` asserts the findings each
 one raises. The S matrix rebuilt from `bk_coefficients.bin` with `copies/s_matrix.py` must equal
 `s_matrix.tsv` to 1e-12 of the largest |S| at each energy (`tests/test_runs_s_matrix.py`): the check that the
-BK reader, the time sums, the prefactor and the phases are right.
+BK reader, the time sums, the prefactor and the phases are right. The densities/ records must sum to the norm of
+averages.dat (1e-13), give its ⟨Z⟩ and ⟨r⟩ (1e-12), equal the probability per cell of the wave function in
+`checkpoint.bin` (1e-12 of the largest cell, also mid-run, in a restart's first segment), and a split run's
+segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`).
 
 ## Limits
 

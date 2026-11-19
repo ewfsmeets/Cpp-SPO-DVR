@@ -282,3 +282,17 @@ def r_grid_ends(largest_ratio: float, level: tuple[int, int]) -> Finding | None:
         "initial state from the start (counted as reaction); widen the r grid",
         SECTION_VERIFY,
     )
+
+
+def norm_by_region(time_au: float, regions: dict[str, float]) -> Finding:
+    """Information: where the norm left is at the last densities/ record (the regions of
+    compute.densities.region_norms: r >= r_c, and the Z bands for r < r_c)."""
+    return Finding(
+        "information",
+        "norm by region at the end",
+        f"t = {time_au:g} a.u.: " + "; ".join(f"{label}: {value:.1e}" for label, value in regions.items()),
+        "",
+        "where the norm left sits: below Zana it is flux not yet analysed; beyond Zana the scattering wave's has "
+        "been analysed, the specular wave's only beyond its own analysis line (the rest norm of averages.dat)",
+        SECTION_TIME,
+    )

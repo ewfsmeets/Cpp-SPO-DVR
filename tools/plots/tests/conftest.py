@@ -3,6 +3,7 @@ anything imports matplotlib), and the runs that the tests named test_runs_* read
 the ctest PlotRuns.Fixtures (tests/test_plot_fixtures.cpp of the repository), and a copy of one as a run
 that stopped early."""
 
+import json
 import os
 import shutil
 from pathlib import Path
@@ -11,7 +12,8 @@ import pytest
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 
-from readers.binary import read_bk_coefficients  # noqa: E402 (after the backend is chosen)
+from readers.arrays import record_bytes  # noqa: E402 (after the backend is chosen)
+from readers.binary import read_bk_coefficients  # noqa: E402
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 
@@ -35,7 +37,8 @@ def fixture_runs(request: pytest.FixtureRequest) -> Path:
     return path
 
 
-STOPPED_RECORDS = 50  # BK records kept in the stopped run
+STOPPED_RECORDS = 50  # BK records kept in the stopped run (t = 10 .. 500 a.u.)
+STOPPED_DENSITY_RECORDS = 6  # densities/ records kept (t = 0 .. 500 a.u., every dtAve 100)
 
 
 @pytest.fixture(scope="session")
@@ -56,7 +59,21 @@ def stopped_run(fixture_runs: Path, tmp_path_factory: pytest.TempPathFactory) ->
     (run / "bk_coefficients.bin").write_bytes(
         data[: records_start + STOPPED_RECORDS * record_bytes + record_bytes // 2]
     )
+    copy_densities_up_to(whole / "densities", run / "densities", STOPPED_DENSITY_RECORDS)
     return run
+
+
+def copy_densities_up_to(source: Path, target: Path, records: int) -> None:
+    """densities/ as the program leaves it when it stops after `records` records: every dataset file cut there,
+    the next record of the first dataset half written (its time not yet)."""
+    target.mkdir()
+    manifest = json.loads((source / "manifest.json").read_text(encoding="utf-8"))
+    shutil.copy(source / "manifest.json", target / "manifest.json")
+    (target / "times.bin").write_bytes((source / "times.bin").read_bytes()[: 8 * records])
+    for k, spec in enumerate(manifest["datasets"].values()):
+        size = record_bytes(spec)
+        kept = records * size + (size // 2 if k == 0 else 0)
+        (target / spec["file"]).write_bytes((source / spec["file"]).read_bytes()[:kept])
 
 
 @pytest.fixture(scope="session")
@@ -65,9 +82,21 @@ def fresh_run(stopped_run: Path, tmp_path_factory: pytest.TempPathFactory) -> Pa
     half a record, no complete record."""
     run = tmp_path_factory.mktemp("fresh") / "hardwall_tiny_fresh"
     shutil.copytree(stopped_run, run)
+    shutil.rmtree(run / "densities")
+    copy_densities_up_to(stopped_run / "densities", run / "densities", 1)  # only the record at tStart
     bk = read_bk_coefficients(run / "bk_coefficients.bin")
     n_times, n_v, n_states = bk.coefficients.shape
     record_bytes = 8 + 16 * n_v * n_states
     data = (run / "bk_coefficients.bin").read_bytes()
     (run / "bk_coefficients.bin").write_bytes(data[: len(data) - n_times * record_bytes])  # the half record stays
+    return run
+
+
+@pytest.fixture(scope="session")
+def no_density_record_run(fresh_run: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The fresh run stopped before its first averages time: densities/ holds its manifest and half a record."""
+    run = tmp_path_factory.mktemp("no_density_record") / "hardwall_tiny_no_density_record"
+    shutil.copytree(fresh_run, run)
+    shutil.rmtree(run / "densities")
+    copy_densities_up_to(fresh_run / "densities", run / "densities", 0)
     return run

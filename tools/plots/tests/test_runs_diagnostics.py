@@ -18,6 +18,7 @@ EXPECTED = {
         "gas-phase states reach the ends of the r grid",
         "slowest converged energy",
         "norm left",
+        "norm by region at the end",
     ],
     "dailight_oblique": [
         "P_scattered still moving",
@@ -27,6 +28,7 @@ EXPECTED = {
         "gas-phase states reach the ends of the r grid",
         "slowest converged energy",
         "norm left",
+        "norm by region at the end",
     ],
     "potential_only": ["not checked: the propagation"],
 }

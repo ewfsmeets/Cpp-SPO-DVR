@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from copies.real_compare import rne
+from readers.arrays import Series, first_non_finite_record, read_series
 from readers.errors import ReadError
 from readers.run_info import RunInfo, read_run_info
 from readers.tables import Averages, first_non_finite, read_averages
@@ -71,4 +72,28 @@ def read_joined_averages(directories: list[Path]) -> tuple[Averages, list[float]
     times, rows = join_records([a.times_au for a in parts], columns, "averages.dat")
     norm, z_mean_bohr, r_mean_bohr, rest_norm = rows.T
     joined = Averages(times, norm, z_mean_bohr, r_mean_bohr, rest_norm, first_non_finite(rows))
+    return joined, [info.t_start_au for info in infos]
+
+
+def read_joined_series(directories: list[Path], name: str) -> tuple[Series, list[float]]:
+    """The series directory `name` (e.g. "densities") of the segments of one run, joined record by record
+    (a record repeated at a segment boundary must be bitwise equal and appears once), and the segments'
+    start times. Raises ReadError when the segments' manifests differ (datasets, grids or record interval)."""
+    infos, _ = ordered_segments(directories)
+    parts = [read_series(info.directory / name) for info in infos]
+    for part in parts[1:]:
+        if part.manifest != parts[0].manifest:
+            raise ReadError(
+                f"{part.directory}: another manifest than {parts[0].directory} (datasets, grids or record interval); "
+                "give the segments of one run"
+            )
+    times = [p.times_au for p in parts]
+    arrays = {}
+    joined_times = np.array([])
+    for dataset in parts[0].arrays:  # join_records returns the joined times with each dataset: the same every time
+        joined_times, arrays[dataset] = join_records(times, [p.arrays[dataset] for p in parts], name)
+    first = parts[0]
+    joined = Series(
+        first.directory, first.manifest, joined_times, arrays, first_non_finite_record(joined_times, arrays)
+    )
     return joined, [info.t_start_au for info in infos]

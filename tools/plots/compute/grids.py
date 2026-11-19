@@ -49,3 +49,10 @@ def parallel_momentum_of(info: RunInfo, n: np.ndarray, m: np.ndarray) -> tuple[n
         delta_ky_per_bohr=lattice["delta_ky"],
         skew_angle_rad=lattice["skew_angle_rad"],
     )
+
+
+def density_per_volume(probability: np.ndarray, cell_volume_bohr_n: float) -> np.ndarray:
+    """A probability per grid cell divided by the cell's volume: the density whose integral over the cells is
+    the probability (per bohr^2 for a (Z, r) cell dZ dr, per bohr for a cell dZ of a Z profile). Every
+    probability per cell becomes a density here."""
+    return np.asarray(probability) / cell_volume_bohr_n
