@@ -572,8 +572,9 @@ TEST(ScmDiagnostics, ScmD3RaisedAtomStopsEveryRunMode) {
             std::string::npos);
 }
 
-// SCM D11: the C++ has no .pes cache. A potential-only SCM run writes only the gas-phase files into
-// its output directory, nothing it would read back, and prints the SCM block after the CRP data set.
+// SCM D11: the C++ has no .pes cache. A potential-only SCM run writes only the gas-phase files and the
+// run metadata (run_info.json) into its output directory, nothing it would read back, and prints the
+// SCM block after the CRP data set.
 TEST(ScmDiagnostics, ScmD11PotentialOnlyRunWritesNoPesCache) {
   const TemporaryDirectory dir("spodvr_scm_d11");
   nlohmann::json json = scm_input(example_directory / "examplePosfile.dat");
@@ -584,7 +585,9 @@ TEST(ScmDiagnostics, ScmD11PotentialOnlyRunWritesNoPesCache) {
   for (const fs::directory_entry& entry : fs::directory_iterator(dir.path() / "output"))
     files.push_back(entry.path().filename().string());
   std::sort(files.begin(), files.end());
-  EXPECT_EQ(files, (std::vector<std::string>{"asymptotic_potential.dat", "gas_phase_states.dat"}));
+  EXPECT_EQ(files, (std::vector<std::string>{"asymptotic_potential.dat", "gas_phase_states.dat", "run_info.json"}));
+  const nlohmann::json info = nlohmann::json::parse(std::ifstream(dir.path() / "output" / "run_info.json"));
+  EXPECT_EQ(info["system_id"], "CRPDistrtSurface");
   EXPECT_LT(out.find("CRP DATA SET"), out.find("SCM DISTORTED SURFACE"));
   EXPECT_EQ(out.find("Warning: an ideal atom"), std::string::npos);
 }

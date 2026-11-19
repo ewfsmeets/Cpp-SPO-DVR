@@ -1,7 +1,8 @@
 # shellcheck shell=bash
 # The helpers of the tools that build trees of this repository in scratch directories:
 # tools/check_bitwise_refactor.sh and tools/compare_propagation.sh (a Release build of spodvr from a
-# base commit and one from the working tree) and tools/crp_mutation_check/run.sh (offline sources).
+# base commit and one from the working tree, also with the GPU backend) and
+# tools/crp_mutation_check/run.sh (offline sources).
 # Sourced, never run, after the caller has set repo (its repository root):
 #   source "$repo/tools/scratch_build.sh"
 # Sourcing sets source_options for nlohmann_json (offline_sources).
@@ -49,6 +50,14 @@ add_base_worktree() {
 build_spodvr() {
   cmake -S "$1" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_BUILD_TESTS=OFF -DSPODVR_BUILD_TOOLS=OFF \
     "${source_options[@]}" >/dev/null
+  cmake --build "$2" --target spodvr >/dev/null
+}
+
+# build_spodvr_cuda SOURCE_DIR BUILD_DIR: the same with the GPU backend (-DSPODVR_USE_CUDA=ON; nvcc and
+# the host compiler as in docs/cuda.md).
+build_spodvr_cuda() {
+  cmake -S "$1" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_BUILD_TESTS=OFF -DSPODVR_BUILD_TOOLS=OFF \
+    -DSPODVR_USE_CUDA=ON "${source_options[@]}" >/dev/null
   cmake --build "$2" --target spodvr >/dev/null
 }
 

@@ -327,6 +327,8 @@ spodvr <input.json> [--threads N] [--schedule dynamic|static] [--device cpu|cuda
   stays in GPU memory (needs a build with `-DSPODVR_USE_CUDA=ON`; [docs/cuda.md](docs/cuda.md)). The
   results agree with the CPU's to rounding (≈1e-13, the level of a different FFT library).
 - `--output-dir DIR`: where the data files are written (default: the current directory).
+- `--version`: the version and the git commit the program was built from (`spodvr 0.1.0 (git <commit>)`;
+  `-dirty` when tracked files had uncommitted changes), also recorded in `run_info.json`.
 - The results do not depend on the number of threads or on the schedule.
 
 ### Exit codes
@@ -352,7 +354,7 @@ Defined in `src/app/run.cpp` and `src/app/main.cpp`:
 - **Data files** (in the output directory, numbers in full precision):
   - the results: tab-separated tables (`.tsv`, energies in eV) with `#` comment lines that explain
     every column, then one header line; they load with `pandas.read_csv(f, sep="\t", comment="#")`;
-  - `analysis.json`: the run metadata;
+  - `run_info.json` (every run) and `analysis.json` (runs with an analysis): the run metadata;
   - the `.dat` files: space-separated columns after `#` comment lines (atomic units, unless a column
     says otherwise); they load with `numpy.loadtxt(f)`;
   - the binary restart files.
@@ -363,6 +365,7 @@ Defined in `src/app/run.cpp` and `src/app/main.cpp`:
 | `s_matrix.tsv` | per energy and open final state (v, j, mJ, n, m): S-matrix element, probability, phase |
 | `probabilities_rovib.tsv` | (with `writeProbs`) per energy and (v, j, mJ), summed over diffraction |
 | `probabilities_diffraction.tsv` | (with `writeRDProbs`) per energy, (v, j, mJ) and diffraction order |
+| `run_info.json` | every run: program version and git commit, input, grids, rotational basis, lattice, wave packet, analysis energies, absorbers ([fields](docs/output_files.md#run-metadata)) |
 | `analysis.json` | run metadata: basis sizes, initial state, energy grid, file list; the SCM identity of a `CRPDistrtSurface` run |
 | `averages.dat` | time (a.u.), norm, ⟨Z⟩, ⟨r⟩ (bohr), rest norm during the propagation |
 | `asymptotic_potential.dat`, `gas_phase_states.dat` | set-up data: V_asy(r) (hartree and eV); the gas-phase energies (hartree) and wave functions |
@@ -572,7 +575,7 @@ If you use this program, please cite it and the original Fortran code, and the p
 surface you used:
 
 - **This program:** GitHub's "Cite this repository" button (from [CITATION.cff](CITATION.cff)),
-  with the version (`spodvr --version`, also in `analysis.json`) or the commit you used.
+  with the version and commit (`spodvr --version`, also in `run_info.json`).
 - **The original Fortran code:**
   - M. F. Somers, *Six-Dimensional Quantum Dynamics of Dissociative Chemisorption of Hydrogen on
     Metal Surfaces*, PhD thesis, Leiden University (2004),

@@ -8,6 +8,7 @@
 
 #include "app/banner.hpp"
 #include "app/cli.hpp"
+#include "app/git_description.hpp"
 #include "app/run.hpp"
 
 int main(int argc, char** argv) {
@@ -23,10 +24,11 @@ int main(int argc, char** argv) {
     std::cout << spodvr::banner() << '\n' << spodvr::usage();
     return 0;
   }
+  const spodvr::ProgramInfo program{SPODVR_VERSION, std::string(spodvr::git_description())};
   if (command_line.version) {
-    std::cout << "spodvr " SPODVR_VERSION "\n";
+    std::cout << "spodvr " << program.version << " (git " << program.git << ")\n";
     return 0;
   }
   const bool color = !command_line.no_color && isatty(STDOUT_FILENO) != 0;
-  return spodvr::run_program(command_line, std::cout, std::cerr, color);
+  return spodvr::run_program(command_line, std::cout, std::cerr, color, program);
 }

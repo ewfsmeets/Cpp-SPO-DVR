@@ -21,7 +21,7 @@ std::string usage() {
          "  --output-dir DIR  directory for the output data files (default: current directory)\n"
          "  --no-color        disable ANSI colours (also disabled when stdout is not a terminal)\n"
          "  --help            show this help\n"
-         "  --version         show the program version\n";
+         "  --version         show the program version and the git commit it was built from\n";
 }
 
 CommandLine parse_command_line(const std::vector<std::string>& args) {

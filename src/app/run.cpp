@@ -7,6 +7,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <optional>
 #include <string_view>
 #include <system_error>
@@ -42,6 +43,7 @@
 #include "report/fine_analysis_report.hpp"
 #include "report/potential_report.hpp"
 #include "report/propagation_report.hpp"
+#include "report/run_info_file.hpp"
 #include "report/sections.hpp"
 
 namespace spodvr {
@@ -284,7 +286,8 @@ BkInput analysis_input(const Config& config) {
 }  // namespace
 
 // Fortran: Main.f90 (new runs, restarts, analysis-only and potential-only runs).
-int run_program(const CommandLine& command_line, std::ostream& out, std::ostream& err, bool color) {
+int run_program(const CommandLine& command_line, std::ostream& out, std::ostream& err, bool color,
+                const ProgramInfo& program) {
   const Style style{color};
   try {
     if (command_line.threads) omp_set_num_threads(*command_line.threads);
@@ -359,6 +362,13 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     std::filesystem::create_directories(command_line.output_dir);
     write_asymptotic_potential_file(command_line.output_dir / "asymptotic_potential.dat", grids, asymptotic);
     write_gas_phase_file(command_line.output_dir / "gas_phase_states.dat", grids, gas);
+    // An analysis-only run may write into the directory of the propagation it analyses: its metadata go
+    // next to its own results, so that the propagation's run_info.json stays.
+    const std::filesystem::path run_info_dir =
+        analysis_only ? command_line.output_dir / "fine_analysis" : command_line.output_dir;
+    std::filesystem::create_directories(run_info_dir);
+    write_run_info(run_info_dir / "run_info.json", config, grids, angular, program, command_line.input_file,
+                   std::cref(gas));
     out << "\n  Data files written to " << command_line.output_dir.string() << "\n";
 
     if (config.derived.run_mode == 6) {

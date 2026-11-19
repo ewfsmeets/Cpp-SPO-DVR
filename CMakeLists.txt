@@ -250,6 +250,7 @@ add_library(spodvr_core
   src/report/propagation_report.cpp
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp
+  src/report/run_info_file.cpp
   src/report/fine_analysis_report.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)
@@ -383,7 +384,18 @@ if(SPODVR_USE_CUDA)
   target_compile_definitions(spodvr_app PUBLIC SPODVR_HAVE_CUDA)
 endif()
 
-add_executable(spodvr src/app/main.cpp)
+# The git commit of the spodvr executable (--version, run_info.json): git_description.cpp is
+# regenerated at every build but rewritten only when `git describe --always --dirty` changes, and only
+# spodvr compiles it (the libraries, tests and tools never relink for a new commit).
+set(git_description_source ${CMAKE_CURRENT_BINARY_DIR}/git_description.cpp)
+add_custom_target(spodvr_git_description
+  COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -DOUTPUT=${git_description_source}
+          -P ${PROJECT_SOURCE_DIR}/cmake/git_describe.cmake
+  BYPRODUCTS ${git_description_source}
+  COMMENT "git describe for the spodvr executable"
+  VERBATIM)
+add_executable(spodvr src/app/main.cpp ${git_description_source})
+add_dependencies(spodvr spodvr_git_description)
 target_link_libraries(spodvr PRIVATE spodvr_app spodvr_warnings spodvr_fp)
 
 # =============================================================================================

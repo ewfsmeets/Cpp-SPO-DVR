@@ -91,6 +91,15 @@ add_test(NAME Docs.SubscriptAnchorFails
          COMMAND ${check_docs_negative} -DCASE=subscript-anchor
                  -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/subscript-anchor -P ${check_docs_negative_script})
 
+# spodvr --version names the git commit the program was built from (cmake/git_describe.cmake): in a git
+# checkout a commit, never "unknown" (the tests' run_program calls always get "unknown").
+add_test(NAME Program.VersionNamesTheCommit COMMAND $<TARGET_FILE:spodvr> --version)
+set_tests_properties(Program.VersionNamesTheCommit PROPERTIES
+                     PASS_REGULAR_EXPRESSION "^spodvr [0-9.]+ \\(git [0-9A-Za-z._-]+\\)")
+if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
+  set_tests_properties(Program.VersionNamesTheCommit PROPERTIES FAIL_REGULAR_EXPRESSION "git unknown")
+endif()
+
 # The refusals and the input staging of the Fortran reference tools (test_reference_tools.sh,
 # tools/fortran_reference/README.md): stub installs and synthetic build logs, no Fortran run.
 set(reference_tools_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_reference_tools.sh)

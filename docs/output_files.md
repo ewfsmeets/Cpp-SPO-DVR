@@ -3,7 +3,8 @@
 All files are written to `--output-dir`. Numbers that are compared with the Fortran code are
 written in full precision (`%.16e`). Lengths are in bohr and times in atomic units everywhere;
 energies are in eV in the result tables (`.tsv`, `analysis.json`) and in hartree in the `.dat`
-files, unless a column says otherwise (each file's `#` header names the units).
+files and `run_info.json`, unless a column or field name says otherwise (each file's `#` header names
+the units).
 
 ## Results (tab-separated tables)
 
@@ -60,6 +61,36 @@ point stops the run), a table of the jump of V across the cell edges (SCM D10), 
 on the Z planes below the CRP's Zmin at Rmin ≤ r ≤ Rmax (SCM D15), each with its warning, and the
 lowest V − V_CRP at r outside Rmin .. Rmax on every Z plane, with whether it lies below Rmin or
 inside the r absorber (SCM D15, no warning). An analysis-only run checks only the gas-phase points.
+
+## Run metadata
+
+`run_info.json` is written by every run that reaches its output directory (all run modes), next to
+the gas-phase files; an analysis-only run (`onlyAnalysis`) writes it into `fine_analysis/`, next to its
+results, so that it never replaces the file of the propagation it analyses (`RestartDir` may be the
+output directory). It holds what a plot or a reader needs to interpret the other files, in one
+place. Atomic units (bohr, hartree, atomic units of time, electron masses) unless a field name ends
+in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
+
+| Field | Content |
+|---|---|
+| `format_version` | 1 |
+| `program` | `name`, `version`, `git`: the commit the `spodvr` executable was built from (`git describe --always --dirty`: `-dirty` when tracked files had uncommitted changes, new untracked files are not noticed; "unknown" outside a git checkout) |
+| `title`, `system_id`, `input_file` | the input's `Title` and `SystemID`; the input file as given on the command line |
+| `run_mode` | `code` (0 new, 1 restart, 2 analysis only, 6 potential only) and `name` |
+| `new_calculation`, `restart_dir` | `NewCalc`; `RestartDir` as given (null if absent) |
+| `times` | `t_start`, `t_end`, `dt_step`, `n_steps`, `dt_analysis`, `steps_per_analysis`, `dt_averages`, `analyses_per_average` |
+| `molecule` | `mass1_amu`, `mass2_amu`, `homonuclear`, `total_mass`, `reduced_mass` (electron masses) |
+| `initial_state` | `v`, `j`, `mJ`, `energy` and `energy_ev`: E(vin, jin) of the gas phase |
+| `wave_packet` | `e_min_ev`, `e_max_ev` (`EMinWP`, `EMaxWP`: normal energies), `translational_energy_ev`, `z0`, `alpha` (the packet is (2α/π)^¼ exp(−α(Z − Z0)² − i kz Z)), `sigma_z` = 1/(2√α) (the width of \|ψ\|²), `k_total`, `kz`, `kx` and `ky` (components along the reciprocal lattice axes), `k_parallel` (Cartesian magnitude), `theta_incidence_rad`, `phi_incidence_rad`, `e_parallel_ev`, `phi_parallel_deg` |
+| `analysis_energies` | `collision_ev` and `total_ev` (= collision + E(vin, jin)): the energies of the on-the-fly S matrix |
+| `grids` | `z_start`, `dz`, `nz`, `nz_specular`, `r_start`, `dr`, `nr`, `nx`, `ny`, `dx`, `dy`, `j_max`, `mj_max` (the effective value: `MJMax` < 1 means `JMax`), `n_theta`, `n_phi`, `nz_potential` (Z points below z_asymptotic), `xy_volume_element`, `unit_cell_area`, `unit_cell_norm` |
+| `rotational_basis` | `states`: [J, mJ] of every rotational state, in the order of the wave function's first index; `initial_index` |
+| `lattice` | `a`, `b`, `skew_angle_rad`, `point_group`, `delta_kx`, `delta_ky` (reciprocal lattice spacings) |
+| `z_asymptotic`, `z_asymptotic_unswitched` | where the gas phase begins (with switching: `ZmaxSwitch`), and the PES's own value |
+| `analysis` | `z_ana` (on the grid) and its 0-based index `iz_ana`, `z_ana_specular` (`ZAnaSp`, null if not given), `dynamic_specular_analysis`, `fixed_z_analysis_specular` |
+| `absorbers` | `power`, and `list`: per absorber its `name` (`ZOpt`, `ROpt`, `ZSpOpt`, and `ZOptLow`, `ZSpOptLow` when on), its `grid` (scattering, specular, both), `coordinate`, `start`, `end`, effective `strength` (hartree, after the energy table) and the grid `points` inside it (`first`, `last`, 0-based) |
+| `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
+| `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
 
 ## Data files (space-separated)
 
