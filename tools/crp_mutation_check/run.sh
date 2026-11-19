@@ -14,7 +14,8 @@
 # Environment: OMP_NUM_THREADS (build jobs and test threads, default 8);
 #   FETCHCONTENT_SOURCE_DIR_GOOGLETEST and FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON (sources for an
 #   offline configure; default <repo>/build/_deps/googletest-src and .../nlohmann_json-src, cloned
-#   from GitHub if those are missing; tools/scratch_build.sh offline_sources).
+#   from GitHub if those are missing; tools/scratch_build.sh offline_sources). Needs the checkout's
+#   Python environment (`uv sync`, README "Dependencies"): the scratch worktree's tests use its .venv.
 # Run time: 15-16 min (28 mutations at 4 threads; three runs on 2026-11-14).
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,6 +41,7 @@ mkdir -p "${scratch}"
 [[ -d "${wt}" ]] || git -C "${repo}" worktree add --detach "${wt}" HEAD > /dev/null
 if [[ ! -f "${wt}/build/build.ninja" ]] &&
   ! cmake -S "${wt}" -B "${wt}/build" -G Ninja -DCMAKE_BUILD_TYPE=Release "${source_options[@]}" \
+    -DPython3_EXECUTABLE="${repo}/.venv/bin/python" \
     > "${scratch}/configure.log" 2>&1; then
   echo "error: the configure failed; see ${scratch}/configure.log" >&2
   exit 1

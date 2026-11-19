@@ -21,3 +21,5 @@ fort.*
 !tests/crplib/reference/**
 !tests/scm/**
 !potentials/**
+# The Python environment of the tests and tools (uv sync, pyproject.toml)
+/.venv/

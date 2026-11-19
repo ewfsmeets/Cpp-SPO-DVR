@@ -247,9 +247,9 @@ it bounds the error in 1 − Σ R.
 
 ## 10. Verifying a new input
 
-1. `uv run -q --with numpy python -I tools/wave_packet_check.py input.json --zasymp <Z_asymp>`:
+1. `uv run -q python -I tools/wave_packet_check.py input.json --zasymp <Z_asymp>`:
    all margins met, absorbers inside the table, R + T small over the relevant energies. Or
-   `python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check input.json`, which also
+   `uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check input.json`, which also
    runs the program's input checks.
 2. Run to t ≈ 500 a.u.: the total norm drops by ≲ 1e-7 (DZ: 1 − 4.7e-8; with dZ 0.15 it was
    1 − 3.3e-6), and no "fixed at" message appears before the packet reaches `Zana`.

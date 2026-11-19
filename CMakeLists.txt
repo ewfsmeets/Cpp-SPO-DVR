@@ -402,6 +402,16 @@ target_link_libraries(spodvr PRIVATE spodvr_app spodvr_warnings spodvr_fp)
 # Tests and developer tools
 # =============================================================================================
 if(SPODVR_BUILD_TESTS)
+  # The Python of the tests: the repository's uv environment (`uv sync` creates .venv/ from
+  # pyproject.toml and uv.lock; README "Dependencies"). -DPython3_EXECUTABLE=... names another Python
+  # that has numpy, matplotlib and pytest.
+  set(Python3_EXECUTABLE ${PROJECT_SOURCE_DIR}/.venv/bin/python CACHE FILEPATH
+      "Python of the tests (uv sync creates the default)")
+  if(NOT EXISTS ${Python3_EXECUTABLE})
+    message(FATAL_ERROR "No Python for the tests at ${Python3_EXECUTABLE}: run `uv sync` in ${PROJECT_SOURCE_DIR} "
+                        "(README \"Dependencies\"), or configure with -DPython3_EXECUTABLE=<a Python with "
+                        "numpy, matplotlib and pytest>, or with -DSPODVR_BUILD_TESTS=OFF.")
+  endif()
   enable_testing()
   add_subdirectory(tests)
 endif()

@@ -95,7 +95,7 @@ sudo apt install build-essential cmake ninja-build git pkg-config \
   libfftw3-dev liblapack-dev python3 python3-pandas
 git clone https://github.com/ewfsmeets/Cpp-SPO-DVR.git
 cd Cpp-SPO-DVR
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSPODVR_BUILD_TESTS=OFF   # the program only
 cmake --build build
 ./build/spodvr inputs/hardwall_small/input.json --threads 8 --output-dir runs/hardwall_small
 ```
@@ -136,17 +136,20 @@ Next steps: an H₂/Cu(111) calculation on a small grid, and your own input ([In
   - FFTW3 + LAPACK, found through pkg-config (the fallback when oneMKL is not installed).
 - nlohmann/json and GoogleTest are downloaded by CMake (internet access needed on the first
   configure).
-- **Python 3** (≥ 3.10): CMake needs it for the tests that run the scripts in `tools/`. The tests of
-  the wave-packet designer (`WavePacketDesigner.*`) also need numpy and matplotlib in that Python.
+- **[uv](https://docs.astral.sh/uv/)** and Python: the tests run the scripts in `tools/` with the
+  repository's own Python environment, which `uv sync` creates in `.venv/` from `pyproject.toml` and
+  `uv.lock` (numpy, matplotlib, pytest) with Python 3.14, as `.python-version` names (uv downloads it
+  if the system has no 3.14). Without uv: configure with `-DPython3_EXECUTABLE=` a Python ≥ 3.10 that
+  has those three packages.
 - **Optional, for the GPU backend:** an NVIDIA GPU of compute capability 7.5 (Turing) or newer, its
   driver, and the CUDA toolkit (nvcc, cudart, cuFFT). At run time the cuFFT callback also needs
   nvJitLink and NVRTC.
   - Use the newest CUDA 13 that the driver supports. Tested with 13.3.
   - FP64 speed matters: data-centre GPUs (A100, H100) run FP64 at 1/2 of the FP32 rate, GeForce
     cards at 1/64.
-- **Optional, [uv](https://docs.astral.sh/uv/):** runs the window of the
-  [wave-packet designer](#designing-an-input-the-wave-packet-designer). The window's file lists its
-  packages (numpy, matplotlib, PyQt6), and uv installs them into its own cache on the first run.
+- uv also runs the window of the [wave-packet designer](#designing-an-input-the-wave-packet-designer):
+  the window's file lists its packages (numpy, matplotlib, PyQt6), and uv installs them into its own
+  cache on the first run.
 
 <details>
 <summary>Step by step on Debian/Ubuntu (also under WSL2)</summary>
@@ -207,17 +210,21 @@ sudo apt install cuda-toolkit-13-3
   ("unsupported GNU version"; CUDA 13.0 is the first release whose version check accepts GCC 15),
   set `CUDAHOSTCXX` or `-DCMAKE_CUDA_HOST_COMPILER` to a GCC it accepts.
 
-**4. Python** (Ubuntu ships `python3`; numpy and matplotlib for the designer's tests and figures; uv,
-optional, for the designer's window):
+**4. Python and uv** (the tests' Python environment and the designer's window):
 
 ```bash
-sudo apt install python3 python3-numpy python3-matplotlib pipx
+sudo apt install python3 pipx
 pipx install uv
 ```
 
-- CMake uses the Python 3 it reports at configure time ("Found Python3: …"). numpy and matplotlib
-  must be importable there: in a virtual environment, install them with its pip, or pick another
-  Python with `-DPython3_EXECUTABLE=/path/to/python3`.
+Then, in the repository after cloning it ([Building](#building)), `uv sync` creates `.venv/` (numpy,
+matplotlib, pytest).
+
+- CMake's tests use `.venv/bin/python`; a configure without `.venv/` stops and says to run `uv sync`.
+  An existing build directory switches to it at its next configure. Another Python with numpy,
+  matplotlib and pytest (e.g. apt's `python3-numpy python3-matplotlib python3-pytest`):
+  `-DPython3_EXECUTABLE=/usr/bin/python3`.
+- After `git pull`, run `uv sync` again if `uv.lock` changed.
 - `pipx install` puts `uv` into `~/.local/bin`; `pipx ensurepath` adds that to `PATH` if it is not
   there yet.
 - Under WSL2 the designer's window opens through WSLg. If it does not open, Qt names the system
@@ -230,6 +237,7 @@ pipx install uv
 ```bash
 git clone https://github.com/ewfsmeets/Cpp-SPO-DVR.git
 cd Cpp-SPO-DVR
+uv sync                      # the tests' Python environment (.venv/)
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
@@ -435,15 +443,15 @@ Ready-to-run inputs, from small to production size:
 grids, the initial wave packet, the absorbers, the r grid, tEnd, and the CPU and GPU memory. It applies
 the rules of [inputs/README.md](inputs/README.md), says whether `spodvr` would accept the input, and
 needs no build of the program. The window has sliders for the recipe's knobs and explains each panel
-and slider; it needs uv. The command line needs only Python with numpy
+and slider; it needs uv. The command line runs in the repository's Python environment
 ([Dependencies](#dependencies)). The window, then the checks and the memory estimate on the
 command line:
 
 ```bash
 uv run tools/wave_packet_designer/gui_mpl.py inputs/thesis_fig5_3_dz/input.json
-python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check \
+uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check \
   inputs/thesis_fig5_3_dz/input.json
-python3 -I -B tools/wave_packet_designer/wave_packet_designer.py memory \
+uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py memory \
   inputs/thesis_fig5_3_dz/input.json
 ```
 

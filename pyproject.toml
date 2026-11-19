@@ -1,0 +1,18 @@
+# The Python packages that the repository's tests and tools import (tools/, and the tests CTest runs).
+# `uv sync` installs them into .venv/ in the checkout; CMake's tests use .venv/bin/python
+# (README "Dependencies"; another Python with these packages: -DPython3_EXECUTABLE=...).
+# Not covered here: the windows of the GUI tools (each lists its packages in a PEP 723 header and runs
+# with `uv run`) and the scripts of docs/validation_thesis_fig5_3_dz/ (pandas, pymupdf).
+# The interpreter: .python-version (3.14, the system Python of the development machine; uv downloads
+# it where it is missing). ruff's settings are in ruff.toml (it takes precedence over this file).
+[project]
+name = "cpp-spo-dvr-tools"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["numpy", "matplotlib"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false

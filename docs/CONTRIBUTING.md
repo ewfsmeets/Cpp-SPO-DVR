@@ -66,6 +66,8 @@ counts (measured at 1f58b73), are in the [README](../README.md#testing). Run cte
   run the full suite before every commit that touches `src/`, `tests/`, the build files or reference
   data (the quick tier is enough for a commit of docs or Python tools only), and always before
   merging into `main`.
+- **Worktrees:** a fresh checkout or `git worktree` needs its own `uv sync` before the configure with
+  tests (or `-DPython3_EXECUTABLE=` the main checkout's `.venv/bin/python`).
 - **Partial builds:** with only some test targets built, a plain `ctest` counts every unbuilt target
   as a failure. Select with `-R`, or build everything.
 
@@ -81,7 +83,8 @@ counts (measured at 1f58b73), are in the [README](../README.md#testing). Run cte
   a machine without a GPU;
 - the wave-packet designer (`tools/wave_packet_designer/`, Python, names `WavePacketDesigner.…`): its
   copies of the program's rules against the C++ (input keys, checks, grid indices, packet values), its
-  design rules and its figure. They need numpy and matplotlib ([README: Dependencies](../README.md#dependencies)).
+  design rules and its figure. They run in the repository's Python environment (`.venv/`, made by
+  `uv sync`; [README: Dependencies](../README.md#dependencies)).
   Two C++ tests (`MemoryEstimate.MatchesTheWavePacketDesignerCases` and its `CudaBackend`
   twin) check the program's grid indices and memory estimates against the designer's
   `expected_cases.json`: when they fail, the designer's copy needs updating

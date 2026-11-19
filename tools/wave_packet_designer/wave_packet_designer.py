@@ -2,11 +2,11 @@
 """Wave-packet designer, command line: checks the Z and r grids, the initial wave packet and the absorbers,
 and estimates the memory of a run.
 
-Usage (from any directory):
-  python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check <input.json> [--png FILE]
-  python3 -I -B tools/wave_packet_designer/wave_packet_designer.py memory <input.json>
+Usage (from inside the repository, where uv finds its environment):
+  uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check <input.json> [--png FILE]
+  uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py memory <input.json>
       [--threads N] [--representatives N [--operations N]]     (counts from the SURFACE SYMMETRY block)
-  python3 -I -B tools/wave_packet_designer/wave_packet_designer.py suggest <input.json> [--dz D] [--output FILE]
+  uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py suggest <input.json> [--dz D] [--output FILE]
 All take [--zasymp Z --point-group G], required for CRP data sets (SystemID CRPlibrary, CRPDistrtSurface).
 
 Exit status: 0 spodvr accepts the input, 1 spodvr would stop on it, 2 the file or the options are unusable.
