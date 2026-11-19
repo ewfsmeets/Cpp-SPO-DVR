@@ -1,12 +1,10 @@
 // densities/ (writeDensities): the probability per (Z, r) cell at every averages time, a series directory
-// (io/series_writer.hpp); the projected size of the plot data and the free-space check. C++ only.
+// (io/series_writer.hpp), and its projected size. C++ only.
 #include "report/densities_files.hpp"
 
 #include <array>
 #include <cstddef>
 #include <span>
-
-#include "core/error.hpp"
 
 namespace spodvr {
 
@@ -62,58 +60,14 @@ void DensitiesFiles::append(const Averages& averages, const CellProbabilities& c
                                  std::as_bytes(std::span(index)), std::as_bytes(std::span(norm))});
 }
 
-std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids) {
-  std::vector<PlotDataSize> sizes;
-  if (config.input.write_densities) {
-    std::size_t record = sizeof(double);
-    for (const DatasetSpec& d : density_datasets(config, grids)) record += dataset_bytes(d);
-    const int analysis_steps = config.input.n_steps / config.derived.steps_per_analysis;
-    const int records = 1 + analysis_steps / config.derived.analyses_per_average;  // tStart and every dtAve
-    sizes.push_back({"densities/", "writeDensities", static_cast<std::uintmax_t>(records) * record});
-  }
-  return sizes;
-}
-
-std::uintmax_t free_space(const std::filesystem::path& output_dir) {
-  std::filesystem::path existing = std::filesystem::absolute(output_dir);
-  while (!std::filesystem::exists(existing) && existing.has_parent_path() && existing.parent_path() != existing)
-    existing = existing.parent_path();
-  return std::filesystem::space(existing).available;
-}
-
-std::uintmax_t replaced_plot_data_bytes(const std::filesystem::path& output_dir,
-                                        const std::vector<PlotDataSize>& sizes) {
-  std::uintmax_t bytes = 0;
-  for (const PlotDataSize& s : sizes) {
-    const std::filesystem::path replaced = output_dir / s.directory;
-    if (!std::filesystem::is_directory(replaced)) continue;
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(replaced))
-      if (entry.is_regular_file()) bytes += entry.file_size();
-  }
-  return bytes;
-}
-
-void check_free_space(const std::vector<PlotDataSize>& sizes, std::uintmax_t available) {
-  std::uintmax_t total = 0;
-  for (const PlotDataSize& s : sizes) total += s.bytes;
-  if (sizes.empty() || total <= available) return;
-  std::size_t largest = 0;
-  for (std::size_t k = 1; k < sizes.size(); ++k)
-    if (sizes[k].bytes > sizes[largest].bytes) largest = k;
-  throw InputError(sizes[largest].key, "the plot data (" + format_bytes(total) +
-                                           ") exceed the free space of the "
-                                           "output directory (" +
-                                           format_bytes(available) + "); " + sizes[largest].directory +
-                                           " is the largest part");
-}
-
-void print_plot_data(std::ostream& out, const Style& style, const std::vector<PlotDataSize>& sizes) {
-  if (sizes.empty()) return;
-  print_section(out, style, "PLOT DATA");
-  Table table({"directory", "key", "size", "cost in the time loop"});
-  for (const PlotDataSize& s : sizes)
-    table.add_row({s.directory, s.key, format_bytes(s.bytes), "a file write per averages row (no extra reduction)"});
-  table.print(out, style);
+std::optional<PlotDataSize> densities_data_size(const Config& config, const SpatialGrids& grids) {
+  if (!config.input.write_densities) return std::nullopt;
+  std::size_t record = sizeof(double);
+  for (const DatasetSpec& d : density_datasets(config, grids)) record += dataset_bytes(d);
+  const int analysis_steps = config.input.n_steps / config.derived.steps_per_analysis;
+  const int records = 1 + analysis_steps / config.derived.analyses_per_average;  // tStart and every dtAve
+  return PlotDataSize{"densities/", "writeDensities", static_cast<std::uintmax_t>(records) * record,
+                      "a file write per averages row (no extra reduction)"};
 }
 
 }  // namespace spodvr

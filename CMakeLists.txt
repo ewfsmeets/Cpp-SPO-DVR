@@ -254,6 +254,8 @@ add_library(spodvr_core
   src/report/analysis_files.cpp
   src/report/run_info_file.cpp
   src/report/densities_files.cpp
+  src/report/plot_data.cpp
+  src/report/potential_files.cpp
   src/report/fine_analysis_report.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)

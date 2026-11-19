@@ -48,6 +48,27 @@ class SeriesWriter {
   std::unique_ptr<BinaryWriter> times_;
 };
 
+// A directory of arrays written once (docs/output_files.md, "Series directories": the same manifest with
+// time_dependent false and no times.bin), one file per dataset holding its one record. The caller writes each
+// file through file(k), in the dataset's memory order, and then calls finish().
+class ArraysWriter {
+ public:
+  // Creates `directory` (removing an older one there) and writes manifest.json.
+  ArraysWriter(const std::filesystem::path& directory, const std::string& kind, std::vector<DatasetSpec> datasets,
+               const nlohmann::ordered_json& extra);
+
+  // The file of dataset k (in the order of the specs).
+  [[nodiscard]] BinaryWriter& file(std::size_t k);
+
+  // Closes the files; throws std::logic_error when a file does not hold exactly its dataset's bytes.
+  void finish();
+
+ private:
+  std::filesystem::path directory_;
+  std::vector<DatasetSpec> datasets_;
+  std::vector<std::unique_ptr<BinaryWriter>> files_;
+};
+
 // Bytes of one value of a dtype ("<f8" 8, "<i4" 4); throws std::invalid_argument for others.
 [[nodiscard]] std::size_t dtype_bytes(const std::string& dtype);
 

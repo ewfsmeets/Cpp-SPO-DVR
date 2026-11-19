@@ -59,6 +59,13 @@ struct PotentialGrid {
 [[nodiscard]] std::vector<double> compute_asymptotic_potential(const Potential& potential, const Config& config,
                                                                const SpatialGrids& grids);
 
+// The minimum of V over the DVR orientations at every (x, y) point of the (Z, r) point izr (hartree), and the
+// orientation where it is reached, as itp = iphi + nphi * itheta (the first in itp order); a NaN at any
+// orientation gives NaN and that orientation. Reads through operator() (the symmetry maps). minimum and
+// orientation hold n_xy values (ixy order). For the plot data (writePotential, report/potential_files.hpp).
+void minimum_over_orientations(const PotentialGrid& grid, std::size_t izr, std::span<double> minimum,
+                               std::span<int> orientation);
+
 // vdvr = -V * dt, the form used by the propagator. Fortran: Potential.f90 premultiplyWithTimestep
 void premultiply_with_time_step(std::span<double> values, double time_step);
 

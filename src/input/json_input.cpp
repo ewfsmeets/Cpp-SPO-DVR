@@ -10,6 +10,7 @@
 
 #include "core/error.hpp"
 #include "core/real_compare.hpp"
+#include "input/validate_outputs.hpp"
 
 namespace spodvr {
 
@@ -43,6 +44,24 @@ class JsonReader {
   }
   void read(const std::string& key, std::optional<int>& target) {
     if (present(key, Presence::Optional)) target = as_integer(key, json_.at(key));
+  }
+
+  // PlotSites: a list of objects with a name (string) and the fractional coordinates x and y (numbers). Their types
+  // and fields are checked here (the field names in validate_outputs.hpp), their values by validate_output_keys.
+  void read(const std::string& key, std::vector<PlotSite>& target, Presence presence) {
+    if (!present(key, presence)) return;
+    const Json& list = json_.at(key);
+    if (!list.is_array()) throw InputError(key, "expected a list of sites");
+    target.clear();
+    for (const Json& item : list) {
+      if (!item.is_object()) throw InputError(key, "each site must be an object with a name, x and y");
+      for (const auto& field : item.items())
+        if (!is_plot_site_field(field.key())) throw InputError(key, "unknown site field '" + field.key() + "'");
+      for (const std::string& field : plot_site_fields())
+        if (!item.contains(field)) throw InputError(key, "a site without '" + field + "'");
+      target.push_back({as_string(key, item.at(plot_site_fields()[0])), as_real(key, item.at(plot_site_fields()[1])),
+                        as_real(key, item.at(plot_site_fields()[2]))});
+    }
   }
 
   // A key of a Fortran feature this program does not support. Logical keys are accepted when
@@ -233,6 +252,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("CheckpointFormat", p.checkpoint_format, optional);
 
   in.read("writeDensities", p.write_densities, optional);
+  in.read("writePotential", p.write_potential, optional);
+  in.read("PlotSites", p.plot_sites, optional);
 
   in.read("DoDump", p.do_dump, optional);
   in.read("FullSMatrix", p.full_s_matrix, optional);

@@ -17,6 +17,7 @@
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
+#include "input/validate_outputs.hpp"
 #include "input/wave_packet_params.hpp"
 #include "temporary_directory.hpp"
 
@@ -31,6 +32,18 @@ Json reference_json() {
 }
 
 Config build(const Json& json) { return build_config(parse_input(json)); }
+
+// A PlotSites list of (name, x, y) entries.
+struct SiteSpec {
+  std::string name;
+  double x;
+  double y;
+};
+Json site_list(const std::vector<SiteSpec>& sites) {
+  Json list = Json::array();
+  for (const SiteSpec& site : sites) list.push_back({{"name", site.name}, {"x", site.x}, {"y", site.y}});
+  return list;
+}
 
 // Expects an InputError naming `parameter` for the modified input; returns its message ("" if none).
 std::string expect_input_error(const Json& json, const std::string& parameter) {
@@ -507,6 +520,26 @@ TEST(Input, LowZAbsorberStrengths) {
   }
 }
 
+// writePotential with sites on the grid is accepted in a new run and a potential-only run; a site off the grid is
+// refused naming the nearest grid point.
+TEST(Input, WritePotentialWithSitesOnTheGrid) {
+  Json json = reference_json();
+  json["writePotential"] = true;
+  json["PlotSites"] = site_list({{"origin", 0.0, 0.0}, {"far", 0.75, 0.5}});
+  const Config config = build(json);
+  ASSERT_EQ(config.input.plot_sites.size(), 2u);
+  EXPECT_EQ(plot_site_ixy(config.input.plot_sites[1], config.input.nx, config.input.ny), 2 + config.input.ny * 3);
+  json["Potential"] = true;
+  EXPECT_TRUE(build(json).input.write_potential);
+  json["PlotSites"] = site_list({{"between", 0.3, 0.0}});
+  try {
+    build(json);
+    FAIL() << "no InputError";
+  } catch (const InputError& e) {
+    EXPECT_NE(std::string(e.what()).find("the nearest point is x = 0.25 (index 1)"), std::string::npos) << e.what();
+  }
+}
+
 // writeDensities in a new run (and in a restart, the other propagating mode) is accepted.
 TEST(Input, WriteDensitiesInAPropagatingRun) {
   Json json = reference_json();
@@ -579,6 +612,39 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"WriteDensitiesAnalysisOnly",
                   [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writeDensities"] = true; },
                   "writeDensities"},
+        Violation{"WritePotentialAnalysisOnly",
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writePotential"] = true; },
+                  "writePotential"},
+        // PlotSites: the list and its fields (json_input.cpp), then the values (validate_outputs.cpp).
+        Violation{"PlotSitesNotAList", [](Json& j) { j["writePotential"] = true; j["PlotSites"] = 3; }, "PlotSites"},
+        Violation{"PlotSitesNotObjects", [](Json& j) { j["writePotential"] = true; j["PlotSites"] = Json::array({1}); },
+                  "PlotSites"},
+        Violation{"PlotSitesUnknownField",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["z"] = 1.0; },
+                  "PlotSites"},
+        Violation{"PlotSitesMissingField",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0].erase("y"); },
+                  "PlotSites"},
+        Violation{"PlotSitesWrongType",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["name"] = 1; },
+                  "PlotSites"},
+        Violation{"PlotSitesWithoutUser", [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); }, "PlotSites"},
+        Violation{"PlotSitesOutsideTheCell",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 1.0, 0.0}}); }, "PlotSites"},
+        Violation{"PlotSitesOffTheGrid",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.3}}); }, "PlotSites"},
+        Violation{"PlotSitesSameName",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}, {"a", 0.25, 0.0}}); },
+                  "PlotSites"},
+        Violation{"PlotSitesWithoutName",
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"", 0.0, 0.0}}); }, "PlotSites"},
+        Violation{"PlotSitesTooMany",
+                  [](Json& j) {
+                    j["writePotential"] = true;
+                    j["PlotSites"] = Json::array();
+                    for (int k = 0; k <= max_plot_sites; ++k) j["PlotSites"].push_back(site_list({{"s" + std::to_string(k), 0.0, 0.0}})[0]);
+                  },
+                  "PlotSites"},
         Violation{"tEnd", [](Json& j) { j["tEnd"] = 14002.0; }, "tEnd"},
         Violation{"dtStep", [](Json& j) { j["dtStep"] = 0.0; j["nStep"] = 0; j["tEnd"] = 0.0; }, "dtStep"},
         Violation{"nStep", [](Json& j) { j["nStep"] = -1; j["tEnd"] = -2.0; }, "tEnd"},

@@ -1,0 +1,44 @@
+#pragma once
+
+#include <cstdint>
+#include <filesystem>
+#include <ostream>
+#include <string>
+#include <vector>
+
+#include "grids/angular_grid.hpp"
+#include "grids/spatial_grids.hpp"
+#include "input/config.hpp"
+#include "report/format.hpp"
+
+namespace spodvr {
+
+// The plot data a run will write: the directory, the key that asks for it, the projected bytes and what it
+// costs (docs/output_files.md, "Series directories").
+struct PlotDataSize {
+  std::string directory;
+  std::string key;
+  std::uintmax_t bytes = 0;
+  std::string cost;  // when it is written and what it adds to the run
+};
+
+// The plot data of the run's switches (empty when none is on): densities/ (writeDensities) and potential/
+// (writePotential).
+[[nodiscard]] std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids,
+                                                        const AngularGrid& angular);
+
+// The free space of the file system of `output_dir` (of its nearest existing ancestor when it does not exist yet).
+[[nodiscard]] std::uintmax_t free_space(const std::filesystem::path& output_dir);
+
+// The bytes of the plot-data directories in `output_dir` that the run will replace (removed when it starts
+// writing them, so their space counts as free).
+[[nodiscard]] std::uintmax_t replaced_plot_data_bytes(const std::filesystem::path& output_dir,
+                                                      const std::vector<PlotDataSize>& sizes);
+
+// Throws InputError naming the key that adds the most bytes when the plot data exceed `available` bytes.
+void check_free_space(const std::vector<PlotDataSize>& sizes, std::uintmax_t available);
+
+// The set-up lines of the plot data: per directory its size and its cost.
+void print_plot_data(std::ostream& out, const Style& style, const std::vector<PlotDataSize>& sizes);
+
+}  // namespace spodvr

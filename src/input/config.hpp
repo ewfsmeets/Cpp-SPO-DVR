@@ -52,6 +52,14 @@ struct ScmIdentity {
 // time, degrees). Defaults are those of the Fortran code (globaldata.f90 SetupGlobalDataModule);
 // keys that the Fortran code requires have no meaningful default here and must be present.
 // The comment after each member gives the JSON key and the Fortran variable.
+// A named point of the surface unit cell for the plot data (PlotSites, C++ only): fractional coordinates along
+// the two lattice vectors, which must lie on a grid point (validate_outputs.cpp).
+struct PlotSite {
+  std::string name;
+  double x = 0.0;  // fraction of the first lattice vector (alat)
+  double y = 0.0;  // fraction of the second lattice vector (blat)
+};
+
 struct InputParameters {
   // --- general --------------------------------------------------------------------------
   std::string title = "SPO-DVR REACTIVE SCATTERING CALCULATION.";  // Title / title
@@ -169,6 +177,8 @@ struct InputParameters {
 
   // --- plot data (C++ only; output switches, not restart parameters; docs/output_files.md) ------
   bool write_densities = false;  // writeDensities: densities/, the probability per (Z, r) cell every dtAve
+  bool write_potential = false;  // writePotential: potential/, the run's potential on its grid at set-up
+  std::vector<PlotSite> plot_sites;  // PlotSites: named (x, y) grid points for the plot data
 
   // --- tolerances -------------------------------------------------------------------------
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)

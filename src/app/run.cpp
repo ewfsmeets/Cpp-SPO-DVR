@@ -42,6 +42,8 @@
 #include "report/analysis_report.hpp"
 #include "report/densities_files.hpp"
 #include "report/fine_analysis_report.hpp"
+#include "report/plot_data.hpp"
+#include "report/potential_files.hpp"
 #include "report/potential_report.hpp"
 #include "report/propagation_report.hpp"
 #include "report/run_info_file.hpp"
@@ -341,7 +343,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     print_grids(out, style, config, grids, angular);
     // Plot data (writeDensities, ...): its projected size, refused before the long set-up when the output file
     // system lacks room. Nothing is queried without a plot key.
-    const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids);
+    const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids, angular);
     if (!plot_data.empty()) {
       const std::filesystem::path& dir = command_line.output_dir;
       check_free_space(plot_data, free_space(dir) + replaced_plot_data_bytes(dir, plot_data));
@@ -396,6 +398,10 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     write_run_info(run_info_dir / "run_info.json", config, grids, angular, program, command_line.input_file,
                    std::cref(gas));
     out << "\n  Data files written to " << command_line.output_dir.string() << "\n";
+    if (config.input.write_potential && potential_grid) {  // writePotential: V on the grid, as the run uses it
+      write_potential_files(command_line.output_dir, config, grids, angular, *potential_grid);
+      out << "  Plot data written to " << (command_line.output_dir / "potential").string() << "\n";
+    }
 
     if (config.derived.run_mode == 6) {
       out << '\n' << style.emphasis("Potential-only run finished.") << '\n';

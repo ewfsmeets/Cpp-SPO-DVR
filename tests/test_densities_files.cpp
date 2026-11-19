@@ -69,17 +69,18 @@ TEST(DensitiesFiles, ProjectedSizeIsRecordsTimesRecordBytes) {
   json["writeDensities"] = true;
   const Config config = build_config(parse_input(json));
   const SpatialGrids grids = make_spatial_grids(config);
-  const std::vector<PlotDataSize> sizes = plot_data_sizes(config, grids);
+  const std::vector<PlotDataSize> sizes = plot_data_sizes(config, grids, make_angular_grid(config));
   ASSERT_EQ(sizes.size(), 1u);
   const std::uintmax_t record = 8u + 8u * (grids.z_scattering.size() + grids.z_specular.size()) * 56u + 4u + 8u;
   EXPECT_EQ(sizes[0].bytes, small_hardwall_averages_rows * record);
   EXPECT_EQ(sizes[0].key, "writeDensities");
   json.erase("writeDensities");
-  EXPECT_TRUE(plot_data_sizes(build_config(parse_input(json)), grids).empty());
+  const Config without = build_config(parse_input(json));
+  EXPECT_TRUE(plot_data_sizes(without, grids, make_angular_grid(without)).empty());
 }
 
 TEST(DensitiesFiles, RefusesPlotDataLargerThanTheFreeSpace) {
-  const std::vector<PlotDataSize> sizes = {{"densities/", "writeDensities", 1000}, {"other/", "otherKey", 10}};
+  const std::vector<PlotDataSize> sizes = {{"densities/", "writeDensities", 1000, ""}, {"other/", "otherKey", 10, ""}};
   EXPECT_NO_THROW(check_free_space(sizes, 1010));
   try {
     check_free_space(sizes, 1009);
@@ -93,7 +94,7 @@ TEST(DensitiesFiles, RefusesPlotDataLargerThanTheFreeSpace) {
 // An older densities/ in the output directory is replaced, so its bytes count as free; other directories do not.
 TEST(DensitiesFiles, ReplacedPlotDataCountsAsFree) {
   TemporaryDirectory dir("densities_replaced");
-  const std::vector<PlotDataSize> sizes = {{"densities/", "writeDensities", 1000}};
+  const std::vector<PlotDataSize> sizes = {{"densities/", "writeDensities", 1000, ""}};
   EXPECT_EQ(replaced_plot_data_bytes(dir.path(), sizes), 0u);
   fs::create_directories(dir.path() / "densities" / "sub");
   std::ofstream(dir.path() / "densities" / "times.bin") << std::string(300, 'x');

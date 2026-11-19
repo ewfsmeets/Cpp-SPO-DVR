@@ -5,6 +5,7 @@ import dataclasses
 import re
 
 from program.config import InputParameters
+from program.findings import Severity
 from program.json_input import OPTIONAL_KEYS, REQUIRED_KEYS, UNSUPPORTED_KEYS, UNSUPPORTED_LOGICAL_KEYS, parse_input
 from tests.helpers import (
     DZ_INPUT,
@@ -124,3 +125,23 @@ def test_every_parameter_field_has_a_key() -> None:
     table_fields = [k.field for k in REQUIRED_KEYS + OPTIONAL_KEYS if k.field is not None]
     check_equal(len(table_fields), len(set(table_fields)), "fields used twice")
     check_equal(sorted(table_fields), sorted(f.name for f in dataclasses.fields(InputParameters)), "fields")
+
+
+def test_plot_sites_are_read_like_the_program() -> None:
+    """PlotSites: a list of objects with a name, x and y (json_input.cpp's site reader, the same messages); a
+    plot-data key gives a warning (the designer does not model plot data) but no error."""
+    sites = [{"name": "top", "x": 0.0, "y": 0.0}]
+    read = read_with({"writePotential": True, "PlotSites": sites})
+    check(read.parameters is not None, "a valid site list is read")
+    warned = {f.key for f in read.findings if f.severity == Severity.WARNING}
+    check_equal(sorted(warned), ["PlotSites", "writePotential"], "plot-data warnings")
+    wrong = {
+        "expected a list of sites": 3,
+        "each site must be an object": [1],
+        "unknown site field 'z'": [{"name": "a", "x": 0.0, "y": 0.0, "z": 1.0}],
+        "a site without 'y'": [{"name": "a", "x": 0.0}],
+        "expected a string": [{"name": 1, "x": 0.0, "y": 0.0}],
+        "expected a real number": [{"name": "a", "x": True, "y": 0.0}],
+    }
+    for message, value in wrong.items():
+        check_has_error(read_with({"writePotential": True, "PlotSites": value}).findings, "PlotSites", message, message)

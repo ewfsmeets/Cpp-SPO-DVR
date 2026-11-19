@@ -315,6 +315,8 @@ check (`draw_window` in `tests/test_plots.py`).
   reduction of the memory must be given
   (`--representatives`).
 - No fine-analysis memory estimate (an analysis-only run).
+- No plot data (`writeDensities`, `writePotential`, `PlotSites`): their memory and disk use are not in the
+  estimates; reading warns when a plot-data key is set.
 - Not checked, as the program does after the grids: that some operation of the point group is usable on
   the grid with `UseSymmetry` (`src/potential/potential_symmetry.cpp`), that the GPU has the memory of the
   GPU estimate (`--device cuda`, `src/app/backend_factory.cpp`), and the physical memory against the CPU
@@ -325,7 +327,8 @@ check (`draw_window` in `tests/test_plots.py`).
     reports that);
   - the restart-directory check;
   - the checks of the plot-data keys (`src/input/validate_outputs.cpp`, e.g. `writeDensities` only in a
-    propagating run); the designer does not model the plot data;
+    propagating run, the `PlotSites` values); the designer reads these keys (their types and the fields of a site)
+    but does not model the plot data;
   - the checks of `make_angular_grid` (`src/grids/angular_grid.cpp`): those on JIn, JMax, MJIn and MJMax
     repeat checks of `validate_input`, and the two on the number of φ points hold by construction (it is
     the nearest valid FFT size ≥ 2·MJMax+1).

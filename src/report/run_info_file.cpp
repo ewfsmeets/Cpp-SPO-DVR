@@ -13,6 +13,7 @@
 #include "core/index_range.hpp"
 #include "core/unit_conversion.hpp"
 #include "grids/rotational_basis.hpp"
+#include "input/validate_outputs.hpp"
 
 namespace spodvr {
 
@@ -160,6 +161,17 @@ json absorbers(const InputParameters& p, const DerivedParameters& d, const Spati
   return {{"power", d.optical_potential_power}, {"list", list}};
 }
 
+// The plot-data keys of the run and its sites (with their grid points); written only when a plot key is set, so
+// runs without them keep their run_info.json.
+json plot_data(const InputParameters& p) {
+  json sites = json::array();
+  for (const PlotSite& site : p.plot_sites) {
+    const int ixy = plot_site_ixy(site, p.nx, p.ny);
+    sites.push_back({{"name", site.name}, {"x", site.x}, {"y", site.y}, {"ix", ixy / p.ny}, {"iy", ixy % p.ny}});
+  }
+  return {{"write_densities", p.write_densities}, {"write_potential", p.write_potential}, {"sites", sites}};
+}
+
 json potential_settings(const InputParameters& p, const DerivedParameters& d) {
   return {{"use_switching", p.use_switching},
           {"z_min_switch", p.z_min_switch},
@@ -217,6 +229,7 @@ void write_run_info(const std::filesystem::path& path, const Config& config, con
   j["absorbers"] = absorbers(p, d, grids);
   j["potential"] = potential_settings(p, d);
   j["unit_factors"] = unit_factors();
+  if (p.write_densities || p.write_potential || !p.plot_sites.empty()) j["plot_data"] = plot_data(p);
   std::ofstream file(path);
   if (!file) throw std::runtime_error("cannot open output file '" + path.string() + "'");
   file << j.dump(2) << '\n';

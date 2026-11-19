@@ -91,6 +91,7 @@ in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
 | `absorbers` | `power`, and `list`: per absorber its `name` (`ZOpt`, `ROpt`, `ZSpOpt`, and `ZOptLow`, `ZSpOptLow` when on), its `grid` (scattering, specular, both), `coordinate`, `start`, `end`, effective `strength` (hartree, after the energy table) and the grid `points` inside it (`first`, `last`, 0-based) |
 | `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
 | `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
+| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, and `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`) |
 
 ## Data files (space-separated)
 
@@ -148,6 +149,25 @@ The manifest adds `record_interval_au` (dtAve) and `grids` (`z_start`, `dz`, `nz
 numbers the averages are computed from, so the sum of both datasets over all cells is the norm (to
 rounding), and writing them adds no computation to the time loop. A probability per cell divided by
 dZ·dr is a density in bohr⁻².
+
+### `potential/` (`writePotential`)
+
+Written once at set-up (also by a potential-only run), not a time series: `manifest.json` has `time_dependent`
+false and no `times.bin`, and each dataset file holds one record. The potential is the one the propagation uses
+(switching to the gas phase and the VMin/VMax limits included), at the grid points of the interaction region
+Z < zasymp (`nz_potential` points), in hartree, read through the same surface-symmetry maps as the propagation.
+
+| File | Type and shape | Meaning |
+|---|---|---|
+| `v_min.bin` | `<f8` [nZpot, nR, nX, nY] | the minimum of V over the DVR orientations (the θ and φ nodes) at each grid point: a classical lowest orientation, not a quantum adiabat |
+| `v_min_node.bin` | `<i4` [nZpot, nR, nX, nY, 2] | the orientation of that minimum, (iθ, iφ): indices into `theta_nodes_rad` and `phi_nodes_rad` (the first in iθ, then iφ order; a NaN anywhere gives NaN and its node) |
+| `v_sites.bin` | `<f8` [nSites, nZpot, nR, nθ, nφ] | V at every orientation at the (x, y) grid point of each site of `PlotSites` (only with sites) |
+
+The manifest adds `grids` (`z_start`, `dz`, `nz_potential`, `r_start`, `dr`, `nr`, `nx`, `ny`),
+`theta_nodes_rad`, `theta_weights`, `phi_nodes_rad`, `homonuclear` (θ ≤ π/2 only), `sites` (per site `name`,
+`x`, `y`, `ix`, `iy` and `ixy` = iy + nY·ix), `limits` (switching and the VMin/VMax settings, the limits in
+hartree) and `hartree_to_ev`. The files are written one (Z, r) point at a time: no memory beyond one row (no
+memory-estimate item). With the full grid of a run, `v_min.bin` takes nZpot·nR·nX·nY·8 bytes.
 
 ## Correspondence with the Fortran output
 

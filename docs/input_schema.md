@@ -124,6 +124,8 @@ restart parameters: a restart may set them differently from the run it continues
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `writeDensities` | bool | false | write `densities/` (output_files.md, "Series directories"): the probability per (Z, r) cell of the scattering and of the specular wave at tStart and every dtAve. Propagating runs only (`NewCalc` true, or a restart); refused with `Potential` or `onlyAnalysis`. It adds no computation to the time loop: the records are the densities the averages already compute, written once per averages row |
+| `writePotential` | bool | false | write `potential/` (output_files.md, "potential/") once at set-up: the potential as the propagation uses it (switching and the VMin/VMax limits included) on the grid of Z < zasymp, its minimum over the DVR orientations at every grid point, and V at every orientation at the `PlotSites`. New, restart and potential-only runs (`Potential`: it is written before the run stops); refused with `onlyAnalysis`, which computes no 6D potential |
+| `PlotSites` | list | none | named (x, y) grid points for the plot data, used by `writePotential`: a list of at most 16 objects, each with the fields `name` (a string, unique), `x` and `y` (fractions of the first and the second lattice vector, in [0, 1)), e.g. `[{"name": "top", "x": 0, "y": 0}, {"name": "bridge", "x": 0.5, "y": 0}]`. Each site must lie on a grid point (x·nX and y·nY whole numbers to 1e-9; the error names the nearest point). Refused when no plot key uses the sites; recorded in run_info.json (`plot_data`) |
 
 The set-up prints a "PLOT DATA" section with the projected size of each plot-data directory. A run
 whose plot data would not fit in the free space of the output directory's file system stops before the

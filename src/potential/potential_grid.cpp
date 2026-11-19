@@ -143,6 +143,24 @@ std::vector<double> compute_asymptotic_potential(const Potential& potential, con
   return v;
 }
 
+void minimum_over_orientations(const PotentialGrid& grid, std::size_t izr, std::span<double> minimum,
+                               std::span<int> orientation) {
+  const std::size_t n_orientations = grid.index.n0;  // ntheta * nphi
+  for (std::size_t ixy = 0; ixy < minimum.size(); ++ixy) {
+    double lowest = grid(0, ixy, izr);
+    int where = 0;
+    for (std::size_t itp = 1; itp < n_orientations && !std::isnan(lowest); ++itp) {
+      const double v = grid(itp, ixy, izr);
+      if (v < lowest || std::isnan(v)) {
+        lowest = v;
+        where = static_cast<int>(itp);
+      }
+    }
+    minimum[ixy] = lowest;
+    orientation[ixy] = where;
+  }
+}
+
 void premultiply_with_time_step(std::span<double> values, double time_step) {
 #pragma omp parallel for schedule(static)
   for (std::size_t i = 0; i < values.size(); ++i) values[i] = -values[i] * time_step;

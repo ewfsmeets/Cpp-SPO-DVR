@@ -2,7 +2,8 @@
 // inputs, written by the current program into SPODVR_PLOT_FIXTURES_DIR. One ctest in one process
 // (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
 // directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
-// Every propagating fixture writes the plot data (writeDensities: densities/).
+// Every fixture writes the plot data: densities/ (writeDensities, the propagating ones) and potential/
+// (writePotential, with PlotSites: hardwall_tiny "origin" and "centre", dailight_oblique "top" and "bridge").
 //   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
 //   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
 //   dailight_oblique          cu111_dailight_small with nX = nY = 4, JMax = MJMax = 2, EParallel 0.1 eV at
@@ -10,7 +11,7 @@
 //                             point) and tEnd 14000 (JMax 2: a run takes about 65 s; with JMax 4 it took 183 s)
 //   dailight_oblique_split    the same in two segments, split at the multiple of 100 a.u. nearest the time
 //                             of minimum <Z> of dailight_oblique (split_time.txt)
-//   potential_only            hardwall_tiny with Potential: true
+//   potential_only            hardwall_tiny with Potential: true (potential/ only)
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -80,6 +81,8 @@ nlohmann::json hardwall_tiny() {
   json["writeProbs"] = true;
   json["writeRDProbs"] = true;
   json["writeDensities"] = true;
+  json["writePotential"] = true;
+  json["PlotSites"] = {{{"name", "origin"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "centre"}, {"x", 0.5}, {"y", 0.5}}};
   return with_times(json, 0.0, 10000.0);
 }
 
@@ -98,6 +101,8 @@ nlohmann::json dailight_oblique() {
   json["ZOptEnd"] = 13.28;
   json["alsoAnalysis"] = true;
   json["writeDensities"] = true;
+  json["writePotential"] = true;
+  json["PlotSites"] = {{{"name", "top"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "bridge"}, {"x", 0.5}, {"y", 0.0}}};
   return with_times(json, 0.0, dailight_t_end);
 }
 
@@ -125,9 +130,9 @@ double time_of_minimum_z(const fs::path& averages) {
 // The files every run with alsoAnalysis writes. (A run that stopped early has only run_info.json, the
 // gas-phase files and part of bk_coefficients.bin: the plot tool's tests make such a copy themselves.)
 void expect_run_files(const fs::path& dir) {
-  for (const char* name :
-       {"run_info.json", "averages.dat", "bk_coefficients.bin", "checkpoint.bin", "scattering_summary.tsv",
-        "s_matrix.tsv", "gas_phase_states.dat", "asymptotic_potential.dat", "densities/times.bin"})
+  for (const char* name : {"run_info.json", "averages.dat", "bk_coefficients.bin", "checkpoint.bin",
+                           "scattering_summary.tsv", "s_matrix.tsv", "gas_phase_states.dat", "asymptotic_potential.dat",
+                           "densities/times.bin", "potential/v_sites.bin"})
     EXPECT_TRUE(fs::exists(dir / name)) << dir / name;
   EXPECT_TRUE(fs::exists(dir / "fine_analysis")) << dir;
 }
@@ -180,9 +185,10 @@ TEST(PlotRuns, PotentialOnly) {
   nlohmann::json json = hardwall_tiny();
   json["Potential"] = true;
   json.erase("alsoAnalysis");
-  json.erase("writeDensities");  // a potential-only run writes no plot data
+  json.erase("writeDensities");  // densities/ belong to a propagating run; potential/ is written at set-up
   const fs::path dir = fixtures_dir / "potential_only";
   ASSERT_EQ(run(json, dir), 0);
   EXPECT_TRUE(fs::exists(dir / "run_info.json"));
+  EXPECT_TRUE(fs::exists(dir / "potential" / "v_min.bin"));
   EXPECT_FALSE(fs::exists(dir / "averages.dat"));
 }

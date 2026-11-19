@@ -2,6 +2,7 @@
 
 Shadows: src/input/json_input.cpp (parse_input, read_required_keys, read_optional_keys, reject_unsupported_keys,
 check_while_reading, require_energy_or_factor, require_low_z_absorber, JsonReader)
+Shadows: src/input/validate_outputs.cpp (plot_site_fields)
 
 Not copied: check_scm_keys (the SCM keys are type-checked only) and the CRP data set itself.
 """
@@ -12,8 +13,10 @@ from program.config import InputParameters, low_z_absorber_enabled
 from program.findings import Finding, FindingList, has_errors
 from program.real_compare import rlt, seq
 
-# Value types (JsonReader::as_real, as_integer, as_logical, as_string).
-REAL, INTEGER, LOGICAL, STRING = "real", "integer", "logical", "string"
+# Value types (JsonReader::as_real, as_integer, as_logical, as_string, and the PlotSites list).
+REAL, INTEGER, LOGICAL, STRING, SITE_LIST = "real", "integer", "logical", "string", "site list"
+SITE_FIELDS = ("name", "x", "y")  # the fields of a PlotSites entry (validate_outputs.cpp plot_site_fields)
+PLOT_DATA_KEYS = ("writeDensities", "writePotential", "PlotSites")  # not modelled by the designer
 
 INT_MIN, INT_MAX = -(2**31), 2**31 - 1  # the range of a C++ int
 
@@ -23,7 +26,7 @@ class InputKey:
     """One input key: its JSON name, its value type, and the InputParameters field that holds it."""
 
     name: str
-    kind: str  # REAL, INTEGER, LOGICAL or STRING
+    kind: str  # REAL, INTEGER, LOGICAL, STRING or SITE_LIST
     field: str | None  # None: the designer only checks the type
 
 
@@ -131,6 +134,8 @@ OPTIONAL_KEYS = (
     InputKey("RestartFormat", STRING, "restart_format"),
     InputKey("CheckpointFormat", STRING, "checkpoint_format"),
     InputKey("writeDensities", LOGICAL, None),
+    InputKey("writePotential", LOGICAL, None),
+    InputKey("PlotSites", SITE_LIST, None),
     InputKey("DoDump", LOGICAL, None),
     InputKey("FullSMatrix", LOGICAL, None),
 )
@@ -172,6 +177,7 @@ def parse_input(values: dict) -> ParsedInput:
     reject_unsupported_keys(values, reading)
     fields = read_keys(values, reading)
     report_unknown_keys(values, reading)
+    warn_about_plot_data(values, reading)
     if has_errors(reading.findings):
         return ParsedInput(None, reading.findings)
 
@@ -227,7 +233,36 @@ def typed_value(kind: str, value: object) -> tuple[object, str | None]:
         return value, None
     if kind == LOGICAL:
         return (value, None) if is_bool else (None, "expected true or false")
+    if kind == SITE_LIST:
+        return value, site_list_problem(value)
     return (value, None) if isinstance(value, str) else (None, "expected a string")
+
+
+def site_list_problem(value: object) -> str | None:
+    """What is wrong with a PlotSites value, as JsonReader::read for sites says it, or None."""
+    if not isinstance(value, list):
+        return "expected a list of sites"
+    for site in value:
+        if not isinstance(site, dict):
+            return "each site must be an object with a name, x and y"
+        unknown = [field for field in site if field not in SITE_FIELDS]
+        if unknown:
+            return f"unknown site field '{unknown[0]}'"
+        missing = [field for field in SITE_FIELDS if field not in site]
+        if missing:
+            return f"a site without '{missing[0]}'"
+        if not isinstance(site["name"], str):
+            return "expected a string"
+        if any(isinstance(site[c], bool) or not isinstance(site[c], (int, float)) for c in ("x", "y")):
+            return "expected a real number"
+    return None
+
+
+def warn_about_plot_data(values: dict, reading: FindingList) -> None:
+    """The plot-data keys are accepted but not modelled: their memory and disk use are not in the estimates."""
+    for name in PLOT_DATA_KEYS:
+        if values.get(name) not in (None, False, []):
+            reading.warning(name, "plot data are not modelled by the designer: its estimates leave them out")
 
 
 def report_unknown_keys(values: dict, reading: FindingList) -> None:
