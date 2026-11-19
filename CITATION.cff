@@ -15,6 +15,7 @@ authors:
     given-names: Egidius W. F.
 repository-code: "https://github.com/ewfsmeets/Cpp-SPO-DVR"
 date-released: 2026-11-19
+license: GPL-3.0-or-later
 keywords:
   - quantum dynamics
   - wave packet

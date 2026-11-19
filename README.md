@@ -11,7 +11,7 @@
 
 # Cpp-SPO-DVR
 
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=cplusplus)](#dependencies)
 [![CUDA: optional](https://img.shields.io/badge/CUDA-optional-76B900?logo=nvidia)](docs/cuda.md)
 
@@ -605,7 +605,9 @@ benchmark its accuracy. Without Claude this would have been too big for a hobby 
 
 ## License
 
-This program is free software, licensed under the GNU General Public License, version 3. See
-[LICENSE](LICENSE). It is a port of the Fortran SPO-DVR code (Copyright © Theoretical Chemistry
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version (SPDX: `GPL-3.0-or-later`). See [LICENSE](LICENSE).
+It is a port of the Fortran SPO-DVR code (Copyright © Theoretical Chemistry
 Group, Leiden University; GPL), and the data files in `potentials/` are copied unchanged from that
 code's repository.
