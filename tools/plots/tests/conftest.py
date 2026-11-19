@@ -43,7 +43,7 @@ STOPPED_RECORDS = 50  # BK records kept in the stopped run (one per analysis ste
 @pytest.fixture(scope="session")
 def stopped_run(fixture_runs: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
     """hardwall_tiny as a run that stopped (or is still running) at t = 500 a.u.: only the files the program
-    writes before the propagation (run_info.json, the gas-phase files) and bk_coefficients.bin cut after
+    writes before the propagation (run_info.json, the gas-phase files, potential/) and bk_coefficients.bin cut after
     STOPPED_RECORDS records plus part of the next (the program appends one record per analysis step), and
     densities/ cut after its records up to the same time (tStart and every dtAve)."""
     whole = fixture_runs / "hardwall_tiny"
@@ -51,6 +51,7 @@ def stopped_run(fixture_runs: Path, tmp_path_factory: pytest.TempPathFactory) ->
     run.mkdir()
     for name in ("run_info.json", "gas_phase_states.dat", "asymptotic_potential.dat"):
         shutil.copy(whole / name, run / name)
+    shutil.copytree(whole / "potential", run / "potential")  # written at set-up, before the propagation
     bk = read_bk_coefficients(whole / "bk_coefficients.bin")
     n_times, n_v, n_states = bk.coefficients.shape
     bk_record_bytes = 8 + 16 * n_v * n_states

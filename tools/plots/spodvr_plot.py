@@ -55,6 +55,16 @@ def arguments(argv: list[str]) -> argparse.Namespace:
             type=float,
             help="in-plane direction (deg) at normal incidence; ignored at oblique incidence (default 0)",
         )
+        command.add_argument(
+            "--z",
+            type=float,
+            help="Z (bohr) of the potential maps: the nearest grid point (default: the lowest barrier's)",
+        )
+        command.add_argument(
+            "--r",
+            type=float,
+            help="r (bohr) of the potential maps: the nearest grid point (default: the lowest barrier's)",
+        )
     return parser.parse_args(argv)
 
 
@@ -70,6 +80,7 @@ def options_of(args: argparse.Namespace) -> argparse.Namespace:
     """The figures' options with the command line's values."""
     options = default_options()
     options.energy_ev, options.channels, options.azimuth_deg = args.energy, args.channels, args.azimuth
+    options.z_bohr, options.r_bohr = args.z, args.r
     return options
 
 

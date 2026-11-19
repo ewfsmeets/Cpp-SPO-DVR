@@ -23,9 +23,10 @@ uv run python -I -B tools/plots/spodvr_plot.py report RUN... --out DIR    # repo
 ![The results figure of the oblique Dai-Light test run](images/results.png)
 
 `plot` and `report` take `--energy EV` (the panels at one energy show the analysis energy nearest it; default
-the middle one), `--channels N` (how many channels or levels the line plots show, at least 1; default 6) and
+the middle one), `--channels N` (how many channels or levels the line plots show, at least 1; default 6),
 `--azimuth DEG` (the in-plane direction at normal incidence; default 0, the first lattice vector; ignored at
-oblique incidence, where the plane of incidence is used).
+oblique incidence, where the plane of incidence is used) and `--z BOHR`, `--r BOHR` (the point of the potential
+maps: the nearest grid point; default the lowest barrier's).
 
 - `RUN...` is the run's output directory, or every segment's directory of a restarted run, in any order.
   Segments that do not join (one does not start where another ended) are refused; a segment whose
@@ -57,6 +58,9 @@ is a bug of the tool.
 | `densities` | the probability per bohr of Z and of r against time (carpets; the specular analysis line on the Z one), the norm per region (r beyond r_c; Z bands up to zasymp, Zana, the grids' ends), 1 − norm and the probability inside each absorber | densities/ (`writeDensities`) |
 | `density_movie` | ρ(Z, r) in bohr⁻², the scattering and the specular wave summed, on one log scale, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb and the specular analysis line (at most 30 frames) | densities/ (`writeDensities`) |
 | `gas_phase` | V_asy(r) with the levels of the initial j and the r absorber; \|ψ(r)\| of the lowest levels on a log axis | gas_phase_states.dat, asymptotic_potential.dat |
+| `potential_maps` | V_min (V minimised over the DVR orientations) over the unit cell: left at the lowest barrier's (Z, r) or `--z`, `--r`, right at that Z and the gas-phase bond length; the sites marked | potential/ (`writePotential`), asymptotic_potential.dat |
+| `elbows` | V_min(Z, r) at the first four sites (or the lowest barrier's point) with the minimax barrier and a path to it; V at the barrier's orientation | potential/, asymptotic_potential.dat |
+| `orientation` | V at every DVR node (θ, φ), as a map, at the barrier point of the site with the lowest barrier | potential/ with `PlotSites`, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
 Every figure also reads `run_info.json` (the run's metadata). The file formats:
@@ -107,7 +111,8 @@ flowchart LR
 | `readers/binary.py` | bk_coefficients.bin, checkpoint.bin (memory-mapped); the byte layouts as named struct formats | `src/io/checkpoint.cpp` |
 | `readers/run_info.py` | run_info.json as `RunInfo` | `src/report/run_info_file.cpp` |
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
-| `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record | `src/io/series_writer.cpp` |
+| `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
+| `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes, sites and limits | `src/report/potential_files.cpp` |
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
 | `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must equal the kept one to 1e-12 of its largest value) | — |
 | `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
@@ -117,13 +122,14 @@ flowchart LR
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
 | `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
+| `compute/potential.py` | energies relative to the gas-phase minimum, the (x, y) grid's periodic cells and the unit cell in Cartesian coordinates, the minimax barrier on V(Z, r) and the points the figures show | — |
 | `compute/series.py` | any series: the records before a NaN or inf (with a note), records evenly spaced for a movie | — |
 | `compute/densities.py` | from densities/: both waves summed, Z and r profiles, the norm per region and inside each absorber, the specular line, the marks of a map | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
 | `verdict.py` | the verdict of a run: reads what its files allow, a missing file is a finding | — |
 | `style.py` | colours, rcParams, the scale rule, the info box, saving figures and movies (`Movie`) | the designer's colours (`tools/wave_packet_designer/plots.py`) |
 | `explanations.py` | each figure's title and what it shows (printed under it in the report) | — |
-| `panels/*.py` | one `draw_<panel>(ax, …)` per panel; draws (and masks below a floor), computes nothing | — |
+| `panels/*.py` | one `draw_<panel>(ax, …)` per panel; draws (and masks values outside its range: below a floor, or above a cap where the background is hatched), computes nothing | — |
 | `figures.py` | one `figure_<name>(runs, info, options)` per entry, and `PLOTS`, the only list of entries | — |
 | `report.py` | report.md with the verdict first; the overwrite guard of `plot` and `report` | — |
 | `spodvr_plot.py` | the command line | — |
@@ -155,10 +161,10 @@ To change… edit:
   function it defines or calls.
 - `copies/` reproduce the C++'s formulas and, where they are plain double arithmetic, its operation order; the
   time sums are a matrix product (the C++ adds term by term), equal to rounding.
-- Values below a panel's floor are masked (not drawn); axes are logarithmic when a series spans more than
-  1e3 (`style.scale_and_limits`); every axis is labelled with its unit; the info box under each figure names
-  the run, its grids, the files read and the program version (a figure with notes asks `new_figure` for
-  room for them).
+- Values outside a panel's range are masked (not drawn: below a floor, or above a cap, e.g. the potential walls,
+  where the background is hatched); axes are logarithmic when a series spans more than 1e3
+  (`style.scale_and_limits`); every axis is labelled with its unit; the info box under each figure names the run,
+  its grids, the files read and the program version (a figure with notes asks `new_figure` for room for them).
 - Errors: `ReadError("<file>: <what>; <fix>")`.
 
 ### How to add a plot
@@ -221,6 +227,9 @@ segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`).
 ## Limits
 
 - One run at a time (its restart segments joined); no comparison of runs.
+- The potential is the run's: at its grid points of Z < zasymp and its DVR orientations only (no interpolation);
+  V_min is a classical lowest orientation at fixed (x, y), not an adiabatic potential; the minimax barrier is
+  taken on that grid, from the gas-phase side to r >= r_c (the r absorber's start).
 - Only what the run's files hold: the wave packet is seen through its (Z, r) density (`writeDensities`); its
   structure in x, y and the angles is not plotted yet.
 - The fine analysis is compared with the on-the-fly results of the same run; an `onlyAnalysis` run (its

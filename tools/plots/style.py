@@ -40,6 +40,7 @@ MARKERS = ["o", "s", "^", "D", "v", "P", "X"]
 
 LOG_FLOOR = 1e-12  # lower limit of a log axis, relative to the largest value
 DENSITY_FLOOR = 1e-8  # floor of colour maps and of ratios, relative to the largest value
+NOT_DRAWN_HATCH = "////"  # the background of maps where values beyond their scale are not drawn
 LOG_RANGE = 1e3  # a series spanning more than this (max / smallest positive) gets a log axis
 LOG_HEADROOM = 1.5  # a log axis ends this factor above the largest value
 LINEAR_HEADROOM = 1.05  # a linear axis ends this factor above the largest value
@@ -126,6 +127,14 @@ def density_color_scale(values: np.ndarray) -> LogNorm:
     DENSITY_FLOOR of the largest to the largest."""
     top = float(np.nanmax(values))
     return LogNorm(DENSITY_FLOOR * top, top)
+
+
+def hatch_not_drawn(ax: Axes) -> None:
+    """A hatched background for a map whose values beyond its colour scale are not drawn, so that a gap cannot be
+    taken for a value at the middle of a diverging scale."""
+    ax.set_facecolor(SURFACE)
+    ax.patch.set_hatch(NOT_DRAWN_HATCH)
+    ax.patch.set_edgecolor(GRID)
 
 
 def apply_scale(ax: Axes, scale: Scale) -> None:

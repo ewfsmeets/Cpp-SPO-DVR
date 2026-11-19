@@ -2,6 +2,8 @@
 title (the report's heading) and the explanation the report prints under the figure. tests/test_runs_figures.py
 checks that every PLOTS entry has both and that every text has an entry."""
 
+from compute.potential import CONTOUR_STEP_EV, ENERGY_CAP_EV
+
 TITLES = {
     "verdict": "Verdict",
     "results": "Results against energy",
@@ -14,6 +16,9 @@ TITLES = {
     "gas_phase": "Gas phase",
     "densities": "The packet in Z and r against time",
     "density_movie": "The packet over (Z, r)",
+    "potential_maps": "The potential over the unit cell",
+    "elbows": "Elbow plots and the minimax barrier",
+    "orientation": "The potential against the orientation",
     "bk": "Balint-Kurti coefficients and convergence in time",
 }
 
@@ -103,5 +108,30 @@ FIGURES = {
         "rho(Z, r) of the scattering and the specular wave summed (bohr^-2), on one log colour scale for all "
         "frames, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb (with the wave "
         "it acts on) and the specular analysis line of each frame marked. The PNG beside the GIF is the last frame."
+    ),
+    "potential_maps": (
+        "V_min, the potential minimised over the DVR orientations (the theta and phi nodes) at each (x, y) grid "
+        "point, over the unit cell (Cartesian coordinates, the first lattice vector along X; each grid point's "
+        "cell drawn around it, periodically). Left: at the (Z, r) of the lowest minimax barrier (see the elbows) "
+        "or at --z, --r; right: at the same Z and the gas-phase bond length. It is V as the propagation uses it "
+        "(switching and the VMin/VMax limits included), relative to the gas-phase minimum; hatched: more than "
+        f"{ENERGY_CAP_EV:g} eV above it (not drawn). V_min is a classical lowest orientation at fixed (x, y), not an "
+        "adiabatic potential. Without PlotSites the lowest barrier's point is marked."
+    ),
+    "elbows": (
+        "Top: V_min(Z, r) at each site of PlotSites (the first four; or, without sites, at the (x, y) point with "
+        "the lowest barrier), with the minimax barrier: the lowest possible highest point of a path from the "
+        "gas-phase side (the lowest point just below zasymp) to the dissociated side (r >= r_c, where the r "
+        "absorber starts), marked x, and one path that reaches it (dashed; below the barrier any route will do: "
+        "it is not a minimum-energy path). Bottom: V at the barrier's orientation (the DVR node of V_min there). "
+        "A barrier equal to VMax is the clamp, not the surface. Filled contours every "
+        f"{CONTOUR_STEP_EV:g} eV, lines every {5 * CONTOUR_STEP_EV:g} eV; hatched: more than {ENERGY_CAP_EV:g} eV "
+        "above the gas-phase minimum."
+    ),
+    "orientation": (
+        "V at every DVR node (theta, phi) at the barrier point of the site with the lowest barrier: the "
+        "orientation dependence the propagation sees there; the dots are the nodes, the only orientations the run "
+        f"has. A homonuclear molecule has theta <= 90 deg only. Hatched: more than {ENERGY_CAP_EV:g} eV above the "
+        "gas-phase minimum."
     ),
 }
