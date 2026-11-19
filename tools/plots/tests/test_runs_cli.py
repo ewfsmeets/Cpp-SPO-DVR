@@ -96,3 +96,13 @@ def test_unreadable_run_exits_2(tmp_path: Path) -> None:
     """A directory without run_info.json: exit 2 with "error: …"."""
     result = run("verdict", tmp_path)
     assert result.returncode == 2 and result.stderr.startswith("error: ")
+
+
+def test_options_reach_the_figures(fixture_runs: Path, tmp_path: Path) -> None:
+    """--energy picks the analysis energy of the one-energy panels (its title says which); --channels sets the
+    number of delay curves; a --channels below 1 is refused (exit 2)."""
+    run_dir = fixture_runs / "dailight_oblique"
+    assert run("plot", "state_to_state", run_dir, "--out", tmp_path / "a", "--energy", "0.62").returncode == 0
+    assert run("plot", "time_delay", run_dir, "--out", tmp_path / "b", "--channels", "3").returncode == 0
+    assert run("plot", "time_delay", run_dir, "--out", tmp_path / "c", "--channels", "0").returncode == 2
+    assert (tmp_path / "a" / "state_to_state.png").is_file() and (tmp_path / "b" / "time_delay.png").is_file()

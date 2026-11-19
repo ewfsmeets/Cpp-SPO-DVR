@@ -4,14 +4,18 @@ explanation."""
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 
+from compute.analysis import analysis_energies
+from compute.diffraction import diffraction
 from explanations import FIGURES, TITLES
 from figures import PLOTS, default_options, figure_averages, has_files
-from readers.run_info import RunInfo
+from readers.run_info import RunInfo, read_run_info
 from readers.segments import joined_info, ordered_segments
+from readers.tables import read_s_matrix
 from style import add_info_box, save_figure
 
 KINDS = {  # fixture directories of each kind of run ("stopped": the stopped_run fixture)
@@ -119,3 +123,58 @@ def test_results_panels(fixture_runs: Path, stopped_run: Path) -> None:
 def test_every_entry_has_a_title_and_an_explanation() -> None:
     """Every PLOTS entry has a title and a text in explanations, and every text an entry."""
     assert sorted(FIGURES) == sorted(TITLES) == sorted(ALL)
+
+
+def axes_titled(fig: Figure, start: str) -> list:
+    """The axes of a figure whose title starts with `start`."""
+    return [ax for ax in fig.axes if ax.get_title().startswith(start)]
+
+
+def test_state_to_state_panels(fixture_runs: Path, stopped_run: Path) -> None:
+    """Four panels and the map's colour bar; the alignment of j' = 2 is drawn (MJMax 2 holds all its mJ');
+    each j''s mJ' bars sum to 1; on the hard wall (no coupling) no alignment is drawn: P(j' = 2) is noise."""
+    fig = drawn("state_to_state", "oblique", fixture_runs, stopped_run)
+    (alignment,) = axes_titled(fig, "Final-state alignment")
+    assert len(fig.axes) == 5 and [t.get_text() for t in alignment.get_legend().get_texts()] == ["j' = 2"]
+    (bars,) = axes_titled(fig, "mJ' distribution")
+    assert abs(sum(patch.get_height() for patch in bars.patches) - 1.0) < 1e-12
+    hard_wall = drawn("state_to_state", "hard wall", fixture_runs, stopped_run)
+    (alignment,) = axes_titled(hard_wall, "Final-state alignment")
+    assert alignment.get_lines() == [] or all(np.isnan(line.get_ydata()).all() for line in alignment.get_lines())
+
+
+def test_diffraction_panels(fixture_runs: Path, stopped_run: Path) -> None:
+    """The spot map holds the analysed channels at their K and the probabilities (two scatter layers) and
+    names the plane of incidence; at 17 degrees only (0,0) is in it."""
+    fig = drawn("diffraction", "oblique", fixture_runs, stopped_run)
+    (spots,) = axes_titled(fig, "Diffraction at E_coll")
+    assert len(spots.collections) == 2
+    assert "the plane of incidence" in [t.get_text() for t in spots.get_legend().get_texts()]
+    assert axes_titled(fig, "Out of the plane of incidence? (only (0,0) is in it)")
+    run = fixture_runs / "dailight_oblique"
+    info = read_run_info(run)
+    channels = diffraction(read_s_matrix(run / "s_matrix.tsv"), info, analysis_energies(info).collision_ev, None)
+    assert np.array_equal(spots.collections[0].get_offsets(), channels.k_cart_per_bohr)
+
+
+def test_scattering_angles_and_time_delays(fixture_runs: Path, stopped_run: Path) -> None:
+    """Polar axes with the final states and the specular marker; six channels in both time-delay panels, and
+    on the hard wall only the channels that carry flux."""
+    angles = drawn("scattering_angles", "oblique", fixture_runs, stopped_run)
+    assert angles.axes[0].name == "polar" and len(angles.axes[0].collections[0].get_offsets()) > 1
+    assert [t.get_text() for t in angles.axes[0].get_legend().get_texts()] == ["final states (area: P)", "specular"]
+    delays = drawn("time_delay", "oblique", fixture_runs, stopped_run)
+    assert [len(ax.get_lines()) for ax in delays.axes] == [6, 6]
+    hard_wall = drawn("time_delay", "hard wall", fixture_runs, stopped_run)
+    assert len(hard_wall.axes[0].get_lines()) < 6
+
+
+def test_fine_analysis_panels(fixture_runs: Path, stopped_run: Path) -> None:
+    """On the fly, the fine grid and the interpolated points; the box notes the fine grid."""
+    fig = drawn("fine_analysis", "oblique", fixture_runs, stopped_run)
+    assert [line.get_label() for line in fig.axes[0].get_lines()] == [
+        "on the fly",
+        "fine, its grid",
+        "fine, interpolated",
+    ]
+    assert "fine grid: spacing" in fig.texts[0].get_text()

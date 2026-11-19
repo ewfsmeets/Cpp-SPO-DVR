@@ -15,10 +15,11 @@ def draw_potential_and_levels(
     ax: Axes, potential: AsymptoticPotential, levels: Levels, r_opt_start_bohr: float, j: int
 ) -> None:
     """V_asy(r) (eV) with the levels E(v, j) of one j as horizontal lines (dashed: not bound on the r grid), the
-    r absorber shaded from ROptStart (orange: r, as the designer)."""
+    r absorber shaded from ROptStart (orange: r, as the designer); up to 3 eV above the minimum, and at least
+    to the potential at the end of the r grid."""
     ax.plot(potential.r_bohr, potential.v_ev, linestyle="-", label="V_asy(r)")
     bottom = np.min(potential.v_ev)
-    top = bottom + LEVELS_SHOWN_EV
+    top = max(bottom + LEVELS_SHOWN_EV, potential.v_ev[-1] + MARGIN_EV)  # the potential at the grid's end too
     shown = (levels.j == j) & (levels.energy_ev < top)
     for v, energy_ev, bound in zip(levels.v[shown], levels.energy_ev[shown], levels.bound[shown], strict=True):
         ax.axhline(energy_ev, linestyle="-" if bound else "--", linewidth=0.8, color=MUTED)

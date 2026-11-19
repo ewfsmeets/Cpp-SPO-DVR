@@ -42,7 +42,35 @@ def arguments(argv: list[str]) -> argparse.Namespace:
         command.add_argument("runs", nargs="+", type=Path, help="the run directory, or every segment's")
     for command in (plot, report):
         command.add_argument("--out", type=Path, required=True, help="the directory to write into")
+        command.add_argument(
+            "--energy",
+            type=float,
+            help="E_coll (eV) of the one-energy panels: the nearest analysis energy (default: the middle one)",
+        )
+        command.add_argument(
+            "--channels", type=positive_integer, help="how many channels or levels to draw (default 6)"
+        )
+        command.add_argument(
+            "--azimuth",
+            type=float,
+            help="in-plane direction (deg) at normal incidence; ignored at oblique incidence (default 0)",
+        )
     return parser.parse_args(argv)
+
+
+def positive_integer(text: str) -> int:
+    """An argparse type: an integer of at least 1."""
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"{text} is not at least 1")
+    return value
+
+
+def options_of(args: argparse.Namespace) -> argparse.Namespace:
+    """The figures' options with the command line's values."""
+    options = default_options()
+    options.energy_ev, options.channels, options.azimuth_deg = args.energy, args.channels, args.azimuth
+    return options
 
 
 def list_figures() -> int:
@@ -53,19 +81,19 @@ def list_figures() -> int:
     return 0
 
 
-def plot(name: str, runs: list[Path], info: RunInfo, out: Path) -> int:
+def plot(name: str, runs: list[Path], info: RunInfo, out: Path, options: argparse.Namespace) -> int:
     """Draws one figure into `out` (replacing only files the tool wrote there) and prints the files written."""
     figure, needed = next((f, n) for p, f, n in PLOTS if p == name)
     if not has_files(runs[-1], needed):
         raise ReadError(f"{runs[-1]}: no {' or '.join(needed)}; the figure {name} needs it")
-    for path in write_figures(figure(runs, info, default_options()), out):
+    for path in write_figures(figure(runs, info, options), out):
         print(path)
     return 0
 
 
-def report(runs: list[Path], info: RunInfo, out: Path) -> int:
+def report(runs: list[Path], info: RunInfo, out: Path, options: argparse.Namespace) -> int:
     """Writes the report; prints its path and the problems."""
-    problems = write_report(runs, info, out)
+    problems = write_report(runs, info, out, options)
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
     print(out / "report.md")
@@ -86,8 +114,8 @@ def main(argv: list[str]) -> int:
             print("\n".join(verdict_lines(run_verdict(runs, info))))
             return 0
         if args.command == "plot":
-            return plot(args.name, runs, info, args.out)
-        return report(runs, info, args.out)
+            return plot(args.name, runs, info, args.out, options_of(args))
+        return report(runs, info, args.out, options_of(args))
     except (ReadError, OSError) as error:  # OSError: e.g. --out names a file, or a directory not writable
         print(f"error: {error}", file=sys.stderr)
         return 2

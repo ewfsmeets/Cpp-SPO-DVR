@@ -41,7 +41,7 @@ LOG_HEADROOM = 1.5  # a log axis ends this factor above the largest value
 LINEAR_HEADROOM = 1.05  # a linear axis ends this factor above the largest value
 DPI = 110
 REPORT_WIDTH_IN = 8.0  # 880 px: the width of GitHub's content column
-INFO_LINES = 3  # title and system, grids and times, files and program version (info_lines)
+INFO_LINES = 4  # title and system; energies, incidence, times; grids; files and program version (info_lines)
 INFO_LINE_IN = 0.16  # height of one info line (inches)
 INFO_MARGIN_IN = 0.2  # space between the info box and the axes above it
 
@@ -106,7 +106,8 @@ def scale_and_limits(arrays: list[np.ndarray], signed: bool = False) -> Scale:
     if signed or finite.size == 0:
         lower = float(np.min(finite)) if finite.size else 0.0
         upper = float(np.max(finite)) if finite.size else 1.0
-        return Scale("linear", lower, upper, 0)
+        room = (LINEAR_HEADROOM - 1.0) * (upper - lower)  # so that the extremes do not touch the frame
+        return Scale("linear", lower - room, upper + room, 0)
     positive = finite[finite > 0]
     if positive.size == 0:
         return Scale("linear", 0.0, 1.0, int(np.sum(finite <= 0)))
@@ -141,18 +142,24 @@ def info_lines(
     time_au: float | None = None,
     notes: tuple[str, ...] = (),
 ) -> list[str]:
-    """The INFO_LINES lines of the info box (title, system, initial state, energies; grids, times; files read,
-    program version), then one line per note."""
+    """The INFO_LINES lines of the info box (title, system, initial state; energies, incidence, times; grids;
+    files read, program version), then one line per note."""
     d = info.data
     g = d["grids"]
     s = d["initial_state"]
     energies = d["analysis_energies"]["collision_ev"] or [float("nan")]
+    packet = d["wave_packet"]
+    incidence = (
+        f"E_par {packet['e_parallel_ev']:g} eV at phi {packet['phi_parallel_deg']:g} deg (E_n = E_coll - E_par)"
+        if packet["e_parallel_ev"] > 0
+        else "normal incidence"
+    )
     lines = [
-        f"{d['title']} | {d['system_id']} | (v, j, mJ) = ({s['v']}, {s['j']}, {s['mJ']}) | "
-        f"E_coll {energies[0]:.3g}-{energies[-1]:.3g} eV",
-        f"grids nZ {g['nz']}/{g['nz_specular']} x nR {g['nr']} x {g['nx']} x {g['ny']}, JMax {g['j_max']}, "
-        f"MJMax {g['mj_max']} | t {info.t_start_au:g}-{info.t_end_au:g} a.u."
+        f"{d['title']} | {d['system_id']} | (v, j, mJ) = ({s['v']}, {s['j']}, {s['mJ']})",
+        f"E_coll {energies[0]:.3g}-{energies[-1]:.3g} eV, {incidence} | t {info.t_start_au:g}-{info.t_end_au:g} a.u."
         + (f" | frame t = {time_au:g} a.u." if time_au is not None else ""),
+        f"grids nZ {g['nz']}/{g['nz_specular']} x nR {g['nr']} x {g['nx']} x {g['ny']}, JMax {g['j_max']}, "
+        f"MJMax {g['mj_max']}",
         f"files: {', '.join(sources)} | spodvr {d['program']['version']} (git {d['program']['git']})",
     ]
     return lines + [f"note: {n}" for n in notes]

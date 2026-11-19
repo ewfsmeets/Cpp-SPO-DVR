@@ -2,29 +2,29 @@
 
 import numpy as np
 from matplotlib.axes import Axes
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import LogNorm
 from matplotlib.ticker import MaxNLocator
 
-from compute.time_series import ScatteringInTime, convergence_ratio
+from compute.time_series import ScatteringInTime, convergence_deviation
 from style import (
     DENSITY_FLOOR,
-    DIVERGING,
     LINE_STYLES,
     MARKERS,
     MUTED,
+    SEQUENTIAL,
     apply_scale,
     axis_label,
     masked,
     scale_and_limits,
 )
 
-RATIO_TOP = 1.5  # the convergence map's colour scale ends here; larger ratios get the end colour (the bar's arrow)
+DEVIATION_RANGE = (1e-4, 1.0)  # the convergence map's colour scale; values beyond get the end colours (arrows)
 
 
 def mark_segments(ax: Axes, starts_au: list[float]) -> None:
     """A thin vertical line where each restart segment after the first starts."""
     for t in starts_au[1:]:
-        ax.axvline(t, color=MUTED, linewidth=0.8, linestyle=":")
+        ax.axvline(t, color=MUTED, linewidth=0.8)
         ax.annotate(" restart", (t, 1.0), xycoords=("data", "axes fraction"), va="top", fontsize=7, color=MUTED)
 
 
@@ -80,15 +80,44 @@ def draw_channel_densities(ax: Axes, times_au: np.ndarray, densities: np.ndarray
 
 
 def draw_convergence(ax: Axes, s: ScatteringInTime) -> None:
-    """P_scattered(E; t) / P_scattered(E; tEnd) over time and energy, diverging about 1 (the final value);
-    energies where P_scattered(tEnd) is below 1e-8 of its maximum are not drawn."""
+    """|P_scattered(E; t) / P_scattered(E; tEnd) - 1| over time and energy on a log colour scale (1e-4 .. 1):
+    how far the time sums stopped at t are from their final value; energies where P_scattered(tEnd) is below
+    1e-8 of its maximum are not drawn. A colour still changing near tEnd means not converged."""
     final = s.p_scattered[-1]
-    ratio = np.where((final > DENSITY_FLOOR * np.max(final))[:, None], convergence_ratio(s), np.nan)
-    norm = TwoSlopeNorm(vmin=0.0, vcenter=1.0, vmax=RATIO_TOP)
-    mesh = ax.pcolormesh(s.times_au, s.collision_energy_ev, ratio, shading="nearest", cmap=DIVERGING, norm=norm)
+    deviation = np.where((final > DENSITY_FLOOR * np.max(final))[:, None], convergence_deviation(s), np.nan)
+    norm = LogNorm(*DEVIATION_RANGE)
+    mesh = ax.pcolormesh(s.times_au, s.collision_energy_ev, deviation, shading="nearest", cmap=SEQUENTIAL, norm=norm)
     ax.grid(False)
-    ax.figure.colorbar(mesh, ax=ax, extend="max", label="P_scattered(E; t) / P_scattered(E; tEnd)")
+    ax.figure.colorbar(mesh, ax=ax, extend="both", label="|P(E; t) / P(E; tEnd) - 1|")
     ax.xaxis.set_major_locator(MaxNLocator(5))
     ax.set_xlabel(axis_label("Time the sums stop", "a.u."))
     ax.set_ylabel(axis_label("Collision energy", "eV"))
-    ax.set_title("Converged in time? (1 = the final value)")
+    ax.set_title("Converged in time? (dark: close to the final value)")
+
+
+def draw_energy_series(ax: Axes, energies_ev: np.ndarray, values: np.ndarray, labels: list[str], signed: bool) -> None:
+    """One line per column of values (n_energies, n_series) against the collision energy, each with its own
+    line style and marker; y by style.scale_and_limits (always linear when signed), NaN not drawn."""
+    scale = scale_and_limits([values], signed=signed)
+    for k, label in enumerate(labels):
+        style, marker = LINE_STYLES[k % len(LINE_STYLES)], MARKERS[k % len(MARKERS)]
+        shown = values[:, k] if signed else masked(values[:, k], scale.lower)
+        ax.plot(energies_ev, shown, linestyle=style, marker=marker, markersize=3, linewidth=1.4, label=label)
+    apply_scale(ax, scale)
+    ax.set_xlabel(axis_label("Collision energy", "eV"))
+    ax.legend(loc="best", fontsize=7)
+
+
+def draw_time_delays(ax: Axes, energies_ev: np.ndarray, tau_au: np.ndarray, labels: list[str]) -> None:
+    """tau_f(E) of the given channels (a.u.), NaN (little weight, or closed) not drawn: negative values mean
+    the molecule turned before reaching Z = 0."""
+    draw_energy_series(ax, energies_ev, tau_au, labels, signed=True)
+    ax.set_ylabel(axis_label("Time delay relative to reflection at Z = 0", "a.u."))
+    ax.set_title("Time delay d arg S / dE (S referred to its analysis line)")
+
+
+def draw_channel_probabilities(ax: Axes, energies_ev: np.ndarray, probability: np.ndarray, labels: list[str]) -> None:
+    """|S_f|^2 of the given channels against the collision energy (y log when they span more than 1e3)."""
+    draw_energy_series(ax, energies_ev, probability, labels, signed=False)
+    ax.set_ylabel("Probability")
+    ax.set_title("Their probabilities")
