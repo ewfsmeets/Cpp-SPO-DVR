@@ -15,8 +15,8 @@
 #   directory that keeps the run logs (default: a scratch directory, removed at the end).
 # Exit status: 0 within the bounds, 1 slower or more memory (or a run failed), 2 bad arguments.
 # Environment: none read. Run time: CPU about 10 x 40 s, GPU about 10 x 2 min (measured with R = 5).
-# Disk: the runs write their checkpoint into the scratch directory: about twice the wave function (DZ:
-#   about 12 GiB).
+# Disk: each run writes its checkpoint (DZ: about 6 GiB) into a scratch directory under /var/tmp (on disk; /tmp
+#   may be a RAM-backed tmpfs too small for it), removed after the run's log is read.
 # Docs: docs/CONTRIBUTING.md, section "Additions to the time loop".
 set -euo pipefail
 
@@ -49,7 +49,7 @@ echo "base: $base/spodvr, $("$base/spodvr" --version 2>&1 || true)"
 echo "new:  $new/spodvr, $("$new/spodvr" --version 2>&1 || true)"
 [[ $repetitions =~ ^[0-9]+$ && $repetitions -ge 2 ]] || usage_error "--repetitions must be a whole number >= 2"
 [[ -z $steps || $steps =~ ^[1-9][0-9]*$ ]] || usage_error "--steps must be a positive whole number"
-scratch="$(mktemp -d)"
+scratch="$(mktemp -d --tmpdir=/var/tmp compare_speed.XXXXXX)"
 trap 'rm -rf "$scratch"' EXIT
 if [[ -n $logs ]]; then
   mkdir -p "$logs"
@@ -86,6 +86,7 @@ for k in $(seq 1 "$repetitions"); do
     log="$logs/$which-$k.log"
     OMP_NUM_THREADS=8 /usr/bin/time -v "$build/spodvr" "$scratch/input.json" --threads 8 "${device[@]}" --no-color \
       --output-dir "$scratch/out-$which" > "$log" 2>&1 || { echo "error: run $which $k failed; see $log" >&2; exit 1; }
+    rm -rf -- "${scratch:?}/out-$which"  # only the log is needed; one checkpoint on disk at a time
     echo "$which $k: $(grep -E 'Propagation time' "$log" | sed 's/^ *//')"
   done
 done
