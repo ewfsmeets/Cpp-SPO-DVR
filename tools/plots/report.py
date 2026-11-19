@@ -14,7 +14,7 @@ from explanations import FIGURES, TITLES
 from figures import PLOTS
 from readers.errors import ReadError
 from readers.run_info import RunInfo
-from style import save_figure
+from style import Movie, file_names, save_figure, save_movie
 from verdict import run_verdict
 
 MANIFEST = "written_by_spodvr_plot.json"  # the files the tool wrote into an output directory
@@ -53,15 +53,20 @@ def claim(out: Path, names: list[str]) -> None:
     record_written(out, names)
 
 
-def figure_files(figures: list[tuple[str, Figure]]) -> list[str]:
-    """The file names save_figure writes for (stem, figure) pairs."""
-    return [f"{stem}{suffix}" for stem, _ in figures for suffix in (".png", ".pdf")]
+def figure_files(figures: list[tuple[str, Figure | Movie]]) -> list[str]:
+    """The file names saving writes for (stem, figure) pairs (style.file_names)."""
+    return [name for stem, fig in figures for name in file_names(stem, fig)]
 
 
-def write_figures(figures: list[tuple[str, Figure]], out: Path) -> list[Path]:
-    """Saves (stem, figure) pairs as PNG and PDF into `out` (claimed first); returns the paths."""
+def save(fig: Figure | Movie, stem: Path) -> list[Path]:
+    """A figure as PNG and PDF, a movie as GIF and PNG (its last frame)."""
+    return save_movie(fig, stem) if isinstance(fig, Movie) else save_figure(fig, stem)
+
+
+def write_figures(figures: list[tuple[str, Figure | Movie]], out: Path) -> list[Path]:
+    """Saves (stem, figure or movie) pairs into `out` (claimed first); returns the paths."""
     claim(out, figure_files(figures))
-    return [path for stem, fig in figures for path in save_figure(fig, out / stem)]
+    return [path for stem, fig in figures for path in save(fig, out / stem)]
 
 
 def markdown_cell(text: str) -> str:
@@ -89,7 +94,7 @@ def verdict_section(runs: list[Path], info: RunInfo) -> tuple[list[str], list[st
 
 def make_figures(
     runs: list[Path], info: RunInfo, options: argparse.Namespace
-) -> tuple[list[tuple[str, str, Figure]], list[str], list[str]]:
+) -> tuple[list[tuple[str, str, Figure | Movie]], list[str], list[str]]:
     """Every figure the run's files allow except the verdict's (the report prints it as text): (name, stem,
     figure) triples, the Markdown lines for those not drawn, and the problems (figures that failed)."""
     made, not_drawn, problems = [], [], []
@@ -116,10 +121,11 @@ def write_report(runs: list[Path], info: RunInfo, out: Path, options: argparse.N
     figures = [(stem, fig) for _, stem, fig in made]
     claim(out, ["report.md", *figure_files(figures)])
     for stem, fig in figures:
-        save_figure(fig, out / stem)
+        save(fig, out / stem)
     lines = [f"# {info.data['title']}", "", *verdict]
-    for name, stem, _ in made:
-        lines += [f"## {TITLES[name]}", "", f"![{TITLES[name]}]({stem}.png)", "", FIGURES[name], ""]
+    for name, stem, fig in made:
+        image = file_names(stem, fig)[0]
+        lines += [f"## {TITLES[name]}", "", f"![{TITLES[name]}]({image})", "", FIGURES[name], ""]
     lines += ["## Not drawn", "", *not_drawn, ""] if not_drawn else []
     (out / "report.md").write_text("\n".join(lines), encoding="utf-8")
     return problems + figure_problems

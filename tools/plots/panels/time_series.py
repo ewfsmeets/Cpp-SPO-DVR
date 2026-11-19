@@ -86,7 +86,9 @@ def draw_convergence(ax: Axes, s: ScatteringInTime) -> None:
     final = s.p_scattered[-1]
     deviation = np.where((final > DENSITY_FLOOR * np.max(final))[:, None], convergence_deviation(s), np.nan)
     norm = LogNorm(*DEVIATION_RANGE)
-    mesh = ax.pcolormesh(s.times_au, s.collision_energy_ev, deviation, shading="nearest", cmap=SEQUENTIAL, norm=norm)
+    mesh = ax.pcolormesh(
+        s.times_au, s.collision_energy_ev, deviation, shading="nearest", cmap=SEQUENTIAL, norm=norm, rasterized=True
+    )
     ax.grid(False)
     ax.figure.colorbar(mesh, ax=ax, extend="both", label="|P(E; t) / P(E; tEnd) - 1|")
     ax.xaxis.set_major_locator(MaxNLocator(5))

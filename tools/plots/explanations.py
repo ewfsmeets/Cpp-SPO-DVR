@@ -12,6 +12,8 @@ TITLES = {
     "fine_analysis": "On-the-fly and fine analysis",
     "averages": "Norms and mean positions in time",
     "gas_phase": "Gas phase",
+    "densities": "The packet in Z and r against time",
+    "density_movie": "The packet over (Z, r)",
     "bk": "Balint-Kurti coefficients and convergence in time",
 }
 
@@ -81,5 +83,19 @@ FIGURES = {
         "and the r absorber. Right: |psi(r)| of the lowest levels on a log axis. Good: the analysed levels are bound "
         "and |psi| has fallen by many decades at both ends of the r grid; what is left at the outer end is absorbed "
         "from the start, also from the initial state (counted as reaction). The verdict checks both ends."
+    ),
+    "densities": (
+        "Top: the probability per bohr of Z (summed over r) and of r (summed over Z) against time, from densities/ "
+        "(writeDensities: the probability per (Z, r) cell, the sums behind averages.dat; the scattering and the "
+        "specular wave summed): the packet comes in, turns and leaves; on the Z map the specular analysis line, "
+        "which follows the incoming packet's tail outward until it is fixed. Bottom: the norm per region (r beyond "
+        "r_c, where the r absorber starts, and for smaller r the Z bands below zasymp, up to Zana, up to the "
+        "scattering grid's end and beyond it) and 1 - norm. Good: the norm leaves through the absorbers, and "
+        "little reaches r >= r_c before the packet reaches the surface."
+    ),
+    "density_movie": (
+        "rho(Z, r) of the scattering and the specular wave summed (bohr^-2), on one log colour scale for all "
+        "frames, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb and the "
+        "specular analysis line of each frame marked. The PNG beside the GIF is the last frame."
     ),
 }

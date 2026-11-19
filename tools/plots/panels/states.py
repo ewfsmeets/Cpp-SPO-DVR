@@ -62,7 +62,7 @@ def draw_level_map(
     shown = masked(grid, DENSITY_FLOOR * top)
     scale = scale_and_limits([shown])
     norm = LogNorm(scale.lower, top) if scale.kind == "log" else Normalize(0.0, top)
-    mesh = ax.pcolormesh(j_values, v_values, shown, shading="nearest", cmap=SEQUENTIAL, norm=norm)
+    mesh = ax.pcolormesh(j_values, v_values, shown, shading="nearest", cmap=SEQUENTIAL, norm=norm, rasterized=True)
     ax.figure.colorbar(mesh, ax=ax, label="Probability")
     ax.set_xticks(j_values, [f"{j}\n(JMax)" if j == j_top else str(j) for j in j_values])
     ax.set_yticks(v_values)

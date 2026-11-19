@@ -1,6 +1,7 @@
 """The figures (layer 5): one figure_<name>(runs, info, options) per entry of PLOTS, composing panels. runs: the
 run's segment directories in time order; info: the run's RunInfo (readers.segments.joined_info); options:
-default_options(), where None means "the figure chooses". Each returns a list of (file stem, Figure) pairs.
+default_options(), where None means "the figure chooses". Each returns a list of (file stem, Figure or Movie)
+pairs.
 PLOTS is the only list of entries: `list`, `plot`, `report` and the tests all go through it."""
 
 import argparse
@@ -10,9 +11,20 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
+from compute.densities import (
+    combined_probability,
+    density_grids,
+    density_marks,
+    movie_frames,
+    r_profile_per_bohr,
+    region_norms,
+    specular_line_bohr,
+    usable_records,
+    z_profile_per_bohr,
+)
 from compute.diffraction import diffraction, out_of_plane_fraction, p_per_order, scattering_angles
 from compute.gas_phase import levels
-from compute.grids import incident_parallel_momentum
+from compute.grids import density_per_volume, incident_parallel_momentum
 from compute.results import matched_differences, results
 from compute.states import level_map, mj_fractions, state_to_state
 from compute.time_series import (
@@ -23,6 +35,13 @@ from compute.time_series import (
     scattering_in_time,
     strongest_channels,
     time_delays,
+)
+from panels.densities import (
+    add_density_colorbar,
+    draw_carpet,
+    draw_density_map,
+    draw_region_norms,
+    draw_specular_line,
 )
 from panels.diagnostics import VERDICT_LINE_IN, draw_verdict, wrapped_verdict
 from panels.diffraction import draw_orders, draw_out_of_plane, draw_scattering_angles, draw_spot_map
@@ -48,13 +67,14 @@ from readers.binary import read_bk_coefficients, read_checkpoint
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
 from readers.run_info import RunInfo
-from readers.segments import read_joined_averages
+from readers.segments import read_joined_averages, read_joined_series
 from readers.tables import read_asymptotic_potential, read_gas_phase_states, read_s_matrix, read_scattering_summary
-from style import add_info_box, new_figure
+from style import Movie, add_info_box, density_color_scale, info_lines, new_figure
 from verdict import run_verdict
 
-Figures = list[tuple[str, Figure]]
+Figures = list[tuple[str, Figure | Movie]]
 STRONGEST = 6  # channels or levels drawn against energy or time unless options.channels says otherwise
+MOVIE_FRAMES = 30  # frames of a movie at most, evenly spaced over the records
 WAVE_FUNCTIONS = 3  # levels drawn by the gas_phase figure
 
 
@@ -228,6 +248,52 @@ def figure_fine_analysis(runs: list[Path], info: RunInfo, options: argparse.Name
     return [("fine_analysis", fig)]
 
 
+def figure_densities(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The packet's Z and r profiles against time (the specular analysis line on the Z one), the norm per
+    region."""
+    joined, starts_au = read_joined_series(runs, "densities")
+    series, notes = usable_records(joined)
+    grids = density_grids(series)
+    total = combined_probability(series)
+    marks = density_marks(info, grids)
+    times_au = series.times_au
+    fig = new_figure(n_notes=len(notes), height_in=7.0)
+    axes = fig.subplot_mosaic([["z", "r"], ["regions", "legend"]])
+    draw_carpet(axes["z"], times_au, grids.z_bohr, z_profile_per_bohr(total, grids), "Z", marks.z_lines, starts_au)
+    draw_specular_line(axes["z"], times_au, specular_line_bohr(series, grids))
+    draw_carpet(axes["r"], times_au, grids.r_bohr, r_profile_per_bohr(total, grids), "r", marks.r_lines, starts_au)
+    draw_region_norms(axes["regions"], axes["legend"], times_au, region_norms(series, info, grids), starts_au)
+    segments = f"{len(runs)} segment{'s' if len(runs) > 1 else ''}"
+    add_info_box(fig, info, [f"densities/ ({segments})", "run_info.json"], notes=notes)
+    return [("densities", fig)]
+
+
+def figure_density_movie(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The density over (Z, r) against time, as a movie (at most MOVIE_FRAMES frames)."""
+    joined, _ = read_joined_series(runs, "densities")
+    series, notes = usable_records(joined)
+    grids = density_grids(series)
+    frames = movie_frames(len(series.times_au), MOVIE_FRAMES)
+    density = density_per_volume(combined_probability(series)[frames], grids.dz_bohr * grids.dr_bohr)
+    color_scale = density_color_scale(density)  # one scale for all frames
+    marks = density_marks(info, grids)
+    times_au, lines_bohr = series.times_au[frames], specular_line_bohr(series, grids)[frames]
+    sources = ["densities/", "run_info.json"]
+    fig = new_figure(n_notes=len(notes))
+    ax = fig.add_subplot()
+    add_density_colorbar(fig, ax, color_scale, "rho(Z, r) (bohr^-2)")
+    box = add_info_box(fig, info, sources, time_au=times_au[-1], notes=notes)
+
+    def update(k: int) -> None:
+        """Redraws the map, the specular line and the info box's time for frame k."""
+        ax.clear()
+        draw_density_map(ax, grids, density[k], color_scale, marks, times_au[k], lines_bohr[k])
+        box.set_text("\n".join(info_lines(info, sources, time_au=times_au[k], notes=notes)))
+
+    update(len(frames) - 1)  # complete as a figure (the last frame); save_movie redraws every frame
+    return [("density_movie", Movie(fig, update, len(frames)))]
+
+
 # name, figure function, the files it needs in the last segment's directory
 FINE_ANALYSIS_FILES = ["fine_analysis/scattering_summary.tsv", "fine_analysis/spectrum/scattering_summary.tsv"]
 PLOTS = [
@@ -244,6 +310,8 @@ PLOTS = [
     ),
     ("bk", figure_bk, ["bk_coefficients.bin"]),
     ("averages", figure_averages, ["averages.dat"]),
+    ("densities", figure_densities, ["densities/manifest.json"]),
+    ("density_movie", figure_density_movie, ["densities/manifest.json"]),
     ("gas_phase", figure_gas_phase, ["gas_phase_states.dat", "asymptotic_potential.dat"]),
 ]
 

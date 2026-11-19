@@ -28,15 +28,18 @@ def listing(directory: Path) -> dict[str, int]:
 
 
 def test_report_writes_only_into_out(fixture_runs: Path, tmp_path: Path) -> None:
-    """`report` writes exactly report.md, its manifest and the files the manifest lists into --out, nothing
-    into the run directory; a second report replaces its own files."""
-    run_dir, out = fixture_runs / "dailight_oblique", tmp_path / "report"
+    """`report` writes exactly report.md, its manifest and the files the manifest lists into --out (a movie as
+    GIF and PNG, the GIF shown), nothing into the run directory; a second report replaces its own files. On the
+    smaller hard-wall run, since the report is made twice."""
+    run_dir, out = fixture_runs / "hardwall_tiny", tmp_path / "report"
     before = listing(run_dir)
     assert run("report", run_dir, "--out", out).returncode == 0
     manifest = json.loads((out / "written_by_spodvr_plot.json").read_text(encoding="utf-8"))["files"]
     assert {p.name for p in out.iterdir()} == {*manifest, "written_by_spodvr_plot.json"}
     assert {"report.md", "results.png", "results.pdf", "bk.png"} <= set(manifest) and "verdict.png" not in manifest
-    assert "## Verdict" in (out / "report.md").read_text(encoding="utf-8")
+    assert {"density_movie.gif", "density_movie.png"} <= set(manifest) and "density_movie.pdf" not in manifest
+    report = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Verdict" in report and "(density_movie.gif)" in report
     assert run("report", run_dir, "--out", out).returncode == 0
     assert listing(run_dir) == before
 

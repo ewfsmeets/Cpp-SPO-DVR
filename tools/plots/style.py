@@ -1,5 +1,6 @@
 """The one look of every figure (layer 3): colours and their meanings, rcParams, axis labels, the scale rule,
-the info box at the bottom of a figure, and saving (PNG + PDF).
+the info box at the bottom of a figure, the density colour scale, and saving (a figure as PNG + PDF, a movie as
+GIF + a PNG of its last frame).
 
 Colours: the wave-packet designer's (tools/wave_packet_designer/plots.py; tests/test_style.py checks that they
 stay equal) with the same meanings in grid and absorber panels: the scattering grid blue, the specular grid
@@ -8,12 +9,15 @@ only colour maps: viridis and cividis (sequential), PuOr (diverging). This modul
 tool: tests/test_style.py fails on a hex colour or a colour-map name in any other module.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib
 import numpy as np
+from matplotlib.animation import PillowWriter
 from matplotlib.axes import Axes
+from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
 from matplotlib.text import Text
 
@@ -117,6 +121,13 @@ def scale_and_limits(arrays: list[np.ndarray], signed: bool = False) -> Scale:
     return Scale("linear", min(0.0, float(np.min(finite))), largest * LINEAR_HEADROOM, 0)
 
 
+def density_color_scale(values: np.ndarray) -> LogNorm:
+    """A log colour scale over all values (for a movie: all its frames, fixed before the first): from
+    DENSITY_FLOOR of the largest to the largest."""
+    top = float(np.nanmax(values))
+    return LogNorm(DENSITY_FLOOR * top, top)
+
+
 def apply_scale(ax: Axes, scale: Scale) -> None:
     """Sets the y scale and limits of an Axes."""
     ax.set_yscale(scale.kind)
@@ -175,9 +186,48 @@ def add_info_box(
     )
 
 
+MOVIE_FPS = 5  # frames per second of the GIF movies
+
+
+@dataclass
+class Movie:
+    """A figure that changes with time: update(k) redraws it for frame k (0 <= k < n_frames).
+
+    update must keep what the layout depends on (the axes, tick labels, colour bars): save_movie fixes the
+    layout after the first frame. The colour scale is the caller's, fixed for all frames before the first."""
+
+    fig: Figure
+    update: Callable[[int], None]
+    n_frames: int
+
+
+def file_names(stem: str, fig: Figure | Movie) -> list[str]:
+    """The files a figure is saved as: stem.png and stem.pdf; a movie: stem.gif and stem.png (its last frame).
+    The first is the one a report shows."""
+    return [f"{stem}.gif", f"{stem}.png"] if isinstance(fig, Movie) else [f"{stem}.png", f"{stem}.pdf"]
+
+
+def save_movie(movie: Movie, stem: Path) -> list[Path]:
+    """The movie's files (file_names: all frames as a GIF, which GitHub plays inline, and the last as a PNG);
+    returns their paths. The layout is computed for the first frame and then fixed (the figure's layout engine
+    stays "none" afterwards), so the axes stay put while the frames change."""
+    gif, png = (stem.parent / name for name in file_names(stem.name, movie))
+    writer = PillowWriter(fps=MOVIE_FPS)
+    with writer.saving(movie.fig, gif, dpi=DPI):
+        for k in range(movie.n_frames):
+            movie.update(k)
+            if k == 0:
+                movie.fig.draw_without_rendering()  # the constrained layout of the first frame ...
+                movie.fig.set_layout_engine("none")  # ... kept for the others
+            writer.grab_frame()
+    movie.fig.savefig(png, metadata={"Software": None})
+    return [gif, png]
+
+
 def save_figure(fig: Figure, stem: Path) -> list[Path]:
-    """stem.png (no metadata, so that the bytes are reproducible) and stem.pdf; returns both paths."""
-    png, pdf = stem.with_suffix(".png"), stem.with_suffix(".pdf")
+    """The figure's files (file_names: PNG without metadata, so that the bytes are reproducible, and PDF);
+    returns their paths."""
+    png, pdf = (stem.parent / name for name in file_names(stem.name, fig))
     fig.savefig(png, metadata={"Software": None})
     fig.savefig(pdf, metadata={"Creator": None, "Producer": None, "CreationDate": None})
     return [png, pdf]

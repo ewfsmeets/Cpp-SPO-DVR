@@ -1,7 +1,8 @@
 """Every figure on every kind of run: the figures each kind gives, drawn, labelled, the info box clear of the
-axes, saved as PNG and PDF; the content each panel must show; every PLOTS entry has a title and an
-explanation."""
+axes, saved (a figure as PNG and PDF, a movie as GIF and PNG); the content each panel must show; every PLOTS
+entry has a title and an explanation."""
 
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -10,13 +11,25 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
+from compute.densities import movie_frames
 from compute.diffraction import diffraction
 from explanations import FIGURES, TITLES
-from figures import PLOTS, default_options, figure_averages, has_files
+from figures import (
+    MOVIE_FRAMES,
+    PLOTS,
+    default_options,
+    figure_averages,
+    figure_densities,
+    figure_density_movie,
+    has_files,
+)
+from readers.arrays import read_series
+from readers.errors import ReadError
 from readers.run_info import RunInfo, read_run_info
-from readers.segments import joined_info, ordered_segments
+from readers.segments import joined_info, ordered_segments, read_joined_series
 from readers.tables import read_s_matrix
-from style import add_info_box, save_figure
+from report import save
+from style import Movie, add_info_box, save_movie
 
 KINDS = {  # fixture directories of each kind of run ("stopped": the stopped_run fixture)
     "oblique": ["dailight_oblique"],
@@ -30,7 +43,7 @@ EXPECTED = {  # the PLOTS entries each kind of run allows
     "oblique": ALL,
     "hard wall": ALL,
     "split": ALL,
-    "stopped": {"verdict", "gas_phase", "bk"},
+    "stopped": {"verdict", "gas_phase", "bk", "densities", "density_movie"},
     "potential only": {"verdict", "gas_phase"},
 }
 PIXEL_SLACK = 1  # bounding boxes are rounded to whole pixels
@@ -62,7 +75,7 @@ def check_layout(fig: Figure) -> None:
 @pytest.mark.parametrize("kind", sorted(KINDS))
 def test_every_figure_each_kind_of_run_allows(fixture_runs: Path, stopped_run: Path, tmp_path: Path, kind: str) -> None:
     """The entries whose files the run has are those EXPECTED; each draws at least one figure, laid out and
-    saved (PNG and PDF)."""
+    saved (report.save: PNG and PDF, a movie GIF and PNG)."""
     runs, info = run_of(kind, fixture_runs, stopped_run)
     allowed = {name for name, _, needed in PLOTS if has_files(runs[-1], needed)}
     assert allowed == EXPECTED[kind]
@@ -71,8 +84,10 @@ def test_every_figure_each_kind_of_run_allows(fixture_runs: Path, stopped_run: P
             figures = figure(runs, info, default_options())
             assert figures, name
             for stem, fig in figures:
-                check_layout(fig)
-                assert all(p.stat().st_size > 0 for p in save_figure(fig, tmp_path / stem))
+                check_layout(fig.fig if isinstance(fig, Movie) else fig)
+                if isinstance(fig, Movie):  # two frames: the frame loop is test_a_movie_draws_its_frames_into_a_gif's
+                    fig = Movie(fig.fig, fig.update, min(fig.n_frames, 2))
+                assert all(p.stat().st_size > 0 for p in save(fig, tmp_path / stem))
 
 
 def test_an_info_box_with_more_lines_than_its_strip_is_flagged(fixture_runs: Path, stopped_run: Path) -> None:
@@ -178,3 +193,92 @@ def test_fine_analysis_panels(fixture_runs: Path, stopped_run: Path) -> None:
         "fine, interpolated",
     ]
     assert "fine grid: spacing" in fig.texts[0].get_text()
+
+
+def annotations(ax: object) -> list[str]:
+    """The stripped texts of an axes' annotations (the labels of its marked lines)."""
+    return [t.get_text().strip() for t in ax.texts]
+
+
+def test_densities_panels(fixture_runs: Path, stopped_run: Path) -> None:
+    """The split hard-wall run: the Z carpet marks zasymp, Zana, the scattering grid's end, the Z absorbers and
+    the specular analysis line, the r carpet the r absorber, each with its own colour bar; the regions' legend
+    lists r >= r_c, the four Z bands and 1 - norm; every panel marks the restart."""
+    fig = drawn("densities", "split", fixture_runs, stopped_run)
+    by_title = {ax.get_title(): ax for ax in fig.axes if ax.get_title()}
+    z_carpet, r_carpet = by_title["The packet in Z against time"], by_title["The packet in r against time"]
+    marked = set(annotations(z_carpet))
+    assert {"zasymp", "Zana", "end of the scattering grid", "ZOpt starts", "ZSpOpt starts"} <= marked
+    assert "specular analysis line" in marked
+    assert "ROpt starts" in annotations(r_carpet)
+    assert sum(ax.get_label() == "<colorbar>" for ax in fig.axes) == 2
+    legend = next(ax.get_legend() for ax in fig.axes if not ax.axison and ax.get_legend())
+    labels = [t.get_text() for t in legend.get_texts()]
+    assert len(labels) == 6 and labels[0].startswith("r >= r_c") and labels[-1] == "1 - norm (absorbed)"
+    assert sum(text == "restart" for ax in by_title.values() for text in annotations(ax)) == 3
+
+
+def test_density_movie_marks(fixture_runs: Path, stopped_run: Path) -> None:
+    """The movie's still (its last frame) marks the lines of the map, the specular analysis line and the r
+    absorber, on one colour bar, and names its time."""
+    fig = drawn("density_movie", "hard wall", fixture_runs, stopped_run).fig
+    ax = fig.axes[0]
+    marked = set(annotations(ax))
+    assert {"zasymp", "Zana", "end of the scattering grid", "ZOpt starts", "ZSpOpt starts", "ROpt starts"} <= marked
+    assert "specular analysis line" in marked
+    assert sum(a.get_label() == "<colorbar>" for a in fig.axes) == 1
+    assert ax.get_title().endswith("at t = 10000 a.u.")
+
+
+def test_density_figures_need_a_finite_record(no_density_record_run: Path) -> None:
+    """A run stopped before its first densities record: both density figures refuse with a ReadError (the report
+    lists them as not drawn), not a traceback."""
+    info = read_run_info(no_density_record_run)
+    for figure in (figure_densities, figure_density_movie):
+        with pytest.raises(ReadError, match="no finite record"):
+            figure([no_density_record_run], info, default_options())
+
+
+def test_density_figures_stop_at_a_non_finite_record(fixture_runs: Path, tmp_path: Path) -> None:
+    """A NaN in record 3 of the specular cells (a diverged run): the figures draw records 0..2 and say so."""
+    run = tmp_path / "hardwall_tiny_nan"
+    shutil.copytree(fixture_runs / "hardwall_tiny", run, ignore=shutil.ignore_patterns("checkpoint.bin"))
+    cells = run / "densities" / "prob_spec_zr.bin"
+    values = np.fromfile(cells, "<f8")
+    values[3 * read_series(run / "densities").arrays["prob_spec_zr"][0].size] = np.nan
+    values.tofile(cells)
+    info = read_run_info(run)
+    ((_, fig),) = figure_densities([run], info, default_options())
+    assert "records from number 3 on hold a NaN or inf" in fig.texts[0].get_text()
+    assert max(fig.axes[0].collections[0].get_coordinates()[:, :, 0].ravel()) <= 300.0
+    ((_, movie),) = figure_density_movie([run], info, default_options())
+    assert movie.n_frames == 3 and "NaN or inf" in movie.fig.texts[0].get_text()
+
+
+def test_a_movie_draws_its_frames_into_a_gif(fixture_runs: Path, stopped_run: Path, tmp_path: Path) -> None:
+    """The density movie cut to 3 frames: update is called once per frame, the GIF and the still PNG are
+    written, each frame's title names its record's time, and the colour scale and the map's place stay the
+    same in every frame (fixed scale, layout fixed after the first frame)."""
+    runs, info = run_of("oblique", fixture_runs, stopped_run)
+    ((_, movie),) = figure_density_movie(runs, info, default_options())
+    series, _ = read_joined_series(runs, "densities")
+    times_au = series.times_au[movie_frames(len(series.times_au), MOVIE_FRAMES)]
+    frames, positions = [], []
+
+    def recorded(k: int) -> None:
+        """The movie's update, recording what frame k draws (title, colour scale) and where the map sat after the
+        previous frame was drawn."""
+        if k > 0:
+            positions.append(movie.fig.axes[0].get_position().bounds)
+        movie.update(k)
+        ax = movie.fig.axes[0]
+        frames.append((ax.get_title(), ax.collections[0].norm.vmin, ax.collections[0].norm.vmax))
+
+    gif, png = save_movie(Movie(movie.fig, recorded, 3), tmp_path / "movie")
+    assert gif.stat().st_size > 0 and png.stat().st_size > 0
+    assert len(frames) == 3
+    for k, (title, vmin, vmax) in enumerate(frames):
+        assert f"t = {times_au[k]:g} a.u." in title
+        assert (vmin, vmax) == frames[0][1:]
+    positions.append(movie.fig.axes[0].get_position().bounds)  # after the last frame and the PNG
+    assert len(set(positions)) == 1, "the map moved between frames"

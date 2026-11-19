@@ -2,10 +2,11 @@
 
 Figures and a report of one `spodvr` run, read from the files the run wrote: the run verdict (is the run
 complete and converged?), the results against energy, the final rovibrational states, diffraction and the
-scattering angles, time delays, the fine analysis, the Balint-Kurti coefficients, the averages and the gas
-phase. A run split into restart segments is one run: give every segment's directory and the plots
-join them. The wave-packet designer ([tools/wave_packet_designer](../wave_packet_designer/README.md)) checks
-an input before a run; this tool looks at what the run produced.
+scattering angles, time delays, the fine analysis, the Balint-Kurti coefficients, the averages, the packet's
+density over (Z, r) against time (a run with `writeDensities`) and the gas phase. A run split into restart
+segments is one run: give every segment's directory and the plots join them. The wave-packet designer
+([tools/wave_packet_designer](../wave_packet_designer/README.md)) checks an input before a run; this tool looks at
+what the run produced.
 
 ## Running
 
@@ -30,7 +31,8 @@ oblique incidence, where the plane of incidence is used).
   Segments that do not join (one does not start where another ended) are refused; a segment whose
   RestartDir names another directory gives a `warning:`. The last segment alone also works: its
   bk_coefficients.bin holds the whole run, its averages.dat only that segment.
-- Each figure is written as `DIR/<name>.png` (no metadata: reproducible bytes) and `DIR/<name>.pdf`. The report
+- Each figure is written as `DIR/<name>.png` (no metadata: reproducible bytes) and `DIR/<name>.pdf`, a movie
+  as `DIR/<name>.gif` (GitHub plays it inline) and a PNG of its last frame. The report
   opens with the verdict, then shows every figure whose files the run has, each with its title and what good
   looks like (`explanations.py`), and lists the figures it could not draw and why.
 - `plot` and `report` write only into `--out`, and there replace only files the tool wrote before (listed in
@@ -52,6 +54,8 @@ is a bug of the tool.
 | `time_delay` | d arg S / dE of the strongest channels (each S referred to its analysis line), relative to a reflection at Z = 0, where the channel carries weight; their probabilities | bk_coefficients.bin, checkpoint.bin |
 | `fine_analysis` | P_scattered of the on-the-fly and the fine analysis, and their difference | scattering_summary.tsv, fine_analysis/ |
 | `averages` | norm, 1 − norm, rest norm, ⟨Z⟩ and ⟨r⟩ against time | averages.dat |
+| `densities` | the probability per bohr of Z and of r against time (carpets; the specular analysis line on the Z one) and the norm per region (r beyond r_c; Z bands up to zasymp, Zana, the grids' ends) | densities/ (`writeDensities`) |
+| `density_movie` | ρ(Z, r) in bohr⁻², the scattering and the specular wave summed, on one log scale, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb and the specular analysis line (at most 30 frames) | densities/ (`writeDensities`) |
 | `gas_phase` | V_asy(r) with the levels of the initial j and the r absorber; \|ψ(r)\| of the lowest levels on a log axis | gas_phase_states.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
@@ -115,7 +119,7 @@ flowchart LR
 | `compute/densities.py` | from densities/: the grids, both waves summed, Z and r profiles, mean positions, the norm per region and per absorber, the specular line, the movie's frames | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
 | `verdict.py` | the verdict of a run: reads what its files allow, a missing file is a finding | — |
-| `style.py` | colours, rcParams, the scale rule, the info box, saving | the designer's colours (`tools/wave_packet_designer/plots.py`) |
+| `style.py` | colours, rcParams, the scale rule, the info box, saving figures and movies (`Movie`) | the designer's colours (`tools/wave_packet_designer/plots.py`) |
 | `explanations.py` | each figure's title and what it shows (printed under it in the report) | — |
 | `panels/*.py` | one `draw_<panel>(ax, …)` per panel; draws (and masks below a floor), computes nothing | — |
 | `figures.py` | one `figure_<name>(runs, info, options)` per entry, and `PLOTS`, the only list of entries | — |
@@ -182,6 +186,12 @@ def figure_averages(runs: list[Path], info: RunInfo, options: argparse.Namespace
 
 and in `PLOTS`: `("averages", figure_averages, ["averages.dat"])`, the files it needs in the run directory.
 
+A movie returns `Movie(fig, update, n_frames)` (`style.py`) instead of a figure. `update(k)`, a function nested
+in the figure function, clears the axes, calls the same `draw_<panel>` for frame k and sets the time in the
+info box; the colour scale is fixed for all frames before the first, and `update` must not change what the
+layout depends on (axes, colour bars), because `save_movie` fixes the layout after the first frame.
+`figure_density_movie` is the example; the report saves a movie as a GIF and a PNG of its last frame.
+
 ## Tests
 
 pytest, one ctest per test module, registered by a glob in the repository's `tests/CMakeLists.txt`: the file
@@ -209,7 +219,8 @@ segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`).
 ## Limits
 
 - One run at a time (its restart segments joined); no comparison of runs.
-- Only what the run's files hold: the wave packet itself is not plotted yet.
+- Only what the run's files hold: the wave packet is seen through its (Z, r) density (`writeDensities`); its
+  structure in x, y and the angles is not plotted yet.
 - The fine analysis is compared with the on-the-fly results of the same run; an `onlyAnalysis` run (its
   results only in `fine_analysis/`) is not plotted yet.
 - Time delays are in atomic units of time, like every time axis of the tool (1 a.u. = 0.0242 fs).
