@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # =============================================================================================
-# Build options (-D<name>=<value>; README.md lists the usual combinations)
+# Build options (-D<name>=<value>; README.md lists them, docs/CONTRIBUTING.md "Build variants" the usual combinations)
 # =============================================================================================
 option(SPODVR_USE_MKL "Use Intel oneMKL (BLAS/LAPACK, FFTs) when it is found" ON)
 set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "FFT library: AUTO (oneMKL if found, else FFTW), MKL or FFTW")

@@ -14,7 +14,7 @@
 #   the builds: tools/scratch_build.sh.
 # Run time: about 50 s (two Release builds of spodvr and six runs; 48 s measured on the
 #   development machine with CMAKE_BUILD_PARALLEL_LEVEL=4, 2026-11-12).
-# Docs: README.md, section "Testing".
+# Docs: docs/CONTRIBUTING.md, section "Testing".
 set -euo pipefail
 
 if [[ $# -gt 1 ]]; then

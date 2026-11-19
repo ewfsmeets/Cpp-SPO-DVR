@@ -50,11 +50,11 @@ one of:
 - **partly ported**: the last column says which parts the C++ has and which not yet;
 - **not ported**: the last column says what such an input does in the C++ today, or why the
   change does not concern the C++ ("not relevant");
-- **not planned**: decided not to port; the README "Status" table gives the reason.
+- **not planned**: decided not to port; [port_status.md](port_status.md) gives the reason.
 
 The last two rows are 5.19 features the port lacks, listed for completeness: the flux analysis
-waits for a new design ([flux_analysis_findings.md](flux_analysis_findings.md)); the README
-"Status" table gives the status of each of the others.
+waits for a new design ([flux_analysis_findings.md](flux_analysis_findings.md)); [port_status.md](port_status.md)
+gives the status of each of the others.
 
 | Upstream change | Commit, date | Status | In the C++ today |
 |---|---|---|---|

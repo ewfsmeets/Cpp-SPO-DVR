@@ -13,7 +13,7 @@ The physics behind the choices (packet width, momentum margins, absorber lengths
 Two ways, both from any directory (paths are relative to where you start them):
 
 - **The window** (matplotlib): the figure below with sliders for the recipe's knobs. It needs
-  [uv](https://docs.astral.sh/uv/) (`pipx install uv`, like pre-commit in the repository's README), which
+  [uv](https://docs.astral.sh/uv/) (`pipx install uv`, like pre-commit in docs/CONTRIBUTING.md), which
   installs numpy, matplotlib and PyQt6 from the header of `gui_mpl.py` the first time. Under WSL the window
   opens through WSLg.
 - **The command line**: text reports; needs `numpy` (the repository's `python3` has it), and matplotlib

@@ -1,4 +1,4 @@
-# Accepted findings of tools/check_docs.py (README.md "Testing").
+# Accepted findings of tools/check_docs.py (docs/CONTRIBUTING.md "Testing").
 # Columns (tab-separated): check, file (as printed in the finding), match (a literal substring of
 # the finding line or of the offending source line), reason. Rows sorted by check, file, match.
 # A row that is the only match of no finding fails the check: delete rows that are no longer needed.

@@ -16,7 +16,7 @@ Usage: python3 -I -B tools/compare/test_compare_averages.py CASE WORK
   CASE  one of the cases above;  WORK  scratch directory (recreated)
 Exit status: 0 the case behaved as expected, 1 it did not, 2 bad arguments.
 Environment: none read. Run time: well under a second.
-Docs: README.md, section "Testing".
+Docs: docs/CONTRIBUTING.md, section "Testing".
 """
 
 import argparse

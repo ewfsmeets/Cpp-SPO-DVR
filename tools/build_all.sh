@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Configures (when needed) and builds every build variant of the project, see the "Building"
-# section of README.md. Usage, from the repository root:
+# Configures (when needed) and builds every build variant of the project, see docs/CONTRIBUTING.md,
+# section "Build variants". Usage, from the repository root:
 #   tools/build_all.sh                 all variants (the CUDA ones only when nvcc is found)
 #   tools/build_all.sh build build-cuda   only these
 # build-fast is built without profile-guided optimisation (the training run takes long, and the

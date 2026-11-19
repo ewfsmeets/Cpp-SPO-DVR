@@ -10,7 +10,7 @@ Output: the largest relative difference per column, then "OK: ..." or "DIFFERENT
 Exit status: 0 within the tolerance, 1 different, or refused ("error: <what>; <fix>": a file
 without rows, unreadable, or not five numbers per row), 2 bad arguments.
 Environment: none read. Run time: well under a second.
-Docs: README.md, section "Testing".
+Docs: docs/CONTRIBUTING.md, section "Testing".
 """
 
 import argparse

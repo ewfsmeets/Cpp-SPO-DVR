@@ -28,7 +28,7 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
 | `SPODVR_CUDA_SYNC_DEBUG` | `OFF` | wait for and check every kernel right after its launch (errors are reported where they happen) |
 
 - **Toolchain:** one compiler for host code and kernels. Tested with CUDA 13.3 (NVIDIA's apt
-  repository, see the README) and GCC 15 (needs CUDA ≥ 13.3). Developed with CUDA 12.0 (Ubuntu 24.04 packages, g++-12
+  repository, see the README) and GCC 15 (accepted from CUDA 13.0 on). Developed with CUDA 12.0 (Ubuntu 24.04 packages, g++-12
   as nvcc's host compiler, C++17 kernels); untested with 12.0 since the kernels are C++20.
 - **Tests:** the GPU tests in `tests/cuda/` are only built with the option, and they skip on a
   machine without a GPU.
@@ -370,12 +370,12 @@ Results, fast against strict build:
 - DZ, 200 steps: averages ≤ 2.7e-14 relative, S ≤ 3e-14 absolute.
 - DZ, the full 7000-step thesis run (2026-11-08, [validation report](validation_thesis_fig5_3_dz/README.md#strict-build-gpu-run-added-2026-11-08)):
   S 7.8e-12 (norm-weighted relative), mostly a uniform amplitude offset of 6.4e-12. Against the
-  Fortran the strict build is 3.5e-13 off, the fast build 7.9e-12. The strict run took 1.12× as long.
+  Fortran the strict build is 3.5e-13 off, the fast build 7.9e-12 (propagation only). The strict run took 1.12× as long.
 - The host code is fast-math too (NaN and inf kept, as in the CPU build:
   [performance.md](performance.md#the-fast-math-build-spodvr_fast_math)). With plain `-ffast-math`
   and GCC 15 gate 1's hard-wall V<sub>asy</sub> table failed by 1.6e-14 against 1e-14, as in the CPU
   fast-math build (which passes it since NaN and inf are kept; `build-cuda-fast` not re-checked
-  here). Native restart files are not interchangeable with the strict build (README "Build variants").
+  here). Native restart files are not interchangeable with the strict build (README "Continuing a run (restart)").
 
 So the fast build is within the regression tolerances, but no longer comparable to the CPU build
 to the last bits; use the strict build when comparing with the CPU or the Fortran code.

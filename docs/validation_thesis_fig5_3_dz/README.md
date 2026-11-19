@@ -415,7 +415,7 @@ a quad-precision site, reproduced exactly. Details: [stages.md](stages.md).
 |---|---|
 | Machine | AMD Ryzen 7 5800X (8 cores / 16 threads), 27.4 GiB RAM, NVIDIA RTX 4070 Ti (12 GiB), Ubuntu 26.04.1 LTS under WSL2 |
 | Compilers | g++ 15.2, nvcc 13.3 (host compiler g++ 15.2), gfortran 15.2; oneMKL 2026.2, cuFFT 12.3, FFTW 3.3.10 |
-| C++ builds | `build-fast` and `build-cuda-fast`: `SPODVR_FAST_MATH=ON`, `-march=native`, the experimental fast builds (README "Build variants"); src unchanged from the build commit `abc47f0` to `e0c231b`, the HEAD at the time (clean tree assumed at build time); binaries 3.5 h (CPU) and 2.2 h (GPU) older than their runs |
+| C++ builds | `build-fast` and `build-cuda-fast`: `SPODVR_FAST_MATH=ON`, `-march=native`, the experimental fast builds (docs/CONTRIBUTING.md "Build variants"); src unchanged from the build commit `abc47f0` to `e0c231b`, the HEAD at the time (clean tree assumed at build time); binaries 3.5 h (CPU) and 2.2 h (GPU) older than their runs |
 | Fortran | SPO-DVR 5.19, gfortran `-O3 -fopenmp -fdefault-real-8`, FFTW (ESTIMATE plans), built 2026-11-06 11:39 |
 | Input | `input.json` ≡ `DVR.inp` key by key (Title shorter by design); the Fortran's `DVR.inp` is bitwise the committed one |
 | Regression gates | `ctest -R Gate`: build-fast 20 passed, 2 skipped (long), 1 failed; build-cuda-fast 23 passed, 4 skipped, 1 failed. The failure is the hard-wall V<sub>asy</sub> table, 1.6e-14 against 1e-14, in both fast-math builds; the strict `build` passes it. The hard wall is not used here ([data/gates_ctest_summary.txt](data/gates_ctest_summary.txt)) |
@@ -502,7 +502,7 @@ was not part of this validation (docs/performance.md, docs/cuda.md have controll
 
 - **Fast-math builds.** Both C++ runs of the main comparison are `SPODVR_FAST_MATH=ON` builds; a
   strict build (the project default) ran on the GPU only, added on 2026-11-08. Strict vs fast-math differs by ~1e-12 on the gate grids
-  (README "Build variants", docs/performance.md: norm 2e-12, probabilities 1.5e-12) and by 1–2 ulp
+  (docs/CONTRIBUTING.md "Build variants", docs/performance.md: norm 2e-12, probabilities 1.5e-12) and by 1–2 ulp
   in unit tests. Two consequences seen here: the hard-wall V<sub>asy</sub> gate fails by 1.6e-14 in both
   fast-math builds (the docs said their gates pass; corrected on 2026-11-08), and the replay helper reproduces the runs'
   analysis only to |ΔS| ≤ 2.0e-14 instead of bitwise (machine code generated at link time,

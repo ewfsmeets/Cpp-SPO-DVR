@@ -40,7 +40,7 @@ Usage: python3 -I -B tools/check_docs.py [--root DIR] [--spodvr PATH] [--allowli
   --allowlist FILE  accepted findings (default: <root>/tools/check_docs_allowlist.tsv)
   --checks LIST     comma-separated subset of the checks above (default: all)
   --no-report       do not print the report-only lists (their sizes are still in the summary)
-Environment: none read. Run time: under 1 s. ctest: Docs.Consistency. Docs: README.md "Testing".
+Environment: none read. Run time: under 1 s. ctest: Docs.Consistency. Docs: docs/CONTRIBUTING.md "Testing".
 """
 
 import argparse

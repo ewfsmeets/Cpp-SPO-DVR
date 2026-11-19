@@ -3,7 +3,7 @@
 The C++ program is checked against the original Fortran program (upstream SPO-DVR 5.24 at svn
 r1713, built with `-O3`: [Reference data](#reference-data)) by five acceptance gates. Each gate is
 a regression test in `tests/` that compares the C++ results with Fortran output stored in
-`tests/reference/<case>/`; see the README section "Testing" for how to run them.
+`tests/reference/<case>/`; see the README section "Testing" and [CONTRIBUTING.md](CONTRIBUTING.md#testing) for how to run them.
 
 **Tolerances.** Values that the Fortran prints in E/F format (e.g. E15.8, mantissa 0.dddddddd) are
 compared to half a unit in the last printed digit, not with a fixed relative tolerance (for
@@ -23,8 +23,9 @@ quad-precision sites) are listed in [fortran_deviations.md](fortran_deviations.m
 Dai–Zhang PES, 7000 steps, 435 rotational functions) was run with the Fortran, the C++ CPU and the
 C++ GPU code and compared state by state, with criteria written before the comparisons:
 [validation_thesis_fig5_3_dz](validation_thesis_fig5_3_dz/README.md). With the default (strict)
-GPU build the S matrix agrees with the Fortran to 3.5e-13 (norm-weighted relative) and all 111
-reaction probabilities match the Fortran's 7 printed digits. That Fortran run used 5.19; on the
+GPU build the S matrix of its propagation agrees with the Fortran's to 3.5e-13 (norm-weighted
+relative; both runs' BK coefficients through the same C++ analysis), and all 111 reaction
+probabilities lie within half a unit of the Fortran's 7th printed digit. That Fortran run used 5.19; on the
 same grid, the potential and the first 40 steps of 5.24 built with `-O3` are bitwise identical to
 5.19's (checked 2026-11-11), so the comparison holds for the current reference too.
 

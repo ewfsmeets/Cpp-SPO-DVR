@@ -9,7 +9,7 @@
 #   for an offline configure; default <repo>/build/_deps/<name>-src, cloned from GitHub if that is
 #   missing; a value that is not a directory is refused), CMAKE_BUILD_PARALLEL_LEVEL (build jobs),
 #   TMPDIR (add_base_worktree).
-# Run time: sourcing, instant (the builds: see the callers). Docs: README.md, section "Testing".
+# Run time: sourcing, instant (the builds: see the callers). Docs: docs/CONTRIBUTING.md, section "Testing".
 
 # offline_sources NAME...: sets the array source_options to -DFETCHCONTENT_SOURCE_DIR_<NAME>=<dir> for
 # each FetchContent dependency NAME (NLOHMANN_JSON, GOOGLETEST) whose sources are at hand: the

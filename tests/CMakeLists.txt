@@ -44,7 +44,7 @@ target_link_libraries(test_scm_potential PRIVATE spodvr_strict_fp)
 # So do the SCM diagnostics tests (their stub potentials' values, NaN, bitwise comparisons).
 target_link_libraries(test_scm_diagnostics PRIVATE spodvr_strict_fp)
 
-# The docs against the code (tools/check_docs.py; README "Testing"), with spodvr --help for the
+# The docs against the code (tools/check_docs.py; docs/CONTRIBUTING.md "Testing"), with spodvr --help for the
 # command-line options, and negative tests that show the checker fails on a planted fault.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(check_docs ${PROJECT_SOURCE_DIR}/tools/check_docs.py)

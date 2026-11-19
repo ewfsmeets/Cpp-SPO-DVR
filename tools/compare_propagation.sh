@@ -17,7 +17,7 @@
 # Run time: about 1 min (two Release builds of spodvr and two runs; 58 s and 42 s measured
 #   2026-11-15, offline, CMAKE_BUILD_PARALLEL_LEVEL=4 and OMP_NUM_THREADS=4 on 8 of the 16
 #   hardware threads).
-# Docs: README.md, section "Testing".
+# Docs: docs/CONTRIBUTING.md, section "Testing".
 set -euo pipefail
 
 usage() {

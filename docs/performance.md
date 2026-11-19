@@ -8,7 +8,7 @@
 | `SPODVR_FFT_LIBRARY` | `AUTO` | Implementation of the FFTW3 API: `AUTO` (oneMKL's FFTW3 interface if oneMKL is found, else FFTW), `MKL`, `FFTW`. With `FFTW` and oneMKL both present, FFTW is linked first so that the `fftw_*` symbols resolve to it. |
 | `SPODVR_ARCH` | `x86-64-v3` | Value for `-march`. `x86-64-v3` (AVX2) runs on any recent x86-64 CPU; `x86-64-v4` (AVX-512) or `native` for a specific machine. Results of our own code do not depend on it (no FMA contraction). |
 | `SPODVR_PGO` | `OFF` | Profile-guided optimisation, see below. |
-| `SPODVR_FAST_MATH` | `OFF` | Experimental: `-ffast-math -fno-finite-math-only` instead of the flags below (FMA contraction, reassociation, reciprocals; NaN and inf keep their meaning). Changes results at ~1e-12 on the gate grids and by 7.8e-12 on the thesis grid; passes the gates with the reaction-probability floor of 1e-11 (with plain `-ffast-math` and GCC 15 the hard-wall V<sub>asy</sub> table failed by 1.6e-14 against 1e-14; since NaN and inf are kept it passes). Details and the known test failures: [below](#the-fast-math-build-spodvr_fast_math). Native restart files are not interchangeable with the default build (README "Build variants"). Speed experiments only. |
+| `SPODVR_FAST_MATH` | `OFF` | Experimental: `-ffast-math -fno-finite-math-only` instead of the flags below (FMA contraction, reassociation, reciprocals; NaN and inf keep their meaning). Changes results at ~1e-12 on the gate grids and by 7.8e-12 on the thesis grid; passes the gates with the reaction-probability floor of 1e-11 (with plain `-ffast-math` and GCC 15 the hard-wall V<sub>asy</sub> table failed by 1.6e-14 against 1e-14; since NaN and inf are kept it passes). Details and the known test failures: [below](#the-fast-math-build-spodvr_fast_math). Native restart files are not interchangeable with the default build (README "Continuing a run (restart)"). Speed experiments only. |
 | `SPODVR_POISON_UNINITIALISED` | `OFF` | Debug: fill uninitialised `AlignedVector` elements with NaN (any read before write then shows up as NaN). |
 | `CMAKE_BUILD_TYPE=Release` | | `-O3` plus link-time optimisation. |
 
@@ -78,8 +78,9 @@ GCC treats a profile that no longer matches a function as an error (`-Wcoverage-
 
 ### Running a oneMKL build
 
-Inside the build tree the oneMKL library path is in the executable's RPATH. An installed or copied
-executable needs the oneMKL libraries on the library path, e.g. `source /opt/intel/oneapi/setvars.sh`
+The executable records the absolute path of the oneMKL libraries (its RUNPATH), so a copy finds
+them where they were at build time. Where oneMKL lives elsewhere, put the libraries on the library
+path, e.g. `source /opt/intel/oneapi/setvars.sh`
 or `LD_LIBRARY_PATH=/opt/intel/oneapi/mkl/latest/lib`. The program prints the libraries it uses in its
 header line.
 
@@ -122,8 +123,8 @@ header line.
 
 - **Single NUMA node** (one socket, e.g. the Ryzen 5800X): dynamic schedule, and only as many threads
   as physical cores (`--threads 8` on the 8-core/16-thread 5800X). Work per (Z, r) point is not
-  uniform (see "Fortran vs C++" below), and dynamic scheduling evens it out; hyperthreads add
-  contention rather than speed. (An earlier measurement with the static schedule found 16 threads
+  uniform (see "Fortran vs C++" below), and dynamic scheduling evens it out; whether
+  hyperthreads help with the dynamic schedule has not been measured. (An earlier measurement with the static schedule found 16 threads
   ~20% faster than 8, probably because the extra threads filled the idle time of the static split.)
 - **Multiple NUMA nodes** (multi-socket): static schedule, and all available threads, bound to cores
   (`OMP_PROC_BIND=close OMP_PLACES=cores`, or `spread` to use all sockets' memory bandwidth). Static
@@ -231,9 +232,9 @@ re-measured since.
   - On the thesis grid (`inputs/thesis_fig5_3_dz`, 7000 steps, 435 rotational functions) the effect
     is larger: `build-cuda-fast` against `build-cuda` 7.8e-12 (norm-weighted relative S-matrix
     difference), 7.8× the figure above. Most of it is a uniform amplitude offset of 6.4e-12. Against
-    the Fortran the default GPU build is 3.5e-13 off, the fast-math builds 7.5e-12 (CPU) and 7.9e-12 (GPU).
+    the Fortran the default GPU build is 3.5e-13 off, the fast-math builds 7.5e-12 (CPU) and 7.9e-12 (GPU), propagation only.
   - A default build refuses a fast-math build's native checkpoint and BK files (and vice versa): the
-    stored effective `ZOptFactor` differs by 1 ulp and the reader compares exactly (README "Build variants").
+    stored effective `ZOptFactor` differs by 1 ulp and the reader compares exactly (README "Continuing a run (restart)").
 - Earlier measurement with 16 threads (hyperthreads, includes test overhead): Fortran 637 s, C++ 816 s.
 
 ## CRP library (SystemID `CRPlibrary`, 2026-11-09)
