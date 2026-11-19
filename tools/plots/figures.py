@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 from compute.gas_phase import levels
 from compute.results import results
 from compute.time_series import channel_densities_per_bohr, channel_label, scattering_in_time, strongest_channels
-from panels.diagnostics import draw_verdict
+from panels.diagnostics import VERDICT_LINE_IN, draw_verdict, wrapped_verdict
 from panels.gas_phase import draw_potential_and_levels, draw_wave_functions
 from panels.results import draw_mean_energies, draw_probabilities, draw_vibrational_probabilities
 from panels.time_series import draw_channel_densities, draw_convergence, draw_mean_positions, draw_norm
@@ -34,10 +34,10 @@ def default_options() -> argparse.Namespace:
 
 
 def figure_verdict(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """The verdict as a figure (the report prints it as text)."""
-    findings = run_verdict(runs, info)
-    fig = new_figure(height_in=0.4 + 0.35 * len(findings))
-    draw_verdict(fig.add_subplot(), findings)
+    """The verdict as a figure (the report prints it as a table)."""
+    lines = wrapped_verdict(run_verdict(runs, info))
+    fig = new_figure(height_in=0.5 + VERDICT_LINE_IN * len(lines))
+    draw_verdict(fig.add_subplot(), lines)
     add_info_box(fig, info, ["the run's files (inputs/README.md sections)", "run_info.json"])
     return [("verdict", fig)]
 

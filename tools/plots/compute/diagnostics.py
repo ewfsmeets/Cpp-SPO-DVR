@@ -16,9 +16,12 @@ MOVING_RELATIVE = 1e-3  # heuristic: ... a change above this fraction of P_scatt
 MOVING_FLOOR = 1e-4  # heuristic: ... and above this absolute change
 UNITARITY_LIMIT = 1e-4  # heuristic: a P_reaction below -1e-4 is a unitarity error, not rounding
 SLOW_CHANNELS_LIMIT = 1e-3  # heuristic: probability already seen in channels too slow to have all arrived
+EDGE_LIMIT = 1e-3  # heuristic: a basis edge (top j', outermost diffraction channels) holding more of P_scattered
+R_EDGE_LIMIT = 1e-3  # heuristic: |psi_v,j| at an end of the r grid above this fraction of its maximum
 
 SECTION_TIME = "8. Total time and energy grid"
 SECTION_STEPS = "4. dZ: the grid must hold the momenta"  # also the time step dtStep
+SECTION_VERIFY = "10. Verifying a new input"
 SEVERITY_ORDER = {"error": 0, "warning": 1, "information": 2}
 
 
@@ -207,10 +210,12 @@ def still_moving(p_end: np.ndarray, p_earlier: np.ndarray, energies_ev: np.ndarr
     moving = ~(change <= np.maximum(MOVING_RELATIVE * p_end, MOVING_FLOOR))  # NaN counts as moving
     if not moving.any():
         return None
+    ranking = np.where(moving, change, -1.0)  # only moving energies; a NaN change ranks first
+    worst = int(np.argmax(np.where(np.isnan(ranking), np.inf, ranking)))
     return Finding(
         "warning",
         "P_scattered still moving",
-        f"{int(moving.sum())} energies, up to {np.max(change[moving]):.2e}",
+        f"{int(moving.sum())} of {len(change)} energies, up to {change[worst]:.2e} at E_coll {energies_ev[worst]:.3g} eV",
         f"change <= max({MOVING_RELATIVE:g} P_s, {MOVING_FLOOR:g}) over the last {MOVING_WINDOW:.0%} of the run",
         f"may not be converged at E_coll {energies_ev[moving].min():.3g}-{energies_ev[moving].max():.3g} eV: "
         "flux still arriving (a longer run), or flux reflected by an absorber that is too short (inputs/README.md "
@@ -219,16 +224,61 @@ def still_moving(p_end: np.ndarray, p_earlier: np.ndarray, energies_ev: np.ndarr
     )
 
 
-def unitarity(error: float) -> Finding | None:
-    """Warning when P_reaction falls below -UNITARITY_LIMIT."""
+def unitarity(error: float, worst_energy_ev: float) -> Finding | None:
+    """Warning when P_reaction falls below -UNITARITY_LIMIT (worst_energy_ev: where it is lowest)."""
     if error <= UNITARITY_LIMIT:
         return None
     return Finding(
         "warning",
         "unitarity error",
-        f">= {error:.2e}",
+        f">= {error:.2e} (P_reaction lowest at E_coll {worst_energy_ev:.3g} eV)",
         f"<= {UNITARITY_LIMIT:g}",
         "P_reaction < 0: at the worst energy sum |S|^2 exceeds 1 by this much (time sums cut off before "
         "convergence, flux reflected by an absorber, or a numerical error)",
         SECTION_TIME,
+    )
+
+
+def basis_edge(what: str, largest_fraction: float, energy_ev: float, meaning: str) -> Finding | None:
+    """Warning when a basis edge holds more than EDGE_LIMIT of P_scattered at some energy (or NaN)."""
+    if largest_fraction <= EDGE_LIMIT:
+        return None
+    return Finding(
+        "warning",
+        f"flux at the edge of the basis: {what}",
+        f"up to {largest_fraction:.2e} of P_scattered (E_coll {energy_ev:.3g} eV)",
+        f"<= {EDGE_LIMIT:g}",
+        meaning,
+        SECTION_VERIFY,
+    )
+
+
+def top_rotational_level(fraction: np.ndarray, energies_ev: np.ndarray, j_top: int) -> Finding | None:
+    """P(j' = the top j' of the rotational basis) / P_scattered per energy: warning above EDGE_LIMIT."""
+    worst = int(np.argmax(np.nan_to_num(fraction, nan=np.inf)))
+    meaning = f"j' = {j_top} is the highest j of the rotational basis (JMax): a larger JMax may change the results"
+    return basis_edge(f"j' = {j_top}", float(fraction[worst]), energies_ev[worst], meaning)
+
+
+def outer_diffraction_channels(fraction: np.ndarray, energies_ev: np.ndarray) -> Finding | None:
+    """P in the outermost analysed diffraction channels (n or m at an end of its range, (0, 0) excepted) /
+    P_scattered per energy: warning above EDGE_LIMIT."""
+    worst = int(np.argmax(np.nan_to_num(fraction, nan=np.inf)))
+    meaning = "the outermost analysed diffraction channels carry flux: a larger nX, nY may change the results"
+    return basis_edge("outermost diffraction channels", float(fraction[worst]), energies_ev[worst], meaning)
+
+
+def r_grid_ends(largest_ratio: float, level: tuple[int, int]) -> Finding | None:
+    """Warning when |psi_v,j(r)| of an analysed level at either end of the r grid exceeds R_EDGE_LIMIT of its
+    maximum: the grid cuts the gas-phase states."""
+    if largest_ratio <= R_EDGE_LIMIT:
+        return None
+    return Finding(
+        "warning",
+        "gas-phase states reach the ends of the r grid",
+        f"|psi| at an end {largest_ratio:.2e} of its maximum (v = {level[0]}, j = {level[1]})",
+        f"<= {R_EDGE_LIMIT:g}",
+        "the r grid cuts the gas-phase states: their energies shift, and the r absorber removes part of the "
+        "initial state from the start (counted as reaction); widen the r grid",
+        SECTION_VERIFY,
     )

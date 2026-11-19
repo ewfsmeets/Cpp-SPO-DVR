@@ -1,5 +1,7 @@
 """The verdict as a text panel."""
 
+import textwrap
+
 from matplotlib.axes import Axes
 
 from compute.diagnostics import Finding
@@ -19,9 +21,20 @@ def verdict_lines(findings: list[Finding]) -> list[str]:
     return [verdict_line(f) for f in findings] if findings else ["no findings"]
 
 
-def draw_verdict(ax: Axes, findings: list[Finding]) -> None:
-    """The verdict as text on an axes without axis lines."""
+VERDICT_CHARACTERS = 118  # characters per line of the verdict panel (monospace 7.5 pt on a report-wide figure)
+VERDICT_LINE_IN = 0.13  # height of one of its lines (inches)
+
+
+def wrapped_verdict(findings: list[Finding]) -> list[str]:
+    """The verdict's lines wrapped to VERDICT_CHARACTERS, continuation lines indented under the name."""
+    lines = []
+    for line in verdict_lines(findings):
+        lines += textwrap.wrap(line, VERDICT_CHARACTERS, subsequent_indent=" " * 13)
+    return lines
+
+
+def draw_verdict(ax: Axes, lines: list[str]) -> None:
+    """The verdict (wrapped_verdict) as text on an axes without axis lines."""
     ax.axis("off")
     ax.set_title("Verdict: is the run complete and converged?", loc="left")
-    text = "\n".join(verdict_lines(findings))
-    ax.text(0.0, 1.0, text, va="top", ha="left", fontsize=7.5, family="monospace", wrap=True, transform=ax.transAxes)
+    ax.text(0.0, 1.0, "\n".join(lines), va="top", ha="left", fontsize=7.5, family="monospace", transform=ax.transAxes)

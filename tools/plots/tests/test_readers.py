@@ -10,6 +10,7 @@ import pytest
 from copies.real_compare import rne
 from readers.binary import BK_MAGIC, CHECKPOINT_MAGIC, FORMAT_VERSION, read_bk_coefficients, read_checkpoint
 from readers.errors import ReadError
+from readers.fine_analysis import read_fine_grid
 from readers.run_info import read_run_info
 from readers.segments import join_records
 from readers.tables import read_averages, read_gas_phase_states, read_table
@@ -154,3 +155,23 @@ def test_join_drops_the_repeated_record() -> None:
         [np.array([0.0, 1.0]), np.array([1.0, 2.0])], [np.array([1.0, 2.0]), np.array([2.0, 3.0])], "x"
     )
     assert list(times) == [0.0, 1.0, 2.0] and list(values) == [1.0, 2.0, 3.0]
+
+
+def test_fine_grid(tmp_path: Path) -> None:
+    """grid.json with its fields and a skipped energy; a missing field is a ReadError."""
+    fields = {
+        "spectral_resolution_eV": 0.006,
+        "first_index": 33,
+        "last_index": 97,
+        "effective_time": 13860.0,
+        "records_used": 1386,
+        "skipped_energies": [{"E_z": 0.2, "reason": "outside the fine-analysis grid"}],
+    }
+    path = tmp_path / "grid.json"
+    path.write_text(json.dumps(fields), encoding="utf-8")
+    grid = read_fine_grid(path)
+    assert (grid.first_index, grid.last_index, grid.skipped) == (33, 97, [(0.2, "outside the fine-analysis grid")])
+    del fields["first_index"]
+    path.write_text(json.dumps(fields), encoding="utf-8")
+    with pytest.raises(ReadError, match="first_index"):
+        read_fine_grid(path)

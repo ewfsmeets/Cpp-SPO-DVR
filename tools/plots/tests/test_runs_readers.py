@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from readers.binary import Checkpoint, read_bk_coefficients, read_checkpoint
+from readers.fine_analysis import read_fine_grid
 from readers.run_info import read_run_info
 from readers.tables import read_averages, read_gas_phase_states, read_scattering_summary
 
@@ -66,3 +67,15 @@ def test_norm_without_dr_fails(fixture_runs: Path) -> None:
     norm = checkpoint_norm(read_checkpoint(directory / "checkpoint.bin"), info.data, with_dr=False)
     expected = read_averages(directory / "averages.dat").norm[-1]
     assert abs(norm - expected) / expected > 1e-12
+
+
+def test_fine_grid_of_a_run(fixture_runs: Path) -> None:
+    """grid.json of dailight_oblique's fine analysis: one spectrum row per grid point first..last, and every
+    analysis energy either interpolated or listed as skipped."""
+    fine = fixture_runs / "dailight_oblique" / "fine_analysis"
+    grid = read_fine_grid(fine / "grid.json")
+    spectrum = read_scattering_summary(fine / "spectrum" / "scattering_summary.tsv")
+    assert len(spectrum["E_z"]) == grid.last_index - grid.first_index + 1
+    interpolated = read_scattering_summary(fine / "scattering_summary.tsv")
+    info = read_run_info(fixture_runs / "dailight_oblique")
+    assert len(interpolated["E_coll"]) + len(grid.skipped) == len(info.data["analysis_energies"]["collision_ev"])

@@ -1,6 +1,6 @@
-"""The analysis of a run as the program sets it up: the analysis energies, the analysis time step and the
-time-independent S-matrix factors of every channel, from run_info.json and the BK file's channel energies
-(the formulas: copies/s_matrix.py)."""
+"""The analysis of a run as the program sets it up, from run_info.json and the BK file's state list: the
+analysis energies, the analysis time step, the time-independent S-matrix factors of every channel (the
+formulas: copies/s_matrix.py), and for each row of s_matrix.tsv its analysis energy and BK channel."""
 
 from dataclasses import dataclass
 
@@ -8,7 +8,9 @@ import numpy as np
 
 from copies.s_matrix import channel_factors, normal_momentum
 from readers.binary import BkCoefficients
+from readers.errors import ReadError
 from readers.run_info import RunInfo
+from readers.tables import Table
 
 
 @dataclass
@@ -59,3 +61,38 @@ def s_matrix_factors(info: RunInfo, energies: AnalysisEnergies, bk: BkCoefficien
         z0_bohr=packet["z0"],
         hartree_to_ev=info.hartree_to_ev,
     )
+
+
+ENERGY_MATCH_EV = 1e-9  # a row's E_coll and run_info.json's are the same double, printed with 16 digits
+
+
+def energy_of_rows(table: Table, collision_energy_ev: np.ndarray) -> np.ndarray:
+    """The index of each row's analysis energy. Raises ReadError for a row whose E_coll is not an analysis
+    energy of the run (a table of another run)."""
+    distinct, row_to_distinct = np.unique(table["E_coll"], return_inverse=True)
+    index_of_distinct = np.empty(len(distinct), dtype=int)
+    for k, energy in enumerate(distinct):
+        nearest = int(np.argmin(np.abs(collision_energy_ev - energy)))
+        if not abs(collision_energy_ev[nearest] - energy) <= ENERGY_MATCH_EV:
+            raise ReadError(f"s_matrix.tsv: E_coll {energy} is not an analysis energy of the run; another run's file?")
+        index_of_distinct[k] = nearest
+    return index_of_distinct[row_to_distinct]
+
+
+def channel_of_rows(table: Table, bk: BkCoefficients) -> np.ndarray:
+    """Per row of s_matrix.tsv (v, j, mJ, n, m): its channel index i_state + n_states v in the BK file. Raises
+    ReadError for a state the BK file does not have."""
+    state_of = {tuple(int(q) for q in label[:4]): i for i, label in enumerate(bk.labels)}  # (j, mJ, n, m)
+    n_states = len(bk.labels)
+    channels = np.empty(len(table["v"]), dtype=int)
+    for row in range(len(channels)):
+        key = tuple(int(table[c][row]) for c in ("j", "mJ", "n", "m"))
+        if key not in state_of:
+            raise ReadError(f"s_matrix.tsv: state {key} is not in bk_coefficients.bin; files of different runs?")
+        channels[row] = state_of[key] + n_states * int(table["v"][row])
+    return channels
+
+
+def channel_energy_of_rows(table: Table, bk: BkCoefficients) -> np.ndarray:
+    """Per row of s_matrix.tsv: its channel's energy (hartree; internal plus parallel kinetic)."""
+    return bk.channel_energy_hartree.reshape(-1)[channel_of_rows(table, bk)]

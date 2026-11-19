@@ -1,5 +1,7 @@
 """The verdict on the fixture runs: each raises the findings its state calls for. The fixtures are small and
-not fully converged; the stopped run has only the files a run that stopped early has."""
+not fully converged, and their bases are small (dailight_oblique: j' = JMax = 2 and the outermost diffraction
+channels carry flux; both inherit gate-case r grids whose gas-phase states reach the grid ends); the stopped
+run has only the files a run that stopped early has."""
 
 from pathlib import Path
 
@@ -13,10 +15,19 @@ EXPECTED = {
         "unanalysed flux, upper bound",
         "P_scattered still moving",
         "unitarity error",
+        "gas-phase states reach the ends of the r grid",
         "slowest converged energy",
         "norm left",
     ],
-    "dailight_oblique": ["P_scattered still moving", "unitarity error", "slowest converged energy", "norm left"],
+    "dailight_oblique": [
+        "P_scattered still moving",
+        "unitarity error",
+        "flux at the edge of the basis: j' = 2",
+        "flux at the edge of the basis: outermost diffraction channels",
+        "gas-phase states reach the ends of the r grid",
+        "slowest converged energy",
+        "norm left",
+    ],
     "potential_only": ["not checked: the propagation"],
 }
 

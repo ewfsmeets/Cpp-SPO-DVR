@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from compute.analysis import analysis_energies, analysis_time_step_au
+from compute.analysis import analysis_energies, analysis_time_step_au, channel_energy_of_rows, energy_of_rows
 from compute.diagnostics import (
     Finding,
     diverged,
@@ -16,22 +16,24 @@ from compute.diagnostics import (
     norm_inside_analysis_lines,
     norm_left,
     not_checked,
+    outer_diffraction_channels,
+    r_grid_ends,
     scattering_density_per_zr,
     slow_probability,
     slowest_converged,
     sorted_findings,
     still_moving,
     stopped_early,
+    top_rotational_level,
     unanalysed_flux,
     unitarity,
 )
 from compute.results import Results, results
 from compute.time_series import p_scattered_stopped_at
 from readers.binary import BkCoefficients, read_bk_coefficients, read_checkpoint
-from readers.errors import ReadError
 from readers.run_info import RunInfo
 from readers.segments import read_joined_averages
-from readers.tables import Averages, Table, read_s_matrix, read_scattering_summary
+from readers.tables import Averages, Table, read_gas_phase_states, read_s_matrix, read_scattering_summary
 
 PROPAGATING_RUN_MODES = (0, 1)  # new, restart (run_info.json run_mode.code)
 END_OF_RUN_FILES = ("averages.dat", "scattering_summary.tsv", "s_matrix.tsv")  # written after the propagation
@@ -51,15 +53,73 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
         return sorted_findings([stopped_early(missing, reached, info.t_end_au), diverged(first_bad_time(None, bk))])
     averages, _ = read_joined_averages(runs)
     run_results = results(read_scattering_summary(last / "scattering_summary.tsv"))
-    findings = [  # within a severity in this order: completeness, convergence in time, then the results
+    findings = [  # within a severity in this order: completeness, convergence in time, results, basis edges
         diverged(first_bad_time(averages, bk)),
         flux_inside(last, info),
         slowest(last, info, bk),
         moving(info, bk, run_results),
-        unitarity(run_results.unitarity_error),
+        unitarity(run_results.unitarity_error, worst_unitarity_energy(run_results)),
+        *basis_edges(last, info),
         norm_left(averages.norm[-1]),
     ]
     return sorted_findings(findings)
+
+
+def worst_unitarity_energy(run_results: Results) -> float:
+    """The collision energy (eV) of the lowest P_reaction (a NaN counts as the lowest)."""
+    ranking = np.where(np.isnan(run_results.p_reaction), -np.inf, run_results.p_reaction)
+    return float(run_results.collision_energy_ev[int(np.argmin(ranking))])
+
+
+def basis_edges(run: Path, info: RunInfo) -> list[Finding | None]:
+    """The flux at the top j' of the rotational basis and in the outermost diffraction channels
+    (s_matrix.tsv), and the gas-phase states at the ends of the r grid (gas_phase_states.dat)."""
+    table = read_s_matrix(run / "s_matrix.tsv")
+    energies_ev = analysis_energies(info).collision_ev
+    energy_of_row = energy_of_rows(table, energies_ev)
+    j_top = max(j for j, _ in info.data["rotational_basis"]["states"])
+    top = table["j"].astype(int) == j_top
+    return [
+        top_rotational_level(fraction_of_p_scattered(table, energy_of_row, top, len(energies_ev)), energies_ev, j_top),
+        outer_diffraction_channels(
+            fraction_of_p_scattered(table, energy_of_row, outermost(table), len(energies_ev)), energies_ev
+        ),
+        gas_phase_edges(run, info),
+    ]
+
+
+def fraction_of_p_scattered(
+    table: Table, energy_of_row: np.ndarray, selected: np.ndarray, n_energies: int
+) -> np.ndarray:
+    """Per analysis energy: P of the selected rows / P of all rows (NaN where nothing is scattered)."""
+    part = np.bincount(energy_of_row[selected], weights=table["P"][selected], minlength=n_energies)
+    total = np.bincount(energy_of_row, weights=table["P"], minlength=n_energies)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(total > 0, part / total, np.nan)
+
+
+def outermost(table: Table) -> np.ndarray:
+    """The rows whose diffraction channel lies at an end of the analysed n or m range, (0, 0) excepted (the
+    range of a dimension without freedom is one value, which is no edge)."""
+    n, m = table["n"].astype(int), table["m"].astype(int)
+    on_n_edge = ((n == n.min()) | (n == n.max())) & (n.min() < n.max())
+    on_m_edge = ((m == m.min()) | (m == m.max())) & (m.min() < m.max())
+    return (on_n_edge | on_m_edge) & ~((n == 0) & (m == 0))
+
+
+def gas_phase_edges(run: Path, info: RunInfo) -> Finding | None:
+    """The largest |psi_v,j| at either end of the r grid, relative to its maximum, of the levels of the
+    rotational basis's j with v up to the highest analysed v' (s_matrix.tsv)."""
+    states = read_gas_phase_states(run / "gas_phase_states.dat")
+    j_values = {j for j, _ in info.data["rotational_basis"]["states"]}
+    v_top = int(np.max(read_s_matrix(run / "s_matrix.tsv")["v"]))
+    worst, worst_level = 0.0, (0, 0)
+    for psi, v, j in zip(states.wave_functions, states.v, states.j, strict=True):
+        if v <= v_top and j in j_values:
+            ratio = max(abs(psi[0]), abs(psi[-1])) / np.max(np.abs(psi))
+            if not ratio <= worst:  # a NaN is the worst
+                worst, worst_level = ratio, (int(v), int(j))
+    return r_grid_ends(worst, worst_level)
 
 
 def first_bad_time(averages: Averages | None, bk: BkCoefficients | None) -> float | None:
@@ -105,16 +165,8 @@ def outgoing_normal_energies(
     table: Table, bk: BkCoefficients, collision_ev: np.ndarray, hartree_to_ev: float
 ) -> tuple[np.ndarray, np.ndarray]:
     """Per row of s_matrix.tsv: the index of its analysis energy, and its channel's outgoing normal energy
-    E_total - E_channel (eV), with the channel energy of the BK file's state list."""
-    state_of = {tuple(int(q) for q in label[:4]): i for i, label in enumerate(bk.labels)}  # (j, mJ, n, m)
-    energy_index = np.array([int(np.argmin(np.abs(collision_ev - e))) for e in table["E_coll"]], dtype=int)
-    channel_hartree = np.empty(len(energy_index))
-    for row in range(len(energy_index)):
-        key = tuple(int(table[c][row]) for c in ("j", "mJ", "n", "m"))
-        if key not in state_of:
-            raise ReadError(f"s_matrix.tsv: state {key} is not in bk_coefficients.bin; files of different runs?")
-        channel_hartree[row] = bk.channel_energy_hartree[int(table["v"][row]), state_of[key]]
-    return energy_index, table["E_total"] - channel_hartree * hartree_to_ev
+    E_total - E_channel (eV)."""
+    return energy_of_rows(table, collision_ev), table["E_total"] - channel_energy_of_rows(table, bk) * hartree_to_ev
 
 
 def flux_inside(run: Path, info: RunInfo) -> Finding | None:

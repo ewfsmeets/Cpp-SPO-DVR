@@ -31,7 +31,7 @@ def test_lowest_converged_energy_of_the_readme_example() -> None:
 
 def test_findings_sorted_worst_first() -> None:
     """Errors before warnings before information; findings that do not apply are dropped."""
-    findings = d.sorted_findings([d.norm_left(0.1), None, d.unitarity(1e-2), d.diverged(100.0)])
+    findings = d.sorted_findings([d.norm_left(0.1), None, d.unitarity(1e-2, 0.3), d.diverged(100.0)])
     assert [f.severity for f in findings] == ["error", "warning", "information"]
 
 
@@ -44,7 +44,10 @@ def test_a_clean_run_has_no_error_or_warning() -> None:
             d.stopped_early([], 10000.0, 10000.0),
             d.diverged(None),
             d.unanalysed_flux(1e-6),
-            d.unitarity(0.0),
+            d.unitarity(0.0, 0.3),
+            d.top_rotational_level(np.zeros(5), energies, 2),
+            d.outer_diffraction_channels(np.zeros(5), energies),
+            d.r_grid_ends(1e-9, (0, 0)),
             d.still_moving(p, p, energies),
             d.norm_left(1e-5),
         ]
@@ -55,8 +58,18 @@ def test_a_clean_run_has_no_error_or_warning() -> None:
 
 def test_each_finding_fires_just_above_its_limit_and_for_nan() -> None:
     """Each threshold: just above it the finding applies, at it not; NaN always applies."""
-    for finding, limit in ((d.unanalysed_flux, d.UNANALYSED_LIMIT), (d.unitarity, d.UNITARITY_LIMIT)):
-        assert finding(1.01 * limit) and not finding(limit) and finding(NAN), finding.__name__
+    assert d.unanalysed_flux(1.01 * d.UNANALYSED_LIMIT) and not d.unanalysed_flux(d.UNANALYSED_LIMIT)
+    assert d.unanalysed_flux(NAN)
+    assert d.unitarity(1.01 * d.UNITARITY_LIMIT, 0.3) and not d.unitarity(d.UNITARITY_LIMIT, 0.3)
+    assert d.unitarity(NAN, 0.3)
+    assert d.r_grid_ends(1.01 * d.R_EDGE_LIMIT, (0, 0)) and not d.r_grid_ends(d.R_EDGE_LIMIT, (0, 0))
+    assert d.r_grid_ends(NAN, (0, 0))
+    energies = np.array([0.3, 0.4])
+    above, at, nan = (np.array([0.0, x]) for x in (1.01 * d.EDGE_LIMIT, d.EDGE_LIMIT, NAN))
+    top = d.top_rotational_level
+    assert top(above, energies, 2) and not top(at, energies, 2) and top(nan, energies, 2)
+    outer = d.outer_diffraction_channels
+    assert outer(above, energies) and not outer(at, energies) and outer(nan, energies)
     energies = np.array([0.3, 0.4])
     slow = d.slowest_converged
     assert slow(0.03, np.array([0.0, 1.01 * d.SLOW_CHANNELS_LIMIT]), energies).severity == "warning"
@@ -68,6 +81,13 @@ def test_each_finding_fires_just_above_its_limit_and_for_nan() -> None:
 def moving(p_end: float, change: float) -> d.Finding | None:
     """still_moving for one energy."""
     return d.still_moving(np.array([p_end]), np.array([p_end - change]), np.array([0.3]))
+
+
+def test_findings_name_the_worst_energy() -> None:
+    """The still-moving and the unitarity findings say at which collision energy they are worst."""
+    moved = d.still_moving(np.array([0.5, 0.5, 0.5]), np.array([0.5, 0.4, 0.49]), np.array([0.2, 0.3, 0.4]))
+    assert "up to 1.00e-01 at E_coll 0.3 eV" in moved.value and moved.value.startswith("2 of 3 energies")
+    assert "E_coll 0.32 eV" in d.unitarity(1e-2, 0.32).value
 
 
 def test_still_moving_at_its_relative_and_its_absolute_limit() -> None:

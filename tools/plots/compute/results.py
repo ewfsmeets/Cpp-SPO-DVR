@@ -44,3 +44,15 @@ def results(summary: Table) -> Results:
     levels = scattered_levels(summary)
     p_vibration = levels if len(levels) > 1 else {}  # one level: P(v') is P_scattered
     return Results(summary["E_coll"], p_scattered, summary["P_reaction"], p_vibration, mean_energy_ev, unitarity_error)
+
+
+def matched_differences(fine: Table, on_the_fly: Table, column: str) -> tuple[np.ndarray, np.ndarray]:
+    """(E_coll, fine - on-the-fly) of a column at the analysis energies both tables have (the fine analysis
+    leaves out energies outside its grid); energies matched to 1e-9 eV (both print the same E_coll)."""
+    energies, differences = [], []
+    for row, energy in enumerate(fine["E_coll"]):
+        match = np.flatnonzero(np.abs(on_the_fly["E_coll"] - energy) <= 1e-9)
+        if match.size:
+            energies.append(energy)
+            differences.append(fine[column][row] - on_the_fly[column][match[0]])
+    return np.array(energies), np.array(differences)
