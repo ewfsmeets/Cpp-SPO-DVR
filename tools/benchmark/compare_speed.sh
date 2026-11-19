@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Time-loop additions must cost nothing when off (docs/CONTRIBUTING.md, "Additions to the time loop"): runs two
-# existing spodvr builds alternately (A B A B ..., R times each) on the same input without plot keys and
+# existing spodvr builds alternately (A B B A A B ..., R times each) on the same input without plot keys and
 # compares their "Propagation time" and host peak memory (tools/compare/compare_speed.py: at most
 # max(1 %, spread) slower, at most 16 MiB more; GPU memory is not measured). It builds nothing.
 #   CPU (default): the medium grid of tools/benchmark/run_benchmark.sh (keep the two in step), 8 threads,
@@ -43,6 +43,10 @@ for build in "$base" "$new"; do
   [[ -x "$build/spodvr" ]] || usage_error "'$build/spodvr' is not a program; give a build directory"
 done
 base="$(realpath "$base")" new="$(realpath "$new")"
+[[ $base != "$new" ]] || usage_error "--base-build and --new-build are the same directory"
+if cmp -s "$base/spodvr" "$new/spodvr"; then echo "warning: the two spodvr programs are identical" >&2; fi
+echo "base: $base/spodvr, $("$base/spodvr" --version 2>&1 || true)"
+echo "new:  $new/spodvr, $("$new/spodvr" --version 2>&1 || true)"
 [[ $repetitions =~ ^[0-9]+$ && $repetitions -ge 2 ]] || usage_error "--repetitions must be a whole number >= 2"
 [[ -z $steps || $steps =~ ^[1-9][0-9]*$ ]] || usage_error "--steps must be a positive whole number"
 scratch="$(mktemp -d)"
@@ -76,7 +80,8 @@ device=()
 [[ $cuda == 1 ]] && device=(--device cuda)
 
 for k in $(seq 1 "$repetitions"); do
-  for which in base new; do
+  order="base new"; (( k % 2 == 0 )) && order="new base"  # alternate which build runs first
+  for which in $order; do
     build="$base"; [[ $which == new ]] && build="$new"
     log="$logs/$which-$k.log"
     OMP_NUM_THREADS=8 /usr/bin/time -v "$build/spodvr" "$scratch/input.json" --threads 8 "${device[@]}" --no-color \

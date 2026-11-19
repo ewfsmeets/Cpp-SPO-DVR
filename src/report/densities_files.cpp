@@ -2,6 +2,7 @@
 // (io/series_writer.hpp); the projected size of the plot data and the free-space check. C++ only.
 #include "report/densities_files.hpp"
 
+#include <array>
 #include <cstddef>
 #include <span>
 
@@ -29,7 +30,8 @@ std::vector<DatasetSpec> density_datasets(const Config& config, const SpatialGri
        {nz_specular, nr},
        {"Z", "r"},
        "probability",
-       "probability per (Z, r) cell of the specular wave (the incoming channel): |chi|^2 dZ dr"},
+       "probability per (Z, r) cell of the specular wave (the initial channel, incoming and specularly "
+       "reflected, every v): |chi|^2 dZ dr"},
       {"surface_index.bin", "<i4", {}, {}, "", "0-based Z index of the specular analysis surface"},
       {"norm.bin", "<f8", {}, {}, "probability", "the total norm of averages.dat at this time"},
   };
@@ -54,9 +56,10 @@ DensitiesFiles::DensitiesFiles(const std::filesystem::path& output_dir, const Co
     : series_(output_dir / "densities", "densities", density_datasets(config, grids), density_grids(config, grids)) {}
 
 void DensitiesFiles::append(const Averages& averages, const CellProbabilities& cells, int surface_index) {
-  const std::int32_t index = surface_index;
+  const std::array<std::int32_t, 1> index{surface_index};
+  const std::array<double, 1> norm{averages.norm};
   series_.append(averages.time, {std::as_bytes(std::span(cells.scattering)), std::as_bytes(std::span(cells.specular)),
-                                 std::as_bytes(std::span(&index, 1)), std::as_bytes(std::span(&averages.norm, 1))});
+                                 std::as_bytes(std::span(index)), std::as_bytes(std::span(norm))});
 }
 
 std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids) {
@@ -69,6 +72,25 @@ std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGri
     sizes.push_back({"densities/", "writeDensities", static_cast<std::uintmax_t>(records) * record});
   }
   return sizes;
+}
+
+std::uintmax_t free_space(const std::filesystem::path& output_dir) {
+  std::filesystem::path existing = std::filesystem::absolute(output_dir);
+  while (!std::filesystem::exists(existing) && existing.has_parent_path() && existing.parent_path() != existing)
+    existing = existing.parent_path();
+  return std::filesystem::space(existing).available;
+}
+
+std::uintmax_t replaced_plot_data_bytes(const std::filesystem::path& output_dir,
+                                        const std::vector<PlotDataSize>& sizes) {
+  std::uintmax_t bytes = 0;
+  for (const PlotDataSize& s : sizes) {
+    const std::filesystem::path replaced = output_dir / s.directory;
+    if (!std::filesystem::is_directory(replaced)) continue;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(replaced))
+      if (entry.is_regular_file()) bytes += entry.file_size();
+  }
+  return bytes;
 }
 
 void check_free_space(const std::vector<PlotDataSize>& sizes, std::uintmax_t available) {

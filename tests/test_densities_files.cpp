@@ -89,3 +89,16 @@ TEST(DensitiesFiles, RefusesPlotDataLargerThanTheFreeSpace) {
   }
   EXPECT_NO_THROW(check_free_space({}, 0));
 }
+
+// An older densities/ in the output directory is replaced, so its bytes count as free; other directories do not.
+TEST(DensitiesFiles, ReplacedPlotDataCountsAsFree) {
+  TemporaryDirectory dir("densities_replaced");
+  const std::vector<PlotDataSize> sizes = {{"densities/", "writeDensities", 1000}};
+  EXPECT_EQ(replaced_plot_data_bytes(dir.path(), sizes), 0u);
+  fs::create_directories(dir.path() / "densities" / "sub");
+  std::ofstream(dir.path() / "densities" / "times.bin") << std::string(300, 'x');
+  std::ofstream(dir.path() / "densities" / "sub" / "x.bin") << std::string(20, 'x');
+  std::ofstream(dir.path() / "averages.dat") << std::string(5000, 'x');
+  EXPECT_EQ(replaced_plot_data_bytes(dir.path(), sizes), 320u);
+  EXPECT_GT(free_space(dir.path() / "not" / "yet" / "made"), 0u);  // its nearest existing ancestor's
+}

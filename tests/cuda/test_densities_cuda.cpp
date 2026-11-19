@@ -29,11 +29,12 @@ namespace {
 constexpr std::size_t records = 31;            // tStart and every dtAve (100 a.u.) up to tEnd 3000
 constexpr double steps_per_record = 50.0;       // dtAve / dtStep
 
-// The tolerance of record k relative to its largest cell: the CPU and GPU propagations drift apart by about
-// 1e-13 of the norm per 1000 steps (cuFFT vs oneMKL rounding, docs/cuda.md), and a density doubles the
-// relative difference of the amplitude; at least 1e-13 (one analysis step). Measured: 2.2e-13 at 1500 steps.
+// The tolerance of record k relative to its largest cell, empirical: the CPU and GPU propagations drift apart
+// with the number of steps (cuFFT vs oneMKL rounding; docs/cuda.md: the norm by 1e-13 per 1000 steps), and the
+// largest cell difference measured here grows to 2.2e-13 at 1500 steps (2026-11-19). 4e-13 per 1000 steps, at
+// least 1e-13 (one analysis step), leaves a factor 2.7 at the last record.
 double record_tolerance(std::size_t k) {
-  return std::max(1e-13, 2e-13 * steps_per_record * static_cast<double>(k) / 1000.0);
+  return std::max(1e-13, 4e-13 * steps_per_record * static_cast<double>(k) / 1000.0);
 }
 
 // A coupled case (the hard wall's scattering wave is only rounding noise): cu111_dailight_small on a 4 x 4

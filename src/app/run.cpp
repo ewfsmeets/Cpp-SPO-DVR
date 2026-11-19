@@ -234,7 +234,13 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
     densities.emplace(output_dir, config, grids);
     observer.on_average_densities = [&](const Averages& a, std::span<const double> block_densities,
                                         const SpecularWave& specular, int surface_index) {
-      densities->append(a, cell_probabilities(block_densities, specular, config), surface_index);
+      if (!densities) return;
+      try {
+        densities->append(a, cell_probabilities(block_densities, specular, config), surface_index);
+      } catch (const CheckpointError& e) {  // a full disk: optional output, so the propagation goes on
+        table.print_note(std::string("writeDensities: ") + e.what() + "; densities/ stops here", a.time);
+        densities.reset();
+      }
     };
   }
   propagation.run(observer);
@@ -333,6 +339,14 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (config.input.do_flux_analysis && propagates)
       throw NotSupportedError("doFluxAnalysis = true: the flux analysis is not implemented yet");
     print_grids(out, style, config, grids, angular);
+    // Plot data (writeDensities, ...): its projected size, refused before the long set-up when the output file
+    // system lacks room. Nothing is queried without a plot key.
+    const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids);
+    if (!plot_data.empty()) {
+      const std::filesystem::path& dir = command_line.output_dir;
+      check_free_space(plot_data, free_space(dir) + replaced_plot_data_bytes(dir, plot_data));
+      print_plot_data(out, style, plot_data);
+    }
 
     // Analysis-only runs (onlyAnalysis) need no 6D potential: only V(r) for the gas phase.
     const bool analysis_only = config.derived.run_mode == 2;
@@ -382,10 +396,6 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     write_run_info(run_info_dir / "run_info.json", config, grids, angular, program, command_line.input_file,
                    std::cref(gas));
     out << "\n  Data files written to " << command_line.output_dir.string() << "\n";
-    // Plot data (writeDensities, ...): its projected size, refused when the output file system lacks room.
-    const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids);
-    check_free_space(plot_data, std::filesystem::space(command_line.output_dir).available);
-    print_plot_data(out, style, plot_data);
 
     if (config.derived.run_mode == 6) {
       out << '\n' << style.emphasis("Potential-only run finished.") << '\n';

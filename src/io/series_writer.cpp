@@ -50,7 +50,10 @@ SeriesWriter::SeriesWriter(const std::filesystem::path& directory, const std::st
     : datasets_(std::move(datasets)) {
   std::filesystem::remove_all(directory);
   std::filesystem::create_directories(directory);
-  std::ofstream(directory / "manifest.json") << manifest(kind, datasets_, extra).dump(1) << '\n';
+  std::ofstream manifest_file(directory / "manifest.json");
+  manifest_file << manifest(kind, datasets_, extra).dump(1) << '\n';
+  manifest_file.close();
+  if (!manifest_file) throw CheckpointError("error writing '" + (directory / "manifest.json").string() + "'");
   for (const DatasetSpec& d : datasets_) files_.push_back(std::make_unique<BinaryWriter>(directory / d.file));
   times_ = std::make_unique<BinaryWriter>(directory / "times.bin");
 }

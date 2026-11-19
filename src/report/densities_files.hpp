@@ -35,6 +35,14 @@ struct PlotDataSize {
 // The plot data of the run's switches (empty when none is on): records times record bytes.
 [[nodiscard]] std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids);
 
+// The free space of the file system of `output_dir` (of its nearest existing ancestor when it does not exist yet).
+[[nodiscard]] std::uintmax_t free_space(const std::filesystem::path& output_dir);
+
+// The bytes of the plot-data directories in `output_dir` that the run will replace (removed when it starts
+// writing them, so their space counts as free).
+[[nodiscard]] std::uintmax_t replaced_plot_data_bytes(const std::filesystem::path& output_dir,
+                                                      const std::vector<PlotDataSize>& sizes);
+
 // Throws InputError naming the key that adds the most bytes when the plot data exceed `available` bytes.
 void check_free_space(const std::vector<PlotDataSize>& sizes, std::uintmax_t available);
 
