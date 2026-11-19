@@ -35,6 +35,10 @@ struct PlotDataSize {
 [[nodiscard]] std::uintmax_t replaced_plot_data_bytes(const std::filesystem::path& output_dir,
                                                       const std::vector<PlotDataSize>& sizes);
 
+// Throws InputError naming its key when a plot-data directory exists in `output_dir` but is not plot data this
+// program wrote (no manifest.json of that kind): it would be removed when the run writes its own.
+void check_replaceable(const std::filesystem::path& output_dir, const std::vector<PlotDataSize>& sizes);
+
 // Throws InputError naming the key that adds the most bytes when the plot data exceed `available` bytes.
 void check_free_space(const std::vector<PlotDataSize>& sizes, std::uintmax_t available);
 

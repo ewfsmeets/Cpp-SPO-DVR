@@ -48,10 +48,6 @@ struct ScmIdentity {
   std::array<std::array<double, 18>, 2> parameters{};  // P1–P18 of layers 1 and 2 (params.dat)
 };
 
-// The input parameters as read from the JSON input file, in input units (bohr, eV, amu, a.u. of
-// time, degrees). Defaults are those of the Fortran code (globaldata.f90 SetupGlobalDataModule);
-// keys that the Fortran code requires have no meaningful default here and must be present.
-// The comment after each member gives the JSON key and the Fortran variable.
 // A named point of the surface unit cell for the plot data (PlotSites, C++ only): fractional coordinates along
 // the two lattice vectors, which must lie on a grid point (validate_outputs.cpp).
 struct PlotSite {
@@ -60,6 +56,10 @@ struct PlotSite {
   double y = 0.0;  // fraction of the second lattice vector (blat)
 };
 
+// The input parameters as read from the JSON input file, in input units (bohr, eV, amu, a.u. of
+// time, degrees). Defaults are those of the Fortran code (globaldata.f90 SetupGlobalDataModule);
+// keys that the Fortran code requires have no meaningful default here and must be present.
+// The comment after each member gives the JSON key and the Fortran variable.
 struct InputParameters {
   // --- general --------------------------------------------------------------------------
   std::string title = "SPO-DVR REACTIVE SCATTERING CALCULATION.";  // Title / title

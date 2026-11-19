@@ -28,9 +28,12 @@ void check_site_coordinate(const PlotSite& site, const std::string& axis, double
       std::format("site '{}': {} = {} is not in [0, 1) (a fraction of the lattice vector)", site.name, axis, fraction));
   const double scaled = fraction * n;
   const double nearest = std::round(scaled);
+  const int index = nearest_index(fraction, n);
   check(!(std::abs(scaled - nearest) <= on_grid_tolerance), "PlotSites",
         std::format("site '{}': {} = {} is not on the grid ({} = {}); the nearest point is {} = {} (index {})",
-                    site.name, axis, fraction, n_key, n, axis, nearest / n, nearest_index(fraction, n)));
+                    site.name, axis, fraction, n_key, n, axis, static_cast<double>(index) / n, index));
+  check(nearest == n, "PlotSites",
+        std::format("site '{}': {} = {} rounds to 1, the next cell's {} = 0: give 0", site.name, axis, fraction, axis));
 }
 
 void check_sites(const InputParameters& p) {

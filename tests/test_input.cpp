@@ -540,6 +540,19 @@ TEST(Input, WritePotentialWithSitesOnTheGrid) {
   }
 }
 
+// A site within 1e-9 of a grid point (in units of the grid step) is on it, one just outside is not; a site that
+// rounds to 1 is refused (it is the next cell's 0), as one below 0 is.
+TEST(Input, PlotSitesOnTheGridWithinTheTolerance) {
+  Json json = reference_json();  // nX = 4: x * 4 within 1e-9 of a whole number
+  json["writePotential"] = true;
+  json["PlotSites"] = site_list({{"inside", 0.25 + 2e-10, 0.0}});
+  EXPECT_NO_THROW(build(json));
+  for (const double x : {0.25 + 5e-10, 1.0 - 1e-12, -1e-12}) {
+    json["PlotSites"] = site_list({{"edge", x, 0.0}});
+    EXPECT_THROW(build(json), InputError) << x;
+  }
+}
+
 // writeDensities in a new run (and in a restart, the other propagating mode) is accepted.
 TEST(Input, WriteDensitiesInAPropagatingRun) {
   Json json = reference_json();

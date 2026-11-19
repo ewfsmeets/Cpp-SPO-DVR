@@ -346,6 +346,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids, angular);
     if (!plot_data.empty()) {
       const std::filesystem::path& dir = command_line.output_dir;
+      check_replaceable(dir, plot_data);
       check_free_space(plot_data, free_space(dir) + replaced_plot_data_bytes(dir, plot_data));
       print_plot_data(out, style, plot_data);
     }

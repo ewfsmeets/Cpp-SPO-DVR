@@ -3,6 +3,9 @@
 #include "report/plot_data.hpp"
 
 #include <cstddef>
+#include <fstream>
+
+#include <nlohmann/json.hpp>
 
 #include "core/error.hpp"
 #include "report/densities_files.hpp"
@@ -34,6 +37,29 @@ std::uintmax_t replaced_plot_data_bytes(const std::filesystem::path& output_dir,
       if (entry.is_regular_file()) bytes += entry.file_size();
   }
   return bytes;
+}
+
+namespace {
+
+// Whether `directory` holds a manifest.json of the given kind (plot data this program wrote).
+bool is_plot_data(const std::filesystem::path& directory, const std::string& kind) {
+  std::ifstream file(directory / "manifest.json");
+  if (!file) return false;
+  const nlohmann::json manifest = nlohmann::json::parse(file, nullptr, false);
+  return manifest.is_object() && manifest.value("kind", std::string()) == kind;
+}
+
+}  // namespace
+
+void check_replaceable(const std::filesystem::path& output_dir, const std::vector<PlotDataSize>& sizes) {
+  for (const PlotDataSize& s : sizes) {
+    const std::filesystem::path directory = output_dir / s.directory;
+    const std::string kind = std::filesystem::path(s.directory).parent_path().string();  // "potential/" -> "potential"
+    if (std::filesystem::exists(directory) && !is_plot_data(directory, kind))
+      throw InputError(s.key, (output_dir / kind).string() +
+                                  " exists and is not plot data written by spodvr (the run "
+                                  "would remove it); move it or choose another --output-dir");
+  }
 }
 
 void check_free_space(const std::vector<PlotDataSize>& sizes, std::uintmax_t available) {

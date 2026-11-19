@@ -18,6 +18,7 @@
 #include "app/cli.hpp"
 #include "app/run.hpp"
 #include "comparison.hpp"
+#include "core/error.hpp"
 #include "grids/angular_grid.hpp"
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
@@ -184,17 +185,14 @@ TEST(PotentialFiles, SitesAndMinimumAgree) {
 }
 
 // The symmetric case's v_min equals the minimum of the potential computed at every (x, y) point: bitwise at the
-// representatives, to rounding elsewhere (1e-12 of max(|V|, 1 hartree)). Negative test: the gather without the
-// phi image of the symmetry operation differs at points that are not representatives.
+// representatives, to rounding elsewhere (1e-12 of max(|V|, 1 hartree)).
 TEST(PotentialFiles, SymmetricCaseMatchesTheFullGrid) {
   const PotentialSetup& s = symmetric();
   const Written& w = written();
   const std::size_t n_xy = s.full.symmetry.n_xy();
   const std::size_t n_zr = s.full.index.n2;
-  const std::size_t n_tp = s.full.index.n0;
   int representatives_differing = 0;
   double worst = 0.0;
-  int slipped = 0;
   for (std::size_t izr = 0; izr < n_zr; ++izr)
     for (std::size_t ixy = 0; ixy < n_xy; ++ixy) {
       const double expected = minimum_by_loop(s.full, ixy, izr);
@@ -203,18 +201,70 @@ TEST(PotentialFiles, SymmetricCaseMatchesTheFullGrid) {
       if (s.reduced.symmetry.representative_xy(irep) == static_cast<int>(ixy))
         representatives_differing += (got == expected) ? 0 : 1;
       worst = spodvr::testing::nan_aware_max(worst, scaled_difference(got, expected));
-      double worst_orientation = 0.0;
-      for (std::size_t itp = 0; itp < n_tp; ++itp)
-        worst_orientation = spodvr::testing::nan_aware_max(
-            worst_orientation,
-            scaled_difference(gather_without_phi_map(s.reduced, itp, ixy, izr), s.full(itp, ixy, izr)));
-      slipped += (worst_orientation <= 1e-12) ? 0 : 1;
     }
   EXPECT_EQ(representatives_differing, 0);
   EXPECT_LE(worst, 1e-12);
-  EXPECT_GT(slipped, 0);  // the negative test: skipping the phi map changes V at points off the representatives
-  std::cout << "  v_min vs the full grid: max scaled difference " << worst << "; the slip changes V at " << slipped
-            << " of " << n_zr * n_xy << " (Z, r, x, y) points\n";
+}
+
+// The sites' V at every orientation equals the potential computed at their (x, y) point (the bridge and the third
+// site are not representatives: their values come through the symmetry maps). Negative test: the gather without
+// the phi image of the symmetry operation fails exactly at the orientations where that image changes V.
+TEST(PotentialFiles, SitesMatchTheFullGrid) {
+  const PotentialSetup& s = symmetric();
+  const Written& w = written();
+  const std::size_t n_zr = s.full.index.n2;
+  const std::size_t n_tp = s.full.index.n0;
+  const int n_phi = s.angular.n_phi();
+  const auto& sites = s.config.input.plot_sites;
+  int non_representatives = 0;
+  double worst = 0.0;
+  int slip_fails = 0;
+  int image_changes = 0;
+  for (std::size_t isite = 0; isite < sites.size(); ++isite) {
+    const int ixy = plot_site_ixy(sites[isite], s.config.input.nx, s.config.input.ny);
+    const int irep = s.reduced.symmetry.representative_of(ixy);
+    non_representatives += (s.reduced.symmetry.representative_xy(irep) == ixy) ? 0 : 1;
+    const std::vector<int>& image = s.reduced.symmetry.phi_index(s.reduced.symmetry.operation_of(ixy));
+    for (std::size_t izr = 0; izr < n_zr; ++izr)
+      for (std::size_t itp = 0; itp < n_tp; ++itp) {
+        const double full = s.full(itp, static_cast<std::size_t>(ixy), izr);
+        worst = spodvr::testing::nan_aware_max(worst,
+                                               scaled_difference(w.v_sites[itp + n_tp * (izr + n_zr * isite)], full));
+        const double slip = gather_without_phi_map(s.reduced, itp, static_cast<std::size_t>(ixy), izr);
+        slip_fails += (scaled_difference(slip, full) <= 1e-12) ? 0 : 1;
+        const std::size_t itheta = itp / n_phi;
+        const std::size_t imaged = image[itp % n_phi] + n_phi * itheta;
+        const double stored = s.reduced.values[s.reduced.index(imaged, irep, izr)];
+        const double unimaged = s.reduced.values[s.reduced.index(itp, irep, izr)];
+        image_changes += (scaled_difference(unimaged, stored) <= 1e-12) ? 0 : 1;
+      }
+  }
+  EXPECT_EQ(non_representatives, 2);
+  EXPECT_LE(worst, 1e-12);
+  EXPECT_GT(image_changes, 0);
+  EXPECT_EQ(slip_fails, image_changes);
+}
+
+// A directory named like the plot data but not written by this program is refused before the run (it would be
+// removed); an earlier plot-data directory of the same kind is replaced.
+TEST(PotentialFiles, RefusesToReplaceADirectoryItDidNotWrite) {
+  TemporaryDirectory dir("potential_replace");
+  const std::vector<PlotDataSize> sizes = {{"potential/", "writePotential", 10, ""},
+                                           {"densities/", "writeDensities", 10, ""}};
+  EXPECT_NO_THROW(check_replaceable(dir.path(), sizes));
+  fs::create_directories(dir.path() / "potential");
+  std::ofstream(dir.path() / "potential" / "my_pes.dat") << "1 2 3\n";
+  try {
+    check_replaceable(dir.path(), sizes);
+    FAIL() << "no InputError";
+  } catch (const InputError& e) {
+    EXPECT_NE(std::string(e.what()).find("writePotential"), std::string::npos) << e.what();
+  }
+  std::ofstream(dir.path() / "potential" / "manifest.json") << R"({"kind": "potential"})";
+  EXPECT_NO_THROW(check_replaceable(dir.path(), sizes));
+  fs::create_directories(dir.path() / "densities");
+  std::ofstream(dir.path() / "densities" / "manifest.json") << R"({"kind": "potential"})";
+  EXPECT_THROW(check_replaceable(dir.path(), sizes), InputError);
 }
 
 // A NaN at one stored value makes the minimum NaN at every (x, y) point that reads it (all points of its
