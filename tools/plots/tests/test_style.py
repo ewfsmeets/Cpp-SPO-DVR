@@ -64,3 +64,10 @@ def test_colours_equal_the_designers() -> None:
     theirs = designer_constants()
     for name in ("INK", "INK_2", "MUTED", "GRID", "SURFACE", "BLUE", "ORANGE", "AQUA"):
         assert getattr(style, name) == theirs[name], name
+
+
+def test_file_names_of_figures_and_movies() -> None:
+    """A figure is saved as PNG and PDF, a movie as GIF and the PNG of its last frame; the first is shown."""
+    fig = style.new_figure()
+    assert style.file_names("x", fig) == ["x.png", "x.pdf"]
+    assert style.file_names("m", style.Movie(fig, lambda k: None, 2)) == ["m.gif", "m.png"]

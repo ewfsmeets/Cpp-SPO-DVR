@@ -13,7 +13,7 @@ from readers.binary import BK_MAGIC, CHECKPOINT_MAGIC, FORMAT_VERSION, read_bk_c
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
 from readers.run_info import read_run_info
-from readers.segments import join_records
+from readers.segments import join_records, joined_first_non_finite
 from readers.tables import read_averages, read_gas_phase_states, read_table
 
 HEADER = "# Wave packet averages (Fortran: averages.out)\n# t(a.u.)  norm  <Z>(bohr)  <r>(bohr)  rest_norm\n"
@@ -158,6 +158,36 @@ def test_join_drops_the_repeated_record() -> None:
     assert list(times) == [0.0, 1.0, 2.0] and list(values) == [1.0, 2.0, 3.0]
 
 
+TOLERANCE_CASES = [  # the repeated record [0.25, 4.0] changed: (new record, accepted)
+    ([0.25, 4.0 * (1 + 1e-14)], True),  # rounding, as on another device
+    ([0.25 + 2e-12, 4.0], True),  # 5e-13 of the largest value, in the small element (8e-12 of that element itself)
+    ([0.25 + 8e-12, 4.0], False),  # 2e-12 of the largest value
+    ([np.nan, 4.0], False),
+]
+
+
+@pytest.mark.parametrize(("repeated", "accepted"), TOLERANCE_CASES)
+def test_join_compares_a_repeated_record_to_its_largest_value(repeated: list[float], accepted: bool) -> None:
+    """A repeated record must equal the kept one to 1e-12 of the record's largest |value| (not of each element):
+    then it is dropped and the kept one stays; else, or with a NaN, the join is refused."""
+    times = [np.array([0.0, 1.0]), np.array([1.0, 2.0])]
+    earlier, later = np.array([[0.5, 2.0], [0.25, 4.0]]), np.array([repeated, [0.1, 5.0]])
+    if accepted:
+        _, joined = join_records(times, [earlier, later], "x")
+        assert joined.tolist() == [[0.5, 2.0], [0.25, 4.0], [0.1, 5.0]]
+    else:
+        with pytest.raises(ReadError, match="differs between two segments|NaN or inf"):
+            join_records(times, [earlier, later], "x")
+
+
+def test_joined_first_non_finite_counts_the_dropped_repeats() -> None:
+    """Segments of 3 and 4 records, the second's first one a dropped repeat: its record 2 is the joined record 4;
+    a first segment's record comes first; none gives None."""
+    assert joined_first_non_finite([None, 2], [3, 4], [0, 1]) == 4
+    assert joined_first_non_finite([1, 2], [3, 4], [0, 1]) == 1
+    assert joined_first_non_finite([None, None], [3, 4], [0, 1]) is None
+
+
 def test_fine_grid(tmp_path: Path) -> None:
     """grid.json with its fields and a skipped energy; a missing field is a ReadError."""
     fields = {
@@ -225,3 +255,26 @@ def test_records_of_segments_off_the_record_grid_concatenate() -> None:
         [np.array([0.0, 100.0]), np.array([150.0, 250.0])], [np.array([1.0, 2.0]), np.array([3.0, 4.0])], "x"
     )
     assert list(times) == [0.0, 100.0, 150.0, 250.0] and list(values) == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_series_manifest_errors(tmp_path: Path) -> None:
+    """A missing manifest, one that is not JSON or not an object, another format version, a missing dataset file
+    and a dataset of zero bytes per record: each a ReadError with its own message."""
+    path = series_directory(tmp_path / "s", [0.0], [1.0])
+    manifest = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
+    cases = {
+        "no such file": None,
+        "not JSON": "{",
+        "not a JSON object": "[1, 2]",
+        "format_version 2": json.dumps({**manifest, "format_version": 2}),
+        "missing or wrong": json.dumps({**manifest, "datasets": {"y": {"file": "y.bin", "dtype": "<f8", "shape": []}}}),
+        "zero bytes per record": json.dumps(
+            {**manifest, "datasets": {"x": {"file": "x.bin", "dtype": "<f8", "shape": [0]}}}
+        ),
+    }
+    for message, text in cases.items():
+        (path / "manifest.json").unlink(missing_ok=True)
+        if text is not None:
+            (path / "manifest.json").write_text(text, encoding="utf-8")
+        with pytest.raises(ReadError, match=message):
+            read_series(path)

@@ -37,15 +37,15 @@ def fixture_runs(request: pytest.FixtureRequest) -> Path:
     return path
 
 
-STOPPED_RECORDS = 50  # BK records kept in the stopped run (t = 10 .. 500 a.u.)
-STOPPED_DENSITY_RECORDS = 6  # densities/ records kept (t = 0 .. 500 a.u., every dtAve 100)
+STOPPED_RECORDS = 50  # BK records kept in the stopped run (one per analysis step: up to t = 50 dtAna)
 
 
 @pytest.fixture(scope="session")
 def stopped_run(fixture_runs: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
     """hardwall_tiny as a run that stopped (or is still running) at t = 500 a.u.: only the files the program
     writes before the propagation (run_info.json, the gas-phase files) and bk_coefficients.bin cut after
-    STOPPED_RECORDS records plus part of the next (the program appends one record per analysis step)."""
+    STOPPED_RECORDS records plus part of the next (the program appends one record per analysis step), and
+    densities/ cut after its records up to the same time (tStart and every dtAve)."""
     whole = fixture_runs / "hardwall_tiny"
     run = tmp_path_factory.mktemp("stopped") / "hardwall_tiny_stopped"
     run.mkdir()
@@ -53,13 +53,15 @@ def stopped_run(fixture_runs: Path, tmp_path_factory: pytest.TempPathFactory) ->
         shutil.copy(whole / name, run / name)
     bk = read_bk_coefficients(whole / "bk_coefficients.bin")
     n_times, n_v, n_states = bk.coefficients.shape
-    record_bytes = 8 + 16 * n_v * n_states
+    bk_record_bytes = 8 + 16 * n_v * n_states
     data = (whole / "bk_coefficients.bin").read_bytes()
-    records_start = len(data) - n_times * record_bytes
+    records_start = len(data) - n_times * bk_record_bytes
     (run / "bk_coefficients.bin").write_bytes(
-        data[: records_start + STOPPED_RECORDS * record_bytes + record_bytes // 2]
+        data[: records_start + STOPPED_RECORDS * bk_record_bytes + bk_record_bytes // 2]
     )
-    copy_densities_up_to(whole / "densities", run / "densities", STOPPED_DENSITY_RECORDS)
+    times = json.loads((whole / "run_info.json").read_text(encoding="utf-8"))["times"]
+    density_records = 1 + STOPPED_RECORDS // times["analyses_per_average"]
+    copy_densities_up_to(whole / "densities", run / "densities", density_records)
     return run
 
 
@@ -86,9 +88,9 @@ def fresh_run(stopped_run: Path, tmp_path_factory: pytest.TempPathFactory) -> Pa
     copy_densities_up_to(stopped_run / "densities", run / "densities", 1)  # only the record at tStart
     bk = read_bk_coefficients(run / "bk_coefficients.bin")
     n_times, n_v, n_states = bk.coefficients.shape
-    record_bytes = 8 + 16 * n_v * n_states
+    bk_record_bytes = 8 + 16 * n_v * n_states
     data = (run / "bk_coefficients.bin").read_bytes()
-    (run / "bk_coefficients.bin").write_bytes(data[: len(data) - n_times * record_bytes])  # the half record stays
+    (run / "bk_coefficients.bin").write_bytes(data[: len(data) - n_times * bk_record_bytes])  # the half record stays
     return run
 
 

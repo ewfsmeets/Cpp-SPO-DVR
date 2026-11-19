@@ -3,11 +3,13 @@ not fully converged, and their bases are small (dailight_oblique: j' = JMax = 2 
 channels carry flux; both inherit gate-case r grids whose gas-phase states reach the grid ends); the stopped
 run has only the files a run that stopped early has."""
 
+import shutil
 from pathlib import Path
 
 import pytest
 
 from readers.segments import joined_info, ordered_segments
+from readers.tables import read_averages
 from verdict import run_verdict
 
 EXPECTED = {
@@ -71,3 +73,23 @@ def test_missing_checkpoint_is_not_checked(fixture_runs: Path, tmp_path: Path) -
             (run / path.name).symlink_to(path.resolve())
     names = [f.name for f in verdict_of([run])]
     assert "not checked: unanalysed flux" in names and "unanalysed flux, upper bound" not in names
+
+
+def test_damaged_densities_are_a_finding(fixture_runs: Path, tmp_path: Path) -> None:
+    """A complete run whose densities/manifest.json is damaged: the verdict says the regions were not checked
+    instead of failing; the other findings stay."""
+    run = tmp_path / "hardwall_tiny"
+    shutil.copytree(fixture_runs / "hardwall_tiny", run)
+    (run / "densities" / "manifest.json").write_text("{", encoding="utf-8")
+    names = [f.name for f in verdict_of([run])]
+    assert "not checked: norm by region" in names and "norm by region at the end" not in names
+    assert "unitarity error" in names
+
+
+def test_norm_by_region_lists_the_rest_norm(fixture_runs: Path) -> None:
+    """The specular wave inside its analysis line, listed last, equals the rest norm of averages.dat at the same
+    time (the program's sum over the same cells)."""
+    finding = next(f for f in verdict_of([fixture_runs / "dailight_oblique"]) if f.name == "norm by region at the end")
+    listed = float(finding.value.rsplit(": ", 1)[1])
+    rest_norm = read_averages(fixture_runs / "dailight_oblique" / "averages.dat").rest_norm[-1]
+    assert abs(listed - rest_norm) <= 0.05 * rest_norm  # printed with 2 digits

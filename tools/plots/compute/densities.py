@@ -1,5 +1,5 @@
 """The wave packet over (Z, r) from densities/ (writeDensities): the probability of both grids together, its
-profiles in Z and r, the mean positions, and the norm per region of the grids against time.
+profiles in Z and r, the norm per region of the grids and the absorbers' contents against time.
 
 The scattering grid (nz_scattering points) and the specular grid (nz_specular >= nz_scattering points) start at
 the same Z with the same dZ, so a cell iz < nz_scattering holds the scattering wave's and the specular wave's
@@ -14,140 +14,130 @@ import numpy as np
 
 from compute.grids import density_per_volume
 from readers.arrays import Series
+from readers.densities import DensityGrids
 from readers.errors import ReadError
 from readers.run_info import RunInfo
 
-DATASET_OF_GRID = {"scattering": "prob_scat_zr", "specular": "prob_spec_zr"}  # an absorber's grid -> its cells
-LOW_Z_ABSORBERS = {"ZOptLow", "ZSpOptLow"}  # absorbing from the grid's start up to their end
+DATASET_OF_GRID = {"scattering": "prob_scat_zr", "specular": "prob_spec_zr"}  # a Z absorber's grid -> its cells
+LOW_Z_ABSORBERS = {"ZOptLow", "ZSpOptLow"}  # absorbing on [start, end], strongest at their start (low Z)
+WAVE_OF_GRID = {"scattering": "scattering wave", "specular": "specular wave", "both": "both waves"}
 
 
-@dataclass
-class DensityGrids:
-    """The (Z, r) grids of densities/ (bohr)."""
-
-    z_bohr: np.ndarray  # (nz_specular,): the specular grid, whose first nz_scattering points are the scattering grid's
-    r_bohr: np.ndarray  # (nr,)
-    nz_scattering: int
-    dz_bohr: float
-    dr_bohr: float
-
-
-def density_grids(series: Series) -> DensityGrids:
-    """The grids recorded in densities/manifest.json."""
-    g = series.manifest["grids"]
-    z = g["z_start"] + g["dz"] * np.arange(g["nz_specular"])
-    r = g["r_start"] + g["dr"] * np.arange(g["nr"])
-    return DensityGrids(z, r, int(g["nz"]), float(g["dz"]), float(g["dr"]))
-
-
-def usable_records(series: Series) -> tuple[Series, tuple[str, ...]]:
-    """The records before the first one with a NaN or inf, and a note when some were left out. ReadError when no
-    record is left (the run stopped before its first averages time, or diverged at once)."""
-    n = len(series.times_au) if series.first_non_finite is None else series.first_non_finite
-    if n == 0:
-        raise ReadError(f"{series.directory}: no finite record; the run stopped before its first record or diverged")
-    if n == len(series.times_au):
-        return series, ()
-    arrays = {name: values[:n] for name, values in series.arrays.items()}
-    cut = Series(series.directory, series.manifest, series.times_au[:n], arrays, None)
-    return cut, (f"records from number {n} on hold a NaN or inf (the propagation diverged): not drawn",)
-
-
-def combined_probability(series: Series) -> np.ndarray:
+def combined_probability(series: Series, records: np.ndarray | None = None) -> np.ndarray:
     """(n_records, nz_specular, nr): the probability per cell of both waves together (the scattering wave's
-    cells padded with zero beyond its grid)."""
-    total = np.array(series.arrays["prob_spec_zr"], dtype=float)
-    nz_scattering = series.arrays["prob_scat_zr"].shape[1]
-    total[:, :nz_scattering, :] += series.arrays["prob_scat_zr"]
-    return total
+    cells padded with zero beyond its grid), of the chosen records (all by default; chosen before anything is
+    copied)."""
+    chosen = slice(None) if records is None else records
+    combined = np.array(series.arrays["prob_spec_zr"][chosen], dtype=float)
+    scattering = series.arrays["prob_scat_zr"][chosen]
+    combined[:, : scattering.shape[1], :] += scattering
+    return combined
 
 
-def mean_positions_bohr(total: np.ndarray, grids: DensityGrids) -> tuple[np.ndarray, np.ndarray]:
-    """<Z> and <r> per record (bohr) of the combined probability `total`, each cell at its grid point."""
-    norm = np.sum(total, axis=(1, 2))
-    z_mean = np.sum(total * grids.z_bohr[None, :, None], axis=(1, 2)) / norm
-    r_mean = np.sum(total * grids.r_bohr[None, None, :], axis=(1, 2)) / norm
-    return z_mean, r_mean
+def r_absorber(info: RunInfo) -> dict | None:
+    """The r absorber (ROpt) of run_info.json's absorber list, or None."""
+    return next((a for a in info.data["absorbers"]["list"] if a["coordinate"] == "r"), None)
 
 
 def r_absorber_first_index(info: RunInfo, nr: int) -> int:
-    """The first r point of the r absorber (ROpt, its points in run_info.json): r_c, where the outer r region
-    starts; nr (no outer region) without one."""
-    for absorber in info.data["absorbers"]["list"]:
-        if absorber["coordinate"] == "r" and absorber["points"] is not None:
-            return int(absorber["points"]["first"])
-    return nr
+    """The first r point of the r absorber (its points in run_info.json): r_c, where the outer r region starts;
+    nr (no outer region) without one."""
+    absorber = r_absorber(info)
+    if absorber is None or absorber["points"] is None:
+        return nr
+    return int(absorber["points"]["first"])
 
 
 def band_edges(info: RunInfo, grids: DensityGrids) -> list[tuple[str, int, int]]:
-    """The Z bands for r < r_c: (label, first index, end index (exclusive)) on the specular grid's indices.
-    The edges: nz_potential (the first point at or beyond zasymp), iz_ana and the scattering grid's end."""
-    z_asymptotic = info.data["z_asymptotic"]
+    """The Z bands for r < r_c that hold grid points: (label, first index, end index (exclusive)) on the specular
+    grid's indices. The edges: nz_potential (the first point at or beyond zasymp), iz_ana and the scattering
+    grid's end (zasymp <= Z < Zana holds none when Zana = zasymp)."""
+    z_asymptotic_bohr = info.data["z_asymptotic"]
     iz_asymptotic = int(info.data["grids"]["nz_potential"])
     iz_analysis = int(info.data["analysis"]["iz_ana"])
-    return [
-        (f"r < r_c, Z < zasymp ({z_asymptotic:g} bohr)", 0, iz_asymptotic),
+    bands = [
+        (f"r < r_c, Z < zasymp ({z_asymptotic_bohr:g} bohr)", 0, iz_asymptotic),
         ("r < r_c, zasymp <= Z < Zana", iz_asymptotic, iz_analysis),
         ("r < r_c, Zana <= Z < end of the scattering grid", iz_analysis, grids.nz_scattering),
         ("r < r_c, Z beyond the scattering grid", grids.nz_scattering, len(grids.z_bohr)),
     ]
+    return [(label, first, end) for label, first, end in bands if first < end]
 
 
-def band_norms(total: np.ndarray, bands: list[tuple[str, int, int]], ir_c: int) -> dict[str, np.ndarray]:
-    """The probability of `total` (n_records, nz_specular, nr) in each Z band for r points below ir_c."""
-    return {label: np.sum(total[:, first:end, :ir_c], axis=(1, 2)) for label, first, end in bands}
+def band_norms(combined: np.ndarray, bands: list[tuple[str, int, int]], ir_c: int) -> dict[str, np.ndarray]:
+    """The probability of `combined` (n_records, nz_specular, nr) in each Z band for r points below ir_c."""
+    return {label: np.sum(combined[:, first:end, :ir_c], axis=(1, 2)) for label, first, end in bands}
 
 
-def absorber_contents(series: Series, info: RunInfo, total: np.ndarray) -> dict[str, np.ndarray]:
+def absorber_grid(absorber: dict) -> str:
+    """The grid an absorber of run_info.json acts on: "scattering", "specular" or "both" (the r absorber);
+    ReadError for another."""
+    if absorber["grid"] not in WAVE_OF_GRID:
+        raise ReadError(f"run_info.json: absorber {absorber['name']} on grid {absorber['grid']!r}; update the tool")
+    return absorber["grid"]
+
+
+def absorber_contents(series: Series, info: RunInfo, combined: np.ndarray) -> dict[str, np.ndarray]:
     """The probability inside each absorber of run_info.json (its points) on its own grid; the r absorber acts on
-    both grids, so its content is that of the combined probability `total`."""
+    both grids, so its content is that of the combined probability `combined`."""
     contents = {}
     for absorber in info.data["absorbers"]["list"]:
         points = absorber["points"]
         if points is None:
             continue
         inside = slice(int(points["first"]), int(points["last"]) + 1)
-        if absorber["coordinate"] == "r":
-            contents[absorber["name"]] = np.sum(total[:, :, inside], axis=(1, 2))
-        elif absorber["grid"] in DATASET_OF_GRID:
-            cells = series.arrays[DATASET_OF_GRID[absorber["grid"]]]
-            contents[absorber["name"]] = np.sum(cells[:, inside, :], axis=(1, 2))
+        grid = absorber_grid(absorber)
+        if grid == "both":
+            contents[absorber["name"]] = np.sum(combined[:, :, inside], axis=(1, 2))
         else:
-            raise ReadError(f"run_info.json: absorber {absorber['name']} on grid {absorber['grid']!r}; update the tool")
+            cells = series.arrays[DATASET_OF_GRID[grid]]
+            contents[absorber["name"]] = np.sum(cells[:, inside, :], axis=(1, 2))
     return contents
 
 
 @dataclass
 class RegionNorms:
-    """The norm per region against time (n_records each): `regions` partition the record's norm, `absorbed` is
+    """The norm per region against time (n_records each): `regions` partition the record's norm, `removed` is
     1 - norm, and the absorbers' contents overlap the regions."""
 
     regions: dict[str, np.ndarray]  # label -> norm in that region
-    absorbed: np.ndarray  # 1 - norm: what the absorbers have removed since t = 0
+    removed: np.ndarray  # 1 - norm: removed since t = 0 by the absorbers and the rotational basis cut (JMax, MJMax)
     absorbers: dict[str, np.ndarray]  # absorber name -> the probability inside it on its grid(s)
+    absorber_grids: dict[str, str]  # absorber name -> its grid: "scattering", "specular" or "both" (r)
 
 
-def region_norms(series: Series, info: RunInfo, grids: DensityGrids) -> RegionNorms:
+def region_norms(series: Series, info: RunInfo, grids: DensityGrids, combined: np.ndarray) -> RegionNorms:
     """The norm in r >= r_c (both grids; r_c is where the r absorber starts) and, for r < r_c, in the Z bands of
-    band_edges; together they make the record's norm. Plus 1 - norm and every absorber's content."""
-    total = combined_probability(series)
+    band_edges; together they make the record's norm. Plus 1 - norm and every absorber's content. `combined`:
+    combined_probability(series)."""
     ir_c = r_absorber_first_index(info, len(grids.r_bohr))
     regions = {}
     if ir_c < len(grids.r_bohr):
-        regions[f"r >= r_c = ROptStart ({grids.r_bohr[ir_c]:g} bohr)"] = np.sum(total[:, :, ir_c:], axis=(1, 2))
-    regions.update(band_norms(total, band_edges(info, grids), ir_c))
-    absorbed = 1.0 - np.asarray(series.arrays["norm"])
-    return RegionNorms(regions, absorbed, absorber_contents(series, info, total))
+        regions[f"r >= r_c = ROptStart ({grids.r_bohr[ir_c]:g} bohr)"] = np.sum(combined[:, :, ir_c:], axis=(1, 2))
+    regions.update(band_norms(combined, band_edges(info, grids), ir_c))
+    removed = 1.0 - np.asarray(series.arrays["norm"])
+    contents = absorber_contents(series, info, combined)
+    grids_of = {a["name"]: a["grid"] for a in info.data["absorbers"]["list"] if a["name"] in contents}
+    return RegionNorms(regions, removed, contents, grids_of)
 
 
-def z_profile_per_bohr(total: np.ndarray, grids: DensityGrids) -> np.ndarray:
-    """(n_records, nz_specular): the probability per bohr of Z, summed over r."""
-    return density_per_volume(np.sum(total, axis=2), grids.dz_bohr)
+def z_profile_per_bohr(combined: np.ndarray, grids: DensityGrids) -> np.ndarray:
+    """(n_records, nz_specular): the probability per bohr of Z of `combined`, summed over r."""
+    return density_per_volume(np.sum(combined, axis=2), grids.dz_bohr)
 
 
-def r_profile_per_bohr(total: np.ndarray, grids: DensityGrids) -> np.ndarray:
-    """(n_records, nr): the probability per bohr of r, summed over Z."""
-    return density_per_volume(np.sum(total, axis=1), grids.dr_bohr)
+def r_profile_per_bohr(combined: np.ndarray, grids: DensityGrids) -> np.ndarray:
+    """(n_records, nr): the probability per bohr of r of `combined`, summed over Z."""
+    return density_per_volume(np.sum(combined, axis=1), grids.dr_bohr)
+
+
+def specular_inside_line(series: Series, info: RunInfo) -> np.ndarray:
+    """The specular wave between Zana and its analysis line per record, not yet analysed: the rest norm of
+    averages.dat (cells iz_ana < iz <= the surface index, every r)."""
+    iz_analysis = int(info.data["analysis"]["iz_ana"])
+    cells = series.arrays["prob_spec_zr"]
+    indices = np.asarray(series.arrays["surface_index"])
+    return np.array([np.sum(cells[k, iz_analysis + 1 : indices[k] + 1, :]) for k in range(len(indices))])
 
 
 def specular_line_bohr(series: Series, grids: DensityGrids) -> np.ndarray:
@@ -174,8 +164,8 @@ class Marks:
 
 
 def density_marks(info: RunInfo, grids: DensityGrids) -> Marks:
-    """zasymp, Zana, the end of the scattering grid and where each absorber begins to absorb (its start; the
-    low-Z absorbers, which absorb from the grid's start, at their end)."""
+    """zasymp, Zana, the end of the scattering grid and where each absorber begins to absorb, naming the wave it
+    acts on (its start; a low-Z absorber, which absorbs below its end, at its end)."""
     z_lines = [
         Mark("zasymp", float(info.data["z_asymptotic"]), None),
         Mark("Zana", float(info.data["analysis"]["z_ana"]), None),
@@ -184,17 +174,10 @@ def density_marks(info: RunInfo, grids: DensityGrids) -> Marks:
     r_lines = []
     for absorber in info.data["absorbers"]["list"]:
         lines = r_lines if absorber["coordinate"] == "r" else z_lines
+        wave = WAVE_OF_GRID[absorber_grid(absorber)]
         if absorber["name"] in LOW_Z_ABSORBERS:
-            lines.append(Mark(f"{absorber['name']} ends", float(absorber["end"]), absorber["grid"]))
+            mark = Mark(f"{absorber['name']} (absorbs below; {wave})", float(absorber["end"]), absorber["grid"])
         else:
-            lines.append(Mark(f"{absorber['name']} starts", float(absorber["start"]), absorber["grid"]))
+            mark = Mark(f"{absorber['name']} starts ({wave})", float(absorber["start"]), absorber["grid"])
+        lines.append(mark)
     return Marks(z_lines, r_lines)
-
-
-def movie_frames(n_records: int, max_frames: int) -> np.ndarray:
-    """At most max_frames (>= 2) record indices, evenly spaced, the first and the last included."""
-    if max_frames < 2:
-        raise ValueError(f"max_frames {max_frames}: a movie needs at least 2 frames")
-    if n_records <= max_frames:
-        return np.arange(n_records)
-    return np.unique(np.round(np.linspace(0, n_records - 1, max_frames)).astype(int))

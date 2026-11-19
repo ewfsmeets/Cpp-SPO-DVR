@@ -13,19 +13,18 @@ from matplotlib.figure import Figure
 from compute.analysis import analysis_energies
 from compute.densities import (
     combined_probability,
-    density_grids,
     density_marks,
-    movie_frames,
+    r_absorber,
     r_profile_per_bohr,
     region_norms,
     specular_line_bohr,
-    usable_records,
     z_profile_per_bohr,
 )
 from compute.diffraction import diffraction, out_of_plane_fraction, p_per_order, scattering_angles
 from compute.gas_phase import levels
 from compute.grids import density_per_volume, incident_parallel_momentum
 from compute.results import matched_differences, results
+from compute.series import evenly_spaced_records, usable_records
 from compute.states import level_map, mj_fractions, state_to_state
 from compute.time_series import (
     analysis_lines_bohr,
@@ -64,10 +63,11 @@ from panels.time_series import (
     draw_time_delays,
 )
 from readers.binary import read_bk_coefficients, read_checkpoint
+from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
 from readers.run_info import RunInfo
-from readers.segments import read_joined_averages, read_joined_series
+from readers.segments import read_joined_averages
 from readers.tables import read_asymptotic_potential, read_gas_phase_states, read_s_matrix, read_scattering_summary
 from style import Movie, add_info_box, density_color_scale, info_lines, new_figure
 from verdict import run_verdict
@@ -137,7 +137,7 @@ def figure_gas_phase(runs: list[Path], info: RunInfo, options: argparse.Namespac
     potential = read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat")
     gas_levels = levels(states, potential, info.hartree_to_ev)
     j = info.data["initial_state"]["j"]
-    r_opt_start_bohr = next(a["start"] for a in info.data["absorbers"]["list"] if a["name"] == "ROpt")
+    r_opt_start_bohr = r_absorber(info)["start"]
     fig = new_figure()
     left, right = fig.subplots(1, 2)
     draw_potential_and_levels(left, potential, gas_levels, r_opt_start_bohr, j)
@@ -249,20 +249,24 @@ def figure_fine_analysis(runs: list[Path], info: RunInfo, options: argparse.Name
 
 
 def figure_densities(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """The packet's Z and r profiles against time (the specular analysis line on the Z one), the norm per
-    region."""
-    joined, starts_au = read_joined_series(runs, "densities")
+    """The packet's Z and r profiles against time (the specular analysis line on the Z one), the norm per region,
+    1 - norm and the probability inside each absorber."""
+    joined, grids, starts_au = read_densities(runs)
     series, notes = usable_records(joined)
-    grids = density_grids(series)
-    total = combined_probability(series)
+    combined = combined_probability(series)
+    z_profile, r_profile = z_profile_per_bohr(combined, grids), r_profile_per_bohr(combined, grids)
+    z_scale, r_scale = density_color_scale(z_profile), density_color_scale(r_profile)
     marks = density_marks(info, grids)
     times_au = series.times_au
     fig = new_figure(n_notes=len(notes), height_in=7.0)
     axes = fig.subplot_mosaic([["z", "r"], ["regions", "legend"]])
-    draw_carpet(axes["z"], times_au, grids.z_bohr, z_profile_per_bohr(total, grids), "Z", marks.z_lines, starts_au)
+    draw_carpet(axes["z"], times_au, grids.z_bohr, z_profile, z_scale, "Z", marks.z_lines, starts_au)
+    add_density_colorbar(fig, axes["z"], z_scale, "probability per bohr of Z")
     draw_specular_line(axes["z"], times_au, specular_line_bohr(series, grids))
-    draw_carpet(axes["r"], times_au, grids.r_bohr, r_profile_per_bohr(total, grids), "r", marks.r_lines, starts_au)
-    draw_region_norms(axes["regions"], axes["legend"], times_au, region_norms(series, info, grids), starts_au)
+    draw_carpet(axes["r"], times_au, grids.r_bohr, r_profile, r_scale, "r", marks.r_lines, starts_au)
+    add_density_colorbar(fig, axes["r"], r_scale, "probability per bohr of r")
+    regions = region_norms(series, info, grids, combined)
+    draw_region_norms(axes["regions"], axes["legend"], times_au, regions, starts_au)
     segments = f"{len(runs)} segment{'s' if len(runs) > 1 else ''}"
     add_info_box(fig, info, [f"densities/ ({segments})", "run_info.json"], notes=notes)
     return [("densities", fig)]
@@ -270,14 +274,13 @@ def figure_densities(runs: list[Path], info: RunInfo, options: argparse.Namespac
 
 def figure_density_movie(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
     """The density over (Z, r) against time, as a movie (at most MOVIE_FRAMES frames)."""
-    joined, _ = read_joined_series(runs, "densities")
+    joined, grids, _ = read_densities(runs)
     series, notes = usable_records(joined)
-    grids = density_grids(series)
-    frames = movie_frames(len(series.times_au), MOVIE_FRAMES)
-    density = density_per_volume(combined_probability(series)[frames], grids.dz_bohr * grids.dr_bohr)
+    records = evenly_spaced_records(len(series.times_au), MOVIE_FRAMES)
+    density = density_per_volume(combined_probability(series, records), grids.dz_bohr * grids.dr_bohr)
     color_scale = density_color_scale(density)  # one scale for all frames
     marks = density_marks(info, grids)
-    times_au, lines_bohr = series.times_au[frames], specular_line_bohr(series, grids)[frames]
+    times_au, lines_bohr = series.times_au[records], specular_line_bohr(series, grids)[records]
     sources = ["densities/", "run_info.json"]
     fig = new_figure(n_notes=len(notes))
     ax = fig.add_subplot()
@@ -290,8 +293,8 @@ def figure_density_movie(runs: list[Path], info: RunInfo, options: argparse.Name
         draw_density_map(ax, grids, density[k], color_scale, marks, times_au[k], lines_bohr[k])
         box.set_text("\n".join(info_lines(info, sources, time_au=times_au[k], notes=notes)))
 
-    update(len(frames) - 1)  # complete as a figure (the last frame); save_movie redraws every frame
-    return [("density_movie", Movie(fig, update, len(frames)))]
+    update(len(records) - 1)  # complete as a figure (the last frame); save_movie redraws every frame
+    return [("density_movie", Movie(fig, update, len(records)))]
 
 
 # name, figure function, the files it needs in the last segment's directory

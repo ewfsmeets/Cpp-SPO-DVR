@@ -3,12 +3,13 @@ compute/diagnostics.py, worst first. A file the run has not written is a finding
 writes averages.dat, checkpoint.bin and the result tables only after the propagation (src/app/run.cpp), and
 appends to bk_coefficients.bin every analysis step, so a run that stopped early has only the BK file."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 
 from compute.analysis import analysis_energies, analysis_time_step_au, channel_energy_of_rows, energy_of_rows
-from compute.densities import density_grids, region_norms
+from compute.densities import combined_probability, region_norms, specular_inside_line
 from compute.diagnostics import (
     Finding,
     diverged,
@@ -31,9 +32,11 @@ from compute.diagnostics import (
     unitarity,
 )
 from compute.results import Results, results
+from compute.series import usable_records
 from compute.time_series import p_scattered_stopped_at
-from readers.arrays import read_series
 from readers.binary import BkCoefficients, read_bk_coefficients, read_checkpoint
+from readers.densities import DIRECTORY, read_densities
+from readers.errors import ReadError
 from readers.run_info import RunInfo
 from readers.segments import read_joined_averages
 from readers.tables import Averages, Table, read_gas_phase_states, read_s_matrix, read_scattering_summary
@@ -70,15 +73,19 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
 
 
 def regions_at_end(runs: list[Path], info: RunInfo) -> Finding | None:
-    """The norm by region at the last densities/ record (writeDensities), or nothing without one."""
-    if not (runs[-1] / "densities" / "manifest.json").is_file():
+    """The norm by region at the last densities/ record before any NaN or inf (writeDensities), or nothing
+    without densities/; a densities/ that cannot be read or holds no finite record is a finding, not an error."""
+    if not (runs[-1] / DIRECTORY / "manifest.json").is_file():
         return None
-    series = read_series(runs[-1] / "densities")
-    if len(series.times_au) == 0:
-        return None
-    regions = region_norms(series, info, density_grids(series))
-    at_end = {label: float(values[-1]) for label, values in regions.regions.items()}
-    return norm_by_region(float(series.times_au[-1]), at_end)
+    try:
+        series, grids, _ = read_densities([runs[-1]])
+        series, _ = usable_records(series)
+    except ReadError as error:
+        return not_checked("norm by region", str(error))
+    last = replace(series, times_au=series.times_au[-1:], arrays={k: v[-1:] for k, v in series.arrays.items()})
+    regions = region_norms(last, info, grids, combined_probability(last))
+    at_end = {label: float(values[0]) for label, values in regions.regions.items()}
+    return norm_by_region(float(last.times_au[0]), at_end, float(specular_inside_line(last, info)[0]))
 
 
 def worst_unitarity_energy(run_results: Results) -> float:

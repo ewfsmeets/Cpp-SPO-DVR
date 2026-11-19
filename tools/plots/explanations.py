@@ -72,11 +72,12 @@ FIGURES = {
         "energy is dark (below 1e-3) well before tEnd."
     ),
     "averages": (
-        "Left: the norm, the absorbed part 1 - norm and the rest norm (the specular wave between the two analysis "
-        "lines) against time. Right: <Z> and <r>, averaged over the norm left at that time. Good: the norm drops "
-        "mainly once the packet reaches the absorbers (an early slow drop is the initial state's tail in the r "
-        "absorber: see the gas phase), and the rest norm goes to zero by tEnd. A thin vertical line marks where "
-        "a restart segment starts."
+        "Left: the norm, 1 - norm (the norm removed since t = 0: by the absorbers and, where the potential couples "
+        "rotational states, by the angular transform, which keeps only the rotational basis up to JMax and MJMax) "
+        "and the rest norm (the specular wave between the two analysis lines) against time. Right: <Z> and <r>, "
+        "averaged over the norm left at that time. Good: the norm drops mainly once the packet reaches the "
+        "absorbers (an early slow drop is the initial state's tail in the r absorber: see the gas phase), and the "
+        "rest norm goes to zero by tEnd. A thin vertical line marks where a restart segment starts."
     ),
     "gas_phase": (
         "Left: the gas-phase potential V_asy(r) with the levels of the initial j (dashed: not bound on the r grid) "
@@ -87,15 +88,20 @@ FIGURES = {
     "densities": (
         "Top: the probability per bohr of Z (summed over r) and of r (summed over Z) against time, from densities/ "
         "(writeDensities: the probability per (Z, r) cell, the sums behind averages.dat; the scattering and the "
-        "specular wave summed): the packet comes in, turns and leaves; on the Z map the specular analysis line, "
-        "which follows the incoming packet's tail outward until it is fixed. Bottom: the norm per region (r beyond "
-        "r_c, where the r absorber starts, and for smaller r the Z bands below zasymp, up to Zana, up to the "
-        "scattering grid's end and beyond it) and 1 - norm. Good: the norm leaves through the absorbers, and "
-        "little reaches r >= r_c before the packet reaches the surface."
+        "specular wave summed): the packet comes in, turns and leaves. The marks name the wave each absorber acts "
+        "on: ZOpt only the scattering wave, ZSpOpt only the specular wave (the initial channel), ROpt both. On the Z "
+        "map the specular analysis line starts before ZSpOpt and moves inward behind the incoming packet until it "
+        "is fixed; the specular wave is analysed there only once it is fixed. A faint band at the outer end of r "
+        "from t = 0 is the initial state's tail that wraps around the periodic r grid into the r absorber, not "
+        "dissociation. Bottom: the norm per region (r beyond r_c, where the r absorber starts: dissociating, counted "
+        "as reaction; for smaller r the Z bands below zasymp, up to Zana, up to the scattering grid's end and "
+        "beyond it), 1 - norm (removed: by the absorbers and by the rotational basis cut at JMax, MJMax, see the "
+        "averages) and, in the absorbers' colours, the probability inside each absorber. Good: the norm leaves "
+        "through the absorbers, and little reaches r >= r_c before the packet reaches the surface."
     ),
     "density_movie": (
         "rho(Z, r) of the scattering and the specular wave summed (bohr^-2), on one log colour scale for all "
-        "frames, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb and the "
-        "specular analysis line of each frame marked. The PNG beside the GIF is the last frame."
+        "frames, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb (with the wave "
+        "it acts on) and the specular analysis line of each frame marked. The PNG beside the GIF is the last frame."
     ),
 }

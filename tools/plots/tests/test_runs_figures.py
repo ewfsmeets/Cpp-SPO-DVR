@@ -11,8 +11,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
-from compute.densities import movie_frames
 from compute.diffraction import diffraction
+from compute.series import evenly_spaced_records
 from explanations import FIGURES, TITLES
 from figures import (
     MOVIE_FRAMES,
@@ -24,9 +24,10 @@ from figures import (
     has_files,
 )
 from readers.arrays import read_series
+from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.run_info import RunInfo, read_run_info
-from readers.segments import joined_info, ordered_segments, read_joined_series
+from readers.segments import joined_info, ordered_segments
 from readers.tables import read_s_matrix
 from report import save
 from style import Movie, add_info_box, save_movie
@@ -203,31 +204,33 @@ def annotations(ax: object) -> list[str]:
 def test_densities_panels(fixture_runs: Path, stopped_run: Path) -> None:
     """The split hard-wall run: the Z carpet marks zasymp, Zana, the scattering grid's end, the Z absorbers and
     the specular analysis line, the r carpet the r absorber, each with its own colour bar; the regions' legend
-    lists r >= r_c, the four Z bands and 1 - norm; every panel marks the restart."""
+    lists r >= r_c, the four Z bands, 1 - norm and what is inside each absorber; every panel marks the restart."""
     fig = drawn("densities", "split", fixture_runs, stopped_run)
     by_title = {ax.get_title(): ax for ax in fig.axes if ax.get_title()}
     z_carpet, r_carpet = by_title["The packet in Z against time"], by_title["The packet in r against time"]
     marked = set(annotations(z_carpet))
-    assert {"zasymp", "Zana", "end of the scattering grid", "ZOpt starts", "ZSpOpt starts"} <= marked
-    assert "specular analysis line" in marked
-    assert "ROpt starts" in annotations(r_carpet)
+    assert {"zasymp", "Zana", "end of the scattering grid", "specular analysis line"} <= marked
+    assert {"ZOpt starts (scattering wave)", "ZSpOpt starts (specular wave)"} <= marked
+    assert "ROpt starts (both waves)" in annotations(r_carpet)
     assert sum(ax.get_label() == "<colorbar>" for ax in fig.axes) == 2
     legend = next(ax.get_legend() for ax in fig.axes if not ax.axison and ax.get_legend())
     labels = [t.get_text() for t in legend.get_texts()]
-    assert len(labels) == 6 and labels[0].startswith("r >= r_c") and labels[-1] == "1 - norm (absorbed)"
+    assert labels[0].startswith("r >= r_c") and labels[5] == "1 - norm (removed)" and len(labels) == 9
+    assert labels[6:] == ["inside ZOpt", "inside ROpt", "inside ZSpOpt"]
     assert sum(text == "restart" for ax in by_title.values() for text in annotations(ax)) == 3
 
 
 def test_density_movie_marks(fixture_runs: Path, stopped_run: Path) -> None:
     """The movie's still (its last frame) marks the lines of the map, the specular analysis line and the r
     absorber, on one colour bar, and names its time."""
+    _, info = run_of("hard wall", fixture_runs, stopped_run)
     fig = drawn("density_movie", "hard wall", fixture_runs, stopped_run).fig
     ax = fig.axes[0]
     marked = set(annotations(ax))
-    assert {"zasymp", "Zana", "end of the scattering grid", "ZOpt starts", "ZSpOpt starts", "ROpt starts"} <= marked
-    assert "specular analysis line" in marked
+    assert {"zasymp", "Zana", "end of the scattering grid", "specular analysis line"} <= marked
+    assert {"ZOpt starts (scattering wave)", "ZSpOpt starts (specular wave)", "ROpt starts (both waves)"} <= marked
     assert sum(a.get_label() == "<colorbar>" for a in fig.axes) == 1
-    assert ax.get_title().endswith("at t = 10000 a.u.")
+    assert ax.get_title().endswith(f"at t = {info.t_end_au:g} a.u.")
 
 
 def test_density_figures_need_a_finite_record(no_density_record_run: Path) -> None:
@@ -249,8 +252,9 @@ def test_density_figures_stop_at_a_non_finite_record(fixture_runs: Path, tmp_pat
     values.tofile(cells)
     info = read_run_info(run)
     ((_, fig),) = figure_densities([run], info, default_options())
-    assert "records from number 3 on hold a NaN or inf" in fig.texts[0].get_text()
-    assert max(fig.axes[0].collections[0].get_coordinates()[:, :, 0].ravel()) <= 300.0
+    times_au = read_series(run / "densities").times_au
+    assert f"the records from t = {times_au[3]:g} a.u. on hold a NaN or inf" in fig.texts[0].get_text()
+    assert max(fig.axes[0].collections[0].get_coordinates()[:, :, 0].ravel()) < times_au[3]  # records 0..2 only
     ((_, movie),) = figure_density_movie([run], info, default_options())
     assert movie.n_frames == 3 and "NaN or inf" in movie.fig.texts[0].get_text()
 
@@ -261,8 +265,8 @@ def test_a_movie_draws_its_frames_into_a_gif(fixture_runs: Path, stopped_run: Pa
     same in every frame (fixed scale, layout fixed after the first frame)."""
     runs, info = run_of("oblique", fixture_runs, stopped_run)
     ((_, movie),) = figure_density_movie(runs, info, default_options())
-    series, _ = read_joined_series(runs, "densities")
-    times_au = series.times_au[movie_frames(len(series.times_au), MOVIE_FRAMES)]
+    series, _, _ = read_densities(runs)
+    times_au = series.times_au[evenly_spaced_records(len(series.times_au), MOVIE_FRAMES)]
     frames, positions = [], []
 
     def recorded(k: int) -> None:

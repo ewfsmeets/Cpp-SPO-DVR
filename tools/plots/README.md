@@ -54,7 +54,7 @@ is a bug of the tool.
 | `time_delay` | d arg S / dE of the strongest channels (each S referred to its analysis line), relative to a reflection at Z = 0, where the channel carries weight; their probabilities | bk_coefficients.bin, checkpoint.bin |
 | `fine_analysis` | P_scattered of the on-the-fly and the fine analysis, and their difference | scattering_summary.tsv, fine_analysis/ |
 | `averages` | norm, 1 − norm, rest norm, ⟨Z⟩ and ⟨r⟩ against time | averages.dat |
-| `densities` | the probability per bohr of Z and of r against time (carpets; the specular analysis line on the Z one) and the norm per region (r beyond r_c; Z bands up to zasymp, Zana, the grids' ends) | densities/ (`writeDensities`) |
+| `densities` | the probability per bohr of Z and of r against time (carpets; the specular analysis line on the Z one), the norm per region (r beyond r_c; Z bands up to zasymp, Zana, the grids' ends), 1 − norm and the probability inside each absorber | densities/ (`writeDensities`) |
 | `density_movie` | ρ(Z, r) in bohr⁻², the scattering and the specular wave summed, on one log scale, with zasymp, Zana, the scattering grid's end, where each absorber begins to absorb and the specular analysis line (at most 30 frames) | densities/ (`writeDensities`) |
 | `gas_phase` | V_asy(r) with the levels of the initial j and the r absorber; \|ψ(r)\| of the lowest levels on a log axis | gas_phase_states.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
@@ -80,7 +80,7 @@ judgement); `verdict.py` reads the run's files for them.
 | gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
-| norm by region at the end | information | where the norm left sits at the last densities/ record: below Zana it is flux not yet analysed; beyond Zana the scattering wave's has been analysed, the specular wave's only beyond its own analysis line |
+| norm by region at the end | information | where the norm left sits at the last densities/ record: below Zana not yet analysed; between Zana and the specular analysis line the specular wave not yet either (the rest norm), the scattering wave already; beyond both lines analysed but not yet absorbed; r ≥ r_c dissociating (counted as reaction). A densities/ that cannot be read is a "not checked" finding |
 | not checked: … | information | a check the run's files do not allow: no checkpoint.bin (`CheckpointFormat` `fortran`), fewer than two BK records, or a run that does not propagate (potential only, analysis only) |
 
 E_n,min is a lower bound on the time a run needs: "P_scattered still moving" is the empirical check. The
@@ -108,7 +108,8 @@ flowchart LR
 | `readers/run_info.py` | run_info.json as `RunInfo` | `src/report/run_info_file.cpp` |
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record | `src/io/series_writer.cpp` |
-| `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must be bitwise equal) | — |
+| `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
+| `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must equal the kept one to 1e-12 of its largest value) | — |
 | `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
 | `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
 | `compute/states.py` | P(v', j'), P(mJ'), the alignment A0(2) and its limits, the (v', j') map | — |
@@ -116,7 +117,8 @@ flowchart LR
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
 | `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
-| `compute/densities.py` | from densities/: the grids, both waves summed, Z and r profiles, mean positions, the norm per region and per absorber, the specular line, the movie's frames | — |
+| `compute/series.py` | any series: the records before a NaN or inf (with a note), records evenly spaced for a movie | — |
+| `compute/densities.py` | from densities/: both waves summed, Z and r profiles, the norm per region and inside each absorber, the specular line, the marks of a map | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
 | `verdict.py` | the verdict of a run: reads what its files allow, a missing file is a finding | — |
 | `style.py` | colours, rcParams, the scale rule, the info box, saving figures and movies (`Movie`) | the designer's colours (`tools/wave_packet_designer/plots.py`) |

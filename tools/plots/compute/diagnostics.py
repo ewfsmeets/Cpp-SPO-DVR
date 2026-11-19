@@ -284,15 +284,19 @@ def r_grid_ends(largest_ratio: float, level: tuple[int, int]) -> Finding | None:
     )
 
 
-def norm_by_region(time_au: float, regions: dict[str, float]) -> Finding:
+def norm_by_region(time_au: float, regions: dict[str, float], specular_inside_line: float) -> Finding:
     """Information: where the norm left is at the last densities/ record (the regions of
-    compute.densities.region_norms: r >= r_c, and the Z bands for r < r_c)."""
+    compute.densities.region_norms: r >= r_c, and the Z bands for r < r_c), and the specular wave between Zana
+    and its analysis line (the rest norm, compute.densities.specular_inside_line)."""
+    listed = "; ".join(f"{label}: {value:.1e}" for label, value in regions.items())
     return Finding(
         "information",
         "norm by region at the end",
-        f"t = {time_au:g} a.u.: " + "; ".join(f"{label}: {value:.1e}" for label, value in regions.items()),
+        f"t = {time_au:g} a.u.: {listed}; of the bands beyond Zana, the specular wave inside its analysis line: "
+        f"{specular_inside_line:.1e}",
         "",
-        "where the norm left sits: below Zana it is flux not yet analysed; beyond Zana the scattering wave's has "
-        "been analysed, the specular wave's only beyond its own analysis line (the rest norm of averages.dat)",
+        "the bands below Zana are not yet analysed; the bands beyond Zana are analysed, except the specular wave "
+        "inside its own analysis line (listed last: the rest norm of averages.dat), and wait to be absorbed; "
+        "r >= r_c is dissociating, counted as reaction",
         SECTION_TIME,
     )

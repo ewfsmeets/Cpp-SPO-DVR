@@ -7,8 +7,9 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
 
-from compute.densities import DensityGrids, Mark, Marks, RegionNorms
+from compute.densities import Mark, Marks, RegionNorms
 from panels.time_series import mark_segments
+from readers.densities import DensityGrids
 from style import (
     GRID_COLOR,
     LINE_STYLES,
@@ -18,7 +19,6 @@ from style import (
     SURFACE,
     apply_scale,
     axis_label,
-    density_color_scale,
     masked,
     scale_and_limits,
 )
@@ -37,12 +37,15 @@ def grouped(lines: list[Mark]) -> dict[float, list[Mark]]:
     return groups
 
 
-def mark_color(marks: list[Mark]) -> str:
-    """An absorber's grid colour (the r absorber in the r colour), else muted, for the marks at one place."""
-    grid = next((mark.grid for mark in marks if mark.grid is not None), None)
-    if grid is None:
-        return MUTED
+def grid_color(grid: str) -> str:
+    """The colour of an absorber's grid: the scattering grid, the specular grid, or r for the r absorber ("both")."""
     return GRID_COLOR["r" if grid == "both" else grid]
+
+
+def mark_color(marks: list[Mark]) -> str:
+    """An absorber's grid colour, else muted, for the marks at one place."""
+    grid = next((mark.grid for mark in marks if mark.grid is not None), None)
+    return MUTED if grid is None else grid_color(grid)
 
 
 def draw_marks(ax: Axes, marks: Marks) -> None:
@@ -95,26 +98,20 @@ def draw_carpet(
     times_au: np.ndarray,
     coordinate_bohr: np.ndarray,
     per_bohr: np.ndarray,
+    color_scale: LogNorm,
     name: str,
     lines: list[Mark],
     starts_au: list[float],
 ) -> None:
-    """A profile (n_records, n_coordinate; per bohr) against time (x) and the coordinate (y) on a log colour
-    scale (style.density_color_scale: values below DENSITY_FLOOR of the largest not drawn), with horizontal
+    """A profile (n_records, n_coordinate; per bohr) against time (x) and the coordinate (y) on the log colour
+    scale `color_scale` (values below its lower end not drawn; the colour bar is the figure's), with horizontal
     lines at the marks (equal ones share a label) and a vertical line where each restart segment starts."""
-    color_scale = density_color_scale(per_bohr)
-    mesh = ax.pcolormesh(
-        times_au,
-        coordinate_bohr,
-        masked(per_bohr, color_scale.vmin).T,
-        shading="nearest",
-        cmap=SEQUENTIAL,
-        norm=color_scale,
-        rasterized=True,
+    shown = masked(per_bohr, color_scale.vmin).T
+    ax.pcolormesh(
+        times_au, coordinate_bohr, shown, shading="nearest", cmap=SEQUENTIAL, norm=color_scale, rasterized=True
     )
-    ax.figure.colorbar(mesh, ax=ax, label=f"probability per bohr of {name}", extend="min")
     for position, at in grouped(lines).items():
-        ax.axhline(position, color=MUTED, linewidth=0.8, linestyle=":")
+        ax.axhline(position, color=mark_color(at), linewidth=0.8, linestyle=":")
         label = " = ".join(mark.label for mark in at)
         ax.annotate(f" {label}", (0.0, position), xycoords=("axes fraction", "data"), va="bottom", fontsize=6)
     mark_segments(ax, starts_au)
@@ -127,11 +124,12 @@ def draw_carpet(
 def draw_region_norms(
     ax: Axes, legend_ax: Axes, times_au: np.ndarray, regions: RegionNorms, starts_au: list[float]
 ) -> None:
-    """The norm in each region (together the norm) and 1 - norm against time; y log when they span more than
-    1e3, values below its lower limit not drawn. The legend goes into legend_ax (its axis turned off), since
-    the curves fill the panel."""
-    series = {**regions.regions, "1 - norm (absorbed)": regions.absorbed}
-    scale = scale_and_limits(list(series.values()))
+    """The norm in each region (together the norm) and 1 - norm against time, in black by line style and marker;
+    the probability inside each absorber (overlapping the regions) as thin lines in its grid's colour. y log when
+    they span more than 1e3, values below its lower limit not drawn. The legend goes into legend_ax (its axis
+    turned off), since the curves fill the panel."""
+    series = {**regions.regions, "1 - norm (removed)": regions.removed}
+    scale = scale_and_limits([*series.values(), *regions.absorbers.values()])
     for k, (label, values) in enumerate(series.items()):
         style, marker = LINE_STYLES[k % len(LINE_STYLES)], MARKERS[k % len(MARKERS)]
         ax.plot(
@@ -143,6 +141,12 @@ def draw_region_norms(
             markersize=3,
             label=label,
         )
+    for k, (name, values) in enumerate(regions.absorbers.items()):
+        color = grid_color(regions.absorber_grids[name])
+        style = LINE_STYLES[k % len(LINE_STYLES)]
+        ax.plot(
+            times_au, masked(values, scale.lower), color=color, linewidth=1.0, linestyle=style, label=f"inside {name}"
+        )
     apply_scale(ax, scale)
     mark_segments(ax, starts_au)
     ax.set_xlabel(axis_label("Time", "a.u."))
@@ -153,8 +157,8 @@ def draw_region_norms(
 
 
 def draw_specular_line(ax: Axes, times_au: np.ndarray, line_bohr: np.ndarray) -> None:
-    """The Z of the specular analysis line against time (x: time, y: Z), over a Z carpet: it follows the incoming
-    packet's tail outward until it is fixed."""
+    """The Z of the specular analysis line against time (x: time, y: Z), over a Z carpet: it starts before the
+    specular absorber and moves inward behind the incoming packet until it is fixed."""
     ax.step(times_au, line_bohr, where="post", color=GRID_COLOR["specular"], linewidth=1.2)
     ax.annotate(
         "specular analysis line",

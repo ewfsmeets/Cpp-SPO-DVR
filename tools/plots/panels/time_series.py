@@ -29,11 +29,11 @@ def mark_segments(ax: Axes, starts_au: list[float]) -> None:
 
 
 def draw_norm(ax: Axes, times_au: np.ndarray, norm: np.ndarray, rest_norm: np.ndarray, starts_au: list[float]) -> None:
-    """Total norm, 1 - norm (absorbed) and the rest norm against time; y log when they span more than 1e3
+    """Total norm, 1 - norm (removed) and the rest norm against time; y log when they span more than 1e3
     (style.scale_and_limits), values below its lower limit not drawn."""
     series = {
         "norm": norm,
-        "1 - norm (absorbed)": 1.0 - norm,
+        "1 - norm (removed)": 1.0 - norm,
         "rest norm (specular wave between the analysis lines)": rest_norm,
     }
     scale = scale_and_limits(list(series.values()))

@@ -118,3 +118,15 @@ def test_sections_are_headings_of_the_inputs_readme() -> None:
     headings = set(re.findall(r"^## (.+)$", README.read_text(encoding="utf-8"), re.MULTILINE))
     for section in (d.SECTION_TIME, d.SECTION_STEPS):
         assert section in headings, section
+
+
+def test_norm_by_region_names_its_time_and_regions() -> None:
+    """Information with the record's time, every region's norm and the specular wave inside its analysis line;
+    its meaning names what is not yet analysed."""
+    finding = d.norm_by_region(9900.0, {"r >= r_c": 1.5e-6, "r < r_c, Z < zasymp (7 bohr)": 2.0e-3}, 3.0e-5)
+    assert finding.severity == "information" and finding.name == "norm by region at the end"
+    assert finding.value == (
+        "t = 9900 a.u.: r >= r_c: 1.5e-06; r < r_c, Z < zasymp (7 bohr): 2.0e-03; of the bands beyond Zana, the "
+        "specular wave inside its analysis line: 3.0e-05"
+    )
+    assert "rest norm" in finding.meaning and "not yet analysed" in finding.meaning

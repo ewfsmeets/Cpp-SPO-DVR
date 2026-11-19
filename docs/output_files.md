@@ -128,8 +128,9 @@ cells = np.fromfile(d / "prob_scat_zr.bin", "<f8").reshape(-1, nz, nr)[:n]
 
 A restart writes the records of its own segment into its own output directory, from its tStart. When
 that time is on the record grid of the earlier run, its first record repeats that run's last one (the
-same wave function); the plot tool joins the segments and drops the repeat after checking that it is
-bitwise equal.
+same wave function: bitwise equal on the same device and build, equal to rounding when the restart runs on
+another device); the plot tool joins the segments and drops the repeat after checking that it equals the earlier
+record to 1e-12 of its largest value.
 
 ### `densities/` (`writeDensities`)
 
@@ -138,7 +139,7 @@ One record at tStart and at every dtAve, the times of `averages.dat`:
 | File | Type and shape | Meaning |
 |---|---|---|
 | `prob_scat_zr.bin` | `<f8` [nZ, nR] | probability per (Z, r) cell of the scattering wave, summed over x, y and the rotational states: Σ\|ψ\|²·dZ·dr·dx·dy·sin(skew) |
-| `prob_spec_zr.bin` | `<f8` [nZSp, nR] | probability per (Z, r) cell of the specular wave (the incoming channel): \|χ\|²·dZ·dr |
+| `prob_spec_zr.bin` | `<f8` [nZSp, nR] | probability per (Z, r) cell of the specular wave χ (the initial channel, incoming and specularly reflected, every v): \|χ\|²·dZ·dr |
 | `surface_index.bin` | `<i4` [] | 0-based Z index of the specular analysis surface (it moves until it is fixed, `DynamZSpAna`) |
 | `norm.bin` | `<f8` [] | the norm of the `averages.dat` row at this time |
 

@@ -36,6 +36,8 @@ def read_manifest(directory: Path) -> dict:
         manifest = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         raise ReadError(f"{path}: not JSON ({error}); the file is damaged") from None
+    if not isinstance(manifest, dict):
+        raise ReadError(f"{path}: not a JSON object; the file is damaged")
     if manifest.get("format_version") != SERIES_FORMAT_VERSION:
         raise ReadError(
             f"{path}: format_version {manifest.get('format_version')}, not {SERIES_FORMAT_VERSION}; update the tool"
@@ -57,17 +59,17 @@ def complete_records(directory: Path, manifest: dict) -> int:
 
 
 def first_non_finite_record(times_au: np.ndarray, arrays: dict[str, np.ndarray]) -> int | None:
-    """The first record with a NaN or inf in its time or any dataset, or None (also for no records)."""
-    bad = ~np.isfinite(times_au)
-    for values in arrays.values():
-        if len(values):
-            bad |= ~np.isfinite(values.reshape(len(values), -1)).all(axis=1)
-    return int(np.argmax(bad)) if bad.any() else None
+    """The first record with a NaN or inf in its time or any dataset, or None; reads record by record and stops
+    there (a finite series is read once)."""
+    for k in range(len(times_au)):
+        if not np.isfinite(times_au[k]) or not all(np.isfinite(values[k]).all() for values in arrays.values()):
+            return k
+    return None
 
 
 def read_series(directory: Path) -> Series:
-    """A series directory, the datasets memory-mapped (only the records in use are paged in; the check for
-    non-finite values reads every byte once).
+    """A series directory, the datasets memory-mapped (the check for non-finite values reads them once, record
+    by record; later only the records in use are paged in).
 
     Source: <run>/<series>/ (docs/output_files.md, "Series directories").
     """
