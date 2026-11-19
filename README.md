@@ -304,12 +304,12 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure       
 - The quick tier leaves out the propagation gates (gates 3 and 4 against the Fortran). Use it while
   working on a change; run everything before committing a change to the code
   ([when](docs/CONTRIBUTING.md#testing)).
-- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 771 tests, 765 pass and 6 long or
-  reference-less tests skip, 498 s; the quick tier 761 tests (2 skip), 148 s; 25 GPU tests, 23 pass
-  and the 2 long ones skip, 93 s.
+- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 780 tests, 774 pass and 6 long or
+  reference-less tests skip, about 500 s; the quick tier 770 tests (2 skip), about 150 s; 25 GPU tests,
+  23 pass and the 2 long ones skip, about 90 s.
 - The regression tests compare with Fortran output stored in the repository; they do not need the
-  Fortran code. The wave-packet designer's tests need numpy and matplotlib
-  ([Dependencies](#dependencies)).
+  Fortran code. The Python tests (the tools' and the wave-packet designer's, `ctest -L python`) run
+  with pytest in the repository's environment ([Dependencies](#dependencies)).
 - Selecting tests, the long tests, the other build variants and the developer checks:
   [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md#testing).
 

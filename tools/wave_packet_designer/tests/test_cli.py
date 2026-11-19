@@ -1,4 +1,5 @@
-"""Case cli: the `check` command on the repository's inputs, and its exit codes (wave_packet_designer.py)."""
+"""Tests (ctest WavePacketDesigner.Cli): the `check` command on the repository's inputs, and its exit codes
+(wave_packet_designer.py)."""
 
 import json
 import subprocess
@@ -21,7 +22,7 @@ def run_cli(*arguments: str) -> subprocess.CompletedProcess:
     return subprocess.run([sys.executable, "-I", "-B", str(CLI), *arguments], capture_output=True, text=True)
 
 
-def test_repository_inputs_are_accepted(work: Path) -> None:
+def test_repository_inputs_are_accepted() -> None:
     """The four inputs of inputs/ pass (exit 0); the SCM example with its data set's Z_asymptotic and group."""
     for name in ("thesis_fig5_3_dz", "thesis_fig5_3_er", "hardwall_small"):
         result = run_check(str(REPOSITORY / "inputs" / name / "input.json"))
@@ -41,7 +42,7 @@ def test_rejected_input_exits_with_1(work: Path) -> None:
     check(result.returncode == 1 and "TolSp" in result.stdout, f"{result.returncode}: {result.stdout}")
 
 
-def test_data_set_system_needs_its_values(work: Path) -> None:
+def test_data_set_system_needs_its_values() -> None:
     """A CRP data set without --zasymp and --point-group: a usage problem (exit 2, not "spodvr stops"), and
     stderr names both options."""
     result = run_check(str(REPOSITORY / "inputs/scm_example/input.json"))
@@ -50,7 +51,7 @@ def test_data_set_system_needs_its_values(work: Path) -> None:
     check(result.stdout == "", f"no report expected: {result.stdout}")
 
 
-def test_memory_of_the_dz_input(work: Path) -> None:
+def test_memory_of_the_dz_input() -> None:
     """`memory` with the DZ run's symmetry counts prints the program's totals (7.9 and 7.3 GiB on the CPU,
     8.8 GiB on the GPU; no other row has these sizes)."""
     result = run_cli("memory", str(DZ_INPUT), "--representatives", "19")
@@ -59,7 +60,7 @@ def test_memory_of_the_dz_input(work: Path) -> None:
         check(total in result.stdout, f"{total} missing: {result.stdout}")
 
 
-def test_impossible_memory_options_exit_with_2(work: Path) -> None:
+def test_impossible_memory_options_exit_with_2() -> None:
     """Usage errors (exit 2): 0 threads, more representatives than (x, y) points (DZ has 144), more operations
     than the point group has (C6v: 12), and --operations without --representatives."""
     for options in (
@@ -87,14 +88,3 @@ def test_missing_file_exits_with_2(work: Path) -> None:
     result = run_check(str(work / "missing.json"))
     check_equal(result.returncode, 2, "exit status")
     check("cannot read" in result.stderr, result.stderr)
-
-
-TESTS = [
-    test_repository_inputs_are_accepted,
-    test_rejected_input_exits_with_1,
-    test_data_set_system_needs_its_values,
-    test_memory_of_the_dz_input,
-    test_impossible_memory_options_exit_with_2,
-    test_suggest_writes_an_accepted_input,
-    test_missing_file_exits_with_2,
-]

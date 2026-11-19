@@ -70,6 +70,25 @@ counts (measured at 1f58b73), are in the [README](../README.md#testing). Run cte
   tests (or `-DPython3_EXECUTABLE=` the main checkout's `.venv/bin/python`).
 - **Partial builds:** with only some test targets built, a plain `ctest` counts every unbuilt target
   as a failure. Select with `-R`, or build everything.
+- **Python tests:** every Python test of the repository runs under pytest in the repository's
+  environment (`.venv/`, `uv sync`), one ctest per test module or test function, label `python`
+  (`ctest --test-dir build -L python`). Each tool has its own `pytest.ini`; run one tool per pytest
+  process (each tool has its own `pytest.ini` and import path):
+
+  ```bash
+  uv run python -I -B -m pytest -c tools/compare/pytest.ini --rootdir=tools/compare tools/compare \
+      --compare-wave-tool=build/tools/spodvr_compare_wave
+  uv run python -I -B -m pytest -c tools/fortran_reference/pytest.ini \
+      --rootdir=tools/fortran_reference tools/fortran_reference
+  uv run python -I -B -m pytest -c tools/wave_packet_designer/pytest.ini \
+      --rootdir=tools/wave_packet_designer tools/wave_packet_designer
+  ```
+
+  Registration (`add_pytest_test` in `tests/CMakeLists.txt`): the designer is registered per module, so
+  a new test function needs nothing and a new module one line; `tools/compare` and
+  `tools/fortran_reference` per test function (their ctest names predate pytest), so a new function
+  needs one line; a registration inside an `if()` also needs a `note_pytest_not_built` line in its
+  `else()`. `Python.EveryTestRegistered` fails while a collected test has no ctest or two.
 
 ### What is tested
 

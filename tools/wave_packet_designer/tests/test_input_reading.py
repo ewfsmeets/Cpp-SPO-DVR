@@ -1,8 +1,8 @@
-"""Case input-reading: the key table, the value types and the read-time checks (program/json_input.py)."""
+"""Tests (ctest WavePacketDesigner.InputReading): the key table, the value types and the read-time checks
+(program/json_input.py)."""
 
 import dataclasses
 import re
-from pathlib import Path
 
 from program.config import InputParameters
 from program.json_input import OPTIONAL_KEYS, REQUIRED_KEYS, UNSUPPORTED_KEYS, UNSUPPORTED_LOGICAL_KEYS, parse_input
@@ -28,14 +28,14 @@ def read_with(changes: dict, removed: tuple[str, ...] = ()) -> object:
     return parse_input(values)
 
 
-def test_reference_inputs_are_readable(work: Path) -> None:
+def test_reference_inputs_are_readable() -> None:
     """The DZ, ER and hard-wall inputs read without findings."""
     for path in (DZ_INPUT, ER_INPUT, HARDWALL_INPUT):
         parsed = parse_input(load_values(path))
         check(parsed.parameters is not None and parsed.findings == [], f"{path}: {parsed.findings}")
 
 
-def test_missing_required_key(work: Path) -> None:
+def test_missing_required_key() -> None:
     """A missing required key stops the reading; every missing key is named."""
     parsed = read_with({}, removed=("TolSp", "ZStart"))
     check(parsed.parameters is None, "the reading should fail")
@@ -43,7 +43,7 @@ def test_missing_required_key(work: Path) -> None:
     check_has_error(parsed.findings, "ZStart", "required input key is missing", "ZStart")
 
 
-def test_value_types(work: Path) -> None:
+def test_value_types() -> None:
     """Integers must be JSON integers (160.0 is not), booleans are not numbers, a real accepts an integer."""
     check_has_error(read_with({"nZ": 160.0}).findings, "nZ", "expected an integer", "nZ = 160.0")
     check_has_error(read_with({"nZ": True}).findings, "nZ", "expected an integer", "nZ = true")
@@ -55,7 +55,7 @@ def test_value_types(work: Path) -> None:
     check(parsed.parameters is not None and isinstance(parsed.parameters.z0, float), "Z0 = 18 is read as a real")
 
 
-def test_unknown_and_unsupported_keys(work: Path) -> None:
+def test_unknown_and_unsupported_keys() -> None:
     """Unknown keys are errors; unsupported Fortran features are refused (logical ones only when true)."""
     check_has_error(read_with({"dz": 0.12}).findings, "dz", "unknown input key", "lower-case dz")
     check_has_error(read_with({"SystemMix": True}).findings, "SystemMix", "not supported", "SystemMix true")
@@ -63,7 +63,7 @@ def test_unknown_and_unsupported_keys(work: Path) -> None:
     check_has_error(read_with({"RCutOff": 3.0}).findings, "RCutOff", "not supported", "RCutOff present")
 
 
-def test_absorber_needs_energy_or_factor(work: Path) -> None:
+def test_absorber_needs_energy_or_factor() -> None:
     """Each absorber needs its …Energy or its …Factor, not both; a negative energy is an error."""
     check_has_error(read_with({"ZOptFactor": 0.01}).findings, "ZOptEnergy", "not both", "both")
     check_has_error(read_with({}, removed=("ROptEnergy",)).findings, "ROptEnergy", "should be present", "neither")
@@ -71,7 +71,7 @@ def test_absorber_needs_energy_or_factor(work: Path) -> None:
     check_has_error(read_with({"ZSpOptEnergy": -0.1}).findings, "ZSpOptEnergy", "ZSpOptEnergy < 0.", "negative")
 
 
-def test_low_z_absorber_rules(work: Path) -> None:
+def test_low_z_absorber_rules() -> None:
     """A low-Z absorber: Start and End both, Start < End, inside [ZStart, Zana], Energy or Factor; plain < and >."""
     cases = (
         ({"ZOptLowStart": 0.0}, "ZOptLowEnd", "is missing"),
@@ -88,7 +88,7 @@ def test_low_z_absorber_rules(work: Path) -> None:
     check(good.parameters is not None and good.findings == [], f"a valid low-Z absorber: {good.findings}")
 
 
-def test_specular_analysis_line_rules(work: Path) -> None:
+def test_specular_analysis_line_rules() -> None:
     """ZAnaSp only with DynamZSpAna = false, and between Z0 and ZSpOptStart."""
     check_has_error(read_with({"ZAnaSp": 20.0}).findings, "ZAnaSp", "DynamZSpAna", "dynamic line")
     fixed = {"DynamZSpAna": False}
@@ -97,14 +97,14 @@ def test_specular_analysis_line_rules(work: Path) -> None:
     check(read_with(fixed | {"ZAnaSp": 21.0}).parameters is not None, "ZAnaSp = 21 is valid")
 
 
-def test_negative_mj_max_means_j_max(work: Path) -> None:
+def test_negative_mj_max_means_j_max() -> None:
     """MJMax absent or negative becomes JMax while reading (0 stays 0 here; the basis treats it as JMax)."""
     check_equal(read_with({}, removed=("MJMax",)).parameters.mj_max, 28, "MJMax absent")
     check_equal(read_with({"MJMax": -1}).parameters.mj_max, 28, "MJMax = -1")
     check_equal(read_with({"MJMax": 0}).parameters.mj_max, 0, "MJMax = 0")
 
 
-def test_key_table_matches_the_cpp_reader(work: Path) -> None:
+def test_key_table_matches_the_cpp_reader() -> None:
     """The key table lists exactly the keys json_input.cpp reads, the required ones in the same order."""
     source = CPP_READER.read_text()
     required_body = source[source.index("void read_required_keys") : source.index("struct LowZAbsorberKeys")]
@@ -119,22 +119,8 @@ def test_key_table_matches_the_cpp_reader(work: Path) -> None:
         check(f'"{name}"' in source, f"{name} is not a key of json_input.cpp")
 
 
-def test_every_parameter_field_has_a_key(work: Path) -> None:
+def test_every_parameter_field_has_a_key() -> None:
     """Each InputParameters field is filled from exactly one key of the table."""
     table_fields = [k.field for k in REQUIRED_KEYS + OPTIONAL_KEYS if k.field is not None]
     check_equal(len(table_fields), len(set(table_fields)), "fields used twice")
     check_equal(sorted(table_fields), sorted(f.name for f in dataclasses.fields(InputParameters)), "fields")
-
-
-TESTS = [
-    test_reference_inputs_are_readable,
-    test_missing_required_key,
-    test_value_types,
-    test_unknown_and_unsupported_keys,
-    test_absorber_needs_energy_or_factor,
-    test_low_z_absorber_rules,
-    test_specular_analysis_line_rules,
-    test_negative_mj_max_means_j_max,
-    test_key_table_matches_the_cpp_reader,
-    test_every_parameter_field_has_a_key,
-]

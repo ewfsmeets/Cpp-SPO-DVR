@@ -1,5 +1,5 @@
-"""Case validate: the checks of validate_input against the C++, and each with a violating input
-(program/validate.py).
+"""Tests (ctest WavePacketDesigner.Validate): the checks of validate_input against the C++, and each with a violating
+input (program/validate.py).
 
 `test_checks_match_the_cpp` reads the (key, message) of every check from validate.py and from
 src/input/validate.cpp and compares the two lists, so a check added to or changed in the C++ fails here.
@@ -9,7 +9,6 @@ VIOLATIONS holds one input change per check, starting from the DZ input (valid);
 
 import ast
 import re
-from pathlib import Path
 
 from program.potential_systems import ANALYTIC_SYSTEMS
 from program.validate import validate_input
@@ -125,12 +124,12 @@ def findings_of(changes: dict) -> list:
     return validate_input(load_parameters(DZ_INPUT, **changes), DZ_SYSTEM, 15.0)
 
 
-def test_valid_input_has_no_findings(work: Path) -> None:
+def test_valid_input_has_no_findings() -> None:
     """The DZ input passes every check."""
     check_equal(findings_of({}), [], "findings of the DZ input")
 
 
-def test_each_violation_is_found(work: Path) -> None:
+def test_each_violation_is_found() -> None:
     """Each row of VIOLATIONS gives its error."""
     for changes, key, message in VIOLATIONS:
         check_has_error(findings_of(changes), key, message, str(changes))
@@ -172,7 +171,7 @@ def cpp_checks() -> list[tuple[str, str]]:
     return found
 
 
-def test_checks_match_the_cpp(work: Path) -> None:
+def test_checks_match_the_cpp() -> None:
     """validate.py has the checks of validate.cpp with the same keys and messages, in the same order; only the
     flux-analysis block is left out (FLUX_KEYS)."""
     cpp = [(key, message) for key, message in cpp_checks() if key not in FLUX_KEYS]
@@ -183,17 +182,9 @@ def test_checks_match_the_cpp(work: Path) -> None:
     check_equal(len(python), len(cpp), "number of checks")
 
 
-def test_every_check_has_a_violating_case(work: Path) -> None:
+def test_every_check_has_a_violating_case() -> None:
     """Every check of validate.py is triggered by some row of VIOLATIONS."""
     found = {(f.key, f.message) for changes, _, _ in VIOLATIONS for f in findings_of(changes)}
     for key, message in python_checks():
         fixed_part = message.split("{}")[0]  # the start of an f-string message, before its first value
         check(any(k == key and m.startswith(fixed_part) for k, m in found), f"no row triggers {key}: '{message}'")
-
-
-TESTS = [
-    test_valid_input_has_no_findings,
-    test_each_violation_is_found,
-    test_checks_match_the_cpp,
-    test_every_check_has_a_violating_case,
-]

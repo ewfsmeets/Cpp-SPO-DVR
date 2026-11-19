@@ -1,4 +1,4 @@
-"""Case memory: the angular sizes and the CPU and GPU memory estimates against the program's
+"""Tests (ctest WavePacketDesigner.Memory): the angular sizes and the CPU and GPU memory estimates against the program's
 (program/angular_grid.py, memory_estimate.py; report.format_bytes)."""
 
 from pathlib import Path
@@ -19,7 +19,7 @@ def resources_of(path: Path, settings: Settings, **changes: object) -> Resources
     return e.resources
 
 
-def test_hardwall_by_hand(work: Path) -> None:
+def test_hardwall_by_hand() -> None:
     """TEST(MemoryEstimate, ReferenceCaseByHand), 4 threads: potential 3 * 10 * 16 * 113 * 56 (theta, phi, x y,
     nzpot, r), freed after the set-up; wave function 15 * 16 * 176 * 56; specular 2 copies of 56 * 280; work
     arrays the (r, Z) unit 4 * 56 * 176 per thread."""
@@ -40,7 +40,7 @@ def test_hardwall_by_hand(work: Path) -> None:
     check_equal(memory.propagation_bytes, expected, "propagation total")
 
 
-def test_dz_matches_the_program(work: Path) -> None:
+def test_dz_matches_the_program() -> None:
     """The blocks GRIDS (theta and phi points), ROTATIONAL BASIS, MEMORY ESTIMATE and GPU MEMORY ESTIMATE of
     spodvr for the DZ input (provenance: helpers.DZ_INPUT; 8 threads, 19 of 144 (x, y) points with C6v's 12
     operations): every row's values and printed size, and the totals."""
@@ -70,7 +70,7 @@ def test_dz_matches_the_program(work: Path) -> None:
     check_equal(format_bytes(r.gpu_memory.peak_bytes), "8.8 GiB", "GPU total")
 
 
-def test_large_potential_is_applied_on_the_fly(work: Path) -> None:
+def test_large_potential_is_applied_on_the_fly() -> None:
     """TEST(MemoryEstimate, LargePotentialComputedOnTheFly): hardwall_small with nX = nY = 64 needs more than
     4 GiB for exp(-i V dt), so the table is not stored and the potential is kept."""
     memory = resources_of(HARDWALL_INPUT, Settings(threads=1), nx=64, ny=64).memory
@@ -79,7 +79,7 @@ def test_large_potential_is_applied_on_the_fly(work: Path) -> None:
     check_equal(memory.items[1].bytes, 0, "no exp table")
 
 
-def test_on_the_fly_with_symmetry_adds_the_exp_scratch(work: Path) -> None:
+def test_on_the_fly_with_symmetry_adds_the_exp_scratch() -> None:
     """The same with UseSymmetry and 2000 of 4096 representatives (still above 4 GiB): each thread also holds
     exp(i A) of the representatives of one (Z, r) point. By hand: (x, y) group 15 * 4096 = 61440, DVR blocks
     11 * 3 * 4096 = 135168, scratch 3 * 10 * 2000 = 60000, in all 256608 (more than the (r, Z) unit 39424)."""
@@ -89,7 +89,7 @@ def test_on_the_fly_with_symmetry_adds_the_exp_scratch(work: Path) -> None:
     check_equal(memory.items[-1].values, 256608, "work arrays")
 
 
-def test_potential_only_run(work: Path) -> None:
+def test_potential_only_run() -> None:
     """TEST(MemoryEstimate, PotentialOnlyRun): run mode 6 holds only the potential; no GPU estimate."""
     r = resources_of(HARDWALL_INPUT, Settings(threads=4), only_potential=True)
     check_equal(len(r.memory.items), 1, "items")
@@ -97,19 +97,19 @@ def test_potential_only_run(work: Path) -> None:
     check(r.gpu_memory is None, "no GPU estimate")
 
 
-def test_mj_max_zero_means_j_max(work: Path) -> None:
+def test_mj_max_zero_means_j_max() -> None:
     """MJMax = 0 gives the basis of MJMax = JMax (process_input), so the DZ grid keeps its 60 phi points."""
     r = resources_of(DZ_INPUT, Settings(), mj_max=0)
     check_equal((r.angular.mj_max, r.angular.n_phi, r.rotational_basis_size), (28, 60, 435), "MJMax 0")
 
 
-def test_phi_points_multiple_of_each_point_group(work: Path) -> None:
+def test_phi_points_multiple_of_each_point_group() -> None:
     """TEST(PointGroup, PhiPointsMultiple): 2, 4, 6, 6, 3, 1 for C2v, C4v, C6v, C3v, C3, none."""
     expected = {"C2v": 2, "C4v": 4, "C6v": 6, "C3v": 6, "C3": 3, "none": 1}
     check_equal(PHI_POINTS_MULTIPLE, expected, "multiples")
 
 
-def test_phi_points_multiple_needs_use_symmetry_and_nphisoptimal(work: Path) -> None:
+def test_phi_points_multiple_needs_use_symmetry_and_nphisoptimal() -> None:
     """TEST(Input, SurfaceSymmetryKeys): hardwall_small (C2v) gets the multiple 2 only with UseSymmetry and
     nPhisOptimal together."""
     for changes, multiple in (
@@ -122,7 +122,7 @@ def test_phi_points_multiple_needs_use_symmetry_and_nphisoptimal(work: Path) -> 
         check_equal(e.derived.phi_points_multiple, multiple, f"multiple with {changes}")
 
 
-def test_basis_of_the_parity_branches(work: Path) -> None:
+def test_basis_of_the_parity_branches() -> None:
     """The J ranges of make_angular_grid. Heteronuclear, JMax 3, MJMax 1 (TEST(RotationalBasis,
     MjMaxBelowJMax)): 4 theta points, mJ = -1: J = 1..3, mJ = 0: J = 0..3, mJ = 1: J = 1..3, so 10 functions.
     Homonuclear with odd JIn 1, JMax 5, MJMax 5: J = 1, 3, 5, so 3 theta points and 3 + 2 * (3 + 2 + 2 + 1 + 1)
@@ -135,30 +135,15 @@ def test_basis_of_the_parity_branches(work: Path) -> None:
     check_equal((odd.angular.j_min, odd.angular.n_theta, odd.rotational_basis_size), (1, 3, 21), "odd JIn")
 
 
-def test_symmetry_counts_need_use_symmetry(work: Path) -> None:
+def test_symmetry_counts_need_use_symmetry() -> None:
     """Counts given for an input without UseSymmetry change nothing: the program stores every (x, y) point."""
     r = resources_of(HARDWALL_INPUT, Settings(representatives=3))
     check_equal((r.symmetry_source, r.symmetry.n_representatives), (SYMMETRY_OFF, 16), "symmetry")
 
 
-def test_format_bytes_units(work: Path) -> None:
+def test_format_bytes_units() -> None:
     """TEST(FormatBytes, Units)."""
     cases = [(0, "0 B"), (1023, "1023 B"), (1024, "1.0 KiB"), (3 << 19, "1.5 MiB"), (4 << 30, "4.0 GiB")]
     cases.append((2048 << 30, "2.0 TiB"))
     for n_bytes, text in cases:
         check_equal(format_bytes(n_bytes), text, f"{n_bytes} bytes")
-
-
-TESTS = [
-    test_hardwall_by_hand,
-    test_dz_matches_the_program,
-    test_large_potential_is_applied_on_the_fly,
-    test_on_the_fly_with_symmetry_adds_the_exp_scratch,
-    test_potential_only_run,
-    test_mj_max_zero_means_j_max,
-    test_phi_points_multiple_of_each_point_group,
-    test_phi_points_multiple_needs_use_symmetry_and_nphisoptimal,
-    test_basis_of_the_parity_branches,
-    test_symmetry_counts_need_use_symmetry,
-    test_format_bytes_units,
-]

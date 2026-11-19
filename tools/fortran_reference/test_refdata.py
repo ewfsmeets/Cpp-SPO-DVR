@@ -1,46 +1,49 @@
-#!/usr/bin/env python3
 """Tests of refdata.py compare with expected/r1713.tsv (ctest FortranReference.Compare*), and of the
 copies of refdata.py's lists (ctest FortranReference.ReferenceListsAgree).
 
-Each case builds an OLD tree in the 5.19 style and a NEW tree in the 5.24 style under WORK, at
-the paths of real reference cases (small synthetic files), runs compare as a program and checks
-its exit status and the FAIL line it prints:
-  expected-file        the repository against itself: r1713.tsv is valid, every row matches a
-                       file (a removed row may match none: its files are gone after the switch)
-  allowed              every class of r1713.tsv at work (labels, a sign change of Im S and of the
-                       phase with the one-digit rounding, BK coefficients within the limit, tiny
-                       stdout probabilities, unread, removed), with complete MANIFESTs: passes
-  edited-number        one number of a stdout of class labels edited: fails
-  deleted-file         a reference file missing from NEW: fails
-  unknown-label        a stdout label changed that is not on the whitelist: fails
-  s-magnitude          a fine fort.25: |S| changed (Re S edited), Re S's sign changed, the sign of
-                       the diffraction order in a block header changed: fails (each)
-  bk-limit             a BK coefficient changed by more than 1e-12 of the gate-4 scale: fails
-  bk-nan               a BK coefficient of NEW NaN, all of them NaN, OLD's scale NaN: fails (each)
-  non-finite-number    a printed number of NEW out of the double range (abs class): fails
-  number-count         two printed numbers that became one of the same width (abs class): fails
-  provenance           NEW's MANIFESTs: a generated file without a line, a file changed after its
-                       line, a line of an executable other than BUILDINFO's: fails (each)
-  install-mismatch     NEW made by an install other than the expected file's: fails
-  fine-without-fort22  a fine-analysis MANIFEST line without its input fort.22: fails
-  multi-match          an expected file with a row that overlaps another: refused
-  refusals             an expected file with unsorted rows, an unknown class, a limit that does
-                       not fit its class (inf included), a row without reason, no install line; a
-                       tree without the reference directories: refused (each)
-  reference-lists      the MANIFEST header and column count, the reference trees and NOT_A_CASE in
-                       ReferenceManifest.cmake, tools/check_docs.py and reference_config.sh equal
-                       refdata.py's, and the exclude of .pre-commit-config.yaml covers every tree;
-                       copies with a tree or NOT_A_CASE changed are reported (5 lines)
-The content cases run with --no-provenance, so that only the classification can fail them.
+Each test builds an OLD tree in the 5.19 style and a NEW tree in the 5.24 style in its scratch
+directory `work`, at the paths of real reference cases (small synthetic files), runs compare as a
+program and checks its exit status and the FAIL line it prints:
+  test_expected_file         the repository against itself: r1713.tsv is valid, every row matches a
+                             file (a removed row may match none: its files are gone after the
+                             switch)
+  test_allowed               every class of r1713.tsv at work (labels, a sign change of Im S and of
+                             the phase with the one-digit rounding, BK coefficients within the
+                             limit, tiny stdout probabilities, unread, removed), with complete
+                             MANIFESTs: passes
+  test_edited_number         one number of a stdout of class labels edited: fails
+  test_deleted_file          a reference file missing from NEW: fails
+  test_unknown_label         a stdout label changed that is not on the whitelist: fails
+  test_s_magnitude           a fine fort.25: |S| changed (Re S edited), Re S's sign changed, the
+                             sign of the diffraction order in a block header changed: fails (each)
+  test_bk_limit              a BK coefficient changed by more than 1e-12 of the gate-4 scale: fails
+  test_bk_nan                a BK coefficient of NEW NaN, all of them NaN, OLD's scale NaN: fails
+                             (each)
+  test_non_finite_number     a printed number of NEW out of the double range (abs class): fails
+  test_number_count          two printed numbers that became one of the same width (abs class):
+                             fails
+  test_provenance            NEW's MANIFESTs: a generated file without a line, a file changed after
+                             its line, a line of an executable other than BUILDINFO's: fails (each)
+  test_install_mismatch      NEW made by an install other than the expected file's: fails
+  test_fine_without_fort22   a fine-analysis MANIFEST line without its input fort.22: fails
+  test_multi_match           an expected file with a row that overlaps another: refused
+  test_refusals              an expected file with unsorted rows, an unknown class, a limit that
+                             does not fit its class (inf included), a row without reason, no install
+                             line; a tree without the reference directories: refused (each)
+  test_reference_lists       the MANIFEST header and column count, the reference trees and
+                             NOT_A_CASE in ReferenceManifest.cmake, tools/check_docs.py and
+                             reference_config.sh equal refdata.py's, and the exclude of .pre-commit-
+                             config.yaml covers every tree; copies with a tree or NOT_A_CASE changed
+                             are reported (5 lines)
+The tests that edit NEW's content run compare with --no-provenance, so that only the classification can fail
+them.
 
-Usage: python3 -I -B tools/fortran_reference/test_refdata.py CASE WORK
-  CASE  one of the cases above;  WORK  scratch directory (recreated)
-Exit status: 0 the case behaved as expected, 1 it did not, 2 bad arguments.
-Environment: none read. Run time: about a second (expected-file: about 4 s, it reads both trees).
+Usage: uv run python -I -B -m pytest -c tools/fortran_reference/pytest.ini \
+           --rootdir=tools/fortran_reference tools/fortran_reference/test_refdata.py
+Environment: none read. Run time: about a second (test_expected_file: about 4 s, it reads both trees).
 Docs: tools/fortran_reference/README.md "Comparing two reference trees".
 """
 
-import argparse
 import hashlib
 import importlib.util
 import re
@@ -50,30 +53,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 TOOLS_DIR = Path(__file__).resolve().parent
 REPO_DIR = TOOLS_DIR.parents[1]
 REFDATA = TOOLS_DIR / "refdata.py"
 EXPECTED = TOOLS_DIR / "expected" / "r1713.tsv"
 # The install r1713.tsv names; the stub install of these tests takes its id.
 INSTALL_ID = re.search(r"^# install: (\S+)$", EXPECTED.read_text(encoding="utf-8"), re.MULTILINE).group(1)
-CASES = (
-    "expected-file",
-    "allowed",
-    "edited-number",
-    "deleted-file",
-    "unknown-label",
-    "s-magnitude",
-    "bk-limit",
-    "bk-nan",
-    "non-finite-number",
-    "number-count",
-    "provenance",
-    "install-mismatch",
-    "fine-without-fort22",
-    "multi-match",
-    "refusals",
-    "reference-lists",
-)
 EXPECTED_HEADER = "# install: x\nglob\tallowed\tlimit\treason\n"
 
 HARDWALL = "tests/reference/hardwall_small"
@@ -250,7 +237,7 @@ def record_manifests(work, new, install_id, fine_input=True):
             *inputs,
         )
         if status:
-            raise SystemExit(f"FAIL: manifest record for {case}: {output}")
+            pytest.fail(f"manifest record for {case}: {output}")
 
 
 def make_trees(work, install_id=None, fine_input=True):
@@ -272,21 +259,21 @@ def compare(old, new, *options, expected=EXPECTED):
 def expect_pass(status, output):
     """compare exited 0 with no FAIL line."""
     if status != 0 or "FAIL" in output:
-        raise SystemExit(f"FAIL: compare should pass (exit {status}):\n{output}")
+        pytest.fail(f"compare should pass (exit {status}):\n{output}")
 
 
 def expect_failure(status, output, pattern):
     """compare exited 1 with a FAIL line matching pattern."""
     lines = [line for line in output.splitlines() if line.lstrip().startswith("FAIL")]
     if status != 1 or not any(re.search(pattern, line) for line in lines) or "error: " not in output:
-        raise SystemExit(f"FAIL: compare should fail with a FAIL line matching {pattern!r} (exit {status}):\n{output}")
+        pytest.fail(f"compare should fail with a FAIL line matching {pattern!r} (exit {status}):\n{output}")
     print(f"failed as expected: {next(line for line in lines if re.search(pattern, line)).strip()[:200]}")
 
 
 def expect_refusal(status, output, pattern):
     """refdata.py exited 1 with "error: <what>; <fix>" matching pattern."""
     if status != 1 or not re.search(rf"^error: .*{pattern}.*; [a-z]", output, re.MULTILINE):
-        raise SystemExit(f"FAIL: should refuse with {pattern!r} (exit {status}):\n{output}")
+        pytest.fail(f"should refuse with {pattern!r} (exit {status}):\n{output}")
     print(f"refused as expected: {output.strip().splitlines()[-1][:200]}")
 
 
@@ -295,47 +282,11 @@ def edit(root, path, old, new):
     target = Path(root) / path
     text = target.read_text(encoding="utf-8")
     if text.count(old) != 1:
-        raise SystemExit(f"FAIL: test set-up: {old!r} is not once in {target}")
+        pytest.fail(f"test set-up: {old!r} is not once in {target}")
     target.write_text(text.replace(old, new), encoding="utf-8")
 
 
-def stdout_cases(name, old, new):
-    """The cases that edit a stdout of NEW (classes labels and abs)."""
-    if name == "edited-number":
-        edit(new, f"{HARDWALL}/fortran_stdout.txt", "0.12345678E-03", "0.12345679E-03")
-        expect_failure(
-            *compare(old, new, "--no-provenance"), r"labels .*hardwall_small/fortran_stdout.txt.*0\.12345678E-03 became"
-        )
-    elif name == "unknown-label":
-        edit(new, f"{HARDWALL}/fortran_stdout.txt", "Number of time steps taken", "Number of steps taken")
-        expect_failure(
-            *compare(old, new, "--no-provenance"), r"hardwall_small/fortran_stdout.txt.*text .*Number of time steps"
-        )
-    elif name == "non-finite-number":
-        edit(new, f"{DAILIGHT_SHORT}/fortran_stdout.txt", "0.11000000E-20", "0.1100000E+999")
-        expect_failure(
-            *compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*not finite"
-        )
-    elif name == "number-count":
-        edit(new, f"{DAILIGHT_SHORT}/fortran_stdout.txt", "   0  0.9440341E-25", "   0.00000000000000")
-        expect_failure(
-            *compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*0\.9440341E-25"
-        )
-
-
-def fort25_cases(old, new):
-    """s-magnitude: three edits of the fine fort.25 of NEW, each refused by signs_only."""
-    path = f"{DAILIGHT_SMALL}/fine_full/fort.25"
-    pattern = r"signs_only .*fine_full/fort.25.*"
-    edit(new, path, "0.926238D+00", "0.926239D+00")
-    expect_failure(*compare(old, new, "--no-provenance"), pattern + r"number 3 0.926238D\+00 became")
-    edit(new, path, " 0.926239D+00", "-0.926238D+00")
-    expect_failure(*compare(old, new, "--no-provenance"), pattern + r"number 3 0.926238D\+00 became -")
-    write_tree(new, {path: FORT25_524.replace("   0   0   0   1", "   0   0   0  -1")})
-    expect_failure(*compare(old, new, "--no-provenance"), pattern + r"line 1: number 4 1 became -1")
-
-
-def bk_nan_case(work):
+def test_bk_nan(work):
     """A NaN coefficient in NEW (one, or all), and a NaN in OLD (the scale), each fail."""
     old, new = make_trees(work)
     target = new / DAILIGHT_SMALL / "fortran_fort21.bin"
@@ -349,22 +300,7 @@ def bk_nan_case(work):
     expect_failure(*compare(old, new, "--no-provenance"), pattern + "gate-4 scale is undefined")
 
 
-def content_case(name, work):
-    """The cases that edit NEW's content and compare without provenance."""
-    old, new = make_trees(work)
-    if name == "deleted-file":
-        (new / HARDWALL / "fortran_averages.out").unlink()
-        expect_failure(*compare(old, new, "--no-provenance"), r"hardwall_small/fortran_averages.out: missing in NEW")
-    elif name == "s-magnitude":
-        fort25_cases(old, new)
-    elif name == "bk-limit":
-        (new / DAILIGHT_SMALL / "fortran_fort21.bin").write_bytes(changed_bk_file(1, 0.1, -0.2 + 1e-11))
-        expect_failure(*compare(old, new, "--no-provenance"), r"bk_scaled .*fortran_fort21.bin.*exceeds")
-    else:
-        stdout_cases(name, old, new)
-
-
-def provenance_case(work):
+def test_provenance(work):
     """NEW's MANIFESTs: three faults, each on a fresh copy of the trees."""
     old, new = make_trees(work, INSTALL_ID)
     expect_pass(*compare(old, new))
@@ -379,7 +315,7 @@ def provenance_case(work):
     expect_failure(*compare(old, new), rf"provenance .*spodvr.x:\w+ is not the executable of {INSTALL_ID}")
 
 
-def refusals_case(work):
+def test_refusals(work):
     """The refusals of compare before it compares anything."""
     old, new = make_trees(work)
     expected = work / "expected.tsv"
@@ -403,7 +339,7 @@ def refusals_case(work):
     )
 
 
-def multi_match_case(work):
+def test_multi_match(work):
     """r1713.tsv plus a row whose glob overlaps another one's: refused."""
     old, new = make_trees(work)
     lines = EXPECTED.read_text(encoding="utf-8").splitlines()
@@ -462,7 +398,7 @@ def list_mismatches(cmake_text, check_docs_trees, config_trees, precommit_exclud
     return [f"{name} is {copy}, not {original}" for name, (copy, original) in copies.items() if copy != original]
 
 
-def reference_lists_case():
+def test_reference_lists():
     """The copies agree with refdata.py; copies with a tree or NOT_A_CASE changed do not."""
     cmake_text = (TOOLS_DIR / "ReferenceManifest.cmake").read_text(encoding="utf-8")
     check_docs_trees = load_module("check_docs", REPO_DIR / "tools" / "check_docs.py").REFERENCE_TREES
@@ -481,65 +417,106 @@ def reference_lists_case():
     exclude = re.search(r"^exclude: (\S+)", precommit, re.MULTILINE).group(1)
     mismatches = list_mismatches(cmake_text, check_docs_trees, config_trees, exclude)
     if mismatches:
-        raise SystemExit("FAIL: a copy of a refdata.py list differs:\n" + "\n".join(mismatches))
+        pytest.fail("a copy of a refdata.py list differs:\n" + "\n".join(mismatches))
     planted = cmake_text.replace(" tests/scm/reference)", ")").replace(
         "set(not_a_case fortran_unformatted)", "set(not_a_case other)"
     )
     found = list_mismatches(planted, check_docs_trees[:2], config_trees[:2], exclude.replace("|scm", ""))
     if len(found) != 5:
-        raise SystemExit(f"FAIL: 5 planted differences, {len(found)} reported:\n" + "\n".join(found))
+        pytest.fail(f"5 planted differences, {len(found)} reported:\n" + "\n".join(found))
     print("planted differences reported as expected:\n" + "\n".join(found))
 
 
-def run_case(name, work):
-    """Runs one case; raises SystemExit with a FAIL message if it does not behave as expected."""
-    if name == "expected-file":
-        status, output = compare(REPO_DIR, REPO_DIR, "--no-provenance")
-        expect_pass(status, output)
-        # A glob typo; a removed row matches nothing once the switch has deleted its files.
-        if re.search(r"note: .*\((?!removed\))", output):
-            raise SystemExit(f"FAIL: a row of {EXPECTED} matches no committed file:\n{output}")
-    elif name == "allowed":
-        old, new = make_trees(work, INSTALL_ID)
-        status, output = compare(old, new)
-        expect_pass(status, output)
-        for allowed in ("labels", "abs", "signs_only", "bk_scaled", "unread", "removed"):
-            if not re.search(rf"^  ok    {allowed} ", output, re.MULTILINE):
-                raise SystemExit(f"FAIL: no file of class {allowed} was compared:\n{output}")
-    elif name == "provenance":
-        provenance_case(work)
-    elif name == "install-mismatch":
-        expect_failure(
-            *compare(*make_trees(work, "other-install")),
-            rf"MANIFEST lines name install other-install, not {INSTALL_ID}",
-        )
-    elif name == "fine-without-fort22":
-        expect_failure(
-            *compare(*make_trees(work, INSTALL_ID, fine_input=False)),
-            r"fine_full/fort.25: a fine-analysis file without input fort.22",
-        )
-    elif name == "bk-nan":
-        bk_nan_case(work)
-    elif name == "multi-match":
-        multi_match_case(work)
-    elif name == "refusals":
-        refusals_case(work)
-    elif name == "reference-lists":
-        reference_lists_case()
-    else:
-        content_case(name, work)
+def test_expected_file():
+    """The repository against itself: r1713.tsv is valid and every row matches a committed file."""
+    status, output = compare(REPO_DIR, REPO_DIR, "--no-provenance")
+    expect_pass(status, output)
+    # A glob typo; a removed row matches nothing once the switch has deleted its files.
+    if re.search(r"note: .*\((?!removed\))", output):
+        pytest.fail(f"a row of {EXPECTED} matches no committed file:\n{output}")
 
 
-def main(argv):
-    """Runs the named case in WORK."""
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("case", metavar="CASE", choices=CASES, help="the case to run")
-    parser.add_argument("work", metavar="WORK", type=Path, help="scratch directory (recreated)")
-    args = parser.parse_args(argv)
-    run_case(args.case, args.work.resolve())
-    print(f"PASS: {args.case}")
-    return 0
+def test_allowed(work):
+    """Every class of r1713.tsv at work, with complete MANIFESTs: passes, and each class was used."""
+    old, new = make_trees(work, INSTALL_ID)
+    status, output = compare(old, new)
+    expect_pass(status, output)
+    for allowed in ("labels", "abs", "signs_only", "bk_scaled", "unread", "removed"):
+        if not re.search(rf"^  ok    {allowed} ", output, re.MULTILINE):
+            pytest.fail(f"no file of class {allowed} was compared:\n{output}")
 
 
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+def test_install_mismatch(work):
+    expect_failure(
+        *compare(*make_trees(work, "other-install")),
+        rf"MANIFEST lines name install other-install, not {INSTALL_ID}",
+    )
+
+
+def test_fine_without_fort22(work):
+    expect_failure(
+        *compare(*make_trees(work, INSTALL_ID, fine_input=False)),
+        r"fine_full/fort.25: a fine-analysis file without input fort.22",
+    )
+
+
+def test_edited_number(work):
+    """One number of a stdout of class labels edited: fails."""
+    old, new = make_trees(work)
+    edit(new, f"{HARDWALL}/fortran_stdout.txt", "0.12345678E-03", "0.12345679E-03")
+    expect_failure(
+        *compare(old, new, "--no-provenance"), r"labels .*hardwall_small/fortran_stdout.txt.*0\.12345678E-03 became"
+    )
+
+
+def test_deleted_file(work):
+    """A reference file missing from NEW: fails."""
+    old, new = make_trees(work)
+    (new / HARDWALL / "fortran_averages.out").unlink()
+    expect_failure(*compare(old, new, "--no-provenance"), r"hardwall_small/fortran_averages.out: missing in NEW")
+
+
+def test_unknown_label(work):
+    """A stdout label changed that is not on the whitelist: fails."""
+    old, new = make_trees(work)
+    edit(new, f"{HARDWALL}/fortran_stdout.txt", "Number of time steps taken", "Number of steps taken")
+    expect_failure(
+        *compare(old, new, "--no-provenance"), r"hardwall_small/fortran_stdout.txt.*text .*Number of time steps"
+    )
+
+
+def test_s_magnitude(work):
+    """Three edits of the fine fort.25 of NEW, each refused by signs_only: |S| changed, Re S's sign changed, the
+    sign of the diffraction order in a block header changed."""
+    old, new = make_trees(work)
+    path = f"{DAILIGHT_SMALL}/fine_full/fort.25"
+    pattern = r"signs_only .*fine_full/fort.25.*"
+    edit(new, path, "0.926238D+00", "0.926239D+00")
+    expect_failure(*compare(old, new, "--no-provenance"), pattern + r"number 3 0.926238D\+00 became")
+    edit(new, path, " 0.926239D+00", "-0.926238D+00")
+    expect_failure(*compare(old, new, "--no-provenance"), pattern + r"number 3 0.926238D\+00 became -")
+    write_tree(new, {path: FORT25_524.replace("   0   0   0   1", "   0   0   0  -1")})
+    expect_failure(*compare(old, new, "--no-provenance"), pattern + r"line 1: number 4 1 became -1")
+
+
+def test_bk_limit(work):
+    """A BK coefficient changed by more than 1e-12 of the gate-4 scale: fails."""
+    old, new = make_trees(work)
+    (new / DAILIGHT_SMALL / "fortran_fort21.bin").write_bytes(changed_bk_file(1, 0.1, -0.2 + 1e-11))
+    expect_failure(*compare(old, new, "--no-provenance"), r"bk_scaled .*fortran_fort21.bin.*exceeds")
+
+
+def test_non_finite_number(work):
+    """A printed number of NEW out of the double range (abs class): fails."""
+    old, new = make_trees(work)
+    edit(new, f"{DAILIGHT_SHORT}/fortran_stdout.txt", "0.11000000E-20", "0.1100000E+999")
+    expect_failure(*compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*not finite")
+
+
+def test_number_count(work):
+    """Two printed numbers that became one of the same width (abs class): fails."""
+    old, new = make_trees(work)
+    edit(new, f"{DAILIGHT_SHORT}/fortran_stdout.txt", "   0  0.9440341E-25", "   0.00000000000000")
+    expect_failure(
+        *compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*0\.9440341E-25"
+    )

@@ -1,7 +1,7 @@
 """The gas-phase potential V(r) of the DZ input, as the program printed it: a stand-in and test data.
 
 The designer uses it for a potential whose gas phase it does not copy (program/gas_phase_potentials.py: the
-Persson potential, the CRP data sets), as an indicative stand-in; and test case `gas-phase` checks the copied
+Persson potential, the CRP data sets), as an indicative stand-in; and tests/test_gas_phase.py checks the copied
 Dai-Light formula against it bitwise.
 
 Data layer (README, "Architecture"). Source: the block GAS-PHASE POTENTIAL (lines 142-188) of the committed

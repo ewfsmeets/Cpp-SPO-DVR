@@ -124,100 +124,136 @@ add_reference_tools_test(StagingOfTheCasesUnchanged staged-cases)
 add_reference_tools_test(RunScriptRefusals run-script-refusals)
 add_reference_tools_test(ModifiedTargetsRefused unmodified-targets)
 
-# extract_pes.py (tools/fortran_reference/test_extract_pes.py) on synthetic .pes files: files without
-# SCM records give the output of before, the six SCM records are detected, wrong files refused.
-set(extract_pes_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_extract_pes.py)
-function(add_extract_pes_test name test_case)
-  add_test(NAME FortranReference.ExtractPes${name}
-           COMMAND ${Python3_EXECUTABLE} -I -B ${extract_pes_test} ${test_case}
-                   ${CMAKE_CURRENT_BINARY_DIR}/extract_pes/${test_case})
+# The Python tests (pytest, in the repository's Python environment: Python3_EXECUTABLE, the root
+# CMakeLists.txt). One ctest per selection, a test module or one test function, with the tool's own
+# pytest.ini and its directory as the root; label python (ctest -L python). pytest recreates the
+# basetemp of each ctest. Every selection is also listed in pytest_selections.txt, which
+# Python.EveryTestRegistered compares with what pytest collects (docs/CONTRIBUTING.md "Testing").
+set(pytest_selections ${CMAKE_BINARY_DIR}/pytest_selections.txt)
+file(WRITE ${pytest_selections} "# tool<TAB>selection<TAB>built|not-built, written by tests/CMakeLists.txt\n")
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/pytest)
+# add_pytest_test(NAME <ctest name> TOOL <tool directory> SELECT <module or module::test> [ARGS …])
+function(add_pytest_test)
+  cmake_parse_arguments(PARSE_ARGV 0 arg "" "NAME;TOOL;SELECT" "ARGS")
+  set(tool ${PROJECT_SOURCE_DIR}/${arg_TOOL})
+  add_test(NAME ${arg_NAME}
+           COMMAND ${Python3_EXECUTABLE} -I -B -m pytest -c ${tool}/pytest.ini --rootdir=${tool}
+                   -p no:cacheprovider -q --basetemp=${CMAKE_CURRENT_BINARY_DIR}/pytest/${arg_NAME}
+                   ${tool}/${arg_SELECT} ${arg_ARGS})
+  set_tests_properties(${arg_NAME} PROPERTIES
+                       LABELS python
+                       ENVIRONMENT "MPLBACKEND=Agg;MPLCONFIGDIR=${CMAKE_CURRENT_BINARY_DIR}/pytest/matplotlib")
+  file(APPEND ${pytest_selections} "${arg_TOOL}\t${arg_SELECT}\tbuilt\n")
 endfunction()
-add_extract_pes_test(WithoutScmUnchanged without-scm)
-add_extract_pes_test(ScmRecords scm)
-add_extract_pes_test(Refusals refusals)
+# A selection whose ctest exists only in some configurations, listed when it is not registered.
+function(note_pytest_not_built tool select)
+  file(APPEND ${pytest_selections} "${tool}\t${select}\tnot-built\n")
+endfunction()
+
+# extract_pes.py on synthetic .pes files (tools/fortran_reference/test_extract_pes.py): files without
+# SCM records give the output of before, the six SCM records are detected, wrong files refused.
+add_pytest_test(NAME FortranReference.ExtractPesWithoutScmUnchanged TOOL tools/fortran_reference
+                SELECT test_extract_pes.py::test_without_scm)
+add_pytest_test(NAME FortranReference.ExtractPesScmRecords TOOL tools/fortran_reference
+                SELECT test_extract_pes.py::test_scm)
+add_pytest_test(NAME FortranReference.ExtractPesRefusals TOOL tools/fortran_reference
+                SELECT test_extract_pes.py::test_refusals)
 
 # refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1713.tsv is valid and
-# matches the committed files, every class it allows passes, each fault and each refusal fails.
-set(refdata_test ${PROJECT_SOURCE_DIR}/tools/fortran_reference/test_refdata.py)
-function(add_refdata_test name test_case)
-  add_test(NAME FortranReference.Compare${name}
-           COMMAND ${Python3_EXECUTABLE} -I -B ${refdata_test} ${test_case}
-                   ${CMAKE_CURRENT_BINARY_DIR}/refdata_compare/${test_case})
-endfunction()
-add_refdata_test(ExpectedFileMatchesTree expected-file)
-add_refdata_test(AllowedDifferencesPass allowed)
-add_refdata_test(EditedNumberFails edited-number)
-add_refdata_test(DeletedFileFails deleted-file)
-add_refdata_test(UnknownLabelFails unknown-label)
-add_refdata_test(SMagnitudeChangeFails s-magnitude)
-add_refdata_test(BkBeyondLimitFails bk-limit)
-add_refdata_test(BkNotFiniteFails bk-nan)
-add_refdata_test(PrintedNotFiniteFails non-finite-number)
-add_refdata_test(NumberCountChangeFails number-count)
-add_refdata_test(ProvenanceFaultsFail provenance)
-add_refdata_test(OtherInstallFails install-mismatch)
-add_refdata_test(FineLineWithoutBkInputFails fine-without-fort22)
-add_refdata_test(OverlappingRowsRefused multi-match)
-add_refdata_test(BadExpectedFileRefused refusals)
-# The copies of refdata.py's MANIFEST header, reference trees and NOT_A_CASE (ReferenceManifest.cmake,
+# matches the committed files, every class it allows passes, each fault and each refusal fails. The
+# copies of refdata.py's MANIFEST header, reference trees and NOT_A_CASE (ReferenceManifest.cmake,
 # tools/check_docs.py, reference_config.sh, .pre-commit-config.yaml) agree; planted differences fail.
-add_test(NAME FortranReference.ReferenceListsAgree
-         COMMAND ${Python3_EXECUTABLE} -I -B ${refdata_test} reference-lists
-                 ${CMAKE_CURRENT_BINARY_DIR}/refdata_compare/reference-lists)
+add_pytest_test(NAME FortranReference.CompareExpectedFileMatchesTree TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_expected_file)
+add_pytest_test(NAME FortranReference.CompareAllowedDifferencesPass TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_allowed)
+add_pytest_test(NAME FortranReference.CompareEditedNumberFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_edited_number)
+add_pytest_test(NAME FortranReference.CompareDeletedFileFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_deleted_file)
+add_pytest_test(NAME FortranReference.CompareUnknownLabelFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_unknown_label)
+add_pytest_test(NAME FortranReference.CompareSMagnitudeChangeFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_s_magnitude)
+add_pytest_test(NAME FortranReference.CompareBkBeyondLimitFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_bk_limit)
+add_pytest_test(NAME FortranReference.CompareBkNotFiniteFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_bk_nan)
+add_pytest_test(NAME FortranReference.ComparePrintedNotFiniteFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_non_finite_number)
+add_pytest_test(NAME FortranReference.CompareNumberCountChangeFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_number_count)
+add_pytest_test(NAME FortranReference.CompareProvenanceFaultsFail TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_provenance)
+add_pytest_test(NAME FortranReference.CompareOtherInstallFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_install_mismatch)
+add_pytest_test(NAME FortranReference.CompareFineLineWithoutBkInputFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_fine_without_fort22)
+add_pytest_test(NAME FortranReference.CompareOverlappingRowsRefused TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_multi_match)
+add_pytest_test(NAME FortranReference.CompareBadExpectedFileRefused TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_refusals)
+add_pytest_test(NAME FortranReference.ReferenceListsAgree TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_reference_lists)
 
 # spodvr_compare_wave (tools/compare/test_compare_wave.py): finite files compare as before, a NaN or
 # inf in either file always fails, bad arguments are usage errors and unreadable files are refused.
 if(SPODVR_BUILD_TOOLS)
-  set(compare_wave_test ${PROJECT_SOURCE_DIR}/tools/compare/test_compare_wave.py)
-  add_test(NAME CompareWave.FiniteFiles
-           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> finite
-                   ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/finite)
-  add_test(NAME CompareWave.NonFiniteValueFails
-           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> non-finite
-                   ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/non-finite)
-  add_test(NAME CompareWave.BadArgumentsAndFilesRefused
-           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_wave_test} $<TARGET_FILE:spodvr_compare_wave> arguments
-                   ${CMAKE_CURRENT_BINARY_DIR}/compare_wave/arguments)
+  add_pytest_test(NAME CompareWave.FiniteFiles TOOL tools/compare SELECT test_compare_wave.py::test_finite
+                  ARGS --compare-wave-tool=$<TARGET_FILE:spodvr_compare_wave>)
+  add_pytest_test(NAME CompareWave.NonFiniteValueFails TOOL tools/compare SELECT test_compare_wave.py::test_non_finite
+                  ARGS --compare-wave-tool=$<TARGET_FILE:spodvr_compare_wave>)
+  add_pytest_test(NAME CompareWave.BadArgumentsAndFilesRefused TOOL tools/compare
+                  SELECT test_compare_wave.py::test_arguments
+                  ARGS --compare-wave-tool=$<TARGET_FILE:spodvr_compare_wave>)
+else()
+  note_pytest_not_built(tools/compare test_compare_wave.py::test_finite)
+  note_pytest_not_built(tools/compare test_compare_wave.py::test_non_finite)
+  note_pytest_not_built(tools/compare test_compare_wave.py::test_arguments)
 endif()
 
 # The averages comparison of tools/compare_propagation.sh (tools/compare/test_compare_averages.py):
 # equal files pass, a NaN or inf in either file always fails, a file without rows is refused, a bad
 # tolerance is a usage error.
-set(compare_averages_test ${PROJECT_SOURCE_DIR}/tools/compare/test_compare_averages.py)
-function(add_compare_averages_test name test_case)
-  add_test(NAME ComparePropagation.${name}
-           COMMAND ${Python3_EXECUTABLE} -I -B ${compare_averages_test} ${test_case}
-                   ${CMAKE_CURRENT_BINARY_DIR}/compare_averages/${test_case})
-endfunction()
-add_compare_averages_test(EqualFilesPass equal)
-add_compare_averages_test(NonFiniteValueFails non-finite)
-add_compare_averages_test(FileWithoutRowsRefused rows)
-add_compare_averages_test(BadToleranceIsUsageError arguments)
+add_pytest_test(NAME ComparePropagation.EqualFilesPass TOOL tools/compare SELECT test_compare_averages.py::test_equal)
+add_pytest_test(NAME ComparePropagation.NonFiniteValueFails TOOL tools/compare
+                SELECT test_compare_averages.py::test_non_finite)
+add_pytest_test(NAME ComparePropagation.FileWithoutRowsRefused TOOL tools/compare
+                SELECT test_compare_averages.py::test_rows)
+add_pytest_test(NAME ComparePropagation.BadToleranceIsUsageError TOOL tools/compare
+                SELECT test_compare_averages.py::test_arguments)
 
-# The wave-packet designer (tools/wave_packet_designer, standalone Python, needs numpy): one test per case of
-# its test_designer.py. They compare the designer's copies of the program's rules with the C++ (key table,
-# check list, grid indices, packet values) and include negative cases.
-set(designer_test ${PROJECT_SOURCE_DIR}/tools/wave_packet_designer/test_designer.py)
-function(add_designer_test name test_case)
-  add_test(NAME WavePacketDesigner.${name}
-           COMMAND ${Python3_EXECUTABLE} -I -B ${designer_test} ${test_case}
-                   ${CMAKE_CURRENT_BINARY_DIR}/wave_packet_designer/${test_case})
-endfunction()
-add_designer_test(FftSizes fft-sizes)
-add_designer_test(RealCompare real-compare)
-add_designer_test(InputReading input-reading)
-add_designer_test(Validate validate)
-add_designer_test(Absorbers absorbers)
-add_designer_test(Grids grids)
-add_designer_test(Packet packet)
-add_designer_test(Memory memory)
-add_designer_test(ExpectedCases expected-cases)
-add_designer_test(GasPhase gas-phase)
-add_designer_test(Design design)
-add_designer_test(Plots plots)
-add_designer_test(InputFile input-file)
-add_designer_test(Cli cli)
-add_designer_test(Structure structure)
+# The wave-packet designer (tools/wave_packet_designer, numpy and matplotlib): one ctest per test module.
+# They compare the designer's copies of the program's rules with the C++ (key table, check list, grid
+# indices, packet values) and include negative cases.
+add_pytest_test(NAME WavePacketDesigner.FftSizes TOOL tools/wave_packet_designer SELECT tests/test_fft_sizes.py)
+add_pytest_test(NAME WavePacketDesigner.RealCompare TOOL tools/wave_packet_designer SELECT tests/test_real_compare.py)
+add_pytest_test(NAME WavePacketDesigner.InputReading TOOL tools/wave_packet_designer SELECT tests/test_input_reading.py)
+add_pytest_test(NAME WavePacketDesigner.Validate TOOL tools/wave_packet_designer SELECT tests/test_validate.py)
+add_pytest_test(NAME WavePacketDesigner.Absorbers TOOL tools/wave_packet_designer SELECT tests/test_absorbers.py)
+add_pytest_test(NAME WavePacketDesigner.Grids TOOL tools/wave_packet_designer SELECT tests/test_grids.py)
+add_pytest_test(NAME WavePacketDesigner.Packet TOOL tools/wave_packet_designer SELECT tests/test_packet.py)
+add_pytest_test(NAME WavePacketDesigner.Memory TOOL tools/wave_packet_designer SELECT tests/test_memory.py)
+add_pytest_test(NAME WavePacketDesigner.ExpectedCases TOOL tools/wave_packet_designer
+                SELECT tests/test_expected_cases.py)
+add_pytest_test(NAME WavePacketDesigner.GasPhase TOOL tools/wave_packet_designer SELECT tests/test_gas_phase.py)
+add_pytest_test(NAME WavePacketDesigner.Design TOOL tools/wave_packet_designer SELECT tests/test_design.py)
+add_pytest_test(NAME WavePacketDesigner.Plots TOOL tools/wave_packet_designer SELECT tests/test_plots.py)
+add_pytest_test(NAME WavePacketDesigner.InputFile TOOL tools/wave_packet_designer SELECT tests/test_input_file.py)
+add_pytest_test(NAME WavePacketDesigner.Cli TOOL tools/wave_packet_designer SELECT tests/test_cli.py)
+add_pytest_test(NAME WavePacketDesigner.Structure TOOL tools/wave_packet_designer SELECT tests/test_structure.py)
+
+# Every pytest test is selected by exactly one ctest (tools/check_python_tests.py), and the check finds a
+# test without a ctest and a test with two (--plant-faults).
+set(check_python_tests ${PROJECT_SOURCE_DIR}/tools/check_python_tests.py)
+add_test(NAME Python.EveryTestRegistered
+         COMMAND ${Python3_EXECUTABLE} -I -B ${check_python_tests} ${pytest_selections} --root ${PROJECT_SOURCE_DIR})
+add_test(NAME Python.UnregisteredTestFails
+         COMMAND ${Python3_EXECUTABLE} -I -B ${check_python_tests} ${pytest_selections} --root ${PROJECT_SOURCE_DIR}
+                 --plant-faults)
+set_tests_properties(Python.EveryTestRegistered Python.UnregisteredTestFails PROPERTIES
+                     LABELS python
+                     ENVIRONMENT "MPLBACKEND=Agg;MPLCONFIGDIR=${CMAKE_CURRENT_BINARY_DIR}/pytest/matplotlib")
 
 # Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
 # missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).

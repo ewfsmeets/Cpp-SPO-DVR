@@ -1,32 +1,25 @@
-#!/usr/bin/env python3
 """Tests of spodvr_compare_wave (tools/compare/compare_wave.cpp; ctest CompareWave.*).
 
-Each case writes small wave-packet files (raw doubles, re/im pairs, as spodvr_dump_wave writes
-them) into WORK, runs the tool on them and checks its exit status and output line:
-  finite      identical files pass ("bitwise identical"); a difference of 1e-14 relative fails
-              with the default tolerance 0 and passes with 1e-13; files of different sizes fail
-  non-finite  a NaN in b, an inf in a, a NaN at the same element of both (bitwise equal files)
-              and a NaN with tolerance 1e300: each fails, naming the file and the element
-  arguments   one file, four arguments, a tolerance that is not a number, negative, NaN or inf:
-              exit 2 with a usage line; a missing, an empty and a 12-byte file: exit 1 with
-              "error: <what>; <fix>"
-Usage: python3 -I -B tools/compare/test_compare_wave.py TOOL CASE WORK
-  TOOL  the spodvr_compare_wave executable;  CASE  one of the cases above;  WORK  scratch
-  directory (recreated)
-Exit status: 0 the case behaved as expected, 1 it did not, 2 bad arguments.
+Each test writes small wave-packet files (raw doubles, re/im pairs, as spodvr_dump_wave writes
+them) into its scratch directory `work`, runs the tool (`tool`: option --compare-wave-tool,
+conftest.py) on them and checks its exit status and output line:
+  test_finite      identical files pass ("bitwise identical"); a difference of 1e-14 relative fails
+                   with the default tolerance 0 and passes with 1e-13; files of different sizes fail
+  test_non_finite  a NaN in b, an inf in a, a NaN at the same element of both (bitwise equal files)
+                   and a NaN with tolerance 1e300: each fails, naming the file and the element
+  test_arguments   one file, four arguments, a tolerance that is not a number, negative, NaN or
+                   inf: exit 2 with a usage line; a missing, an empty and a 12-byte file: exit 1
+                   with "error: <what>; <fix>"
+Usage: uv run python -I -B -m pytest -c tools/compare/pytest.ini --rootdir=tools/compare \
+           tools/compare/test_compare_wave.py --compare-wave-tool=build/tools/spodvr_compare_wave
 Environment: none read. Run time: well under a second.
 Docs: docs/performance.md, section "Benchmarking checklist" (the final wave packet of two builds).
 """
 
-import argparse
 import math
-import shutil
 import struct
 import subprocess
-import sys
-from pathlib import Path
 
-CASES = ("finite", "non-finite", "arguments")
 WAVE = [1.0, 0.0, 0.5, -0.5, 0.25, 0.75]  # three complex values
 
 
@@ -57,7 +50,7 @@ def expect(what, status, output, want_status, want_output):
         )
 
 
-def finite_case(tool, work):
+def test_finite(tool, work):
     a = write(work / "a.bin", WAVE)
     b = write(work / "b.bin", WAVE)
     expect("identical", *run(tool, a, b), 0, "bitwise identical: max |a - b| / max |a| = 0.000e+00")
@@ -70,7 +63,7 @@ def finite_case(tool, work):
     expect("sizes", *run(tool, a, d), 1, "DIFFERENT: sizes 6 and 4")
 
 
-def non_finite_case(tool, work):
+def test_non_finite(tool, work):
     a = write(work / "a.bin", WAVE)
     with_nan = list(WAVE)
     with_nan[3] = math.nan
@@ -96,7 +89,7 @@ def non_finite_case(tool, work):
     )
 
 
-def arguments_case(tool, work):
+def test_arguments(tool, work):
     """Bad command lines exit 2 with the usage line; files that cannot be compared are refused."""
     a = write(work / "a.bin", WAVE)
     for what, arguments in (
@@ -117,30 +110,3 @@ def arguments_case(tool, work):
         expect(what, status, stderr, 1, f"'{other}'")
         if not stderr.startswith("error: ") or "; give two files written by spodvr_dump_wave" not in stderr:
             raise AssertionError(f'{what}: {stderr!r} is not "error: <what>; <fix>"')
-
-
-def main(argv):
-    """Runs the named case in WORK."""
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("tool", metavar="TOOL", type=Path, help="the spodvr_compare_wave executable")
-    parser.add_argument("case", metavar="CASE", choices=CASES, help="the case to run")
-    parser.add_argument("work", metavar="WORK", type=Path, help="scratch directory (recreated)")
-    args = parser.parse_args(argv)
-    if not args.tool.is_file():
-        print(f"error: {args.tool} is not a file; build the target spodvr_compare_wave", file=sys.stderr)
-        return 1
-    work = args.work.resolve()
-    shutil.rmtree(work, ignore_errors=True)
-    work.mkdir(parents=True)
-    try:
-        cases = {"finite": finite_case, "non-finite": non_finite_case, "arguments": arguments_case}
-        cases[args.case](args.tool, work)
-    except AssertionError as error:
-        print(f"FAIL: {args.case}: {error}")
-        return 1
-    print(f"PASS: {args.case}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

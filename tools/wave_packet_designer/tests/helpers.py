@@ -1,4 +1,4 @@
-"""Shared helpers of the test cases: the repository paths, the inputs, and the checks."""
+"""Shared helpers of the tests: the repository paths, the inputs, and the checks."""
 
 import json
 from dataclasses import replace
@@ -23,7 +23,7 @@ HARDWALL_INPUT = REPOSITORY / "tests/reference/hardwall_small/input.json"
 
 
 class TestFailure(Exception):
-    """A failed check; the runner prints its message."""
+    """A failed check; pytest shows its message."""
 
 
 def check(condition: bool, message: str) -> None:

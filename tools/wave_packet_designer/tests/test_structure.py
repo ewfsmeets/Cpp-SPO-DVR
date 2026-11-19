@@ -1,5 +1,5 @@
-"""Case structure: the `Shadows:` citations still exist, and the modules keep their layers (README,
-"Architecture")."""
+"""Tests (ctest WavePacketDesigner.Structure): the `Shadows:` citations still exist, and the modules keep their layers
+(README, "Architecture")."""
 
 import ast
 import re
@@ -23,12 +23,12 @@ LAYERS = {
     "wave_packet_designer": 5,
     "gui_mpl": 5,
     "tests": 6,
-    "test_designer": 7,
+    "write_expected_cases": 7,  # regenerates the drift guard from tests.test_expected_cases
 }
-# Third-party packages each layer may use (the standard library is always allowed): numpy, and matplotlib only
-# from the figure up.
+# Third-party packages each layer may use (the standard library is always allowed): numpy, matplotlib only from
+# the figure up, pytest only in the tests.
 NUMPY, PLOTTING = {"numpy"}, {"numpy", "matplotlib"}
-THIRD_PARTY = {0: NUMPY, 1: NUMPY, 2: NUMPY, 3: NUMPY, 4: PLOTTING, 5: PLOTTING, 6: PLOTTING, 7: set()}
+THIRD_PARTY = {0: NUMPY, 1: NUMPY, 2: NUMPY, 3: NUMPY, 4: PLOTTING, 5: PLOTTING, 6: PLOTTING | {"pytest"}, 7: set()}
 
 
 def tool_modules() -> list[Path]:
@@ -40,7 +40,7 @@ def module_name(path: Path) -> str:
     return path.relative_to(TOOL_DIR).parts[0].removesuffix(".py")
 
 
-def test_cited_sources_exist(work: Path) -> None:
+def test_cited_sources_exist() -> None:
     """Every file named in a `Shadows:` line exists, and every function named after it occurs in that file."""
     citations = 0
     for path in tool_modules():
@@ -69,7 +69,7 @@ def imported_names(path: Path) -> set[str]:
     return names
 
 
-def test_layers(work: Path) -> None:
+def test_layers() -> None:
     """No module imports from a higher layer, a front end, or a third-party package its layer does not allow."""
     for path in tool_modules():
         importer = module_name(path)
@@ -81,6 +81,3 @@ def test_layers(work: Path) -> None:
                 check(allowed, f"{path.relative_to(TOOL_DIR)} (layer {rank}) imports {name} (layer {LAYERS[name]})")
             elif name not in sys.stdlib_module_names:
                 check(name in THIRD_PARTY[rank], f"{path.relative_to(TOOL_DIR)} imports {name}")
-
-
-TESTS = [test_cited_sources_exist, test_layers]

@@ -3,7 +3,7 @@
 Shadows: src/input/validate.cpp (validate_input)
 
 Each `checks.error_if(violated, key, message)` line copies one `check(...)` line of validate_input, under
-the same section headings and with the same key and message (test case `validate` compares them). Not
+the same section headings and with the same key and message (tests/test_validate.py compares them). Not
 copied: the flux-analysis block (not ported; a propagating run with doFluxAnalysis stops anyway, see
 evaluation.py).
 """

@@ -1,5 +1,5 @@
 {
-  "about": "The drift guard of the wave-packet designer (README, Keeping up with the C++). Each case: a base input (relative to the repository root), key changes (null removes a key), the OpenMP threads, and the symmetry counts the program computes (make_grid_symmetry); these are written by hand. The rest is written by test_designer.py expected-cases WORK --write and checked against the C++ by TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) and TEST(CudaBackend, MemoryEstimateMatchesTheWavePacketDesignerCases).",
+  "about": "The drift guard of the wave-packet designer (README, Keeping up with the C++). Each case: a base input (relative to the repository root), key changes (null removes a key), the OpenMP threads, and the symmetry counts the program computes (make_grid_symmetry); these are written by hand. The rest is written by write_expected_cases.py and checked against the C++ by TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) and TEST(CudaBackend, MemoryEstimateMatchesTheWavePacketDesignerCases).",
   "cases": [
     {
       "name": "hardwall_small",

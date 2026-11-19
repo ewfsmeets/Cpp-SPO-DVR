@@ -1,8 +1,7 @@
-"""Case absorbers: L/lambda, the table ranges, the strengths and the set-up warnings (program/wave_packet_params.py,
-process.py)."""
+"""Tests (ctest WavePacketDesigner.Absorbers): L/lambda, the table ranges, the strengths and the set-up warnings
+(program/wave_packet_params.py, process.py)."""
 
 import math
-from pathlib import Path
 
 from program.config import AbsorberStrength
 from program.potential_systems import ANALYTIC_SYSTEMS
@@ -23,7 +22,7 @@ DAI_LIGHT_SYSTEM = ANALYTIC_SYSTEMS["H2Cu111DaiLight"]
 MASS = 3674.2
 
 
-def test_fortran_printed_reduced_lengths(work: Path) -> None:
+def test_fortran_printed_reduced_lengths() -> None:
     """The input of TEST(Input, AbsorberOutsideTheStrengthTableIsRecorded): every energy-tuned absorber outside
     the table gets a warning, in ProcessInput's order, and L/lambda of ROpt and ZSpOpt equal the doubles Fortran
     5.24 printed (0.58847038336148938, 15.945765873846009), bitwise."""
@@ -52,7 +51,7 @@ def test_fortran_printed_reduced_lengths(work: Path) -> None:
     check("0.58847 wavelengths long" in warnings[2].message, warnings[2].message)
 
 
-def test_exactly_one_wavelength_switches_the_absorber_off(work: Path) -> None:
+def test_exactly_one_wavelength_switches_the_absorber_off() -> None:
     """L/lambda = 1 exactly matches no table interval: strength 0 and a warning (absorber D2)."""
     energy = ev_to_hartree(0.4)
     wavelength = 2.0 * math.acos(-1.0) / math.sqrt(2.0 * MASS * energy)
@@ -63,7 +62,7 @@ def test_exactly_one_wavelength_switches_the_absorber_off(work: Path) -> None:
     check(len(warnings) == 1 and "the absorber is off" in warnings[0].message, f"warnings {warnings}")
 
 
-def test_interpolation_inside_the_table(work: Path) -> None:
+def test_interpolation_inside_the_table() -> None:
     """L/lambda = 1.25 lies halfway between the first two entries: A = (2.750 + 0.25 (2.640 - 2.750) / 0.5) E
     = 2.695 E (by hand; L/lambda is 1.25 to rounding, so to 1e-14 relative)."""
     energy = ev_to_hartree(0.4)
@@ -72,7 +71,7 @@ def test_interpolation_inside_the_table(work: Path) -> None:
     check(abs(strength - 2.695 * energy) <= 1e-14 * energy, f"strength {strength!r}, expected {2.695 * energy!r}")
 
 
-def test_dz_strengths_match_the_program(work: Path) -> None:
+def test_dz_strengths_match_the_program() -> None:
     """The DZ input's three strengths, all interpolated inside the table, against "CAP strengths (Z, r, Zsp)" in
     the block INPUT of spodvr (provenance: helpers.DZ_INPUT), to half a printed unit."""
     absorbers = build_derived(load_parameters(DZ_INPUT), DAI_LIGHT_SYSTEM).absorbers
@@ -83,7 +82,7 @@ def test_dz_strengths_match_the_program(work: Path) -> None:
         check(abs(a.strength - printed[a.name]) <= half_unit, f"{a.name}: {a.strength!r}, printed {printed[a.name]}")
 
 
-def test_factor_and_zero_energy(work: Path) -> None:
+def test_factor_and_zero_energy() -> None:
     """A …Factor key is the strength; a target energy of 0 gives strength 0 (absorber D1)."""
     p = load_parameters(HARDWALL_INPUT, z_opt_energy=None, z_opt_factor=0.02)
     z_absorber = build_derived(p, HARDWALL_SYSTEM).absorbers[0]
@@ -91,12 +90,3 @@ def test_factor_and_zero_energy(work: Path) -> None:
     p = load_parameters(HARDWALL_INPUT, r_opt_energy=0.0)
     r_absorber = next(a for a in build_derived(p, HARDWALL_SYSTEM).absorbers if a.name == "ROpt")
     check_equal((r_absorber.strength, r_absorber.target_energy), (0.0, None), "ROptEnergy = 0")
-
-
-TESTS = [
-    test_fortran_printed_reduced_lengths,
-    test_exactly_one_wavelength_switches_the_absorber_off,
-    test_interpolation_inside_the_table,
-    test_dz_strengths_match_the_program,
-    test_factor_and_zero_energy,
-]

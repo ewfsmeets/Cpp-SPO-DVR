@@ -1,5 +1,5 @@
-"""Case design: the recommendations of inputs/README.md (design/rules.py), the absorbers' R and T
-(design/transmission.py) and the suggested Z grids (design/suggest.py).
+"""Tests (ctest WavePacketDesigner.Design): the recommendations of inputs/README.md (design/rules.py), the absorbers' R
+and T (design/transmission.py) and the suggested Z grids (design/suggest.py).
 
 FAILING holds one input change per rule that the rule must flag, starting from the DZ input (which passes
 every rule); `test_every_rule_has_a_failing_case` fails for a rule without a row.
@@ -8,7 +8,6 @@ every rule); `test_every_rule_has_a_failing_case` fails for a rule without a row
 import math
 from collections.abc import Callable
 from dataclasses import replace
-from pathlib import Path
 
 from design.rules import (
     DesignCheck,
@@ -59,7 +58,7 @@ def failed_checks(e: Evaluation) -> list[str]:
     return [c.name for c in e.design if c.passed is False]
 
 
-def test_dz_passes_every_rule_but_its_time(work: Path) -> None:
+def test_dz_passes_every_rule_but_its_time() -> None:
     """The DZ input, built by the recipe, passes every rule except the time: its tEnd 17 500 converges outgoing
     energies down to 0.06 eV, as inputs/README.md notes (step 11: 25 000; "the DZ input uses 17 500"). With
     tEnd 25 000 it passes that one too."""
@@ -67,7 +66,7 @@ def test_dz_passes_every_rule_but_its_time(work: Path) -> None:
     check_equal(failed_checks(evaluation_of(t_end=25000.0, n_steps=10000)), [], "failed checks with tEnd 25 000")
 
 
-def test_time_budget_of_the_readme_example(work: Path) -> None:
+def test_time_budget_of_the_readme_example() -> None:
     """Section 8's DZ example by hand: the slowest analysed part (0.40 eV, M/k_min = 354 a.u. per bohr) runs
     16 bohr in and, reflected elastically, 13 bohr out: 29 x 354 = 10 266 a.u. (the exact M/k_min gives
     10 252); outgoing E_n = 0.03 eV takes 16 x 354 + 13 x 1290 = 22 434 (22 438). With Z_turn = ZStart = 0:
@@ -78,7 +77,7 @@ def test_time_budget_of_the_readme_example(work: Path) -> None:
     check_equal(round(b.t_elastic), 11666, "elastic with Z_turn 0")
 
 
-def test_time_is_fitted_to_whole_averaging_intervals(work: Path) -> None:
+def test_time_is_fitted_to_whole_averaging_intervals() -> None:
     """A requested tEnd becomes the next whole number of dtAve intervals (DZ: 500 a.u., 200 steps of 2.5) so the
     program's time checks hold: 25 000 stays, 25 100 becomes 25 500 with nStep 10 200."""
     p = load_parameters(DZ_INPUT)
@@ -88,7 +87,7 @@ def test_time_is_fitted_to_whole_averaging_intervals(work: Path) -> None:
         check(evaluate(replace(p, **fitted), Settings()).accepted, f"tEnd {requested} accepted")
 
 
-def test_memory_must_fit(work: Path) -> None:
+def test_memory_must_fit() -> None:
     """With the memory of a 12 GiB GPU given, the ER input (14.8 GiB on the GPU, no symmetry) fails the GPU
     check, which the program would refuse; DZ with its symmetry counts (8.8 GiB) fits 9 GiB free."""
     gpu = 12 * 2**30
@@ -98,7 +97,7 @@ def test_memory_must_fit(work: Path) -> None:
     check_equal([c.passed for c in dz.design if c.name.endswith("memory: peak")], [True, True], "DZ fits")
 
 
-def test_worst_case_memory_is_information_only(work: Path) -> None:
+def test_worst_case_memory_is_information_only() -> None:
     """DZ uses UseSymmetry: without --representatives the estimate is the worst case (all 144 (x, y) points,
     17.2 GiB on the GPU). It cannot prove that the run does not fit, so with 9 GiB free GPU memory the check is
     information, named as the worst case, and the verdict says so."""
@@ -108,7 +107,7 @@ def test_worst_case_memory_is_information_only(work: Path) -> None:
     check(any("WORST CASE" in line for line in verdict_lines(e)), "verdict")
 
 
-def test_analysed_states_follow_the_angular_grid(work: Path) -> None:
+def test_analysed_states_follow_the_angular_grid() -> None:
     """The analysed j are those of the program's analysis basis: for a homonuclear molecule with odd JIn only odd
     j (hardwall_small with JIn 1, JMax 5)."""
     e = evaluate(load_parameters(HARDWALL_INPUT, j_max=5, mj_max=5, j_in=1, mj_in=0), Settings())
@@ -116,13 +115,13 @@ def test_analysed_states_follow_the_angular_grid(work: Path) -> None:
     check(js and all(j % 2 == 1 for j in js), f"analysed j {sorted(js)}")
 
 
-def test_each_rule_flags_its_case(work: Path) -> None:
+def test_each_rule_flags_its_case() -> None:
     """Each row of FAILING fails its rule."""
     for changes, name in FAILING:
         check(name in failed_checks(evaluation_of(**changes)), f"{changes} does not fail '{name}'")
 
 
-def test_every_rule_has_a_failing_case(work: Path) -> None:
+def test_every_rule_has_a_failing_case() -> None:
     """Every check with a limit (not information only) has a row in FAILING."""
     names = {c.name for c in evaluation_of().design if c.passed is not None}
     check_equal(names - {name for _, name in FAILING}, set(), "rules without a failing case")
@@ -138,7 +137,7 @@ def rule_value(rule: Callable[[DesignInput], DesignCheck], **changes: object) ->
     ).value
 
 
-def test_momentum_margins_of_the_readme_table(work: Path) -> None:
+def test_momentum_margins_of_the_readme_table() -> None:
     """inputs/README.md section 4: (k_grid - k0)/sigma_k and the wrapped fraction for its four H2 rows, to the
     digits printed there; and section 3: k0/sigma_k = 3.2 for 0.05-1.0 eV."""
     rows = [
@@ -155,7 +154,7 @@ def test_momentum_margins_of_the_readme_table(work: Path) -> None:
     check_equal(f"{value:.1f}", "3.2", "k0/sigma_k for 0.05-1.0 eV")
 
 
-def test_lowest_converged_energy_of_the_readme_example(work: Path) -> None:
+def test_lowest_converged_energy_of_the_readme_example() -> None:
     """Section 8: T = (Z0 - Z_turn) M/k_min + (Zana - Z_turn) M/k_n; DZ: 16 * 354 + 13 * 1290 a.u. for
     E_n = 0.03 eV. With exactly that tEnd the rule gives back 0.03 eV."""
     d = evaluation_of().derived
@@ -170,13 +169,13 @@ def test_lowest_converged_energy_of_the_readme_example(work: Path) -> None:
     check(abs(energy - 0.03) <= 1e-12, f"lowest converged energy {energy!r}")
 
 
-def test_free_wave_passes_unchanged(work: Path) -> None:
+def test_free_wave_passes_unchanged() -> None:
     """With strength 0 the transfer matrix gives R = 0 and T = 1 (to the rounding of its 2000 slices)."""
     reflection, transmission = reflection_transmission(ev_to_hartree(0.3), 4.0, 0.0, 3674.2)
     check(reflection < 1e-24 and abs(transmission - 1.0) < 1e-12, f"R {reflection!r}, T {transmission!r}")
 
 
-def test_dz_absorbers_as_the_readme_says(work: Path) -> None:
+def test_dz_absorbers_as_the_readme_says() -> None:
     """Section 7, for the DZ absorbers: scattering R + T <= 4e-5 for 0.05-1.0 eV and 8e-5 at 1.5 eV; specular
     R + T <= 4e-9 for 0.2-1.0 eV (one printed digit)."""
     e = evaluation_of()
@@ -193,7 +192,7 @@ def test_dz_absorbers_as_the_readme_says(work: Path) -> None:
     check_equal(printed, ("4e-05", "8e-05", "4e-09"), "R + T")
 
 
-def test_suggestion_for_the_dz_input(work: Path) -> None:
+def test_suggestion_for_the_dz_input() -> None:
     """The DZ input's dZ 0.12 holds the momenta, so the recipe keeps it and gives the DZ grid sizes (nZ 160,
     nZSpecular 256); with --dz 0.14 (the largest step that holds them) it gives a smaller grid. Both inputs are
     accepted by the program and pass every rule."""
@@ -206,7 +205,7 @@ def test_suggestion_for_the_dz_input(work: Path) -> None:
     check_equal((s.changes["nz"], s.changes["nz_specular"]), (160, 256), "grid sizes")
 
 
-def test_suggestion_with_another_grid_start(work: Path) -> None:
+def test_suggestion_with_another_grid_start() -> None:
     """With ZStart -2 (as hardwall_small) the grid points are ZStart + i dZ: the suggested Zana, absorber ends
     and grid sizes fit that grid, and the program accepts the input."""
     s = suggest(load_parameters(DZ_INPUT, z_start=-2.04), Settings())
@@ -214,14 +213,14 @@ def test_suggestion_with_another_grid_start(work: Path) -> None:
     check_equal(s.changes["z_analysis"], 15.0, "Zana (-2.04 + 142 * 0.12)")
 
 
-def test_suggestion_is_blocked_by_other_errors(work: Path) -> None:
+def test_suggestion_is_blocked_by_other_errors() -> None:
     """An input the program rejects on a key the suggestion keeps (EMinWP 0) gets no suggestion: the error is
     listed instead."""
     s = suggest(load_parameters(DZ_INPUT, e_min_wave_packet=0.0), Settings())
     check_equal((s.changes, [f.key for f in s.blockers]), ({}, ["EMinWP"]), "blocked suggestion")
 
 
-def test_limits_hold_at_their_boundary(work: Path) -> None:
+def test_limits_hold_at_their_boundary() -> None:
     """The README's limits are inclusive: EMaxWP = 4 EMinWP (k0/sigma_k = 6 up to rounding, 5.999999999999999 for
     0.25-1.0 eV) passes, and so does the largest dZ that holds the momenta; a step beyond each fails."""
     check(energy_range_passes(0.25, 1.0) and not energy_range_passes(0.25, 1.001), "EMaxWP = 4 EMinWP")
@@ -242,14 +241,14 @@ def energy_range_passes(e_min: float, e_max: float) -> bool:
     return energy_range(DesignInput(p, build_derived(p, DAI_LIGHT_SYSTEM), base.grids, None, None)).passed
 
 
-def test_energy_resolution_of_the_readme(work: Path) -> None:
+def test_energy_resolution_of_the_readme() -> None:
     """Section 8: the energy resolution 2 pi / T is 6.8 meV at 25 000 a.u."""
     e = evaluation_of()
     c = energy_resolution(DesignInput(replace(e.parameters, t_end=25000.0), e.derived, e.grids, None, None))
     check_equal(f"{c.value * 1000:.1f}", "6.8", "meV")
 
 
-def test_absorber_responses_use_the_right_mass_and_energies(work: Path) -> None:
+def test_absorber_responses_use_the_right_mass_and_energies() -> None:
     """ROpt is computed with the reduced mass, the Z absorbers with the total mass, each over its energies."""
     e = evaluation_of()
     d = e.derived
@@ -265,30 +264,7 @@ def test_absorber_responses_use_the_right_mass_and_energies(work: Path) -> None:
         check_equal(window, expected, f"energies of {a.name}")
 
 
-def test_suggestion_for_the_er_input(work: Path) -> None:
+def test_suggestion_for_the_er_input() -> None:
     """The recipe on the ER input (Z_asymptotic 8): accepted, every rule passed."""
     s = suggest(load_parameters(ER_INPUT), Settings())
     check(s.evaluation.accepted and failed_checks(s.evaluation) == [], f"{s.evaluation.findings}")
-
-
-TESTS = [
-    test_dz_passes_every_rule_but_its_time,
-    test_time_budget_of_the_readme_example,
-    test_time_is_fitted_to_whole_averaging_intervals,
-    test_memory_must_fit,
-    test_worst_case_memory_is_information_only,
-    test_analysed_states_follow_the_angular_grid,
-    test_each_rule_flags_its_case,
-    test_every_rule_has_a_failing_case,
-    test_momentum_margins_of_the_readme_table,
-    test_lowest_converged_energy_of_the_readme_example,
-    test_free_wave_passes_unchanged,
-    test_dz_absorbers_as_the_readme_says,
-    test_suggestion_for_the_dz_input,
-    test_suggestion_with_another_grid_start,
-    test_suggestion_is_blocked_by_other_errors,
-    test_suggestion_for_the_er_input,
-    test_limits_hold_at_their_boundary,
-    test_energy_resolution_of_the_readme,
-    test_absorber_responses_use_the_right_mass_and_energies,
-]

@@ -1,4 +1,5 @@
-"""Case input-file: reading, and saving changed values without touching the rest of the text (input_file.py)."""
+"""Tests (ctest WavePacketDesigner.InputFile): reading, and saving changed values without touching the rest of the text
+(input_file.py)."""
 
 import json
 from dataclasses import replace
@@ -51,7 +52,7 @@ def test_existing_file_is_not_overwritten(work: Path) -> None:
     check(False, "an existing file was overwritten")
 
 
-def test_comments_and_nan_are_refused(work: Path) -> None:
+def test_comments_and_nan_are_refused() -> None:
     """Comments (which spodvr accepts) and NaN (which it refuses) give a clear error, not a wrong value."""
     for text, expected in (('{"a": 1 // note\n}', "comments"), ('{"a": NaN}', "NaN")):
         try:
@@ -60,12 +61,3 @@ def test_comments_and_nan_are_refused(work: Path) -> None:
             check(expected in str(error), f"message for {expected}: {error}")
             continue
         check(False, f"{expected} was accepted")
-
-
-TESTS = [
-    test_saved_copy_changes_only_the_values,
-    test_new_key_is_added,
-    test_changed_parameters_are_saved_under_their_keys,
-    test_existing_file_is_not_overwritten,
-    test_comments_and_nan_are_refused,
-]

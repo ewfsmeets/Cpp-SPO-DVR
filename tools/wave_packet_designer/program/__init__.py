@@ -5,6 +5,6 @@ shadow one C++ file and have its name (validate.py <-> src/input/validate.cpp); 
 of other files (pi from constants.hpp in unit_conversion.py). To find the copy of a C++ file, search the
 `Shadows:` lines: `grep -rn "spatial_grids.cpp" tools/wave_packet_designer`.
 
-The test case `structure` checks that every cited file exists and contains the cited names, and that these
+tests/test_structure.py checks that every cited file exists and contains the cited names, and that these
 modules import only the standard library, numpy and each other (README, "Architecture").
 """

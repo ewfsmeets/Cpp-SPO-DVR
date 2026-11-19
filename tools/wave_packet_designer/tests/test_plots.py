@@ -1,5 +1,5 @@
-"""Case plots: the figure (plots.py), the verdict text (report.py), `check --png`, and the window's wiring
-(gui_mpl.py), all without a window: test_designer.py selects matplotlib's Agg backend."""
+"""Tests (ctest WavePacketDesigner.Plots): the figure (plots.py), the verdict text (report.py), `check --png`, and the
+window's wiring (gui_mpl.py), all without a window: tests/conftest.py selects matplotlib's Agg backend."""
 
 import os
 import subprocess
@@ -25,7 +25,7 @@ def texts(ax: plt.Axes) -> str:
     return " ".join(t.get_text() for t in ax.texts)
 
 
-def test_panels_draw_their_content(work: Path) -> None:
+def test_panels_draw_their_content() -> None:
     """For the DZ input (with 32 GiB RAM and 9 GiB free GPU memory given): the Z panel has both grid lanes, the
     packet and its marks; the momentum panel the packet and +-k_grid; the time panel Zana, Z_turn, tEnd and the
     elastic and E_n,min recrossings; the absorber panel R and T of its three absorbers; the r panel one curve
@@ -67,7 +67,7 @@ def test_figure_of_each_kind_of_input(work: Path) -> None:
         plt.close(figure)
 
 
-def test_title_and_verdict_give_the_reason(work: Path) -> None:
+def test_title_and_verdict_give_the_reason() -> None:
     """When spodvr stops, the title gives its first error (ZSpOptStart 14.08 lies below Z0: "Z0 > ZSpOptStart.")
     and the verdict says the design is not checked; an accepted input lists what it misses with value and limit."""
     stopped = evaluate(load_parameters(DZ_INPUT, zsp_opt_start=14.08), Settings())
@@ -107,7 +107,7 @@ def draw_window(window: DesignerWindow) -> None:
     window.figure.canvas.draw()
 
 
-def test_window_opens_and_resets_to_the_input(work: Path) -> None:
+def test_window_opens_and_resets_to_the_input() -> None:
     """The window shows the input as read, also one not laid out by the recipe (hardwall_small), and Reset
     returns to it after a change."""
     for path in (DZ_INPUT, HARDWALL_INPUT):
@@ -122,7 +122,7 @@ def test_window_opens_and_resets_to_the_input(work: Path) -> None:
         draw_window(window)
 
 
-def test_window_follows_its_sliders(work: Path) -> None:
+def test_window_follows_its_sliders() -> None:
     """Moving dZ to 0.1 re-fits the Z grids: Zana stays on Z_asymptotic = 15 (point 150), the scattering
     absorber of 4.08 bohr then ends on the last point of nZ 192 (4.1 bohr on that grid); moving tEnd to 25 100
     gives 25 500 (whole averaging intervals of 500) with nStep 10 200; the program accepts the input. dR 0.1
@@ -142,7 +142,7 @@ def test_window_follows_its_sliders(work: Path) -> None:
     draw_window(window)
 
 
-def test_suggest_is_not_clamped_by_the_sliders(work: Path) -> None:
+def test_suggest_is_not_clamped_by_the_sliders() -> None:
     """Suggest applies the recipe's values even beyond a slider's range (EMaxWP 0.45: Z0 about 40 bohr, far
     beyond the input's Z0 + 8): the window's input equals the suggestion."""
     window = new_window()
@@ -169,7 +169,7 @@ def test_window_saves_the_changed_keys(work: Path) -> None:
     draw_window(window)
 
 
-def test_e_n_min_slider_sets_the_time_check(work: Path) -> None:
+def test_e_n_min_slider_sets_the_time_check() -> None:
     """The DZ input's tEnd 17 500 converges outgoing energies down to 0.06 eV: with E_n,min 0.03 eV (the default)
     the time check fails, with 0.07 eV it passes."""
     window = new_window()
@@ -181,7 +181,7 @@ def test_e_n_min_slider_sets_the_time_check(work: Path) -> None:
     draw_window(window)
 
 
-def test_everything_has_an_explanation(work: Path) -> None:
+def test_everything_has_an_explanation() -> None:
     """Every panel, slider and button has an explanation, hovering over one finds it, and Explain lays the
     panel texts over the panels."""
     figure = plt.figure()
@@ -196,17 +196,3 @@ def test_everything_has_an_explanation(work: Path) -> None:
     window.toggle_explanations()
     check(any(t.get_text().startswith("Z: the two") for t in window.panels[0][0].texts), "Explain shows the text")
     draw_window(window)
-
-
-TESTS = [
-    test_panels_draw_their_content,
-    test_figure_of_each_kind_of_input,
-    test_title_and_verdict_give_the_reason,
-    test_check_draws_the_figure,
-    test_window_opens_and_resets_to_the_input,
-    test_window_follows_its_sliders,
-    test_suggest_is_not_clamped_by_the_sliders,
-    test_window_saves_the_changed_keys,
-    test_e_n_min_slider_sets_the_time_check,
-    test_everything_has_an_explanation,
-]

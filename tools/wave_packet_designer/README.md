@@ -10,19 +10,20 @@ The physics behind the choices (packet width, momentum margins, absorber lengths
 
 ## Running
 
-Two ways, both from any directory (paths are relative to where you start them):
+Two ways, both from inside the repository (uv finds its `pyproject.toml` upward from where you start; paths
+are relative to where you start them):
 
 - **The window** (matplotlib): the figure below with sliders for the recipe's knobs. It needs
   [uv](https://docs.astral.sh/uv/) (`pipx install uv`, like pre-commit in docs/CONTRIBUTING.md), which
   installs numpy, matplotlib and PyQt6 from the header of `gui_mpl.py` the first time. Under WSL the window
   opens through WSLg.
-- **The command line**: text reports; needs `numpy` (the repository's `python3` has it), and matplotlib
-  for `check --png`.
+- **The command line**: text reports; runs in the repository's Python environment (`uv sync` once,
+  [README: Dependencies](../../README.md#dependencies); numpy, and matplotlib for `check --png`).
 
 ```bash
 uv run tools/wave_packet_designer/gui_mpl.py                                   # the DZ input
 uv run tools/wave_packet_designer/gui_mpl.py inputs/thesis_fig5_3_er/input.json
-python3 -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json
+uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json
 ```
 
 ![The designer window on the DZ input: six panels, the verdict, the sliders, the buttons and the help box](images/window.png)
@@ -138,8 +139,8 @@ holds the potential only), the GPU estimate the propagating runs.
 
 ## Architecture
 
-The code is layered; each layer imports only from the layers below it (checked by the test case
-`structure`):
+The code is layered; each layer imports only from the layers below it (checked by
+`tests/test_structure.py`):
 
 ```mermaid
 flowchart TB
@@ -211,7 +212,7 @@ flowchart TB
 | `program/gas_phase_potentials.py` | V(r) of the Dai-Light and hard-wall potentials at Z_asymptotic | `src/potential/dai_light_cu111_potential.cpp`, `hard_wall_potential.cpp`, `potential_grid.cpp` |
 | `program/point_group.py` | the φ multiple and order of each point group | `src/symmetry/point_group.cpp` |
 | `dz_gas_phase.py` | the DZ input's printed V(r): the stand-in for other potentials, and test data | — |
-| `expected_cases.json` | the drift guard: twelve cases with the designer's grid indices, angular sizes and memory estimates (written by `test_designer.py expected-cases … --write`) | read by `tests/designer_cases.hpp` for the C++ tests |
+| `expected_cases.json` | the drift guard: twelve cases with the designer's grid indices, angular sizes and memory estimates (written by `write_expected_cases.py`) | read by `tests/designer_cases.hpp` for the C++ tests |
 | `program/potential_systems.py` | Z_asymptotic and point group per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
 | `program/fft_sizes.py`, `real_compare.py`, `unit_conversion.py` | valid FFT sizes; the Fortran's tolerant comparisons and NINT; units and π | `src/fft/fft_sizes.cpp`, `src/core/real_compare.hpp`, `src/core/unit_conversion.hpp`, `src/core/constants.hpp` |
 | `program/findings.py` | an error or warning of the program | `src/core/error.hpp` |
@@ -223,27 +224,27 @@ plain double arithmetic (same operations in the same order: e.g. `x / 27.2114`, 
 NINT rounds half away from zero, unlike Python's `round`). To change …
 
 - **a C++ file named in a `Shadows:` line:** edit the Python modules whose `Shadows:` lines name it
-  (grep, see above). The test cases compare with the program:
-  - `validate`: the key and message of every check, in order, with `validate.cpp`;
-  - `input-reading`: the key table with `json_input.cpp`;
-  - `packet`, `grids`, `absorbers`: the set-up output of the DZ run (masses, α and kz bitwise, the grid
+  (grep, see above). The tests in `tests/` compare with the program:
+  - `test_validate.py`: the key and message of every check, in order, with `validate.cpp`;
+  - `test_input_reading.py`: the key table with `json_input.cpp`;
+  - `test_packet.py`, `test_grids.py`, `test_absorbers.py`: the set-up output of the DZ run (masses, α and kz bitwise, the grid
     indices, the packet's norms and |ψ(k)|, the absorber strengths) and the L/λ the Fortran printed;
-  - `memory`: every row of the DZ run's two memory tables, and the hand counts of
-    `tests/test_memory_estimate.cpp`; `expected-cases`: the drift guard (below);
-  - `gas-phase`: the DZ run's state energies (to 1e-13 eV) and open channels;
-  - `design` checks the rules against the numbers inputs/README.md prints (sections 3, 4, 7, 8).
+  - `test_memory.py`: every row of the DZ run's two memory tables, and the hand counts of
+    `tests/test_memory_estimate.cpp` (the repository's); `test_expected_cases.py`: the drift guard (below);
+  - `test_gas_phase.py`: the DZ run's state energies (to 1e-13 eV) and open channels;
+  - `test_design.py` checks the rules against the numbers inputs/README.md prints (sections 3, 4, 7, 8).
 
   The command of the DZ run is in `tests/helpers.py`; the Fortran values come with the C++ test that
   the test's docstring names.
 - **an input key:** a field in `program/config.py` and a row in `program/json_input.py`
-  (`input-reading` fails until both exist and match `json_input.cpp`).
+  (`test_input_reading.py` fails until both exist and match `json_input.cpp`).
 - **a consistency check:** a line in `program/validate.py` at the same place as in `validate.cpp`, and a
-  violating row in `tests/test_validate.py` (`validate` fails until both exist).
+  violating row in `tests/test_validate.py` (which fails until both exist).
 - **what the report shows:** `report.py` (and `evaluation.py` if a new quantity is needed).
 - **a recommendation of inputs/README.md:** a function in `design/rules.py`, added to `RULES`, and a failing
-  row in `tests/test_design.py` (`design` fails for a rule without one). Its message cites the README
+  row in `tests/test_design.py` (which fails for a rule without one). Its message cites the README
   section; the physics stays in the README.
-- **a renamed C++ function:** the `Shadows:` line (`structure` fails otherwise).
+- **a renamed C++ function:** the `Shadows:` line (`tests/test_structure.py` fails otherwise).
 
 #### The drift guard: `expected_cases.json`
 
@@ -253,7 +254,7 @@ program gains or resizes an array, `expected_cases.json` closes that gap. Each o
 definition written by hand (a base input, key changes, the threads, and the symmetry counts the program
 computes) and the designer's results, and both sides are tested against it:
 
-- the case `expected-cases` checks the designer, and that a planted slip (plain `>=` for the tolerant
+- `tests/test_expected_cases.py` checks the designer, and that a planted slip (plain `>=` for the tolerant
   comparison that places nzpot) fails exactly the one case built for it;
 - `MemoryEstimate.MatchesTheWavePacketDesignerCases` (`tests/test_memory_estimate.cpp`) checks the program's
   grid indices, angular sizes, symmetry counts and CPU estimate, and
@@ -265,13 +266,13 @@ the case and the field. Update the copy in `program/` (its `Shadows:` lines say 
 file and run both sides (`-R WavePacketDesigner` matches the C++ tests too):
 
 ```bash
-python3 -I -B tools/wave_packet_designer/test_designer.py expected-cases <scratch directory> --write
+uv run python -I -B tools/wave_packet_designer/write_expected_cases.py
 OMP_NUM_THREADS=8 ctest --test-dir build -R WavePacketDesigner --output-on-failure
 ```
 
-`--write` keeps each case's definition and recomputes the rest. To add a case, write its definition (for
-`UseSymmetry` the counts from the run's SURFACE SYMMETRY block, or from the C++ test's failure), then run
-`--write`.
+`write_expected_cases.py` keeps each case's definition and recomputes the rest. To add a case, write its
+definition (for `UseSymmetry` the counts from the run's SURFACE SYMMETRY block, or from the C++ test's
+failure), then run it.
 
 ### Conventions
 
@@ -280,22 +281,30 @@ OMP_NUM_THREADS=8 ctest --test-dir build -R WavePacketDesigner --output-on-failu
   comment where it differs), plain loops where they read better than numpy.
 - Atomic units inside; eV, amu and degrees only where the input keys have them.
 - Type hints on every function (optional local check: `uvx mypy tools/wave_packet_designer`).
-- Run with `python3 -I -B`; entry files set `sys.dont_write_bytecode` and put their own directory on
-  `sys.path`. Formatting and lint: ruff (pre-commit, settings in the repository's `ruff.toml`), lines up
+- Run with `uv run python -I -B` (the repository's environment); entry files set
+  `sys.dont_write_bytecode` and put their own directory on `sys.path`. Formatting and lint: ruff (pre-commit, settings in the repository's `ruff.toml`), lines up
   to 120 characters.
 
 ## Tests
 
 ```bash
 OMP_NUM_THREADS=8 ctest --test-dir build -R WavePacketDesigner --output-on-failure
-python3 -I -B tools/wave_packet_designer/test_designer.py <case> <scratch directory>   # one case directly
+uv run python -I -B -m pytest -c tools/wave_packet_designer/pytest.ini \
+    --rootdir=tools/wave_packet_designer tools/wave_packet_designer                 # all, directly
+uv run python -I -B -m pytest -c tools/wave_packet_designer/pytest.ini \
+    --rootdir=tools/wave_packet_designer tools/wave_packet_designer/tests/test_plots.py   # one module
 ```
 
-Each case is a module in `tests/` with a list `TESTS` of small test functions, each with a docstring
-saying what it pins down. To add a test, write the function and add it to `TESTS`; a new case also gets
-a line in `test_designer.py` (`CASES`) and in `tests/CMakeLists.txt`. The runner selects matplotlib's
-Agg backend and keeps its cache in the scratch directory, so the case `plots` draws every panel and drives
-the window's sliders and buttons without opening a window. Its window tests skip the idle redraws (on Agg
+The tests run under pytest (`pytest.ini`, `tests/conftest.py`). Each module in `tests/` holds small
+`test_…()` functions, each with a docstring saying what it pins down (a test that needs a scratch directory
+takes `work`, pytest's `tmp_path` under the name the tests always used). ctest runs one module per test
+(`WavePacketDesigner.<Module>`, registered in the repository's
+[tests/CMakeLists.txt](../../tests/CMakeLists.txt)). To add a test, write the function: its module's ctest
+runs it. A new module also gets a line there (the ctest `Python.EveryTestRegistered` fails until it has
+one). Run the designer's tests in a pytest process of their own (its `pytest.ini` puts the tool's
+directory on the import path, and its `tests` package is not unique). `tests/conftest.py` selects matplotlib's Agg backend (ctest
+also keeps its cache in the build tree), so the module `test_plots.py` draws every panel and drives the
+window's sliders and buttons without opening a window. Its window tests skip the idle redraws (on Agg
 each one redraws the whole figure at once, and every slider change asks for one) and draw the states they
 check (`draw_window` in `tests/test_plots.py`).
 

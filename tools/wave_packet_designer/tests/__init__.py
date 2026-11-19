@@ -1,1 +1,1 @@
-"""The test cases of the designer; run them with test_designer.py (one module per case)."""
+"""The tests of the designer, run by pytest (pytest.ini; one ctest per module, README "Tests")."""

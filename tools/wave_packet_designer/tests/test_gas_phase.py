@@ -1,5 +1,5 @@
-"""Case gas-phase: the rovibrational states and the open channels against the program's (program/gas_phase.py,
-dz_gas_phase.py)."""
+"""Tests (ctest WavePacketDesigner.GasPhase): the rovibrational states and the open channels against the program's
+(program/gas_phase.py, dz_gas_phase.py)."""
 
 import re
 from pathlib import Path
@@ -62,7 +62,7 @@ def gas_phase_of(**changes: object) -> GasPhase:
     return gas
 
 
-def test_dz_states_match_the_program(work: Path) -> None:
+def test_dz_states_match_the_program() -> None:
     """The FGH on the DZ curve gives the program's energies for v = 0, j = 0 .. 19 and v = 1, j = 0."""
     gas = gas_phase_of()
     for j, expected in enumerate(DZ_ENERGIES_V0):
@@ -72,7 +72,7 @@ def test_dz_states_match_the_program(work: Path) -> None:
     check(abs(energy - DZ_ENERGY_V1_J0) <= ENERGY_TOLERANCE, f"E(1, 0) = {energy!r}, program {DZ_ENERGY_V1_J0!r}")
 
 
-def test_hard_coded_curve_is_the_logged_one(work: Path) -> None:
+def test_hard_coded_curve_is_the_logged_one() -> None:
     """dz_gas_phase.py holds the 40 values of the block GAS-PHASE POTENTIAL of the DZ run's output, exactly."""
     log = DZ_LOG.read_text()
     block = log[log.index("GAS-PHASE POTENTIAL") : log.index("GAS-PHASE ROVIBRATIONAL STATES")]
@@ -80,7 +80,7 @@ def test_hard_coded_curve_is_the_logged_one(work: Path) -> None:
     check_equal(list(POTENTIAL_EV), logged, "V(r) in eV")
 
 
-def test_dz_edge_values_of_the_wave_functions(work: Path) -> None:
+def test_dz_edge_values_of_the_wave_functions() -> None:
     """psi at the first and last r point of four states, signs included, to half a printed unit plus EDGE_FLOOR."""
     gas = gas_phase_of()
     for (v, j), printed in DZ_EDGE_VALUES.items():
@@ -89,14 +89,14 @@ def test_dz_edge_values_of_the_wave_functions(work: Path) -> None:
             check(abs(value - float(text)) <= half_unit + EDGE_FLOOR, f"psi of ({v}, {j}): {value!r}, printed {text}")
 
 
-def test_dz_open_channels(work: Path) -> None:
+def test_dz_open_channels() -> None:
     """As the program prints for the DZ input: 2 open vibrational levels, highest open j 10, both analysed."""
     gas = gas_phase_of()
     check_equal((gas.v_max_open, gas.j_max_open, gas.n_v_analysis, gas.j_max_analysis), (2, 10, 2, 10), "channels")
     check_equal(gas.warnings, (), "warnings")
 
 
-def test_available_energy_includes_the_initial_state(work: Path) -> None:
+def test_available_energy_includes_the_initial_state() -> None:
     """The open channels count from EMaxWP plus the initial state's internal and parallel energy. By hand from
     the program's printed E(0, j): VIn 1 adds E(1, 0) - E(0, 0) = 0.514 eV, and 1.347 <= 0.95 + 0.514 < 1.682
     (j = 14, 16), so j 14 is the highest open; EParallel 0.3 gives 1.035 <= 1.25 < 1.347, so j 12."""
@@ -104,7 +104,7 @@ def test_available_energy_includes_the_initial_state(work: Path) -> None:
     check_equal(gas_phase_of(e_parallel=0.3).j_max_open, 12, "highest open j with EParallel 0.3")
 
 
-def test_too_small_vana_and_jana_are_reported(work: Path) -> None:
+def test_too_small_vana_and_jana_are_reported() -> None:
     """Channels within the 95% interval (up to 0.95 eV for DZ) but not analysed give the program's warnings."""
     check_equal(gas_phase_of(j_analysis=4).warnings, ("Not all open j channels analysed!",), "JAna 4")
     check_equal(gas_phase_of(v_analysis=1).warnings, ("Not all open v channels analysed!",), "VAna 1")
@@ -112,7 +112,7 @@ def test_too_small_vana_and_jana_are_reported(work: Path) -> None:
     check_equal(f"{d.confidence_e_max:.6f}", "0.950000", "95% interval (INPUT block: 0.400000 .. 0.950000 eV)")
 
 
-def test_copied_potentials_reproduce_the_programs_tables(work: Path) -> None:
+def test_copied_potentials_reproduce_the_programs_tables() -> None:
     """The copied gas-phase potentials give the printed V(r): Dai-Light the DZ run's 40 values bitwise (as eV,
     after the program's round trip through hartree); the hard wall the Fortran's 56 values of hardwall_small
     (fortran_setup_stdout.txt) within gate 1a's 1e-14 relative to max(|V|, 1 eV) (52 of them bitwise)."""
@@ -142,7 +142,7 @@ def fortran_gas_phase_table(path: Path) -> list[tuple[float, float]]:
     return rows
 
 
-def test_gas_phase_is_the_programs_where_copied(work: Path) -> None:
+def test_gas_phase_is_the_programs_where_copied() -> None:
     """For a potential whose gas phase is copied (Dai-Light, the hard wall) the states are the program's on any
     r grid, with a converged reference; for another (Persson, the ER input) the DZ curve stands in: indicative,
     without a reference."""
@@ -157,7 +157,7 @@ def test_gas_phase_is_the_programs_where_copied(work: Path) -> None:
     check_equal(len(evaluate(load_parameters(DZ_INPUT, nr=48), Settings()).gas_phase.r), 48, "the input's r grid")
 
 
-def test_reference_tells_the_grid_from_the_extent(work: Path) -> None:
+def test_reference_tells_the_grid_from_the_extent() -> None:
     """D2 (0.30-1.20 eV) on the DZ r grid: its analysed states keep 8e-6 of their norm beyond ROptStart on the
     program's grid, but the converged states 1e-12: the advice is a finer dR. With ROptStart 2.0 the converged
     states reach beyond it too: the advice is a larger ROptStart."""
@@ -168,39 +168,23 @@ def test_reference_tells_the_grid_from_the_extent(work: Path) -> None:
         check(rule.passed is False and advice in rule.advice, f"{changes}: {rule.passed}, {rule.advice}")
 
 
-def test_analysed_levels_follow_vana_and_jana(work: Path) -> None:
+def test_analysed_levels_follow_vana_and_jana() -> None:
     """VAna >= 1 and JAna >= 0 replace the open levels as the analysed ones; VAna 0 means the open levels."""
     gas = gas_phase_of(v_analysis=1, j_analysis=4)
     check_equal((gas.n_v_analysis, gas.j_max_analysis), (1, 4), "VAna 1, JAna 4")
     check_equal(gas_phase_of(v_analysis=0).n_v_analysis, 2, "VAna 0")
 
 
-def test_small_rotational_basis_is_reported(work: Path) -> None:
+def test_small_rotational_basis_is_reported() -> None:
     """With JMax 6 (and MJMax 6) the open j reach beyond the basis: the program's warning."""
     gas = gas_phase_of(j_max=6, mj_max=6)
     check("Rotational basis too small to describe all open channels!" in gas.warnings, f"warnings {gas.warnings}")
 
 
-def test_wave_functions_are_normalised(work: Path) -> None:
+def test_wave_functions_are_normalised() -> None:
     """Each state is normalised to sum psi^2 dr = 1 on the curve's grid."""
     gas = gas_phase_of()
     dr = dz_gas_phase_curve().dr
     for v, j in ((0, 0), (1, 0), (0, 10)):
         norm = float((gas.wave_functions[v, j] ** 2).sum() * dr)
         check(abs(norm - 1.0) <= 1e-12, f"norm of ({v}, {j}): {norm!r}")
-
-
-TESTS = [
-    test_dz_states_match_the_program,
-    test_hard_coded_curve_is_the_logged_one,
-    test_dz_edge_values_of_the_wave_functions,
-    test_dz_open_channels,
-    test_available_energy_includes_the_initial_state,
-    test_too_small_vana_and_jana_are_reported,
-    test_copied_potentials_reproduce_the_programs_tables,
-    test_gas_phase_is_the_programs_where_copied,
-    test_reference_tells_the_grid_from_the_extent,
-    test_analysed_levels_follow_vana_and_jana,
-    test_small_rotational_basis_is_reported,
-    test_wave_functions_are_normalised,
-]

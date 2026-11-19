@@ -1,39 +1,37 @@
-#!/usr/bin/env python3
 """Tests of extract_pes.py on synthetic .pes files (ctest FortranReference.ExtractPes*).
 
-Each case writes small .pes files in the record layout of Potential.f90 WritePesToFile under WORK
-and runs extract_pes.py as a program:
-  without-scm  a (Z, r)-only, a 6D and a symmetry-reduced 6D file: each output has the sha256 that
-               extract_pes.py gave before it learnt the SCM records (measured 2026-11-14), so the
-               files of every case without SCM are extracted as before
-  scm          the 6D file with the six SCM records of SCM_Wrapper.f90 SetPESVariables_SCM: the
-               same output plus their '#' lines, which the C++ reader skips
-  refusals     five or seven extra records, an SCM record of the wrong size, a truncated file,
-               a trailer that differs from its record's length, a subrecord marker (-1), a
-               two-byte fragment, an empty file, a missing file: exit 1 with "error: <what>; <fix>"
-               and no output file; bad arguments: exit 2
+Each test writes small .pes files in the record layout of Potential.f90 WritePesToFile into its
+scratch directory `work` and runs extract_pes.py as a program:
+  test_without_scm  a (Z, r)-only, a 6D and a symmetry-reduced 6D file: each output has the sha256
+                    that extract_pes.py gave before it learnt the SCM records (measured 2026-11-14),
+                    so the files of every case without SCM are extracted as before
+  test_scm          the 6D file with the six SCM records of SCM_Wrapper.f90 SetPESVariables_SCM:
+                    the same output plus their '#' lines, which the C++ reader skips
+  test_refusals     five or seven extra records, an SCM record of the wrong size, a truncated
+                    file, a trailer that differs from its record's length, a subrecord marker
+                    (-1), a two-byte fragment, an empty file, a missing file: exit 1 with
+                    "error: <what>; <fix>" and no output file; bad arguments: exit 2
 
-Usage: python3 -I -B tools/fortran_reference/test_extract_pes.py CASE WORK
-  CASE  one of the cases above;  WORK  scratch directory (recreated)
-Exit status: 0 the case behaved as expected, 1 it did not, 2 bad arguments.
+Usage: uv run python -I -B -m pytest -c tools/fortran_reference/pytest.ini \
+           --rootdir=tools/fortran_reference tools/fortran_reference/test_extract_pes.py
 Environment: none read. Run time: under a second. Docs: tools/fortran_reference/README.md.
 """
 
 import hashlib
-import shutil
 import struct
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 EXTRACT_PES = Path(__file__).resolve().parent / "extract_pes.py"
-CASES = ("without-scm", "scm", "refusals")
 
 # nzpot nr nx ny ntheta nphi: 216 values, all in the subsample (fewer than 40000).
 DIMS = (3, 2, 2, 3, 2, 3)
 
 # sha256 of the output of extract_pes.py at the commit before the SCM records (efe0034) for the
-# files of without_scm_files().
+# files that pes_records(kind) gives for these kinds (test_without_scm).
 DIGESTS_BEFORE_SCM = {
     "zr_only": "3e2773a5455e7a72ee99d7362e3039a8ef8d5947d503fbea19372e90fe134979",
     "full": "a6bc78cab00536d3177a904e303dffa674ebcfb48bd4a9f3c9276cf115e7e71e",
@@ -105,7 +103,7 @@ def write_pes(path, header, blocks, extra=()):
 
 
 def extract(work, name):
-    """Runs extract_pes.py on WORK/<name>.pes into WORK/<name>.txt: (exit status, stderr)."""
+    """Runs extract_pes.py on work/<name>.pes into work/<name>.txt: (exit status, stderr)."""
     result = subprocess.run(
         [sys.executable, "-I", "-B", str(EXTRACT_PES), str(work / f"{name}.pes"), str(work / f"{name}.txt")],
         capture_output=True,
@@ -116,8 +114,7 @@ def extract(work, name):
 
 def check(condition, message):
     if not condition:
-        print(f"FAIL: {message}", file=sys.stderr)
-        sys.exit(1)
+        pytest.fail(message)
 
 
 def extracted(work, name):
@@ -126,7 +123,7 @@ def extracted(work, name):
     return (work / f"{name}.txt").read_text()
 
 
-def without_scm_case(work):
+def test_without_scm(work):
     for kind, digest in DIGESTS_BEFORE_SCM.items():
         write_pes(work / f"{kind}.pes", *pes_records(kind))
         text = extracted(work, kind)
@@ -135,7 +132,7 @@ def without_scm_case(work):
         check("SCM" not in text, f"{kind}: SCM lines in the output of a file without SCM records")
 
 
-def scm_case(work):
+def test_scm(work):
     header, blocks = pes_records("full")
     write_pes(work / "full.pes", header, blocks)
     write_pes(work / "scm.pes", header, blocks, SCM_RECORDS)
@@ -154,7 +151,7 @@ def expect_refusal(work, name, pattern):
     print(f"refused as expected: {stderr.strip()}")
 
 
-def refusals_case(work):
+def test_refusals(work):
     header, blocks = pes_records("full")
     write_pes(work / "five.pes", header, blocks, SCM_RECORDS[:5])
     expect_refusal(work, "five", "20 records, not 9 + 6 (nzpot * nr) or 6 more (SCM)")
@@ -196,19 +193,3 @@ def refusals_case(work):
         result.returncode == 2 and result.stderr.startswith("usage: "),
         f"one argument: exit {result.returncode}, expected 2 with a usage line: {result.stderr}",
     )
-
-
-def main(argv):
-    if len(argv) != 2 or argv[0] not in CASES:
-        print(f"usage: test_extract_pes.py {{{','.join(CASES)}}} WORK", file=sys.stderr)
-        return 2
-    work = Path(argv[1])
-    shutil.rmtree(work, ignore_errors=True)
-    work.mkdir(parents=True)
-    {"without-scm": without_scm_case, "scm": scm_case, "refusals": refusals_case}[argv[0]](work)
-    print(f"PASS: {argv[0]}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

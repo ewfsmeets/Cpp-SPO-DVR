@@ -1,33 +1,30 @@
-#!/usr/bin/env python3
 """Tests of compare_averages.py (tools/compare/; ctest ComparePropagation.*), the comparison of
 tools/compare_propagation.sh.
 
-Each case writes small averages.dat files into WORK, runs the tool on them and checks its exit
-status and verdict line:
-  equal       equal files pass with tolerance 0; a relative change of 1e-14 passes with 1e-13 and
-              fails with 1e-15, naming the column
-  non-finite  a NaN in NEW, an inf in BASE, an inf at the same place in both (equal files) and a
-              NaN with tolerance 1e300: each fails, naming the file, row and column
-  rows        two files without rows and one without rows are refused ("no rows"), a row of four
-              numbers is refused, different row counts fail
-  arguments   a tolerance that is not a finite number >= 0 (abc, nan, inf, -1) and a missing
-              argument: exit 2 with a usage line
-Usage: python3 -I -B tools/compare/test_compare_averages.py CASE WORK
-  CASE  one of the cases above;  WORK  scratch directory (recreated)
-Exit status: 0 the case behaved as expected, 1 it did not, 2 bad arguments.
+Each test writes small averages.dat files into its scratch directory `work`, runs the tool on them
+and checks its exit status and verdict line:
+  test_equal       equal files pass with tolerance 0; a relative change of 1e-14 passes with 1e-13
+                   and fails with 1e-15, naming the column
+  test_non_finite  a NaN in NEW, an inf in BASE, an inf at the same place in both (equal files) and
+                   a NaN with tolerance 1e300: each fails, naming the file, row and column
+  test_rows        two files without rows and one without rows are refused ("no rows"), a row of
+                   four numbers is refused, different row counts fail
+  test_arguments   a tolerance that is not a finite number >= 0 (abc, nan, inf, -1) and a missing
+                   argument: exit 2 with a usage line
+Usage: uv run python -I -B -m pytest -c tools/compare/pytest.ini --rootdir=tools/compare \
+           tools/compare/test_compare_averages.py
 Environment: none read. Run time: well under a second.
 Docs: docs/CONTRIBUTING.md, section "Testing".
 """
 
-import argparse
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 TOOL = Path(__file__).resolve().parent / "compare_averages.py"
-CASES = ("equal", "non-finite", "rows", "arguments")
 HEADER = "# Wave packet averages (Fortran: averages.out)\n# t(a.u.)  norm  <Z>(bohr)  <r>(bohr)  rest_norm\n"
 ROWS = [[0.0, 1.0, 11.44, 1.47, 1.0], [100.0, 0.9999996, 11.17, 1.471, 0.9999995], [200.0, 0.99, 10.9, 1.475, 0.98]]
 
@@ -59,13 +56,10 @@ def expect(outcome, status, pattern):
     """The tool exited with status and printed a line matching pattern."""
     actual_status, output = outcome
     if actual_status != status or not re.search(pattern, output, re.MULTILINE):
-        raise SystemExit(
-            f"FAIL: expected exit {status} and a line matching {pattern!r}, got exit {actual_status}:\n{output}"
-        )
-    print(f"as expected (exit {status}): {pattern}")
+        pytest.fail(f"expected exit {status} and a line matching {pattern!r}, got exit {actual_status}:\n{output}")
 
 
-def equal_case(work):
+def test_equal(work):
     base = write(work, "base", ROWS)
     expect(run(base, write(work, "same", ROWS), 0), 0, r"^OK: within 0 of the base$")
     near = write(work, "near", changed(1, 2, 11.17 * (1 + 1e-14)))
@@ -74,7 +68,7 @@ def equal_case(work):
     expect(run(base, near, 1e-15), 1, r"^  <Z> +max relative difference [0-9.]+e-1[45]$")
 
 
-def non_finite_case(work):
+def test_non_finite(work):
     base = write(work, "base", ROWS)
     expect(
         run(base, write(work, "nan", changed(2, 3, "nan")), 1e-13),
@@ -91,7 +85,7 @@ def non_finite_case(work):
     expect(run(base, work / "nan.dat", 1e300), 1, r"^DIFFERENT: .*nan\.dat: row 3, <r>: nan is not finite$")
 
 
-def rows_case(work):
+def test_rows(work):
     empty = write(work, "empty", [])
     expect(run(empty, write(work, "empty2", []), 1e-13), 1, r"^error: .*empty\.dat has no rows; check")
     base = write(work, "base", ROWS)
@@ -102,27 +96,8 @@ def rows_case(work):
     expect(run(base, write(work, "two", ROWS[:2]), 1e-13), 1, r"^DIFFERENT: 3 rows in .*base\.dat, 2 in .*two\.dat$")
 
 
-def arguments_case(work):
+def test_arguments(work):
     base = write(work, "base", ROWS)
     for tolerance in ("abc", "nan", "inf", "-1"):
         expect(run(base, base, tolerance), 2, r"^usage: compare_averages\.py ")
     expect(run(base, base), 2, r"^usage: compare_averages\.py ")
-
-
-def main(argv):
-    """Runs the named case in WORK."""
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("case", metavar="CASE", choices=CASES, help="the case to run")
-    parser.add_argument("work", metavar="WORK", type=Path, help="scratch directory (recreated)")
-    args = parser.parse_args(argv)
-    shutil.rmtree(args.work, ignore_errors=True)
-    args.work.mkdir(parents=True)
-    {"equal": equal_case, "non-finite": non_finite_case, "rows": rows_case, "arguments": arguments_case}[args.case](
-        args.work
-    )
-    print(f"PASS: {args.case}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

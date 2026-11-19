@@ -5,7 +5,7 @@ Shadows: src/input/config.hpp (InputParameters, DerivedParameters)
 InputParameters is flat like the C++ struct: one field per input key, the JSON key and unit in the
 comment, the C++ default as the default. Keys the designer only type-checks (Title, the write… switches,
 the SCM and flux keys, …) have no field here; json_input.py lists every key. To add a key: a field here and
-a row in json_input.py (test case `input-reading` checks that every field has its row).
+a row in json_input.py (tests/test_input_reading.py checks that every field has its row).
 Lengths are in bohr, energies in eV, masses in amu, times in atomic units.
 """
 

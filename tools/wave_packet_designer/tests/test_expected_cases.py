@@ -1,16 +1,15 @@
-"""Case expected-cases, the drift guard: the designer's grid indices, angular sizes and CPU and GPU memory
-estimates against expected_cases.json. The program's tests check the same file against the C++:
-TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) in tests/test_memory_estimate.cpp and
-TEST(CudaBackend, MemoryEstimateMatchesTheWavePacketDesignerCases) in tests/cuda/test_cuda_backend.cpp. So when
-the C++ changes one of these numbers, its test fails: update the copy in program/, then regenerate the file
-with `test_designer.py expected-cases <scratch directory> --write` (README, "Keeping up with the C++").
+"""Tests (ctest WavePacketDesigner.ExpectedCases), the drift guard: the designer's grid indices, angular sizes and CPU
+and GPU memory estimates against expected_cases.json. The program's tests check the same file against the C++:
+TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) in tests/test_memory_estimate.cpp and TEST(CudaBackend,
+MemoryEstimateMatchesTheWavePacketDesignerCases) in tests/cuda/test_cuda_backend.cpp. So when the C++ changes one of
+these numbers, its test fails: update the copy in program/, then regenerate the file with `write_expected_cases.py`
+(README, "Keeping up with the C++").
 
 Each case of the file is a definition written by hand (a base input, key changes, the threads, and the
-symmetry counts the program computes for it) and the results that --write fills in.
+symmetry counts the program computes for it) and the results that write_expected_cases.py fills in.
 """
 
 import json
-from pathlib import Path
 
 import program.spatial_grids
 from evaluation import Evaluation, evaluate
@@ -21,7 +20,14 @@ from settings import Settings
 from tests.helpers import REPOSITORY, TOOL_DIR, check, check_equal, load_values
 
 EXPECTED_CASES = TOOL_DIR / "expected_cases.json"
-DEFINITION_KEYS = ("name", "about", "input", "changes", "threads", "symmetry")  # by hand; --write keeps them
+DEFINITION_KEYS = (
+    "name",
+    "about",
+    "input",
+    "changes",
+    "threads",
+    "symmetry",
+)  # by hand; write_expected_cases.py keeps them
 PLANTED_CASE = "dz_point_below_z_asymptotic"  # the case the negative test must fail
 
 
@@ -129,16 +135,18 @@ def all_differences(cases: list[dict]) -> list[str]:
     return found
 
 
-def test_designer_matches_the_expected_cases(work: Path) -> None:
+def test_designer_matches_the_expected_cases() -> None:
     """Every case of expected_cases.json: the designer's grid indices, angular sizes and memory estimates equal
     the file's, which the program's tests check against the C++."""
     found = all_differences(load_cases())
     check(
-        not found, f"{len(found)} difference(s); regenerate with --write once the copy is right:\n" + "\n".join(found)
+        not found,
+        f"{len(found)} difference(s); once the copy in program/ is right, regenerate the file with "
+        "`uv run python -I -B tools/wave_packet_designer/write_expected_cases.py`:\n" + "\n".join(found),
     )
 
 
-def test_the_cases_cover_the_estimate_paths(work: Path) -> None:
+def test_the_cases_cover_the_estimate_paths() -> None:
     """The cases keep covering what the estimates distinguish: UseSymmetry with a reduction, a potential-only
     run (no GPU estimate), a potential above the 4 GiB table limit (kept, no exp table), the low-Z absorbers,
     and both molecule kinds (half or all theta points)."""
@@ -154,7 +162,7 @@ def test_the_cases_cover_the_estimate_paths(work: Path) -> None:
     check(any(v["Mass1"] != v["Mass2"] for v in inputs) and any(v["Mass1"] == v["Mass2"] for v in inputs), "masses")
 
 
-def test_a_planted_tolerance_slip_fails_one_case(work: Path) -> None:
+def test_a_planted_tolerance_slip_fails_one_case() -> None:
     """Negative test: the program places the analysis line and nzpot with the tolerant comparison rge (1e-12).
     A copy with plain >= instead (a realistic porting slip) must fail exactly the case whose Z grid has a point
     1e-13 below Z_asymptotic and Zana (on the other DZ grids 125 * 0.12 is exactly 15, so they cannot see it), on
@@ -204,10 +212,3 @@ def is_flat(value: object) -> bool:
 def is_plain(value: object) -> bool:
     """A number, string, boolean or null."""
     return not isinstance(value, (dict, list))
-
-
-TESTS = [
-    test_designer_matches_the_expected_cases,
-    test_the_cases_cover_the_estimate_paths,
-    test_a_planted_tolerance_slip_fails_one_case,
-]
