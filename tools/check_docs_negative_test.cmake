@@ -5,9 +5,12 @@
 #   stale-allowlist   the allow-list has one more row, which suppresses nothing (on the source tree);
 #   upstream-pin      docs/upstream_sync.md names another upstream commit, or another svn revision,
 #                     than the pin in reference_config.sh, or FORTRAN_REF_ID is not the pinned build
-#                     (on copies of the two files, first shown to be clean).
+#                     (on copies of the two files, first shown to be clean);
+#   subscript-anchor  a link to a heading with "H₂" keeps the subscript in its anchor, which GitHub
+#                     drops (on two small files in WORK; the anchor without it is first shown to pass).
 # Usage: cmake -DPYTHON=<python3> -DCHECKER=<tools/check_docs.py> -DROOT=<source tree>
-#              -DWORK=<scratch directory, recreated> -DCASE=undocumented-key|stale-allowlist|upstream-pin
+#              -DWORK=<scratch directory, recreated>
+#              -DCASE=undocumented-key|stale-allowlist|upstream-pin|subscript-anchor
 #              -P tools/check_docs_negative_test.cmake
 # Environment: none read. Run time: under a second per case.
 
@@ -80,6 +83,16 @@ elseif(CASE STREQUAL "upstream-pin")
                       "upstream svn revision \"r1\" is not the pin")
   check_planted_value(tools/fortran_reference/reference_config.sh "FORTRAN_REF_ID=\"[^\"]+\""
                       "FORTRAN_REF_ID=\"v5.19\"" "FORTRAN_REF_ID \"v5.19\" is not FORTRAN_BUILD_ID")
+elseif(CASE STREQUAL "subscript-anchor")
+  # GitHub's anchor for "The data (H₂/Cu(111))" is "the-data-hcu111": the subscript is dropped.
+  file(WRITE ${WORK}/a.md "# A\n\n## The data (H₂/Cu(111))\n")
+  file(WRITE ${WORK}/allowlist.tsv "check\tfile\tmatch\treason\n")
+  set(args --root ${WORK} --checks links --allowlist ${WORK}/allowlist.tsv)
+  file(WRITE ${WORK}/b.md "# B\n\n[the data](a.md#the-data-hcu111)\n")
+  run_checker(0 "check_docs: 0 finding" ${args})
+  file(WRITE ${WORK}/b.md "# B\n\n[the data](a.md#the-data-h₂cu111)\n")
+  run_checker(1 "b.md:3: links: anchor \"#the-data-h₂cu111\" is not a heading of a.md" ${args})
 else()
-  message(FATAL_ERROR "error: unknown CASE '${CASE}'; use undocumented-key, stale-allowlist or upstream-pin")
+  message(FATAL_ERROR
+          "error: unknown CASE '${CASE}'; use undocumented-key, stale-allowlist, upstream-pin or subscript-anchor")
 endif()

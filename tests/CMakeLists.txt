@@ -62,6 +62,9 @@ add_test(NAME Docs.StaleAllowlistRowFails
 add_test(NAME Docs.UpstreamPinMismatchFails
          COMMAND ${check_docs_negative} -DCASE=upstream-pin
                  -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/upstream-pin -P ${check_docs_negative_script})
+add_test(NAME Docs.SubscriptAnchorFails
+         COMMAND ${check_docs_negative} -DCASE=subscript-anchor
+                 -DWORK=${CMAKE_CURRENT_BINARY_DIR}/check_docs_negative/subscript-anchor -P ${check_docs_negative_script})
 
 # The refusals and the input staging of the Fortran reference tools (test_reference_tools.sh,
 # tools/fortran_reference/README.md): stub installs and synthetic build logs, no Fortran run.

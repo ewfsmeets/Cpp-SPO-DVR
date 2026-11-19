@@ -357,10 +357,12 @@ HTML_ANCHOR = re.compile(r'<a\s+(?:name|id)\s*=\s*"([^"]+)"')
 
 
 def github_slug(heading: str) -> str:
-    """The anchor GitHub gives a heading: lower case, punctuation dropped, spaces to hyphens."""
+    """The anchor GitHub gives a heading: lower case, spaces to hyphens, and only letters, marks,
+    decimal digits, '-' and '_' kept (GitHub drops punctuation and other numbers such as the ₂ of H₂,
+    which str.isalnum() would keep)."""
     text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", heading)
     text = re.sub(r"<[^>]+>", "", text).replace("`", "").strip().lower()
-    kept = (c for c in text if c.isalnum() or c in "-_ " or unicodedata.category(c).startswith("M"))
+    kept = (c for c in text if c in "-_ " or unicodedata.category(c)[0] in "LM" or unicodedata.category(c) == "Nd")
     return "".join(kept).replace(" ", "-")
 
 
