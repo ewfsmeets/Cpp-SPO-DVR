@@ -282,7 +282,7 @@ failure), then run it.
 - Atomic units inside; eV, amu and degrees only where the input keys have them.
 - Type hints on every function (optional local check: `uvx mypy tools/wave_packet_designer`).
 - Run with `uv run python -I -B` (the repository's environment); entry files set
-  `sys.dont_write_bytecode` and put their own directory on `sys.path`. Formatting and lint: ruff (pre-commit, settings in the repository's `ruff.toml`), lines up
+  `sys.dont_write_bytecode` and put their own directory on `sys.path`. Formatting and lint: ruff (pre-commit, settings in the repository's `pyproject.toml`), lines up
   to 120 characters.
 
 ## Tests

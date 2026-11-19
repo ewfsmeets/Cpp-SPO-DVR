@@ -34,7 +34,7 @@ when nvcc is found). It does not use PGO; for that, see
 ## Formatting and linting
 
 Git pre-commit hooks check every commit: clang-format (C++), ruff (Python: lint and format,
-settings in `ruff.toml`), pymarkdown (Markdown lint, settings in `.pymarkdown.yaml`) and the
+settings in `pyproject.toml`, `[tool.ruff]`), pymarkdown (Markdown lint, settings in `pyproject.toml`, `[tool.pymarkdown]`) and the
 standard checks of pre-commit-hooks (trailing whitespace, end of file, YAML and JSON syntax,
 merge-conflict markers); clang-tidy is run on demand. All versions are pinned in
 `.pre-commit-config.yaml` and installed by pre-commit itself (no system packages needed):

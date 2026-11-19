@@ -1,10 +1,12 @@
-# The Python packages that the repository's tests and tools import (tools/, and the tests CTest runs).
-# `uv sync` installs them into .venv/ in the checkout; CMake's tests use .venv/bin/python
+# The repository's Python set-up: the packages its tests and tools import, and the settings of the Python
+# and Markdown linters that pre-commit runs (.pre-commit-config.yaml).
+# `uv sync` installs the packages into .venv/ in the checkout; CMake's tests use .venv/bin/python
 # (README "Dependencies"; another Python with these packages: -DPython3_EXECUTABLE=...).
 # Not covered here: the windows of the GUI tools (each lists its packages in a PEP 723 header and runs
 # with `uv run`) and the scripts of docs/validation_thesis_fig5_3_dz/ (pandas, pymupdf).
 # The interpreter: .python-version (3.14, the system Python of the development machine; uv downloads
-# it where it is missing). ruff's settings are in ruff.toml (it takes precedence over this file).
+# it where it is missing). uv keeps that pin only there; requires-python is the oldest Python the code
+# must run on.
 [project]
 name = "cpp-spo-dvr-tools"
 version = "0.1.0"
@@ -16,3 +18,31 @@ dev = ["pytest"]
 
 [tool.uv]
 package = false
+
+# Python formatting and linting (tools/ and the docs/ scripts). A ruff.toml anywhere in the tree would take
+# precedence over this section for the files below it: keep every ruff setting here.
+[tool.ruff]
+line-length = 120              # as .clang-format ColumnLimit
+target-version = "py310"       # zip(strict=True) needs 3.10
+extend-exclude = ["*.md"]      # ruff would also format the Python code blocks in Markdown files
+# Directories whose scripts import each other: their modules are first-party (a separate import group).
+src = [
+    ".",
+    "docs/scm_open_questions",
+    "docs/validation_thesis_fig5_3_dz/scripts",
+    "tools/fortran_reference",
+    "tools/wave_packet_designer",
+]
+
+[tool.ruff.lint]
+# Syntax and pyflakes errors (E4, E7, E9, F), import order (I), likely bugs (B, flake8-bugbear).
+select = ["E4", "E7", "E9", "F", "B", "I"]
+ignore = ["E741"]              # `l` is the angular momentum quantum number in the physics scripts
+
+# Markdown lint (pymarkdown): the default rules, except these.
+[tool.pymarkdown]
+plugins.md013.enabled = false                # line length: GitHub re-wraps prose, and table rows are long by nature
+plugins.md041.enabled = false                # first line a heading: not for the generated table fragments or the README banner
+plugins.md031.list_items = false             # a blank line around a code block inside a list item would loosen the whole list
+plugins.md033.allowed_elements = "!--,a,br,details,summary,sub,sup"  # the inline HTML the docs use on purpose
+plugins.md024.siblings_only = true           # the same heading text is fine under different parents

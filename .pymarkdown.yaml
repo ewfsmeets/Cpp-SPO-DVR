@@ -1,7 +1,0 @@
-# Markdown lint settings (pymarkdown, run by pre-commit: .pre-commit-config.yaml). Default rules, except:
-plugins:
-  md013: {enabled: false}    # line length: GitHub re-wraps prose, and table rows are long by nature
-  md041: {enabled: false}    # first line a heading: not for the generated table fragments or the README banner
-  md031: {list_items: false}    # a blank line around a code block inside a list item would loosen the whole list
-  md033: {allowed_elements: "!--,a,br,details,summary,sub,sup"}    # the inline HTML the docs use on purpose
-  md024: {siblings_only: true}    # the same heading text is fine under different parents

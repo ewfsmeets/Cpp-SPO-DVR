@@ -11,14 +11,14 @@ repos:
       - id: clang-format
         types_or: [c++]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.5                     # Python lint and format; settings in ruff.toml
+    rev: v0.17.5                     # Python lint and format; settings in pyproject.toml [tool.ruff]
     hooks:
       - id: ruff-check
         args: [--fix]                # applies the safe fixes only
       - id: ruff-format
-        types_or: [python, pyi]      # not the Python blocks in Markdown (ruff.toml excludes .md too)
+        types_or: [python, pyi]      # not the Python blocks in Markdown (ruff excludes .md too)
   - repo: https://github.com/jackdewinter/pymarkdown
-    rev: v0.9.42                     # Markdown lint (reports only, fixes nothing); settings in .pymarkdown.yaml
+    rev: v0.9.42                     # Markdown lint (reports only, fixes nothing); settings in pyproject.toml [tool.pymarkdown]
     hooks:
       - id: pymarkdown
   - repo: https://github.com/pre-commit/pre-commit-hooks
