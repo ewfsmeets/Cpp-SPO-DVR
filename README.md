@@ -286,16 +286,19 @@ extensions ([reproducibility](docs/performance.md#reproducibility)).
 ### Testing
 
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                # everything (~11 min)
-OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure   # GPU tests (~1.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                          # everything (~8.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build -E RegressionPropagation --output-on-failure  # quick tier (~2.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure             # GPU tests (~1.5 min)
 ```
 
 - Run ctest serially (no `-j`): many tests already use all OpenMP threads. Set `OMP_NUM_THREADS` to
   the number of physical cores.
-- On 2026-11-18 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 825 tests, 819 pass and 6 long or
-  reference-less tests skip, 668 s; 25 GPU tests, 23 pass and the 2 long ones skip, 88 s.
-- A quicker check: `ctest --test-dir build -E Regression` leaves out the Fortran regression
-  tests (the gates).
+- The quick tier leaves out the propagation gates (gates 3 and 4 against the Fortran). Use it while
+  working on a change; run everything before committing a change to the code
+  ([when](docs/CONTRIBUTING.md#testing)).
+- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 771 tests, 765 pass and 6 long or
+  reference-less tests skip, 498 s; the quick tier 761 tests (2 skip), 148 s; 25 GPU tests, 23 pass
+  and the 2 long ones skip, 93 s.
 - The regression tests compare with Fortran output stored in the repository; they do not need the
   Fortran code. The wave-packet designer's tests need numpy and matplotlib
   ([Dependencies](#dependencies)).

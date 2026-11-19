@@ -56,10 +56,16 @@ pre-commit run clang-tidy --hook-stage manual --all-files
 
 ## Testing
 
-The commands for the whole suite and the GPU tests, with their run times and test counts (measured
-at 16bbbb4), are in the [README](../README.md#testing). Run ctest serially (no `-j`), with
-`OMP_NUM_THREADS` set to the number of physical cores.
+The commands for the whole suite, the quick tier and the GPU tests, with their run times and test
+counts (measured at 1f58b73), are in the [README](../README.md#testing). Run ctest serially (no
+`-j`), with `OMP_NUM_THREADS` set to the number of physical cores.
 
+- **Quick tier:** `ctest --test-dir build -E RegressionPropagation` runs everything but the
+  propagation gates (gates 3 and 4 against the Fortran, 23–86 s each; the regular expression
+  also leaves out their GPU twins `CudaRegressionPropagation.*`). Run it while working on a change;
+  run the full suite before every commit that touches `src/`, `tests/`, the build files or reference
+  data (the quick tier is enough for a commit of docs or Python tools only), and always before
+  merging into `main`.
 - **Partial builds:** with only some test targets built, a plain `ctest` counts every unbuilt target
   as a failure. Select with `-R`, or build everything.
 
@@ -87,14 +93,14 @@ ctest `-R`/`-E` take a regular expression on the test name; `ctest --test-dir bu
 all:
 
 ```bash
-ctest --test-dir build -E Regression           # everything except the Fortran regression tests
-ctest --test-dir build -R Gate3                # gates 3 and 4 (propagation, on-the-fly analysis)
+ctest --test-dir build -E RegressionPropagation   # quick tier: everything but the propagation gates
+ctest --test-dir build -E Regression              # everything except the Fortran regression tests
+ctest --test-dir build -R Gate3                   # gates 3 and 4 (propagation, on-the-fly analysis)
 ./build/tests/test_input --gtest_filter='Input.*'
 ```
 
 - The last line runs one test program directly (GoogleTest's own filter).
-- `-E Regression` took about 2.5 min on 2026-11-15; the wave-packet designer's tests, added since,
-  take another 88 s (`ctest -R WavePacketDesigner`, 2026-11-18).
+- The wave-packet designer's tests take about 47 s (`ctest -R WavePacketDesigner`, 2026-11-19).
 - **Suites run as one test:** ctest runs most GoogleTest cases as tests of their own, but four
   suites whose cases share an expensive set-up (a function-local static: program runs, potential
   grids) run as one test each, in one process, so the set-up is computed once:
