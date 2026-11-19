@@ -31,13 +31,16 @@ src = [
     "docs/scm_open_questions",
     "docs/validation_thesis_fig5_3_dz/scripts",
     "tools/fortran_reference",
+    "tools/plots",
     "tools/wave_packet_designer",
 ]
 
 [tool.ruff.lint]
-# Syntax and pyflakes errors (E4, E7, E9, F), import order (I), likely bugs (B, flake8-bugbear).
-select = ["E4", "E7", "E9", "F", "B", "I"]
-ignore = ["E741"]              # `l` is the angular momentum quantum number in the physics scripts
+# Syntax and pyflakes errors (E4, E7, E9, F), import order (I), likely bugs (B, flake8-bugbear); and for the
+# plot tool only, docstrings (D1) and type hints (ANN) on every module and function (tools/plots/README.md).
+select = ["E4", "E7", "E9", "F", "B", "I", "D1", "ANN"]
+ignore = ["E741", "ANN401"]    # `l` is the angular momentum quantum number; Any where a value can be anything
+per-file-ignores = {"!tools/plots/**" = ["D1", "ANN"]}
 
 # Markdown lint (pymarkdown): the default rules, except these.
 [tool.pymarkdown]
