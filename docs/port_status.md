@@ -72,7 +72,7 @@ Ported:
 | `HardWallPES` | test potential: a 1/Z⁴ wall on an H₂ curve in r, without x, y, θ, φ dependence | **ported** | [validation](validation.md#gates) |
 | `H2Cu111DaiLight` | H₂/Cu(111): the analytic LEPS PES of Dai and Zhang (J. Chem. Phys. 102, 6280 (1995); the DZ PES of the thesis), called Dai–Light in the Fortran and in the test and case names | **ported** | [validation](validation.md#gates) |
 | `H2Cu111Persson` | H₂/Cu(111): analytic LEPS of Persson et al. (J. Chem. Phys. 110, 2240 (1999); the ER PES of the thesis, ER = Eley–Rideal) | **ported** (a lattice-period quirk kept) | [fortran_deviations: Persson PES quirk](fortran_deviations.md#persson-pes-quirk) |
-| `CRPlibrary` (`CRPlibDataSet`) | any C3v, C4v or C6v data set of the CRP library of M. Wijzenbroek | **ported** ([deviations](fortran_deviations.md#crp-library-srccrplib-systemid-crplibrary)) | [crp_library](crp_library.md) |
+| `CRPlibrary` (`CRPlibDataSet`) | any C3v, C4v or C6v data set of the Fortran CRP library (M. Wijzenbroek's implementation of the corrugation reducing procedure of Olsen et al., J. Chem. Phys. 116, 3841 (2002)) | **ported** ([deviations](fortran_deviations.md#crp-library-srccrplib-systemid-crplibrary)) | [crp_library](crp_library.md) |
 | `CRPDistrtSurface` (`CRPlibDataSet` and the SCM keys; new in 5.20) | a CRP data set plus the static corrugation model (SCM) of one snapshot of a distorted slab | **ported** (position files v2/v3 only, SCM D5; [SCM deviations](fortran_deviations.md#scm-distorted-surface-pes-srcpotentialscm-systemid-crpdistrtsurface)) | [scm](scm.md), [keys](input_schema.md#scm-keys-systemid-crpdistrtsurface) |
 
 Not ported: each of these SystemIDs is an input error. The four marked `PESMixingAlfa` take that

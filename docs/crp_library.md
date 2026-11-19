@@ -2,7 +2,8 @@
 
 A C++ port of the Fortran CRP library of M. Wijzenbroek (`CRPlibrary.dir/` of the Fortran code):
 potential energy surfaces of a diatomic molecule at a surface from ab-initio data, interpolated
-with the Corrugation Reducing Procedure (CRP). In SPO-DVR it is the PES of `SystemID` `CRPlibrary`
+with the Corrugation Reducing Procedure (CRP; R. A. Olsen, H. F. Busnengo, A. Salin, M. F. Somers, G. J. Kroes and E. J. Baerends, J. Chem. Phys. 116, 3841 (2002),
+[doi:10.1063/1.1446852](https://doi.org/10.1063/1.1446852)). In SPO-DVR it is the PES of `SystemID` `CRPlibrary`
 and the ideal-surface part of `CRPDistrtSurface` ([scm.md](scm.md)); in both the input key
 `CRPlibDataSet` names the data set ([input_schema.md](input_schema.md)).
 

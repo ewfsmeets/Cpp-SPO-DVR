@@ -66,7 +66,7 @@ during the run and as a fine analysis afterwards.
 |---|---|
 | `H2Cu111DaiLight` | H₂/Cu(111): the LEPS PES of Dai and Zhang (the "DZ PES"; the Fortran calls it Dai–Light) |
 | `H2Cu111Persson` | H₂/Cu(111): the LEPS PES of Persson et al. (the "ER PES"; ER = Eley–Rideal) |
-| `CRPlibrary` | any C3v, C4v or C6v data set of M. Wijzenbroek's library for the corrugation reducing procedure (CRP); included: H₂/Cu(111) SRP48 ([docs/crp_library.md](docs/crp_library.md)) |
+| `CRPlibrary` | a PES interpolated with the corrugation reducing procedure (CRP; Olsen et al. 2002): any C3v, C4v or C6v data set of the Fortran CRP library (implemented by M. Wijzenbroek); included: H₂/Cu(111) SRP48 ([docs/crp_library.md](docs/crp_library.md)) |
 | `CRPDistrtSurface` | a CRP data set plus the SCM correction of one distorted surface; a surface temperature needs an average over many runs, outside the program ([docs/scm.md](docs/scm.md); [open questions](docs/scm_open_questions.md)) |
 | `HardWallPES` | a test potential that depends only on Z and r |
 
@@ -580,6 +580,10 @@ surface you used:
 - **The potential:**
   - DZ: J. Dai and J. Z. H. Zhang, J. Chem. Phys. 102, 6280 (1995);
   - ER: Persson et al., J. Chem. Phys. 110, 2240 (1999);
+  - CRP (`CRPlibrary`, and the ideal surface of `CRPDistrtSurface`): the method,
+    R. A. Olsen, H. F. Busnengo, A. Salin, M. F. Somers, G. J. Kroes and E. J. Baerends, J. Chem.
+    Phys. 116, 3841 (2002), [doi:10.1063/1.1446852](https://doi.org/10.1063/1.1446852), and the paper
+    of your data set;
   - the included CRP data set (SRP48): A. Mondal et al., J. Phys. Chem. A 117, 8770 (2013),
     [doi:10.1021/jp4042183](https://doi.org/10.1021/jp4042183);
   - SCM: M. Wijzenbroek and M. F. Somers, J. Chem. Phys. 137, 054703 (2012),

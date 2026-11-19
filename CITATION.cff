@@ -51,3 +51,20 @@ references:
     year: 2005
     month: 6
     doi: 10.1142/S0219633605001647
+  - type: article
+    authors:
+      - {family-names: Olsen, given-names: R. A.}
+      - {family-names: Busnengo, given-names: H. F.}
+      - {family-names: Salin, given-names: A.}
+      - {family-names: Somers, given-names: M. F.}
+      - {family-names: Kroes, given-names: G. J.}
+      - {family-names: Baerends, given-names: E. J.}
+    title: "Constructing accurate potential energy surfaces for a diatomic molecule interacting with a solid surface: H2+Pt(111) and H2+Cu(100)"
+    journal: "The Journal of Chemical Physics"
+    volume: 116
+    issue: 9
+    start: 3841
+    end: 3855
+    year: 2002
+    month: 3
+    doi: 10.1063/1.1446852
