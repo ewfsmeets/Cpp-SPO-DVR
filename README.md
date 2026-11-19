@@ -294,8 +294,8 @@ extensions ([reproducibility](docs/performance.md#reproducibility)).
 ### Testing
 
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                                      # everything (~10 min)
-OMP_NUM_THREADS=8 ctest --test-dir build -E 'RegressionPropagation|PlotRuns' --output-on-failure  # quick tier (~2.5 min)
+OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                                      # everything (~13 min)
+OMP_NUM_THREADS=8 ctest --test-dir build -E 'RegressionPropagation|PlotRuns' --output-on-failure  # quick tier (~3 min)
 OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure                         # GPU tests (~1.5 min)
 ```
 
@@ -305,9 +305,10 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure       
   tool's runs (`PlotRuns.*`). Use it while
   working on a change; run everything before committing a change to the code
   ([when](docs/CONTRIBUTING.md#testing)).
-- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 780 tests, 774 pass and 6 long or
-  reference-less tests skip, about 500 s; the quick tier 770 tests (2 skip), about 150 s; 25 GPU tests,
-  23 pass and the 2 long ones skip, about 90 s.
+- On 2026-11-19 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 792 tests, 786 pass and 6 long or
+  reference-less tests skip, about 760 s (of which the propagation gates 365 s and the plot tool's
+  runs and tests 220 s); the quick tier 774 tests (2 skip), about 175 s; 25 GPU tests, 23 pass and the 2
+  long ones skip, about 90 s.
 - The regression tests compare with Fortran output stored in the repository; they do not need the
   Fortran code. The Python tests (the tools' and the wave-packet designer's, `ctest -L python`) run
   with pytest in the repository's environment ([Dependencies](#dependencies)).
@@ -411,6 +412,20 @@ Start it with a *different* `--output-dir`.
   the stored set-up parameters exactly, and the fast-math builds compute one of them (the effective
   `ZOptFactor`) 1 ulp (unit in the last place) differently. Files in the Fortran format carry no parameter list and work
   across builds.
+
+### Plotting a run
+
+`tools/plots/` draws the figures of a run (or of every segment of a restarted one) from its output files,
+and writes a report that opens with a verdict on the run's completeness and convergence. It runs in the
+repository's Python environment (`uv sync`, [Dependencies](#dependencies)); for the run of the
+[Quick start](#quick-start):
+
+```bash
+uv run python -I -B tools/plots/spodvr_plot.py report runs/hardwall_small --out runs/hardwall_small/report
+uv run python -I -B tools/plots/spodvr_plot.py verdict runs/hardwall_small    # the verdict only
+```
+
+The figures, the verdict's findings and how to add a plot: [tools/plots/README.md](tools/plots/README.md).
 
 ## Inputs
 
@@ -569,6 +584,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 | [docs/scm.md](docs/scm.md), [docs/scm_open_questions.md](docs/scm_open_questions.md) | the SCM potential; its open physics questions |
 | [docs/flux_analysis_findings.md](docs/flux_analysis_findings.md) | why the flux analysis is not ported |
 | [tools/wave_packet_designer/README.md](tools/wave_packet_designer/README.md) | the wave-packet designer |
+| [tools/plots/README.md](tools/plots/README.md) | the plots and the report of a run |
 | [tools/fortran_reference/README.md](tools/fortran_reference/README.md) | building the Fortran reference and regenerating the reference data |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | build variants, the test suite in detail, formatting and linting, the repository layout |
 

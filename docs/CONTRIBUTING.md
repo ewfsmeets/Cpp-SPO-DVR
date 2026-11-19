@@ -57,7 +57,7 @@ pre-commit run clang-tidy --hook-stage manual --all-files
 ## Testing
 
 The commands for the whole suite, the quick tier and the GPU tests, with their run times and test
-counts (measured at 1f58b73), are in the [README](../README.md#testing). Run ctest serially (no
+counts (measured on 2026-11-19, with the plot tool's tests), are in the [README](../README.md#testing). Run ctest serially (no
 `-j`), with `OMP_NUM_THREADS` set to the number of physical cores.
 
 - **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` runs everything but
@@ -65,8 +65,8 @@ counts (measured at 1f58b73), are in the [README](../README.md#testing). Run cte
   also leaves out their GPU twins `CudaRegressionPropagation.*`) and the plot tool's runs and the tests
   that read them (`PlotRuns.*`, about 160 s for the runs). Run it while working on a change;
   run the full suite before every commit that touches `src/`, `tests/`, the build files or reference
-  data (the quick tier is enough for a commit of docs or Python tools only), and always before
-  merging into `main`.
+  data (the quick tier is enough for a commit of docs or Python tools only; for a change to
+  `tools/plots` add `ctest -R '^(PlotRuns|Plots)\.'`), and always before merging into `main`.
 - **Worktrees:** a fresh checkout or `git worktree` needs its own `uv sync` before the configure with
   tests (or `-DPython3_EXECUTABLE=` the main checkout's `.venv/bin/python`).
 - **Partial builds:** with only some test targets built, a plain `ctest` counts every unbuilt target
@@ -83,12 +83,15 @@ counts (measured at 1f58b73), are in the [README](../README.md#testing). Run cte
       --rootdir=tools/fortran_reference tools/fortran_reference
   uv run python -I -B -m pytest -c tools/wave_packet_designer/pytest.ini \
       --rootdir=tools/wave_packet_designer tools/wave_packet_designer
+  uv run python -I -B -m pytest -c tools/plots/pytest.ini --rootdir=tools/plots tools/plots \
+      --fixture-runs=build/tests/plot_fixtures
   ```
 
   Registration (`add_pytest_test` in `tests/CMakeLists.txt`): the designer is registered per module, so
   a new test function needs nothing and a new module one line; `tools/compare` and
   `tools/fortran_reference` per test function (their ctest names predate pytest), so a new function
-  needs one line; a registration inside an `if()` also needs a `note_pytest_not_built` line in its
+  needs one line; the plot tool's modules are found by a glob (`tools/plots/tests/test_*.py`), so a new
+  module needs nothing; a registration inside an `if()` also needs a `note_pytest_not_built` line in its
   `else()`. `Python.EveryTestRegistered` fails while a collected test has no ctest or two.
 
 ### What is tested
@@ -109,6 +112,11 @@ counts (measured at 1f58b73), are in the [README](../README.md#testing). Run cte
   twin) check the program's grid indices and memory estimates against the designer's
   `expected_cases.json`: when they fail, the designer's copy needs updating
   ([how](../tools/wave_packet_designer/README.md#the-drift-guard-expected_casesjson)).
+- the plot tool (`tools/plots/`, Python): `Plots.<module>` for its tests without run data, and
+  `PlotRuns.<module>` for those that read real runs: the C++ test `PlotRuns.Fixtures`
+  (`tests/test_plot_fixtures.cpp`) writes small runs with the current program into
+  `build/tests/plot_fixtures` (ctest runs it first), so a changed output format fails the tool's
+  readers ([tests](../tools/plots/README.md#tests)).
 
 ### Selecting tests
 
@@ -216,7 +224,7 @@ scripts, not by ctest.
 |---|---|
 | `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend), `crplib/` (the CRP library port), `fortran_text/` (the Fortran list-directed reader shared by `crplib/` and the SCM code) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`, `tests/crplib/reference/`, `tests/scm/reference/`) |
-| `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker, the wave-packet designer (`wave_packet_designer/`, Python) |
+| `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker, the wave-packet designer (`wave_packet_designer/`, Python), the plots of a run (`plots/`, Python) |
 | `docs/` | the documentation (the [README's table](../README.md#documentation)), including the production-grid validation record (`validation_thesis_fig5_3_dz/`) |
 | `inputs/` | example inputs |
 | `potentials/` | data files of the Fortran potentials, one directory per system (verbatim copy of `potential.dir` of the upstream Fortran repository) |

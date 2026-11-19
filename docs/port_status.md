@@ -189,3 +189,4 @@ per system.
 | Build variants (`SPODVR_FAST_MATH`, PGO) | optional faster builds; the default build is strict floating point without FMA | [performance](performance.md#build-options-cmake) |
 | Checking tools | compare the final wave packet of two builds or devices; check a wave packet; regenerate and compare the Fortran references | [CONTRIBUTING](CONTRIBUTING.md#testing), [fortran_reference](../tools/fortran_reference/README.md) |
 | Wave-packet designer (`tools/wave_packet_designer/`) | designs and checks the Z and r part of an input before any run: grids, wave packet, absorbers, memory | [README](../tools/wave_packet_designer/README.md) |
+| Plots of a run (`tools/plots/`) and `run_info.json` | figures and a report of a finished run (restart segments joined), opened by a verdict on its completeness and convergence; every run writes its metadata for them | [README](../tools/plots/README.md), [output_files](output_files.md#run-metadata) |
