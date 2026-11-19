@@ -167,6 +167,9 @@ struct InputParameters {
   std::string restart_format = "native";   // RestartFormat: native | fortran (fort.8 + fort.22)
   std::string checkpoint_format = "native";  // CheckpointFormat: native | fortran | both
 
+  // --- plot data (C++ only; output switches, not restart parameters; docs/output_files.md) ------
+  bool write_densities = false;  // writeDensities: densities/, the probability per (Z, r) cell every dtAve
+
   // --- tolerances -------------------------------------------------------------------------
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)
 };

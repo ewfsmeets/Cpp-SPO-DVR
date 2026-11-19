@@ -324,6 +324,8 @@ check (`draw_window` in `tests/test_plots.py`).
   - the flux-analysis input checks (a propagating run with `doFluxAnalysis` stops anyway; the tool
     reports that);
   - the restart-directory check;
+  - the checks of the plot-data keys (`src/input/validate_outputs.cpp`, e.g. `writeDensities` only in a
+    propagating run); the designer does not model the plot data;
   - the checks of `make_angular_grid` (`src/grids/angular_grid.cpp`): those on JIn, JMax, MJIn and MJMax
     repeat checks of `validate_input`, and the two on the number of φ points hold by construction (it is
     the nearest valid FFT size ≥ 2·MJMax+1).

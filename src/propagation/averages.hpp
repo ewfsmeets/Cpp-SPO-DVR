@@ -29,6 +29,16 @@ struct Averages {
 [[nodiscard]] Averages compute_averages(double time, std::span<const double> densities, const SpecularWave& specular,
                                         const Config& config, const SpatialGrids& grids, int analysis_surface_index);
 
+// The probability in every (Z, r) cell, the terms whose sum is the averages' norm: on the scattering grid
+// density * dZ * dr * xy volume element ((nz, nr), izr = ir + nr iz), on the specular grid |chi|^2 * dZ * dr
+// ((nz_specular, nr), ir fastest). densities: block_densities of the scattering wave.
+struct CellProbabilities {
+  std::vector<double> scattering;
+  std::vector<double> specular;
+};
+[[nodiscard]] CellProbabilities cell_probabilities(std::span<const double> densities, const SpecularWave& specular,
+                                                   const Config& config);
+
 // The same for a wave packet in host memory.
 [[nodiscard]] Averages compute_averages(double time, const WavePacket& psi, const Config& config,
                                         const SpatialGrids& grids, int analysis_surface_index);

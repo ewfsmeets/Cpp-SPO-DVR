@@ -2,6 +2,7 @@
 // inputs, written by the current program into SPODVR_PLOT_FIXTURES_DIR. One ctest in one process
 // (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
 // directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
+// Every propagating fixture writes the plot data (writeDensities: densities/).
 //   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
 //   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
 //   dailight_oblique          cu111_dailight_small with nX = nY = 4, JMax = MJMax = 2, EParallel 0.1 eV at
@@ -78,6 +79,7 @@ nlohmann::json hardwall_tiny() {
   json["alsoAnalysis"] = true;
   json["writeProbs"] = true;
   json["writeRDProbs"] = true;
+  json["writeDensities"] = true;
   return with_times(json, 0.0, 10000.0);
 }
 
@@ -95,6 +97,7 @@ nlohmann::json dailight_oblique() {
   json["ZOptStart"] = 10.16;
   json["ZOptEnd"] = 13.28;
   json["alsoAnalysis"] = true;
+  json["writeDensities"] = true;
   return with_times(json, 0.0, dailight_t_end);
 }
 
@@ -124,7 +127,7 @@ double time_of_minimum_z(const fs::path& averages) {
 void expect_run_files(const fs::path& dir) {
   for (const char* name :
        {"run_info.json", "averages.dat", "bk_coefficients.bin", "checkpoint.bin", "scattering_summary.tsv",
-        "s_matrix.tsv", "gas_phase_states.dat", "asymptotic_potential.dat"})
+        "s_matrix.tsv", "gas_phase_states.dat", "asymptotic_potential.dat", "densities/times.bin"})
     EXPECT_TRUE(fs::exists(dir / name)) << dir / name;
   EXPECT_TRUE(fs::exists(dir / "fine_analysis")) << dir;
 }
@@ -177,6 +180,7 @@ TEST(PlotRuns, PotentialOnly) {
   nlohmann::json json = hardwall_tiny();
   json["Potential"] = true;
   json.erase("alsoAnalysis");
+  json.erase("writeDensities");  // a potential-only run writes no plot data
   const fs::path dir = fixtures_dir / "potential_only";
   ASSERT_EQ(run(json, dir), 0);
   EXPECT_TRUE(fs::exists(dir / "run_info.json"));

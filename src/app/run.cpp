@@ -40,6 +40,7 @@
 #include "propagation/propagation.hpp"
 #include "report/analysis_files.hpp"
 #include "report/analysis_report.hpp"
+#include "report/densities_files.hpp"
 #include "report/fine_analysis_report.hpp"
 #include "report/potential_report.hpp"
 #include "report/propagation_report.hpp"
@@ -193,8 +194,10 @@ struct BkOutput {
 // Fortran: Main.f90 from SetupRDBasis to StateToStateProbs
 void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
                      const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
-                     const std::filesystem::path& output_dir, Device device) {
-  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft, backend_factory(device));
+                     const std::filesystem::path& output_dir, Device device,
+                     const std::optional<BackendFactory>& backend) {
+  WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft,
+                                    backend ? *backend : backend_factory(device));
   print_propagation_setup(out, style, grids, propagation);
   print_analysis_setup(out, style, config, propagation.analysis_basis(), propagation.analysis_energies());
 
@@ -226,6 +229,14 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
     bk_out.append(time, bk);
     table.print_status(time);
   };
+  std::optional<DensitiesFiles> densities;  // writeDensities: the averages' own densities, every dtAve
+  if (p.write_densities) {
+    densities.emplace(output_dir, config, grids);
+    observer.on_average_densities = [&](const Averages& a, std::span<const double> block_densities,
+                                        const SpecularWave& specular, int surface_index) {
+      densities->append(a, cell_probabilities(block_densities, specular, config), surface_index);
+    };
+  }
   propagation.run(observer);
   table.finish();
 
@@ -248,6 +259,7 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   out << ", " << bk_file;
   if (write_native) out << ", " << checkpoint_file;
   if (write_fortran) out << ", " << fortran_bk_file << ", " << fortran_wave_function_file;
+  if (densities) out << ", densities/";
   out << '\n';
 }
 
@@ -287,7 +299,7 @@ BkInput analysis_input(const Config& config) {
 
 // Fortran: Main.f90 (new runs, restarts, analysis-only and potential-only runs).
 int run_program(const CommandLine& command_line, std::ostream& out, std::ostream& err, bool color,
-                const ProgramInfo& program) {
+                const ProgramInfo& program, const std::optional<BackendFactory>& backend) {
   const Style style{color};
   try {
     if (command_line.threads) omp_set_num_threads(*command_line.threads);
@@ -370,6 +382,10 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     write_run_info(run_info_dir / "run_info.json", config, grids, angular, program, command_line.input_file,
                    std::cref(gas));
     out << "\n  Data files written to " << command_line.output_dir.string() << "\n";
+    // Plot data (writeDensities, ...): its projected size, refused when the output file system lacks room.
+    const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids);
+    check_free_space(plot_data, std::filesystem::space(command_line.output_dir).available);
+    print_plot_data(out, style, plot_data);
 
     if (config.derived.run_mode == 6) {
       out << '\n' << style.emphasis("Potential-only run finished.") << '\n';
@@ -382,7 +398,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     }
 
     run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir,
-                    device);
+                    device, backend);
     // alsoAnalysis: the fine analysis of the BK file this run has just written (the
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)

@@ -199,6 +199,7 @@ add_library(spodvr_core
   src/core/system_memory.cpp
   src/input/json_input.cpp
   src/input/validate.cpp
+  src/input/validate_outputs.cpp
   src/input/process.cpp
   src/input/wave_packet_params.cpp
   src/fft/fft_sizes.cpp
@@ -228,6 +229,7 @@ add_library(spodvr_core
   src/analysis/fine_analysis.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp
+  src/io/series_writer.cpp
   src/io/fortran_unformatted.cpp
   src/io/fortran_files.cpp
   src/potential/hard_wall_potential.cpp
@@ -251,6 +253,7 @@ add_library(spodvr_core
   src/report/analysis_report.cpp
   src/report/analysis_files.cpp
   src/report/run_info_file.cpp
+  src/report/densities_files.cpp
   src/report/fine_analysis_report.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)

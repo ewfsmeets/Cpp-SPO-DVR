@@ -30,6 +30,7 @@ src = [
     ".",
     "docs/scm_open_questions",
     "docs/validation_thesis_fig5_3_dz/scripts",
+    "tools/compare",
     "tools/fortran_reference",
     "tools/plots",
     "tools/wave_packet_designer",

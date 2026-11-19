@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <span>
 #include <vector>
 
 #include "analysis/analysis_basis.hpp"
@@ -25,10 +26,15 @@
 namespace spodvr {
 
 // Callbacks of the time loop (unset ones are skipped): the averages at tStart and every nave
-// analysis steps; the time and Z at which the dynamic specular analysis surface becomes fixed; the BK
-// coefficients of every analysis step with the time at its end.
+// analysis steps; with them the data they are computed from (writeDensities: the block densities of the
+// scattering wave in izr order, the specular wave and the analysis-surface index; no extra work, the
+// densities are computed once for both); the time and Z at which the dynamic specular analysis surface
+// becomes fixed; the BK coefficients of every analysis step with the time at its end.
 struct PropagationObserver {
   std::function<void(const Averages&)> on_averages;
+  std::function<void(const Averages&, std::span<const double> block_densities, const SpecularWave& specular,
+                     int surface_index)>
+      on_average_densities;
   std::function<void(double time, double z)> on_surface_fixed;
   std::function<void(double time, const BkCoefficients&)> on_analysis_step;
 };
@@ -70,7 +76,8 @@ class WavePacketPropagation {
   [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(); }
 
  private:
-  [[nodiscard]] Averages averages(double time) const;
+  // The averages at `time` for the observer (and the densities they come from, when it asks for them).
+  void report_averages(double time, const PropagationObserver& observer) const;
 
   // Declaration order = construction order (the backend references basis_ and tables_).
   const Config& config_;

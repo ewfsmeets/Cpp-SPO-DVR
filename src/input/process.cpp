@@ -11,6 +11,7 @@
 #include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "input/validate.hpp"
+#include "input/validate_outputs.hpp"
 #include "input/wave_packet_params.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/scm/scm_crp_potential.hpp"
@@ -162,6 +163,7 @@ Config build_config(const InputParameters& input) {
   validate_input(config.input, d.system, d.z_asymptotic);
   process_input(config.input, d);
   miscellaneous_setup(config.input, d);
+  validate_output_keys(config);
   return config;
 }
 

@@ -12,20 +12,13 @@
 #include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fft_sizes.hpp"
+#include "input/validation_helpers.hpp"
 #include "potential/potential_factory.hpp"
 
 namespace spodvr {
 
-namespace {
-
-void check(bool violated, std::string_view parameter, const std::string& message) {
-  if (violated) throw InputError(std::string(parameter), message);
-}
-
-// Fortran NINT: round half away from zero.
-double nint(double x) { return static_cast<double>(std::lround(x)); }
-
-}  // namespace
+using validation::check;
+using validation::nint;
 
 // Fortran: InputNew.f90 ValidateInput. The checks appear in the same order and with the same
 // messages (a few message typos are corrected, two flux analysis checks are fixed: flux Q1,

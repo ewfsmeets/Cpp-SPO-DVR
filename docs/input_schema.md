@@ -116,6 +116,19 @@ parameter file, and a restart or analysis-only run with others is refused naming
 compared through these statistics, not atom by atom; the data set is not checked. The Fortran-format files (fort.8/fort.9, fort.21/fort.22)
 hold no parameters, so a restart from them checks none of this.
 
+## Plot data keys (C++ only)
+
+These keys write extra data for the plot tool (`tools/plots/README.md`). They are output switches, not
+restart parameters: a restart may set them differently from the run it continues.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `writeDensities` | bool | false | write `densities/` (output_files.md, "Series directories"): the probability per (Z, r) cell of the scattering and of the specular wave at tStart and every dtAve. Propagating runs only (`NewCalc` true, or a restart); refused with `Potential` or `onlyAnalysis`. It adds no computation to the time loop: the records are the densities the averages already compute, written once per averages row |
+
+The set-up prints a "PLOT DATA" section with the projected size of each plot-data directory. A run
+whose plot data would not fit in the free space of the output directory's file system stops before the
+propagation (exit code 2), naming the key whose directory is the largest.
+
 ## Not supported
 
 These keys give a "not supported" error. Logical keys are accepted when set to `false`. The list

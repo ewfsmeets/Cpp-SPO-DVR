@@ -81,4 +81,19 @@ Averages compute_averages(double time, std::span<const double> density, const Sp
   return a;
 }
 
+// The terms of compute_averages' norm per cell, with its volume elements (Fortran: intVolScat, intVolSpec).
+CellProbabilities cell_probabilities(std::span<const double> densities, const SpecularWave& specular,
+                                     const Config& config) {
+  const InputParameters& p = config.input;
+  const double volume_scat = p.dz * p.dr * config.derived.xy_volume_element;
+  const double volume_spec = p.dz * p.dr;
+  CellProbabilities cells;
+  cells.scattering.reserve(densities.size());
+  for (const double density : densities) cells.scattering.push_back(density * volume_scat);
+  cells.specular.reserve(static_cast<std::size_t>(specular.n_z()) * p.nr);
+  for (int iz = 0; iz < specular.n_z(); ++iz)
+    for (int ir = 0; ir < p.nr; ++ir) cells.specular.push_back(abs_squared(specular(ir, iz)) * volume_spec);
+  return cells;
+}
+
 }  // namespace spodvr

@@ -211,6 +211,24 @@ against it); it also lists numbers repeated across docs (report-only). ctest run
 - The final wave packet of two builds, or of the CPU and the GPU: `spodvr_dump_wave` and
   `spodvr_compare_wave` ([performance.md](performance.md)).
 
+### Additions to the time loop
+
+Everything added to the propagation loop (a reduction of ψ, a copy, a file write) is switched on by an
+input key, and switched off it costs nothing measurable: no allocation, no backend call, only a test per
+analysis step or averages row. Two checks show it:
+
+- `TimeLoopCalls.*` (`tests/test_time_loop_calls.cpp`; on the GPU `CudaTimeLoopCalls.*`) runs the
+  program through `run_program` with a backend that counts its calls (`tests/counting_backend.hpp`) and
+  asserts each count, without the plot keys (the counts of the plain time loop) and with each of them. A
+  hidden pass over ψ fails it, whatever the timing noise; a new key adds its case.
+- `tools/benchmark/compare_speed.sh --base-build DIR --new-build DIR [--cuda] [--steps N]
+  [--repetitions R]` runs two existing builds alternately without plot keys (5 runs each by default)
+  on the benchmark's medium grid (8 threads, 50 steps) or, with `--cuda`, on the thesis DZ input on the
+  GPU (40 steps). It passes when the new build's median "Propagation time" is at most max(1 %, the
+  spread of the runs) slower and its host peak memory at most 16 MiB larger; GPU memory is not measured
+  (`tools/compare/compare_speed.py`, tested by `ctest -R CompareSpeed`). It builds nothing: give it the
+  build of the base commit and the new one.
+
 ### Production-grid validation
 
 Beyond the gates, the full thesis calculation (`inputs/thesis_fig5_3_dz`, 7000 steps) was run with

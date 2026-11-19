@@ -507,6 +507,19 @@ TEST(Input, LowZAbsorberStrengths) {
   }
 }
 
+// writeDensities in a new run (and in a restart, the other propagating mode) is accepted.
+TEST(Input, WriteDensitiesInAPropagatingRun) {
+  Json json = reference_json();
+  json["writeDensities"] = true;
+  EXPECT_TRUE(build(json).input.write_densities);
+  const double duration = json["tEnd"].get<double>() - json["tStart"].get<double>();
+  json["NewCalc"] = false;
+  json["RestartDir"] = "earlier";
+  json["tStart"] = 1000.0;
+  json["tEnd"] = 1000.0 + duration;
+  EXPECT_TRUE(build(json).input.write_densities);
+}
+
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
   std::string name;
@@ -560,6 +573,12 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"tStartNew", [](Json& j) { j["tStart"] = 10.0; j["tEnd"] = 14010.0; }, "tStart"},
         Violation{"tStartRestart", [](Json& j) { j["NewCalc"] = false; }, "tStart"},
         Violation{"OnlyAnalysisNeedsRestartDir", [](Json& j) { j["onlyAnalysis"] = true; }, "RestartDir"},
+        // Plot data (validate_outputs.cpp): only a propagating run writes them.
+        Violation{"WriteDensitiesPotentialOnly", [](Json& j) { j["Potential"] = true; j["writeDensities"] = true; },
+                  "writeDensities"},
+        Violation{"WriteDensitiesAnalysisOnly",
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writeDensities"] = true; },
+                  "writeDensities"},
         Violation{"tEnd", [](Json& j) { j["tEnd"] = 14002.0; }, "tEnd"},
         Violation{"dtStep", [](Json& j) { j["dtStep"] = 0.0; j["nStep"] = 0; j["tEnd"] = 0.0; }, "dtStep"},
         Violation{"nStep", [](Json& j) { j["nStep"] = -1; j["tEnd"] = -2.0; }, "tEnd"},

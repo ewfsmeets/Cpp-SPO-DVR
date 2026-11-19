@@ -20,8 +20,13 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
       balint_kurti_(config, grids, analysis_basis_, gas, tables_, fft),
       s_matrix_(config, analysis_basis_, gas) {}
 
-Averages WavePacketPropagation::averages(double time) const {
-  return compute_averages(time, backend_->block_densities(), backend_->specular(), config_, grids_, surface_.index());
+void WavePacketPropagation::report_averages(double time, const PropagationObserver& observer) const {
+  if (!observer.on_averages && !observer.on_average_densities) return;
+  const std::vector<double> densities = backend_->block_densities();
+  const SpecularWave& specular = backend_->specular();
+  const Averages averages = compute_averages(time, densities, specular, config_, grids_, surface_.index());
+  if (observer.on_averages) observer.on_averages(averages);
+  if (observer.on_average_densities) observer.on_average_densities(averages, densities, specular, surface_.index());
 }
 
 // Fortran: Main.f90 DO propStep = nanspo, nstep, nanspo
@@ -30,10 +35,7 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
   const int n_per_analysis = config_.derived.steps_per_analysis;
   const int n_per_average = config_.derived.analyses_per_average;
 
-  auto report_averages = [&](double time) {
-    if (observer.on_averages) observer.on_averages(averages(time));
-  };
-  report_averages(p.t_end - p.n_steps * p.time_step);
+  report_averages(p.t_end - p.n_steps * p.time_step, observer);
 
   int analysis_count = 0;
   for (int step = n_per_analysis; step <= p.n_steps; step += n_per_analysis) {
@@ -50,7 +52,7 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
     if (observer.on_analysis_step) observer.on_analysis_step(time, bk);
 
     analysis_count = analysis_count + 1;
-    if (analysis_count % n_per_average == 0) report_averages(time);
+    if (analysis_count % n_per_average == 0) report_averages(time, observer);
   }
 }
 

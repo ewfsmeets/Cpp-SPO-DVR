@@ -242,6 +242,23 @@ TEST(CudaBackend, CopiesAreExactAndDensitiesMatchTheCpu) {
   for (std::size_t i = 0; i < da.size(); ++i) EXPECT_NEAR(db[i], da[i], 1e-14 * da[i]) << "izr = " << i;
 }
 
+// densities/ (writeDensities) of the same wave packet: the specular cells are bitwise equal (an exact copy),
+// the scattering cells come from block_densities() (CUDA hypot) and agree to 1e-14 each.
+TEST(CudaBackend, DensityRecordsOfTheSameWaveMatchTheCpu) {
+  SPODVR_REQUIRE_GPU();
+  const BackendSetup s("cu111_dailight_short");
+  const auto cpu = s.cpu();
+  const auto gpu = s.gpu();
+  load_random(*cpu);
+  load_random(*gpu);
+  const CellProbabilities a = cell_probabilities(cpu->block_densities(), cpu->specular(), s.config);
+  const CellProbabilities b = cell_probabilities(gpu->block_densities(), gpu->specular(), s.config);
+  EXPECT_EQ(a.specular, b.specular);
+  ASSERT_EQ(a.scattering.size(), b.scattering.size());
+  for (std::size_t i = 0; i < a.scattering.size(); ++i)
+    EXPECT_NEAR(b.scattering[i], a.scattering[i], 1e-14 * a.scattering[i]) << "izr = " << i;
+}
+
 // The hard wall (no coupling between theta, phi, x, y): every stage on a random wave packet.
 TEST(CudaBackend, AnalysisStepMatchesTheCpuHardWall) {
   SPODVR_REQUIRE_GPU();

@@ -228,6 +228,16 @@ add_pytest_test(NAME ComparePropagation.FileWithoutRowsRefused TOOL tools/compar
                 SELECT test_compare_averages.py::test_rows)
 add_pytest_test(NAME ComparePropagation.BadToleranceIsUsageError TOOL tools/compare
                 SELECT test_compare_averages.py::test_arguments)
+# The speed comparison of tools/benchmark/compare_speed.sh (tools/compare/test_compare_speed.py).
+add_pytest_test(NAME CompareSpeed.EqualBuildsPass TOOL tools/compare SELECT test_compare_speed.py::test_equal_builds_pass)
+add_pytest_test(NAME CompareSpeed.SlowerThanTheBoundFails TOOL tools/compare
+                SELECT test_compare_speed.py::test_slower_than_the_bound_fails)
+add_pytest_test(NAME CompareSpeed.NoisyRunsWidenTheBound TOOL tools/compare
+                SELECT test_compare_speed.py::test_noisy_runs_widen_the_bound)
+add_pytest_test(NAME CompareSpeed.FasterBuildPasses TOOL tools/compare SELECT test_compare_speed.py::test_faster_build_passes)
+add_pytest_test(NAME CompareSpeed.MoreMemoryFails TOOL tools/compare SELECT test_compare_speed.py::test_more_memory_fails)
+add_pytest_test(NAME CompareSpeed.UnreadableLogsAreRefused TOOL tools/compare
+                SELECT test_compare_speed.py::test_unreadable_logs_are_refused)
 
 # The wave-packet designer (tools/wave_packet_designer, numpy and matplotlib): one ctest per test module.
 # They compare the designer's copies of the program's rules with the C++ (key table, check list, grid

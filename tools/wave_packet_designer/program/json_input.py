@@ -130,6 +130,7 @@ OPTIONAL_KEYS = (
     InputKey("RestartDir", STRING, "restart_dir"),
     InputKey("RestartFormat", STRING, "restart_format"),
     InputKey("CheckpointFormat", STRING, "checkpoint_format"),
+    InputKey("writeDensities", LOGICAL, None),
     InputKey("DoDump", LOGICAL, None),
     InputKey("FullSMatrix", LOGICAL, None),
 )

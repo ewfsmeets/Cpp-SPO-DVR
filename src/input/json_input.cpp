@@ -232,6 +232,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("RestartFormat", p.restart_format, optional);
   in.read("CheckpointFormat", p.checkpoint_format, optional);
 
+  in.read("writeDensities", p.write_densities, optional);
+
   in.read("DoDump", p.do_dump, optional);
   in.read("FullSMatrix", p.full_s_matrix, optional);
 }

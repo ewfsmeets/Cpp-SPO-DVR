@@ -103,6 +103,51 @@ name the columns and units; `numpy.loadtxt(f)` reads them.
 | `asymptotic_potential.dat` | r grid point | index ir, r (bohr), V_asy (hartree), V_asy (eV): the gas-phase potential at Z = zasymp, θ = π/2 |
 | `gas_phase_states.dat` | rovibrational state (v, j) | v, j, E (hartree), ψ(r) at every r grid point (a `#` line lists the grid) |
 
+## Series directories (binary, plot data)
+
+A series directory holds arrays recorded during the run, for the plot tool (`tools/plots/README.md`).
+It is written only when its key is set (input_schema.md, "Plot data keys"), and it holds:
+
+- `manifest.json`: `format_version` (1), `kind` (the directory's name), `byte_order` (`little`),
+  `memory_order` (C order: the last axis fastest), `time_dependent`, `times` (file, dtype, units) and,
+  under `datasets`, per dataset its `file`, `dtype` (`<f8` double, `<i4` 32-bit integer), the `shape` of
+  one record (`[]` for a scalar), `axes`, `units` and `description`; then the fields of the series (grids,
+  record interval);
+- `times.bin`: the time of each record (`<f8`, atomic units);
+- one `<dataset>.bin` per dataset (the dataset's name is the file name without `.bin`): its records
+  one after another, without a header.
+
+The records are appended during the run: for each record every dataset file is written and flushed
+first, the time last. A reader takes n = min(number of times, size of each data file / bytes per
+record) records, so a run that is still going, or that stopped, never gives a time without its data.
+In numpy, for the dataset `prob_scat_zr` of the directory `d`:
+
+```python
+cells = np.fromfile(d / "prob_scat_zr.bin", "<f8").reshape(-1, nz, nr)[:n]
+```
+
+A restart writes the records of its own segment into its own output directory, from its tStart. When
+that time is on the record grid of the earlier run, its first record repeats that run's last one (the
+same wave function); the plot tool joins the segments and drops the repeat after checking that it is
+bitwise equal.
+
+### `densities/` (`writeDensities`)
+
+One record at tStart and at every dtAve, the times of `averages.dat`:
+
+| File | Type and shape | Meaning |
+|---|---|---|
+| `prob_scat_zr.bin` | `<f8` [nZ, nR] | probability per (Z, r) cell of the scattering wave, summed over x, y and the rotational states: Σ\|ψ\|²·dZ·dr·dx·dy·sin(skew) |
+| `prob_spec_zr.bin` | `<f8` [nZSp, nR] | probability per (Z, r) cell of the specular wave (the incoming channel): \|χ\|²·dZ·dr |
+| `surface_index.bin` | `<i4` [] | 0-based Z index of the specular analysis surface (it moves until it is fixed, `DynamZSpAna`) |
+| `norm.bin` | `<f8` [] | the norm of the `averages.dat` row at this time |
+
+The manifest adds `record_interval_au` (dtAve) and `grids` (`z_start`, `dz`, `nz`, `nz_specular`,
+`r_start`, `dr`, `nr`; both Z grids start at `z_start` with the same spacing). The records are the
+numbers the averages are computed from, so the sum of both datasets over all cells is the norm (to
+rounding), and writing them adds no computation to the time loop. A probability per cell divided by
+dZ·dr is a density in bohr⁻².
+
 ## Correspondence with the Fortran output
 
 | Fortran | C++ |
