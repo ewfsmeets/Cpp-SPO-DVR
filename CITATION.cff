@@ -1,7 +1,8 @@
 cff-version: 1.2.0
 message: >-
   If you use this software, please cite it as below, together with the original
-  Fortran SPO-DVR code it was ported from (the thesis and the paper under references).
+  Fortran SPO-DVR code it was ported from (M. F. Somers' thesis and the Kroes–Somers paper
+  under references).
 type: software
 title: "Cpp-SPO-DVR"
 abstract: >-
@@ -68,3 +69,16 @@ references:
     year: 2002
     month: 3
     doi: 10.1063/1.1446852
+  - type: thesis
+    authors:
+      - family-names: Smeets
+        given-names: Egidius W. F.
+    title: "Development of highly accurate density functionals for H₂ dissociation on transition metals"
+    thesis-type: PhD thesis
+    institution:
+      name: Leiden University
+      city: Leiden
+      country: NL
+    year: 2021
+    isbn: "9789464232882"
+    url: "https://hdl.handle.net/1887/3193529"
