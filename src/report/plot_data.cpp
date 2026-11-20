@@ -32,7 +32,7 @@ std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGri
   if (const auto densities = densities_data_size(config, grids)) sizes.push_back(*densities);
   if (const auto potential = potential_data_size(config, grids, angular)) sizes.push_back(*potential);
   const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
-  if (const auto frames = frames_data_size(config, grids, basis)) sizes.push_back(*frames);
+  if (const auto frames = frames_data_size(config, grids, angular, basis)) sizes.push_back(*frames);
   if (const auto budget = norm_budget_data_size(config)) sizes.push_back(*budget);
   return sizes;
 }

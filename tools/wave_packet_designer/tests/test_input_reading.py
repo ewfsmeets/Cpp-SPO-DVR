@@ -132,10 +132,14 @@ def test_plot_sites_are_read_like_the_program() -> None:
     plot-data key (each of PLOT_DATA_KEYS) gives a warning (the designer does not model plot data) but no error."""
     sites = [{"name": "top", "x": 0.0, "y": 0.0}]
     plot_keys = {"writeDensities": True, "writePotential": True, "PlotSites": sites, "dtFrames": 100.0}
+    plot_keys["FrameExtras"] = ["angular"]
     read = read_with({**plot_keys, "NormBudget": True})
     check(read.parameters is not None, "a valid site list is read")
     warned = {f.key for f in read.findings if f.severity == Severity.WARNING}
-    check_equal(sorted(warned), ["NormBudget", "PlotSites", "dtFrames", "writeDensities", "writePotential"], "warnings")
+    expected = ["FrameExtras", "NormBudget", "PlotSites", "dtFrames", "writeDensities", "writePotential"]
+    check_equal(sorted(warned), expected, "warnings")
+    for value, message in ((3, "expected a list of names"), (["angular", 1], "expected a string")):
+        check_has_error(read_with({**plot_keys, "FrameExtras": value}).findings, "FrameExtras", message, message)
     wrong = {
         "expected a list of sites": 3,
         "each site must be an object": [1],

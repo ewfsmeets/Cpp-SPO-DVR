@@ -14,13 +14,14 @@ from program.findings import Finding, FindingList, has_errors
 from program.real_compare import rlt, seq
 
 # Value types (JsonReader::as_real, as_integer, as_logical, as_string, and the PlotSites list).
-REAL, INTEGER, LOGICAL, STRING, SITE_LIST = "real", "integer", "logical", "string", "site list"
+REAL, INTEGER, LOGICAL, STRING, SITE_LIST, NAME_LIST = "real", "integer", "logical", "string", "site list", "name list"
 SITE_FIELDS = ("name", "x", "y")  # the fields of a PlotSites entry (validate_outputs.cpp plot_site_fields)
 PLOT_DATA_KEYS = (  # not modelled by the designer
     "writeDensities",
     "writePotential",
     "PlotSites",
     "dtFrames",
+    "FrameExtras",
     "NormBudget",
 )
 
@@ -32,7 +33,7 @@ class InputKey:
     """One input key: its JSON name, its value type, and the InputParameters field that holds it."""
 
     name: str
-    kind: str  # REAL, INTEGER, LOGICAL, STRING or SITE_LIST
+    kind: str  # REAL, INTEGER, LOGICAL, STRING, SITE_LIST or NAME_LIST
     field: str | None  # None: the designer only checks the type
 
 
@@ -148,6 +149,7 @@ OPTIONAL_KEYS = (
     InputKey("writePotential", LOGICAL, None),
     InputKey("PlotSites", SITE_LIST, None),
     InputKey("dtFrames", REAL, None),
+    InputKey("FrameExtras", NAME_LIST, None),
     InputKey("NormBudget", LOGICAL, None),
     InputKey("DoDump", LOGICAL, None),
     InputKey("FullSMatrix", LOGICAL, None),
@@ -239,6 +241,10 @@ def typed_value(kind: str, value: object) -> tuple[object, str | None]:
         return (value, None) if is_bool else (None, "expected true or false")
     if kind == SITE_LIST:
         return value, site_list_problem(value)
+    if kind == NAME_LIST:
+        if not isinstance(value, list):
+            return None, "expected a list of names"
+        return (value, None) if all(isinstance(name, str) for name in value) else (None, "expected a string")
     return (value, None) if isinstance(value, str) else (None, "expected a string")
 
 

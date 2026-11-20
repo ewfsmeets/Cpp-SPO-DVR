@@ -175,6 +175,7 @@ json plot_data(const InputParameters& p) {
                {"dt_frames", p.dt_frames ? json(*p.dt_frames) : json(nullptr)},
                {"sites", sites}};
   if (p.norm_budget) data["norm_budget"] = true;  // only when on: the runs of other plot keys keep their file
+  if (!p.frame_extras.empty()) data["frame_extras"] = p.frame_extras;  // likewise
   return data;
 }
 

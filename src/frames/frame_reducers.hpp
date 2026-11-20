@@ -34,11 +34,19 @@ struct FrameLayout {
   [[nodiscard]] Index2D tail_zr() const { return {std::size_t(nr), std::size_t(nz_specular - nz)}; }
 };
 
-// One frame's datasets (docs/output_files.md, "frames/").
+// One frame's datasets (docs/output_files.md, "frames/"); those of FrameExtras (frames/frame_extras.hpp) are empty
+// when off.
 struct FrameRecord {
   std::vector<double> prob_zrxy;     // probability per (Z, r, x, y) cell of psi_full
   std::vector<double> prob_tail_zr;  // probability per (Z, r) cell of chi beyond the scattering grid
   std::vector<double> pop_jmj_z;     // probability per (Z, rotational state) of psi_full
+  std::vector<double> prob_angle_z;     // angular: per (Z, DVR node)
+  std::vector<double> pop_nm_z;         // diffraction: per (Z, parallel-momentum point)
+  std::vector<double> pop_vj_z;         // vibration: per (Z, v, J)
+  std::vector<double> p2_numerator_z;   // rotation_moments: <P2(cos theta)> times the probability, per Z
+  std::vector<double> rot_numerator_z;  // rotation_moments: <J(J+1) / (2 mu r^2)> times the probability, per Z
+  std::vector<double> prob_kr;          // momentum: per k_r point
+  std::vector<double> prob_kz_spec;     // momentum: per k_Z point of chi
 };
 
 // A record of the layout's sizes (zeros).

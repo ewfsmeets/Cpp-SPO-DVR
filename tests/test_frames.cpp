@@ -12,13 +12,18 @@
 
 #include <omp.h>
 
+#include "comparison.hpp"
 #include "counting_backend.hpp"
+#include "frames/frame_extras.hpp"
 #include "frames/frame_source.hpp"
 #include "grids/angular_grid.hpp"
+#include "grids/associated_legendre.hpp"
+#include "grids/gauss_legendre.hpp"
 #include "grids/rotational_basis.hpp"
 #include "grids/spatial_grids.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
+#include "io/binary_file.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "report/frame_files.hpp"
@@ -147,7 +152,7 @@ TEST(FrameFiles, ProjectedSizeIsTheWrittenSize) {
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
   const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
-  const auto size = frames_data_size(config, grids, basis);
+  const auto size = frames_data_size(config, grids, angular, basis);
   ASSERT_TRUE(size.has_value());
   std::uintmax_t written = 0;
   for (const auto& entry : fs::directory_iterator(dir.path() / "frames"))
@@ -170,4 +175,196 @@ TEST(FrameFiles, MemoryEstimateItem) {
   const Config without = build_config(parse_input(small_hardwall_input()));
   const MemoryEstimate base = estimate_memory(without, grids, angular, make_grid_symmetry(without, angular), 1);
   EXPECT_EQ(base.items.size() + 1, e.items.size());
+}
+
+namespace {
+
+// The small hard-wall input with every FrameExtras extra and densities/ at the frames' times (100 a.u.).
+nlohmann::json extras_input() {
+  nlohmann::json json = frames_input();
+  json["FrameExtras"] = nlohmann::json::array({"angular", "diffraction", "vibration", "rotation_moments", "momentum"});
+  json["writeDensities"] = true;
+  return json;
+}
+
+// Every value of a little-endian binary file of doubles.
+std::vector<double> doubles(const fs::path& path) {
+  std::vector<double> values(fs::file_size(path) / sizeof(double));
+  BinaryReader reader(path);
+  reader.read_array(std::span(values));
+  return values;
+}
+
+// The largest |sum of `extra` over a record's Z row - the same row of `reference`|, relative to the record's largest
+// row sum: records x nz rows of `extra_per_z` and `reference_per_z` values each.
+double worst_row_difference(const std::vector<double>& extra, std::size_t extra_per_z,
+                            const std::vector<double>& reference, std::size_t reference_per_z, std::size_t rows) {
+  std::vector<double> a(rows, 0.0);
+  std::vector<double> b(rows, 0.0);
+  for (std::size_t i = 0; i < extra.size(); ++i) a[i / extra_per_z] += extra[i];
+  for (std::size_t i = 0; i < reference.size(); ++i) b[i / reference_per_z] += reference[i];
+  double scale = 0.0;
+  for (const double v : b) scale = spodvr::testing::nan_aware_max(scale, std::abs(v));
+  double worst = 0.0;
+  for (std::size_t k = 0; k < rows; ++k) worst = spodvr::testing::nan_aware_max(worst, std::abs(a[k] - b[k]));
+  return worst / scale;
+}
+
+}  // namespace
+
+// FrameExtras on the small hard-wall run, every record: at each Z the probability over the DVR nodes (angular), over
+// the parallel momenta (diffraction: Parseval) and over all gas-phase states (vibration: completeness) is the frame's
+// probability at that Z (prob_zrxy summed over r, x, y) to 1e-13 of the largest; prob_kr sums to the frame's
+// scattering-grid probability, prob_kz_spec to the densities' specular cells (both Parseval). The hard wall keeps
+// J = 0: the rotational moments vanish. Negative: one angular value off by 1e-10 of the largest row fails.
+TEST(FrameExtras, EachExtraSumsToTheFramesProbability) {
+  TemporaryDirectory dir("frame_extras");
+  const std::string out = run_into(extras_input(), dir.path(), 8);
+  EXPECT_NE(out.find("Frame extras (FrameExtras), seconds per frame: angular "), std::string::npos) << out;
+  const Config config = build_config(parse_input(extras_input()));
+  const SpatialGrids grids = make_spatial_grids(config);
+  const AngularGrid angular = make_angular_grid(config);
+  const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+  const std::size_t records = 11;
+  const std::size_t nz = grids.z_scattering.size();
+  const std::size_t nr = config.input.nr;
+  const std::size_t nxy = std::size_t(config.input.nx) * config.input.ny;
+  const fs::path frames = dir.path() / "frames";
+  const std::vector<double> cells = doubles(frames / "prob_zrxy.bin");
+  ASSERT_EQ(cells.size(), records * nz * nr * nxy);
+  const std::vector<double> angle = doubles(frames / "prob_angle_z.bin");
+  const std::size_t nodes = std::size_t(angular.n_theta()) * angular.n_phi();
+  EXPECT_LE(worst_row_difference(angle, nodes, cells, nr * nxy, records * nz), 1e-13);
+  EXPECT_LE(worst_row_difference(doubles(frames / "pop_nm_z.bin"), nxy, cells, nr * nxy, records * nz), 1e-13);
+  const std::size_t n_j = basis_j_values(basis).size();
+  EXPECT_LE(worst_row_difference(doubles(frames / "pop_vj_z.bin"), nr * n_j, cells, nr * nxy, records * nz), 1e-13);
+  EXPECT_LE(worst_row_difference(doubles(frames / "prob_kr.bin"), nr, cells, nz * nr * nxy, records), 1e-13);
+  const std::vector<double> specular = doubles(dir.path() / "densities" / "prob_spec_zr.bin");
+  const std::size_t nzsp = grids.z_specular.size();
+  EXPECT_LE(worst_row_difference(doubles(frames / "prob_kz_spec.bin"), nzsp, specular, nzsp * nr, records), 1e-13);
+  for (const char* name : {"p2_numerator_z.bin", "rot_numerator_z.bin"}) {
+    const std::vector<double> moments = doubles(frames / name);
+    ASSERT_EQ(moments.size(), records * nz) << name;
+    for (const double v : moments) EXPECT_LE(std::abs(v), 1e-14) << name;  // J = 0 throughout
+  }
+  std::vector<double> wrong = angle;
+  wrong[5 * nz * nodes + 3] += 1e-10;
+  EXPECT_GT(worst_row_difference(wrong, nodes, cells, nr * nxy, records * nz), 1e-13);
+}
+
+// The extras do not depend on the thread count, and their projected size and memory item are what the run writes
+// and allocates.
+TEST(FrameExtras, ThreadsSizeAndMemory) {
+  TemporaryDirectory dir("frame_extras_threads");
+  run_into(extras_input(), dir.path() / "one", 1);
+  run_into(extras_input(), dir.path() / "eight", 8);
+  for (const std::string name : {"prob_angle_z.bin", "pop_nm_z.bin", "pop_vj_z.bin", "p2_numerator_z.bin",
+                                 "rot_numerator_z.bin", "prob_kr.bin", "prob_kz_spec.bin", "manifest.json"}) {
+    const std::string one = file_bytes(dir.path() / "one" / "frames" / name);
+    EXPECT_FALSE(one.empty()) << name;
+    EXPECT_EQ(one, file_bytes(dir.path() / "eight" / "frames" / name)) << name;
+  }
+  const Config config = build_config(parse_input(extras_input()));
+  const SpatialGrids grids = make_spatial_grids(config);
+  const AngularGrid angular = make_angular_grid(config);
+  const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+  std::uintmax_t written = 0;
+  for (const auto& entry : fs::directory_iterator(dir.path() / "eight" / "frames"))
+    if (entry.path().extension() == ".bin") written += fs::file_size(entry.path());
+  EXPECT_EQ(frames_data_size(config, grids, angular, basis)->bytes, written);
+  const MemoryEstimate e = estimate_memory(config, grids, angular, make_grid_symmetry(config, angular), 4);
+  const FrameLayout layout = frame_layout(config, grids, basis, {});
+  const std::size_t expected = FrameExtras::memory_values(layout, angular, FrameExtraSwitches::of(config.input),
+                                                          static_cast<int>(basis_j_values(basis).size()), 4);
+  int found = 0;
+  for (const MemoryItem& item : e.items)
+    if (item.name == "Frame extras (FrameExtras)") {
+      ++found;
+      EXPECT_EQ(item.values, expected);
+    }
+  EXPECT_EQ(found, 1);
+}
+
+// FrameExtras on a coupled case (cu111_dailight_small on 4 x 4 (x, y) points, JMax 2, to t = 3000 a.u., when the
+// packet is at the surface and J = 2 is populated): at every frame and Z the vibrational populations summed over v
+// are the rotational populations summed over the states of each J (completeness per J: catches a mixed-up v/J
+// layout, which the J = 0 hard wall cannot). Negative: one value off by 10 times the tolerance fails exactly one
+// (frame, Z, J).
+TEST(FrameExtras, VibrationPerJIsTheRotationalPopulation) {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/cu111_dailight_small/input.json");
+  nlohmann::json json = nlohmann::json::parse(file);
+  json.update({{"nX", 4},
+               {"nY", 4},
+               {"JMax", 2},
+               {"MJMax", 2},
+               {"tEnd", 3000.0},
+               {"nStep", 1500},
+               {"dtFrames", 1000.0},
+               {"FrameExtras", nlohmann::json::array({"vibration"})}});
+  TemporaryDirectory dir("frame_extras_coupled");
+  run_into(json, dir.path(), 8);
+  const Config config = build_config(parse_input(json));
+  const SpatialGrids grids = make_spatial_grids(config);
+  const AngularGrid angular = make_angular_grid(config);
+  const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+  const std::vector<int> j_values = basis_j_values(basis);
+  const std::size_t nz = grids.z_scattering.size(), nr = config.input.nr, nj = j_values.size(), nrot = basis.size();
+  const std::vector<double> vib = doubles(dir.path() / "frames" / "pop_vj_z.bin");
+  const std::vector<double> pop = doubles(dir.path() / "frames" / "pop_jmj_z.bin");
+  const std::size_t rows = pop.size() / nrot;  // records x nz
+  ASSERT_EQ(rows, 4 * nz);
+  std::vector<double> from_vib(rows * nj, 0.0), from_pop(rows * nj, 0.0);
+  for (std::size_t row = 0; row < rows; ++row) {
+    for (std::size_t v = 0; v < nr; ++v)
+      for (std::size_t k = 0; k < nj; ++k) from_vib[row * nj + k] += vib[(row * nr + v) * nj + k];
+    for (std::size_t s = 0; s < nrot; ++s) {
+      const std::size_t k = std::ranges::find(j_values, basis.j(int(s))) - j_values.begin();
+      from_pop[row * nj + k] += pop[row * nrot + s];
+    }
+  }
+  double scale = 0.0, top_j = 0.0;
+  for (std::size_t i = 0; i < from_pop.size(); ++i) {
+    scale = spodvr::testing::nan_aware_max(scale, from_pop[i]);
+    if (i % nj == nj - 1) top_j = spodvr::testing::nan_aware_max(top_j, from_pop[i]);
+  }
+  EXPECT_GT(top_j, 1e-6 * scale);  // J = 2 is populated: the check sees the J axis
+  const auto failing = [&](const std::vector<double>& values) {
+    int n = 0;
+    for (std::size_t i = 0; i < values.size(); ++i) n += !(std::abs(values[i] - from_pop[i]) <= 1e-13 * scale);
+    return n;
+  };
+  EXPECT_EQ(failing(from_vib), 0);
+  std::vector<double> wrong = from_vib;
+  wrong[3 * nz * nj + nj - 1] += 1e-12 * scale;
+  EXPECT_EQ(failing(wrong), 1);
+}
+
+// The analytic P2 elements (rotation_moments) against a 32-point Gauss-Legendre quadrature of the normalised
+// associated Legendre functions (exact for these degrees), for every J, J' <= 6 and every m: the m dependence of the
+// J <-> J + 2 couplings and the heteronuclear J <-> J + 1 zeros, which the fixtures (J = 0, 2, m = 0 populated) do
+// not reach. Negative: a slip in the diagonal (1 instead of 3 in front of <cos^2>) fails at every (J, m).
+TEST(FrameExtras, P2ElementsEqualTheQuadrature) {
+  const int j_max = 6;
+  const QuadratureRule rule = gauss_associated_legendre(1.0, -1.0, 32, 0);  // descending roots, negative weights
+  int checked = 0;
+  for (int m = -j_max; m <= j_max; ++m) {
+    std::vector<std::vector<double>> legendre;  // [node][J - |m|]
+    for (const double x : rule.roots) legendre.push_back(associated_legendre(j_max, m, std::acos(x)));
+    for (int j = std::abs(m); j <= j_max; ++j)
+      for (int jp = std::abs(m); jp <= j_max; ++jp) {
+        double quadrature = 0.0;
+        for (std::size_t t = 0; t < rule.roots.size(); ++t) {
+          const double x = rule.roots[t];
+          const double p2 = (3.0 * x * x - 1.0) / 2.0;
+          quadrature += -rule.weights[t] * p2 * legendre[t][j - std::abs(m)] * legendre[t][jp - std::abs(m)];
+        }
+        EXPECT_NEAR(p2_element(j, jp, m), quadrature, 1e-13) << "J " << j << " J' " << jp << " m " << m;
+        ++checked;
+        if (j == jp) {  // the slip: (cos^2 - 1) / 2 instead of (3 cos^2 - 1) / 2
+          const double slip = (p2_element(j, j, m) * 2.0 + 1.0) / 3.0 / 2.0 - 0.5;
+          EXPECT_GT(std::abs(slip - quadrature), 1e-3) << "J " << j << " m " << m;
+        }
+      }
+  }
+  EXPECT_EQ(checked, 231);  // sum over m of (7 - |m|)^2: the (J, J') pairs with both J >= |m|
 }

@@ -241,6 +241,7 @@ add_library(spodvr_core
   src/potential/potential_grid.cpp
   src/potential/pes_cut.cpp
   src/frames/frame_reducers.cpp
+  src/frames/frame_extras.cpp
   src/frames/frame_source.cpp
   src/potential/potential_symmetry.cpp
   src/symmetry/surface_lattice.cpp

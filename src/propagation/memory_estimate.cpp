@@ -6,6 +6,8 @@
 #include <complex>
 
 #include "analysis/norm_budget.hpp"
+#include "frames/frame_extras.hpp"
+#include "frames/frame_source.hpp"
 #include "grids/rotational_basis.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "propagation/angular_transform.hpp"
@@ -86,6 +88,14 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
           nz * p.nr * n_xy + (grids.z_specular.size() - nz) * p.nr + nz * n_rot + std::size_t(p.nr) * n_rot;
       estimate.items.push_back(
           {"Frame record (dtFrames)", frame_values, frame_values * sizeof(double), "on the host", false, true});
+      const FrameExtraSwitches extras = FrameExtraSwitches::of(p);
+      if (extras.any()) {  // FrameExtras: their datasets, the plane of psi_full, tables and scratch
+        const FrameLayout layout = frame_layout(config, grids, basis, {});
+        const int n_j = static_cast<int>(basis_j_values(basis).size());
+        const std::size_t values = FrameExtras::memory_values(layout, angular, extras, n_j, n_threads);
+        estimate.items.push_back({"Frame extras (FrameExtras)", values, values * sizeof(double),
+                                  "on the host, x " + std::to_string(n_threads) + " threads' scratch", false, true});
+      }
     }
     if (p.norm_budget) {  // NormBudget: the absorption and probabilities of every cell, on the host
       const std::size_t cells = (grids.z_scattering.size() + grids.z_specular.size()) * std::size_t(p.nr);

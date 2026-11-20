@@ -260,23 +260,34 @@ TEST(CudaBackend, DensityRecordsOfTheSameWaveMatchTheCpu) {
     EXPECT_NEAR(b.scattering[i], a.scattering[i], 1e-14 * a.scattering[i]) << "izr = " << i;
 }
 
-// frames/ (dtFrames) of the same wave packet: the reductions run on the host on exact copies of the planes and
-// of the specular wave, so the CPU and the GPU frame are bitwise equal.
+// frames/ (dtFrames) of the same wave packet, with every FrameExtras extra: the reductions run on the host on exact
+// copies of the planes and of the specular wave, so the CPU and the GPU frame are bitwise equal.
 TEST(CudaBackend, FrameOfTheSameWaveIsTheCpus) {
   SPODVR_REQUIRE_GPU();
-  const BackendSetup s("cu111_dailight_short");
+  const nlohmann::json extras = {
+      {"dtFrames", 100.0},
+      {"FrameExtras", nlohmann::json::array({"angular", "diffraction", "vibration", "rotation_moments", "momentum"})}};
+  const BackendSetup s("cu111_dailight_short", extras);
   const auto cpu = s.cpu();
   const auto gpu = s.gpu();
   load_random(*cpu);
   load_random(*gpu);
-  FrameSource cpu_frames(s.config, s.grids, s.basis, s.tables);
-  FrameSource gpu_frames(s.config, s.grids, s.basis, s.tables);
+  FrameSource cpu_frames(s.config, s.grids, s.angular, s.basis, s.gas, s.tables, s.fft);
+  FrameSource gpu_frames(s.config, s.grids, s.angular, s.basis, s.gas, s.tables, s.fft);
   const FrameRecord& a = cpu_frames.frame(*cpu);
   const FrameRecord& b = gpu_frames.frame(*gpu);
   EXPECT_EQ(a.prob_zrxy, b.prob_zrxy);
   EXPECT_EQ(a.prob_tail_zr, b.prob_tail_zr);
   EXPECT_EQ(a.pop_jmj_z, b.pop_jmj_z);
+  EXPECT_EQ(a.prob_angle_z, b.prob_angle_z);
+  EXPECT_EQ(a.pop_nm_z, b.pop_nm_z);
+  EXPECT_EQ(a.pop_vj_z, b.pop_vj_z);
+  EXPECT_EQ(a.p2_numerator_z, b.p2_numerator_z);
+  EXPECT_EQ(a.rot_numerator_z, b.rot_numerator_z);
+  EXPECT_EQ(a.prob_kr, b.prob_kr);
+  EXPECT_EQ(a.prob_kz_spec, b.prob_kz_spec);
   EXPECT_GT(*std::max_element(a.prob_zrxy.begin(), a.prob_zrxy.end()), 0.0);
+  EXPECT_GT(*std::max_element(a.prob_angle_z.begin(), a.prob_angle_z.end()), 0.0);
 }
 
 // The hard wall (no coupling between theta, phi, x, y): every stage on a random wave packet.

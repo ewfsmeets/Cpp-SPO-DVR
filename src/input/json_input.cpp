@@ -64,6 +64,15 @@ class JsonReader {
     }
   }
 
+  // A list of strings (FrameExtras); the names are checked by validate_output_keys.
+  void read(const std::string& key, std::vector<std::string>& target, Presence presence) {
+    if (!present(key, presence)) return;
+    const Json& list = json_.at(key);
+    if (!list.is_array()) throw InputError(key, "expected a list of names");
+    target.clear();
+    for (const Json& item : list) target.push_back(as_string(key, item));
+  }
+
   // A key of a Fortran feature this program does not support. Logical keys are accepted when
   // false (the Fortran default, i.e. the feature is off); other keys are rejected if present.
   void reject_logical_if_true(const std::string& key) {
@@ -261,6 +270,7 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("PlotSites", p.plot_sites, optional);
   in.read("dtFrames", p.dt_frames);
   in.read("NormBudget", p.norm_budget, optional);
+  in.read("FrameExtras", p.frame_extras, optional);
 
   in.read("DoDump", p.do_dump, optional);
   in.read("FullSMatrix", p.full_s_matrix, optional);

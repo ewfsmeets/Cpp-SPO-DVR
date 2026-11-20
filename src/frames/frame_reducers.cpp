@@ -17,8 +17,11 @@ double abs_squared(const std::complex<double>& c) {
 }  // namespace
 
 FrameRecord make_frame_record(const FrameLayout& layout) {
-  return {std::vector<double>(layout.zrxy().size()), std::vector<double>(layout.tail_zr().size()),
-          std::vector<double>(layout.jmj_z().size())};
+  FrameRecord record;
+  record.prob_zrxy.assign(layout.zrxy().size(), 0.0);
+  record.prob_tail_zr.assign(layout.tail_zr().size(), 0.0);
+  record.pop_jmj_z.assign(layout.jmj_z().size(), 0.0);
+  return record;  // the FrameExtras datasets stay empty: FrameSource sizes those that are on
 }
 
 void reduce_scattering_plane(const FrameLayout& layout, int iz, std::span<const std::complex<double>> plane,

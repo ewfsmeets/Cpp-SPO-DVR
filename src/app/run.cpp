@@ -265,8 +265,8 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   std::optional<FrameFiles> frames;
   int frames_written = 0;
   if (p.dt_frames) {
-    frame_source.emplace(config, grids, propagation.rotational_basis(), propagation.tables());
-    frames.emplace(output_dir, config, grids, propagation.rotational_basis(), frame_source->layout());
+    frame_source.emplace(config, grids, angular, propagation.rotational_basis(), gas, propagation.tables(), fft);
+    frames.emplace(output_dir, config, grids, angular, propagation.rotational_basis(), frame_source->layout());
     observer.on_frame = [&](double time, const PropagationBackend& wave_packet, int surface_index) {
       if (!frames) return;
       const FrameRecord& record = frame_source->frame(wave_packet);
@@ -303,7 +303,10 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   propagation.run(observer);
   const std::chrono::duration<double> loop_time = std::chrono::steady_clock::now() - loop_start;
   table.finish();
-  if (frame_source) print_frame_cost(out, frames_written, frame_source->seconds(), loop_time.count());
+  if (frame_source) {
+    print_frame_cost(out, frames_written, frame_source->seconds(), loop_time.count());
+    print_frame_extras_cost(out, frames_written, frame_source->extra_seconds());
+  }
   if (budget) print_norm_budget_cost(out, windows_written, propagation.analysis_densities_seconds(), loop_time.count());
 
   // Checkpoint for a restart. Fortran: SaveWaveFunc

@@ -12,6 +12,9 @@ namespace spodvr {
 // kept out of validate_input, whose checks mirror InputNew.f90 one by one.
 void validate_output_keys(const Config& config);
 
+// The names FrameExtras accepts: the optional datasets of frames/ (docs/output_files.md, "frames/").
+[[nodiscard]] const std::vector<std::string>& frame_extra_names();
+
 // The fields of a PlotSites entry ("name", "x", "y"), read by json_input.cpp in this order.
 [[nodiscard]] const std::vector<std::string>& plot_site_fields();
 [[nodiscard]] bool is_plot_site_field(const std::string& field);

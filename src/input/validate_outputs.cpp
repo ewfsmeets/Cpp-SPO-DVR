@@ -1,5 +1,5 @@
-// Input checks of the plot-data keys (C++ only): writeDensities, writePotential, PlotSites, dtFrames, NormBudget.
-// Each check names its key (exit 2).
+// Input checks of the plot-data keys (C++ only): writeDensities, writePotential, PlotSites, dtFrames, FrameExtras,
+// NormBudget. Each check names its key (exit 2).
 #include "input/validate_outputs.hpp"
 
 #include <algorithm>
@@ -90,6 +90,11 @@ void check_sites(const InputParameters& p) {
 
 }  // namespace
 
+const std::vector<std::string>& frame_extra_names() {
+  static const std::vector<std::string> names = {"angular", "diffraction", "vibration", "rotation_moments", "momentum"};
+  return names;
+}
+
 const std::vector<std::string>& plot_site_fields() {
   static const std::vector<std::string> fields = {"name", "x", "y"};
   return fields;
@@ -117,6 +122,16 @@ void validate_output_keys(const Config& config) {
   check(p.write_potential && mode == 2, "writePotential",
         "an analysis-only run (onlyAnalysis) computes no 6D potential to write");
   check_frames(p, propagates);
+  if (!p.frame_extras.empty()) {  // FrameExtras: optional datasets of the frames
+    check(!p.dt_frames, "FrameExtras", "the extras are datasets of frames/: set dtFrames");
+    std::set<std::string> seen;
+    for (const std::string& name : p.frame_extras) {
+      check(std::ranges::find(frame_extra_names(), name) == frame_extra_names().end(), "FrameExtras",
+            std::format("unknown extra '{}': known are angular, diffraction, vibration, rotation_moments, momentum",
+                        name));
+      check(!seen.insert(name).second, "FrameExtras", std::format("'{}' is listed twice", name));
+    }
+  }
   check_sites(p);
   if (p.norm_budget) {  // NormBudget: one record per analysis window of the propagation
     check(p.write_2d_pes, "NormBudget", "write2DPES stops the run after the cut of the PES, before the propagation");

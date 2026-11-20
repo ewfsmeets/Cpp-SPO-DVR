@@ -13,10 +13,10 @@ namespace spodvr {
 
 namespace {
 
-// Measured on the thesis DZ grid with 8 threads (the plot plan's measurements): seconds per complex value of psi
-// (nZ nR nX nY nrot) for one block-density reduction.
-constexpr double reduction_seconds_per_value_cpu = 1.25e-9;
-constexpr double reduction_seconds_per_value_gpu = 0.28e-9;
+// Measured on the thesis DZ grid with 8 threads (200 steps with NormBudget, 26 reductions, 2026-11-20): seconds per
+// complex value of psi (nZ nR nX nY nrot) for one block-density reduction.
+constexpr double reduction_seconds_per_value_cpu = 1.46e-9;
+constexpr double reduction_seconds_per_value_gpu = 0.17e-9;
 
 // The absorbers of the budget as the configuration has them (NormBudget::absorbers lists them in this number).
 int absorber_count(const InputParameters& p) {

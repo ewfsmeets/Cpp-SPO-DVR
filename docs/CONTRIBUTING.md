@@ -63,7 +63,7 @@ counts (measured on 2026-11-19, with the plot tool's tests), are in the [README]
 - **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` runs everything but
   the propagation gates (gates 3 and 4 against the Fortran, 23–86 s each; the regular expression
   also leaves out their GPU twins `CudaRegressionPropagation.*`) and the plot tool's runs and the tests
-  that read them (`PlotRuns.*`, about 160 s for the runs). Run it while working on a change;
+  that read them (`PlotRuns.*`, about 280 s for the runs). Run it while working on a change;
   run the full suite before every commit that touches `src/`, `tests/`, the build files or reference
   data (the quick tier is enough for a commit of docs or Python tools only; for a change to
   `tools/plots` add `ctest -R '^(PlotRuns|Plots)\.'`), and always before merging into `main`.

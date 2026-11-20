@@ -614,6 +614,15 @@ TEST(Input, WriteDensitiesInAPropagatingRun) {
   EXPECT_TRUE(build(json).input.write_densities);
 }
 
+// FrameExtras with dtFrames: every known name is accepted, in any order; none by default.
+TEST(Input, FrameExtrasWithFrames) {
+  Json json = reference_json();
+  EXPECT_TRUE(build(json).input.frame_extras.empty());
+  json["dtFrames"] = 100.0;
+  json["FrameExtras"] = {"momentum", "angular", "diffraction", "rotation_moments", "vibration"};
+  EXPECT_EQ(build(json).input.frame_extras.size(), 5u);
+}
+
 // NormBudget in a new run and in a restart (the propagating modes) is accepted; it is off by default.
 TEST(Input, NormBudgetInAPropagatingRun) {
   Json json = reference_json();
@@ -725,6 +734,16 @@ INSTANTIATE_TEST_SUITE_P(
                   "dtFrames"},
         Violation{"DtFramesPotentialOnly", [](Json& j) { j["Potential"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
         Violation{"DtFramesWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
+        // FrameExtras (frames/): only with dtFrames, known names, each once, a list of names.
+        Violation{"FrameExtrasWithoutFrames", [](Json& j) { j["FrameExtras"] = {"angular"}; }, "FrameExtras"},
+        Violation{"FrameExtrasUnknownName",
+                  [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", "spin"}; }, "FrameExtras"},
+        Violation{"FrameExtrasTwice",
+                  [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"momentum", "momentum"}; }, "FrameExtras"},
+        Violation{"FrameExtrasNotAList", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = "angular"; },
+                  "FrameExtras"},
+        Violation{"FrameExtrasNotNames", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", 3}; },
+                  "FrameExtras"},
         // NormBudget (norm_budget/): propagating runs only, one record per analysis step of whole time steps.
         Violation{"NormBudgetDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["NormBudget"] = true; }, "dtAna"},
         Violation{"NormBudgetAnalysisOnly",

@@ -3,8 +3,8 @@
 // (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
 // directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
 // Every fixture writes the plot data: the propagating ones densities/ (writeDensities), frames/ (dtFrames
-// 100 a.u.) and norm_budget/ (NormBudget), and all potential/ (writePotential, with PlotSites: hardwall_tiny
-// "origin" and "centre", dailight_oblique "top" and "bridge").
+// 100 a.u., with every FrameExtras extra) and norm_budget/ (NormBudget), and all potential/ (writePotential, with
+// PlotSites: hardwall_tiny "origin" and "centre", dailight_oblique "top" and "bridge").
 //   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
 //   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
 //   hardwall_budget           hardwall_tiny with dtAve = dtAna = 10 (a densities/ record at every window's end, for
@@ -83,6 +83,11 @@ nlohmann::json restart_from(nlohmann::json json, const fs::path& first) {
   return json;
 }
 
+// Every extra of FrameExtras.
+nlohmann::json every_frame_extra() {
+  return nlohmann::json::array({"angular", "diffraction", "vibration", "rotation_moments", "momentum"});
+}
+
 nlohmann::json hardwall_tiny() {
   nlohmann::json json = reference_input("hardwall_small");
   json["nX"] = 2;
@@ -96,6 +101,7 @@ nlohmann::json hardwall_tiny() {
   json["writeDensities"] = true;
   json["writePotential"] = true;
   json["dtFrames"] = 100.0;
+  json["FrameExtras"] = every_frame_extra();
   json["NormBudget"] = true;
   json["PlotSites"] = {{{"name", "origin"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "centre"}, {"x", 0.5}, {"y", 0.5}}};
   return with_times(json, 0.0, 10000.0);
@@ -117,6 +123,7 @@ nlohmann::json dailight_oblique() {
   json["alsoAnalysis"] = true;
   json["writeDensities"] = true;
   json["dtFrames"] = 100.0;
+  json["FrameExtras"] = every_frame_extra();
   json["NormBudget"] = true;
   json["writePotential"] = true;
   json["PlotSites"] = {{{"name", "top"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "bridge"}, {"x", 0.5}, {"y", 0.0}}};
@@ -222,6 +229,7 @@ TEST(PlotRuns, PotentialOnly) {
   json.erase("alsoAnalysis");
   json.erase("writeDensities");  // densities/, frames/ and norm_budget/ belong to a propagating run; potential/ is
   json.erase("dtFrames");        // written at set-up
+  json.erase("FrameExtras");
   json.erase("NormBudget");
   const fs::path dir = fixtures_dir / "potential_only";
   ASSERT_EQ(run(json, dir), 0);
@@ -233,7 +241,7 @@ TEST(PlotRuns, PotentialOnly) {
 TEST(PlotRuns, PesCut) {
   nlohmann::json json = dailight_oblique();
   for (const std::string key :
-       {"alsoAnalysis", "writeDensities", "writePotential", "dtFrames", "NormBudget", "PlotSites"})
+       {"alsoAnalysis", "writeDensities", "writePotential", "dtFrames", "FrameExtras", "NormBudget", "PlotSites"})
     json.erase(key);
   json["write2DPES"] = true;
   json["x2DPES"] = 2.42;  // the bridge: alat / 2 (alat 4.84 bohr)

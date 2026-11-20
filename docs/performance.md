@@ -200,6 +200,24 @@ the run ("Frames (dtFrames)") and projects it at set-up (the PLOT DATA line, fro
 | at dtFrames = 25 dtAna (500 a.u.: 200 steps between frames) | 0.02 % | 0.7 % |
 | propagation time of the run (200 steps) | 901.9 s | 147.1 s |
 
+`FrameExtras` (every extra, a run of its own, the same grid, steps and frames) add host work to each frame, the
+same on both backends (seconds per frame; the PLOT DATA line projects them from these per-value costs):
+
+| angular | diffraction | vibration | rotation_moments | momentum | all five |
+|---|---|---|---|---|---|
+| 1.50 s | 0.46 s | 2.12 s (nR overlaps per value) | 0.35 s | 1.96 s (the FFTs on one thread) | 6.4 s |
+
+With all five a frame took 7.16 s on the CPU (4.6 % of the propagation at dtFrames = 5 dtAna, about 1 % at 25
+dtAna) and 8.47 s with the GPU backend (25 %, about 5 % at 25 dtAna). The extras of the CPU's and the GPU's run
+differ by at most 1.2e-13 of each record's largest value (the propagation's drift; on the same ψ they are bitwise
+equal: `CudaBackend.FrameOfTheSameWaveIsTheCpus`), the moments by 4e-19 of the frame's probability.
+
+The norm budget (`NormBudget`, measured in a run of its own, the same grid and steps): a block-density reduction
+after every analysis step (26 in this run; at the averages rows they are the averages' own), 0.586 s each on the CPU
+(1.46 ns per complex value of ψ: 1.7 % of the propagation) and 0.067 s on the GPU (0.17 ns: 1.2 %); the PLOT DATA
+line projects it from these per-value costs. The CPU's and the GPU's budgets agree to 3.3e-12 of the largest loss
+(1.8e-9) and their window norms to 1.1e-13, averages.dat's own difference after 200 steps.
+
 A frame is 7.6 MiB (45.5 MiB for the six). The CPU's and the GPU's frames of this run are equal at tStart and
 differ by 1.2e-13 of the frame's largest cell after 200 steps, the propagation's own drift between the devices (the
 frame reductions are bitwise equal on the same ψ: `CudaBackend.FrameOfTheSameWaveIsTheCpus`). Without `dtFrames` the

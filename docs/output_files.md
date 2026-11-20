@@ -91,7 +91,7 @@ in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
 | `absorbers` | `power`, and `list`: per absorber its `name` (`ZOpt`, `ROpt`, `ZSpOpt`, and `ZOptLow`, `ZSpOptLow` when on), its `grid` (scattering, specular, both), `coordinate`, `start`, `end`, effective `strength` (hartree, after the energy table) and the grid `points` inside it (`first`, `last`, 0-based) |
 | `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
 | `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
-| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`), and `norm_budget` (true; only with `NormBudget`) |
+| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`), `norm_budget` (true; only with `NormBudget`) and `frame_extras` (the names; only with `FrameExtras`) |
 | `pes_cut` | only in a `write2DPES` run: `file` (`pes_cut_2d.dat`), `x`, `y` (bohr), `theta_deg`, `phi_deg`. Such a run stops before the gas phase: `initial_state` `energy` and the `analysis_energies` are null; `run_mode` stays the input's (new, restart, …) although the run does none of it |
 
 ## Data files (space-separated)
@@ -165,9 +165,23 @@ the factor of the two-grid projection), reduced over the axes each dataset leave
 | `pop_jmj_z.bin` | `<f8` [nZ, nrot] | probability per (Z, rotational state) of ψ_full, summed over r, x, y; the states in the order of `rotational_states` |
 | `surface_index.bin` | `<i4` [] | 0-based Z index of the specular analysis surface |
 
-The manifest adds `record_interval_au` (dtFrames), `grids` (`z_start`, `dz`, `nz`, `nz_specular`, `r_start`,
-`dr`, `nr`, `nx`, `ny`), `rotational_states` ([J, mJ] per state), `initial_index` (the state that holds χ)
-and `sites` (as in `potential/`). The sum of `prob_zrxy` and `prob_tail_zr` is the norm (ψ_scat holds no
+With `FrameExtras` the record holds, after those, the datasets of the extras that are on (in this order):
+
+| File | Extra | Type and shape | Meaning |
+|---|---|---|---|
+| `prob_angle_z.bin` | `angular` | `<f8` [nZ, nθ, nφ] | probability per DVR node (θ_t, φ_k) of ψ_full, summed over r, x, y; divided by w_t·2π/nφ (`theta_weights`) a density per steradian (φ from the first lattice vector; for a homonuclear molecule the θ grid covers [0, π/2]: the other hemisphere is its mirror (π − θ, φ + π), and the weights of the nodes below π/2 count their mirror nodes too, the node at π/2, whose mirror lies in its own row, not) |
+| `pop_nm_z.bin` | `diffraction` | `<f8` [nZ, nX, nY] | probability per parallel momentum K = k∥ + n b₁ + m b₂ of ψ_full (the x-y FFT of exp(−i k∥·R) ψ_full, the BK analysis's convention), indices in FFT order (n for n ≤ nX/2, else n − nX, as the analysis labels the orders), summed over r and the rotational states; only open orders at Z ≥ zasymp are diffraction channels |
+| `pop_vj_z.bin` | `vibration` | `<f8` [nZ, nR, nJ] | probability per gas-phase state φ_vJ(r), all nR of each J of the basis (`vibration_j_values`), summed over x, y and mJ: a projection on the asymptotic states, also where the molecule is not free |
+| `p2_numerator_z.bin`, `rot_numerator_z.bin` | `rotation_moments` | `<f8` [nZ] | ⟨P₂(cos θ)⟩ times the probability at each Z (analytic J → J, J ± 2 elements), and ⟨J(J+1)/(2μr²)⟩ (hartree) times it: divided by the probability at that Z, the averages |
+| `prob_kr.bin`, `prob_kz_spec.bin` | `momentum` | `<f8` [nR], [nZSp] | probability per k_r point of ψ_full on the scattering grid (FFT order, spacing 2π/(nR dr)), and per k_Z point of the specular wave χ (FFT order, spacing 2π/(nZSp dZ)) |
+
+At each Z the first three sum to the frame's probability at that Z (`pop_jmj_z` summed over the states);
+`prob_kr` sums to the probability on the scattering grid (`prob_zrxy` summed), `prob_kz_spec` to the norm of the
+specular wave (Parseval, and completeness for `vibration`). The manifest adds
+`record_interval_au` (dtFrames), `grids` (`z_start`, `dz`, `nz`, `nz_specular`, `r_start`,
+`dr`, `nr`, `nx`, `ny`), `rotational_states` ([J, mJ] per state), `initial_index` (the state that holds χ),
+`sites` (as in `potential/`) and, with `FrameExtras`, `extras`: `names`, with `angular` its `theta_rad`, `theta_weights`, `phi_rad` and
+`homonuclear`, with `vibration` its `vibration_j_values`. The sum of `prob_zrxy` and `prob_tail_zr` is the norm (ψ_scat holds no
 initial-channel component: the cross terms with χ vanish in the sum over x, y, not point by point).
 
 ### `norm_budget/` (`NormBudget`)
