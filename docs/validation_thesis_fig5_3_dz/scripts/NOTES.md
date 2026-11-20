@@ -65,7 +65,8 @@ under "Additions" at the end.
   not `__pycache__`): rename copies in the docs folder (e.g. `averages_cpu.txt`). pre-commit is
   installed: trailing-whitespace, end-of-file-fixer, check-json and check-yaml run on every
   commit, clang-format on C++, and since 2026-11-18 ruff (lint and format) on the Python scripts
-  and pymarkdown on the Markdown files (docs/CONTRIBUTING.md, "Formatting and linting").
+  and pymarkdown on the Markdown files, and since 2026-11-20 shellcheck on the shell scripts
+  (`make_all.sh`) (docs/CONTRIBUTING.md, "Formatting and linting").
 - **Thesis PDF:** 217 pages, vector figures. The Read tool shows pages (`pages` parameter; find
   Fig. 5.3 via the list of figures). Exact curve extraction: pymupdf `get_drawings` (D1).
 

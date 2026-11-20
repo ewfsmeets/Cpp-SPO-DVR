@@ -32,6 +32,7 @@ compare_dir="$repo/tools/compare"
 # The tolerance rule of compare_averages.py, applied before the builds rather than after them.
 python3 -I -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from compare_averages import parse_tolerance
 parse_tolerance(sys.argv[2])' "$compare_dir" "$tolerance" 2>/dev/null || usage
+# shellcheck source=scratch_build.sh
 source "$repo/tools/scratch_build.sh"
 require_commit "$base_ref"
 

@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# shellcheck disable=SC2034  # the settings are read by the scripts that source this file (file-wide: it would also hide an unused local)
 # Fortran reference configuration: the one home of the pins (the reference install every script
 # runs, the upstream commit build_fortran_reference.sh builds), the paths, the thread count, the
 # environment of every Fortran run, and the functions the scripts of this directory share.

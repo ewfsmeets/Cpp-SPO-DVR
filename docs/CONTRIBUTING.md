@@ -34,21 +34,28 @@ when nvcc is found). It does not use PGO; for that, see
 ## Formatting and linting
 
 Git pre-commit hooks check every commit: clang-format (C++), ruff (Python: lint and format,
-settings in `pyproject.toml`, `[tool.ruff]`), pymarkdown (Markdown lint, settings in `pyproject.toml`, `[tool.pymarkdown]`) and the
-standard checks of pre-commit-hooks (trailing whitespace, end of file, YAML and JSON syntax,
-merge-conflict markers); clang-tidy is run on demand. All versions are pinned in
-`.pre-commit-config.yaml` and installed by pre-commit itself (no system packages needed):
+settings in `pyproject.toml`, `[tool.ruff]`), pymarkdown (Markdown lint, settings in `pyproject.toml`,
+`[tool.pymarkdown]`), shellcheck (shell scripts, settings in `.shellcheckrc`) and the standard checks of
+pre-commit-hooks (trailing whitespace, end of file, YAML and JSON syntax, merge-conflict markers); clang-tidy is
+run on demand. All versions are pinned in `.pre-commit-config.yaml` and installed by pre-commit itself (no system
+packages needed), except shellcheck's: the hook runs the repository's own `.venv/bin/shellcheck` (version in
+`uv.lock`), so a clone needs `uv sync` too:
 
 ```bash
 pipx install pre-commit                                      # once per machine
 pre-commit install                                           # once per clone
+uv sync                                                      # once per clone: .venv/ (also shellcheck)
 pre-commit run --all-files                                   # format and lint everything
 pre-commit run clang-tidy --hook-stage manual --all-files
 ```
 
 - The clang-tidy run needs `build/compile_commands.json`.
 - clang-format, ruff and the whitespace hooks fix what they can and then stop the commit: stage the
-  changed files and commit again. pymarkdown only reports.
+  changed files and commit again. pymarkdown and shellcheck only report.
+- shellcheck checks the staged shell scripts (by extension, or by the shebang of an executable file) at
+  its default severity (every level, notes and style included). By hand: `.venv/bin/shellcheck tools/build_all.sh`. A `# shellcheck disable=SCnnnn` directive
+  needs its reason in a trailing comment. Without `.venv/` the hook fails for staged shell scripts ("Executable
+  `.venv/bin/shellcheck` not found"): run `uv sync`, or commit with `SKIP=shellcheck`.
 - Markdown needs a blank line around headings, code blocks and lists (not around a code block inside
   a list item), a language on every code block (`text` for program output), and no inline HTML other
   than comments, `<a>`, `<br>`, `<details>`, `<summary>`, `<sub>` and `<sup>`. Outside code, write a

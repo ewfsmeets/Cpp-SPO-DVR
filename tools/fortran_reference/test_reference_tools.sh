@@ -60,6 +60,7 @@
 set -euo pipefail
 tools_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 config="${tools_dir}/reference_config.sh"
+# shellcheck source=reference_config.sh
 source "${config}"
 
 (($# >= 2 && $# <= 3)) || { echo "usage: test_reference_tools.sh CASE WORK [CXX]" >&2; exit 2; }
@@ -141,6 +142,7 @@ scratch_repo() {
 # path of a driver which exits with STATUS without any output (no end marker).
 stub_driver_build() {
   mkdir -p "$1"
+  # shellcheck disable=SC2016  # $1 belongs to the stub script being written
   printf '#!/bin/sh\nmkdir -p "$1" && printf "#!/bin/sh\\nexit %s\\n" > "$1/driver" && chmod +x "$1/driver" && echo "$1/driver"\n' \
     "$2" > "$1/build.sh"
   chmod +x "$1/build.sh"
@@ -403,8 +405,9 @@ touch averages.out fort.21 fort.25"
     export SPODVR_FORTRAN_REF_DIR="${work}/install" SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1
     run="${work}/run"
     expect_success "${repo}/tools/fortran_reference/run_propagation_reference.sh" scm_case "${run}"
-    cmp -s "${repo}/${data}params.dat" "${run}/params.dat" && cmp -s "${repo}/${data}positions.dat" "${run}/slab.dat" &&
-      diff -r "${repo}/${data}dataset" "${run}/dataset" > /dev/null || fail "the staged data files differ from the case's"
+    cmp -s "${repo}/${data}params.dat" "${run}/params.dat" || fail "the staged params.dat differs from the case's"
+    cmp -s "${repo}/${data}positions.dat" "${run}/slab.dat" || fail "the staged slab.dat differs from the case's positions.dat"
+    diff -r "${repo}/${data}dataset" "${run}/dataset" > /dev/null || fail "the staged dataset differs from the case's"
     for line in 'CRPlibDataSet : STRING : "dataset";' 'SCMParFilepath : STRING : "params.dat";' \
       'PosFilepath : STRING : "slab.dat";'; do
       grep -qxF "${line}" "${run}/DVR.inp" || fail "the DVR.inp as run has no line ${line}: $(cat "${run}/DVR.inp")"

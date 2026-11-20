@@ -30,10 +30,11 @@ scratch="${1:-$(mktemp -d)}"
 shift $(($# > 0 ? 1 : 0))
 indices=("$@")
 for i in "${indices[@]}"; do
-  [[ "${i}" =~ ^(0|[1-9][0-9]*)$ ]] && ((i < count)) || usage
+  [[ "${i}" =~ ^(0|[1-9][0-9]*)$ && "${i}" -lt "${count}" ]] || usage
 done
 ((${#indices[@]} > 0)) || mapfile -t indices < <(seq 0 $((count - 1)))
 
+# shellcheck source=../scratch_build.sh
 source "${repo}/tools/scratch_build.sh"
 offline_sources GOOGLETEST NLOHMANN_JSON
 wt="${scratch}/worktree"

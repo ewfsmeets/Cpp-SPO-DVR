@@ -68,8 +68,9 @@ run_driver() {
   (cd "${run}" && run_clean "${driver}" ../dataset ./params.dat ./slab.dat "$@" "${name}.out" \
     < "${case_dir}/points.in" > "${run}/stdout.txt" 2>&1) || status=$?
   ((status == 0)) || refuse "the driver failed (exit ${status}) in ${run}; see ${run}/stdout.txt"
-  [[ -f "${run}/${name}.out" ]] && tail -n 1 "${run}/${name}.out" | grep -q '^SCM_DRIVER_DONE$' ||
+  if [[ ! -f "${run}/${name}.out" ]] || ! tail -n 1 "${run}/${name}.out" | grep -q '^SCM_DRIVER_DONE$'; then
     refuse "the driver did not finish in ${run}; see ${run}/stdout.txt and ${run}/${name}.out"
+  fi
   cp "${run}/${name}.out" "${case_dir}/${name}.out"
   record_manifest "${case_dir}" "${case_dir}" "${driver}" points.in "${run}/params.dat" "${run}/slab.dat" \
     "${scratch_dir}/dataset" -- "${name}.out"

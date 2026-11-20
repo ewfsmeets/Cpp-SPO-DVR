@@ -47,7 +47,7 @@ for dir in "${variants[@]}"; do
     continue
   fi
   echo "--- $dir"
-  # shellcheck disable=SC2086
+  # shellcheck disable=SC2086  # the option strings are split on purpose
   build_variant "$dir" ${options[$dir]}
 done
 echo "All requested variants built."

@@ -52,6 +52,7 @@ done
 [[ ${#refs[@]} -le 1 ]] || usage
 base_ref="${refs[0]:-HEAD}"
 repo="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+# shellcheck source=scratch_build.sh
 source "$repo/tools/scratch_build.sh"
 require_commit "$base_ref"
 

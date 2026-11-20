@@ -1,0 +1,5 @@
+# shellcheck settings. Version: uv.lock (shellcheck-py); hook: .pre-commit-config.yaml.
+# Follow `source` lines (reference_config.sh, scratch_build.sh) ...
+external-sources=true
+# ... and resolve a relative path from the sourcing script's directory.
+source-path=SCRIPTDIR

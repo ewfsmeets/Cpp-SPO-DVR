@@ -46,12 +46,12 @@ check_log() {
   [[ -z "${bad}" ]] || refuse "the build failed, ${log} shows: ${bad//$'\n'/ | }; fix the build"
   # Any other define, flag, compiler or link input (-Ofast, -march, -DMKL, -D__EXHAUSTIVE_FFTW_PLANS__,
   # a DEBUG or MPI build, a warning): every line must be one of these, matched whole (grep -x).
-  local flags source
+  local flags source preprocess compile link
   flags="$(ere "${FORTRAN_BUILD_FLAGS} ${FORTRAN_BUILD_INCLUDES}")"
   source='[A-Za-z0-9_-]+\.f90'
-  local preprocess="\./PreProcess (${source}) \1 $(ere "${FORTRAN_BUILD_DEFINES}")"
-  local compile="gfortran +${flags} +-c +${source}"
-  local link="gfortran +${flags} +-o +$(ere "${FORTRAN_BUILD_EXE_NAME}")( +[A-Za-z0-9_-]+\.o)+ +-lfftw3 *"
+  preprocess="\./PreProcess (${source}) \1 $(ere "${FORTRAN_BUILD_DEFINES}")"
+  compile="gfortran +${flags} +-c +${source}"
+  link="gfortran +${flags} +-o +$(ere "${FORTRAN_BUILD_EXE_NAME}")( +[A-Za-z0-9_-]+\.o)+ +-lfftw3 *"
   # DoBuild/DoMake progress messages; "[[: not found" is upstream's check_variables, a bash test
   # that make runs with /bin/sh (dash), where it is skipped.
   local messages='Cleaning up all stuff for doing a complete re-make \.\.\.|Using /usr/bin/gmake for making\.\.\.'
