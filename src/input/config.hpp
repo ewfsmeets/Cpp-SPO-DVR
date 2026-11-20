@@ -186,6 +186,7 @@ struct InputParameters {
   bool write_potential = false;  // writePotential: potential/, the run's potential on its grid at set-up
   std::vector<PlotSite> plot_sites;  // PlotSites: named (x, y) grid points for the plot data
   std::optional<double> dt_frames;   // dtFrames (a.u.): frames/, reductions of psi every dtFrames (C++ only)
+  bool norm_budget = false;  // NormBudget: norm_budget/, what each absorber removes per analysis step (C++ only)
 
   // --- tolerances -------------------------------------------------------------------------
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)

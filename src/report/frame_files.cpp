@@ -16,12 +16,9 @@ namespace spodvr {
 namespace {
 
 // Measured on the thesis DZ grid with 8 threads (the plot plan's measurements): seconds per complex value of
-// psi (nZ nR nX nY nrot) for a frame and for a time step.
+// psi (nZ nR nX nY nrot) for a frame (the time step's: report/plot_data.hpp).
 constexpr double frame_seconds_per_value_cpu = 0.52e-9;
 constexpr double frame_seconds_per_value_gpu = 2.45e-9;
-constexpr double step_seconds_per_value_cpu = 10.5e-9;
-constexpr double step_seconds_per_value_gpu = 1.84e-9;
-constexpr double cost_warning_fraction = 0.02;  // above this share of the propagation the PLOT DATA line warns
 
 // The datasets of frames/, in the order FrameFiles::append writes them.
 std::vector<DatasetSpec> frame_datasets(const FrameLayout& layout, const Config& config) {
@@ -70,9 +67,6 @@ nlohmann::ordered_json frame_manifest_fields(const Config& config, const Spatial
           {"initial_index", basis.initial_index()},
           {"sites", plot_sites_json(p)}};
 }
-
-// A fraction as a percentage with two significant digits: "0.5 %", "0.031 %".
-std::string percent(double fraction) { return std::format("{:.2g} %", 100.0 * fraction); }
 
 }  // namespace
 

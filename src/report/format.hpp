@@ -28,6 +28,8 @@ struct Style {
 [[nodiscard]] std::string format_duration(double seconds);
 // Memory size in binary units: "512 B", "3.2 MiB", "4.0 GiB".
 [[nodiscard]] std::string format_bytes(std::size_t bytes);
+// A fraction as a percentage with two significant digits: "0.5 %", "0.031 %".
+[[nodiscard]] std::string percent(double fraction);
 
 // Section header with a rule above and below.
 void print_section(std::ostream& out, const Style& style, std::string_view title);

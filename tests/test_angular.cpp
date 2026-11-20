@@ -190,3 +190,53 @@ TEST(AngularTransform, CosSquaredThetaInDvrMatchesAnalyticMatrix) {
     }
   }
 }
+
+// The potential step's DVR -> FBR keeps only the basis's part of exp(-i V dt) psi (the norm budget's leak at the
+// surface; docs/output_files.md "norm_budget/"): with a phase that is the same on every DVR point (an isotropic V) the
+// norm is kept to rounding; with a phase that varies over (theta, phi) the norm falls by exactly the part of D B c
+// outside the basis, |D B c - B B^+ D B c|^2 (B, FBR -> DVR, is an isometry and D unitary). The grid has more DVR
+// points than basis functions (JMax = MJMax = 4, homonuclear: 3 x 10 points for 15 functions).
+TEST(AngularTransform, AnisotropicPhaseLosesTheNormOutsideTheBasis) {
+  const FftwFft fft;
+  const AngularGrid grid(4, 4, true, 0, 0);
+  const RotationalBasis basis(grid, 0, 0);
+  const AngularTransform transform(grid, basis, fft);
+  ASSERT_EQ(grid.n_theta() * grid.n_phi(), 30);
+  ASSERT_EQ(basis.size(), 15);
+  const int ld = transform.leading_dimension();
+  std::vector<cplx> fbr(basis.size());
+  double norm = 0.0;
+  for (int i = 0; i < basis.size(); ++i) {
+    fbr[i] = cplx(std::cos(0.7 * i), std::sin(1.3 * i + 0.2));
+    norm += std::norm(fbr[i]);
+  }
+  for (const double anisotropy : {0.0, 1.5}) {  // the phase's variation over the DVR points (rad)
+    std::vector<cplx> dvr(transform.dvr_block_size());
+    transform.fbr_to_dvr(fbr, dvr);
+    for (int t = 0; t < grid.n_theta(); ++t)
+      for (int k = 0; k < grid.n_phi(); ++k) {
+        const double phi = Constants::two_pi * k / grid.n_phi();
+        dvr[k + ld * t] *= std::polar(1.0, -(0.3 + anisotropy * std::cos(grid.thetas()[t]) * std::cos(phi)));
+      }
+    const std::vector<cplx> phased = dvr;  // D B c (dvr_to_fbr overwrites its input)
+    std::vector<cplx> back(basis.size());
+    transform.dvr_to_fbr(dvr, back);
+    std::vector<cplx> inside(transform.dvr_block_size());  // B B^+ D B c
+    transform.fbr_to_dvr(back, inside);
+    double phased_norm = 0.0;
+    double outside = 0.0;
+    for (int t = 0; t < grid.n_theta(); ++t)
+      for (int k = 0; k < grid.n_phi(); ++k) {
+        phased_norm += std::norm(phased[k + ld * t]);
+        outside += std::norm(phased[k + ld * t] - inside[k + ld * t]);
+      }
+    double back_norm = 0.0;
+    for (const cplx& v : back) back_norm += std::norm(v);
+    EXPECT_NEAR(phased_norm, norm, 1e-13 * norm) << anisotropy;  // B is an isometry, D unitary
+    EXPECT_NEAR(norm - back_norm, outside, 1e-13 * norm) << anisotropy;
+    if (anisotropy == 0.0)
+      EXPECT_LT(outside, 1e-26 * norm);
+    else
+      EXPECT_GT(outside, 1e-3 * norm);
+  }
+}

@@ -316,8 +316,8 @@ check (`draw_window` in `tests/test_plots.py`).
   reduction of the memory must be given
   (`--representatives`).
 - No fine-analysis memory estimate (an analysis-only run).
-- No plot data (`writeDensities`, `writePotential`, `PlotSites`, `dtFrames`): their memory and disk use are not in the
-  estimates; reading warns when a plot-data key is set.
+- No plot data (`writeDensities`, `writePotential`, `PlotSites`, `dtFrames`, `NormBudget`): their memory and disk
+  use are not in the estimates; reading warns when a plot-data key is set.
 - `write2DPES`: the bounds x2DPES ≤ alat and y2DPES ≤ blat are checked only for the three analytic potentials
   (the designer does not know the lattice of a CRP data set, or of an SCM slab); the other six checks always.
   The program writes the cut after the grids and stops: the memory estimates and the gas phase shown are

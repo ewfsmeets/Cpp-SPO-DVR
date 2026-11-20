@@ -129,6 +129,9 @@ TEST(Input, DtFramesNeedsAWholeNumberOfStepsPerAnalysis) {
   EXPECT_EQ(build(json).derived.steps_per_analysis, 2);
   json["dtFrames"] = 24.0;
   EXPECT_NE(expect_input_error(json, "dtAna").find("truncates"), std::string::npos);
+  json.erase("dtFrames");
+  json["NormBudget"] = true;  // its records follow the analysis steps too
+  EXPECT_NE(expect_input_error(json, "dtAna").find("with NormBudget"), std::string::npos);
 }
 
 // write2DPES and its coordinates (Fortran defaults false, 0, 0, 90, 0). The coordinates are checked only with
@@ -611,6 +614,20 @@ TEST(Input, WriteDensitiesInAPropagatingRun) {
   EXPECT_TRUE(build(json).input.write_densities);
 }
 
+// NormBudget in a new run and in a restart (the propagating modes) is accepted; it is off by default.
+TEST(Input, NormBudgetInAPropagatingRun) {
+  Json json = reference_json();
+  EXPECT_FALSE(build(json).input.norm_budget);
+  json["NormBudget"] = true;
+  EXPECT_TRUE(build(json).input.norm_budget);
+  const double duration = json["tEnd"].get<double>() - json["tStart"].get<double>();
+  json["NewCalc"] = false;
+  json["RestartDir"] = "earlier";
+  json["tStart"] = 1000.0;
+  json["tEnd"] = 1000.0 + duration;
+  EXPECT_TRUE(build(json).input.norm_budget);
+}
+
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
   std::string name;
@@ -708,6 +725,13 @@ INSTANTIATE_TEST_SUITE_P(
                   "dtFrames"},
         Violation{"DtFramesPotentialOnly", [](Json& j) { j["Potential"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
         Violation{"DtFramesWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
+        // NormBudget (norm_budget/): propagating runs only, one record per analysis step of whole time steps.
+        Violation{"NormBudgetDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["NormBudget"] = true; }, "dtAna"},
+        Violation{"NormBudgetAnalysisOnly",
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["NormBudget"] = true; },
+                  "NormBudget"},
+        Violation{"NormBudgetPotentialOnly", [](Json& j) { j["Potential"] = true; j["NormBudget"] = true; }, "NormBudget"},
+        Violation{"NormBudgetWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["NormBudget"] = true; }, "NormBudget"},
         Violation{"PlotSitesOutsideTheCell",
                   [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 1.0, 0.0}}); }, "PlotSites"},
         Violation{"PlotSitesOffTheGrid",

@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "analysis/norm_budget.hpp"
 #include "app/backend_factory.hpp"
 #include "app/banner.hpp"
 #include "app/fine_analysis_run.hpp"
@@ -45,6 +46,7 @@
 #include "report/densities_files.hpp"
 #include "report/fine_analysis_report.hpp"
 #include "report/frame_files.hpp"
+#include "report/norm_budget_files.hpp"
 #include "report/pes_cut_file.hpp"
 #include "report/plot_data.hpp"
 #include "report/potential_files.hpp"
@@ -277,11 +279,32 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
       }
     };
   }
+  std::optional<NormBudget> budget;  // NormBudget: what each absorber removes per analysis window
+  std::optional<NormBudgetFiles> budget_files;
+  int windows_written = 0;
+  if (p.norm_budget) {
+    budget.emplace(config, grids, propagation.tables());
+    budget_files.emplace(output_dir, config, budget->absorbers());
+    observer.on_analysis_densities = [&](double time, std::span<const double> block_densities,
+                                         const SpecularWave& specular) {
+      if (!budget_files) return;
+      const std::optional<NormBudgetWindow> window = budget->add(cell_probabilities(block_densities, specular, config));
+      if (!window) return;  // tStart: the first window starts here
+      try {
+        budget_files->append(time, *window);
+        ++windows_written;
+      } catch (const CheckpointError& e) {  // a full disk: optional output, so the propagation goes on
+        table.print_note(std::string("NormBudget: ") + e.what() + "; norm_budget/ stops here", time);
+        budget_files.reset();
+      }
+    };
+  }
   const auto loop_start = std::chrono::steady_clock::now();
   propagation.run(observer);
   const std::chrono::duration<double> loop_time = std::chrono::steady_clock::now() - loop_start;
   table.finish();
   if (frame_source) print_frame_cost(out, frames_written, frame_source->seconds(), loop_time.count());
+  if (budget) print_norm_budget_cost(out, windows_written, propagation.analysis_densities_seconds(), loop_time.count());
 
   // Checkpoint for a restart. Fortran: SaveWaveFunc
   const AnalysisSurfaceState surface = propagation.analysis_surface().state();
@@ -304,6 +327,7 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   if (write_fortran) out << ", " << fortran_bk_file << ", " << fortran_wave_function_file;
   if (densities) out << ", densities/";
   if (frames) out << ", frames/";
+  if (budget_files) out << ", norm_budget/";
   out << '\n';
 }
 

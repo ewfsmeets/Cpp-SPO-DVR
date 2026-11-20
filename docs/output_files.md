@@ -91,7 +91,7 @@ in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
 | `absorbers` | `power`, and `list`: per absorber its `name` (`ZOpt`, `ROpt`, `ZSpOpt`, and `ZOptLow`, `ZSpOptLow` when on), its `grid` (scattering, specular, both), `coordinate`, `start`, `end`, effective `strength` (hartree, after the energy table) and the grid `points` inside it (`first`, `last`, 0-based) |
 | `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
 | `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
-| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), and `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`) |
+| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`), and `norm_budget` (true; only with `NormBudget`) |
 | `pes_cut` | only in a `write2DPES` run: `file` (`pes_cut_2d.dat`), `x`, `y` (bohr), `theta_deg`, `phi_deg`. Such a run stops before the gas phase: `initial_state` `energy` and the `analysis_energies` are null; `run_mode` stays the input's (new, restart, …) although the run does none of it |
 
 ## Data files (space-separated)
@@ -169,6 +169,49 @@ The manifest adds `record_interval_au` (dtFrames), `grids` (`z_start`, `dz`, `nz
 `dr`, `nr`, `nx`, `ny`), `rotational_states` ([J, mJ] per state), `initial_index` (the state that holds χ)
 and `sites` (as in `potential/`). The sum of `prob_zrxy` and `prob_tail_zr` is the norm (ψ_scat holds no
 initial-channel component: the cross terms with χ vanish in the sum over x, y, not point by point).
+
+### `norm_budget/` (`NormBudget`)
+
+One record per analysis window (t − dtAna, t], at its end time t, from tStart + dtAna on (a restart's first window
+starts at its tStart, so no record repeats the run before): what each absorber removed in the window.
+
+| File | Type and shape | Meaning |
+|---|---|---|
+| `loss.bin` | `<f8` [n_absorbers] | each absorber's loss in the window, summed over its cells |
+| `loss_error.bin` | `<f8` [n_absorbers] | an error indicator of `loss`, summed over the same cells |
+| `norm_start.bin` | `<f8` [] | the probability on both grids at the window's start |
+| `norm_end.bin` | `<f8` [] | the probability on both grids at the window's end |
+
+For each (Z, r) cell of a grid, ρ is its probability (the `densities/` cells, from the same reduction) at the
+window's start and end. The absorbers acting on the cell shrink its density by f² per time step (f = exp(−V_opt dt),
+the propagation's own tables), F = exp(−γ) over the window's n steps, γ = 2n V_opt dt. With a constant inflow J
+into the cell during the window (dρ/dt = −κρ + J), the cell loses exactly
+
+```text
+loss = ρ_start (1 − F) + (ρ_end − F ρ_start) (γ/(1 − F) − 1),
+```
+
+which reduces to ρ_start (1 − F) without motion and to ρ γ for a steady cell. The indicator is γ²/6 of the cell's
+inflow ρ_end − ρ_start + loss: the leading distance between the loss and the mean of the two one-sided estimates
+ρ_start (1 − F) and ρ_end (1/F − 1), so it falls with dtAna squared. Where a Z absorber and the r absorber overlap, the
+cell's loss and indicator are shared in the ratio of their V_opt. The manifest adds `record_interval_au` (dtAna),
+`window` (`steps` n, `dt_step`) and `absorbers`, one object per entry of the loss datasets: `name` (`ZOpt`, `ZOptLow`,
+`ROpt`, `ZSpOpt`, `ZSpOptLow`) and `grid` (`scattering` or `specular`; `ROpt` acts on both and has one entry per
+grid).
+
+Summed over the absorbers and windows, the losses account for the norm that left the grids, norm_start of the first
+window minus norm_end of the last, to within the summed indicator and the time stepping's own error (the absorbers act
+once per time step, between the kinetic half steps, not continuously: on the hard-wall test grid, where by t = 6000
+a.u. the r absorber has eaten the tail of the bound state on the specular grid, 4.1e-7 of the norm at dtStep 2 and
+1.05e-7 at dtStep 1). The plot tool shows the residual against the indicator, and its verdict allows 1e-4 of the
+initial norm beyond it. A larger residual is probability
+that left another way. Apart from a diverging run, the only other non-unitary step
+of the propagation is the angular transform at Z < zasymp: its DVR → FBR keeps only the rotational basis's part of
+exp(−iV dt)ψ (`AngularTransform.AnisotropicPhaseLosesTheNormOutsideTheBasis`), the Fortran's method as well; the
+budget's residual is attributed to it. On a 4 × 4 Dai–Light grid with JMax 2 the norm fell by 4.2e-3 by t = 6000
+a.u. with every absorber switched off (4.6e-3 at normal incidence, 4.5e-3 of residual with JMax 4), while the packet
+was at the surface; halving dtStep reduced it to 3.2e-3. The hard wall, without angular coupling, loses nothing.
+That probability counts as reaction in P_reaction = 1 − P_scattered.
 
 ### `potential/` (`writePotential`)
 

@@ -131,10 +131,11 @@ def test_plot_sites_are_read_like_the_program() -> None:
     """PlotSites: a list of objects with a name, x and y (json_input.cpp's site reader, the same messages); a
     plot-data key (each of PLOT_DATA_KEYS) gives a warning (the designer does not model plot data) but no error."""
     sites = [{"name": "top", "x": 0.0, "y": 0.0}]
-    read = read_with({"writeDensities": True, "writePotential": True, "PlotSites": sites, "dtFrames": 100.0})
+    plot_keys = {"writeDensities": True, "writePotential": True, "PlotSites": sites, "dtFrames": 100.0}
+    read = read_with({**plot_keys, "NormBudget": True})
     check(read.parameters is not None, "a valid site list is read")
     warned = {f.key for f in read.findings if f.severity == Severity.WARNING}
-    check_equal(sorted(warned), ["PlotSites", "dtFrames", "writeDensities", "writePotential"], "plot-data warnings")
+    check_equal(sorted(warned), ["NormBudget", "PlotSites", "dtFrames", "writeDensities", "writePotential"], "warnings")
     wrong = {
         "expected a list of sites": 3,
         "each site must be an object": [1],

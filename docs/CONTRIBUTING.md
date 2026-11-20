@@ -200,7 +200,8 @@ against it); it also lists numbers repeated across docs (report-only). ctest run
   `tools/check_bitwise_refactor.sh [--cuda] [--base-build DIR] [base-ref]` (default `HEAD`). It
   builds both trees in a scratch directory (or takes the base's builds from `DIR`), runs every run
   mode with both (potential only, a short propagation, a restart, an analysis-only run,
-  `alsoAnalysis`, both checkpoint formats, a symmetry-reduced Dai–Light run, CRP and SCM set-ups)
+  `alsoAnalysis`, both checkpoint formats, a symmetry-reduced Dai–Light run, a Dai–Light run with the plot
+  data, CRP and SCM set-ups)
   and compares every output file byte by byte, the printed output without paths, thread counts and
   timings, and `run_info.json` without the git commit and paths; `--cuda` repeats the propagating
   cases on the GPU. Its header lists the cases.

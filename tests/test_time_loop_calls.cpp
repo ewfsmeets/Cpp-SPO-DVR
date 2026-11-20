@@ -60,6 +60,22 @@ TEST(TimeLoopCalls, FramesReadEachPlaneOncePerFrame) {
   EXPECT_EQ(counts.read_wave_packet, 0);
 }
 
+// NormBudget: the block densities once per analysis step and once at tStart, whatever dtAve is (the averages rows
+// use the same densities: one reduction, not two); nothing else.
+TEST(TimeLoopCalls, NormBudgetReducesOncePerAnalysisStep) {
+  TemporaryDirectory dir("time_loop_calls");
+  BackendCallCounts counts;
+  nlohmann::json json = small_hardwall_input();
+  json["NormBudget"] = true;
+  ASSERT_EQ(run_counted(json, dir.path(), make_cpu_backend, counts), 0);
+  EXPECT_EQ(counts.propagate_analysis_step, small_hardwall_analysis_steps);
+  EXPECT_EQ(counts.z_plane, small_hardwall_analysis_steps);
+  EXPECT_EQ(counts.block_densities, small_hardwall_analysis_steps + 1);
+  EXPECT_EQ(counts.wave_packet_on_host, 1);
+  EXPECT_EQ(counts.read_wave_packet, 0);
+  EXPECT_TRUE(std::filesystem::exists(dir.path() / "norm_budget" / "times.bin"));
+}
+
 // The Fortran checkpoint files: the wave packet on the host twice after the loop, never in it.
 TEST(TimeLoopCalls, BothCheckpointFormatsReadTheWavePacketTwiceAfterTheLoop) {
   TemporaryDirectory dir("time_loop_calls");

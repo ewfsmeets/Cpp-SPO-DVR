@@ -170,10 +170,12 @@ json plot_data(const InputParameters& p) {
     const int ixy = plot_site_ixy(site, p.nx, p.ny);
     sites.push_back({{"name", site.name}, {"x", site.x}, {"y", site.y}, {"ix", ixy / p.ny}, {"iy", ixy % p.ny}});
   }
-  return {{"write_densities", p.write_densities},
-          {"write_potential", p.write_potential},
-          {"dt_frames", p.dt_frames ? json(*p.dt_frames) : json(nullptr)},
-          {"sites", sites}};
+  json data = {{"write_densities", p.write_densities},
+               {"write_potential", p.write_potential},
+               {"dt_frames", p.dt_frames ? json(*p.dt_frames) : json(nullptr)},
+               {"sites", sites}};
+  if (p.norm_budget) data["norm_budget"] = true;  // only when on: the runs of other plot keys keep their file
+  return data;
 }
 
 // The cut of a write2DPES run (written only by such a run, which stops after it).
@@ -242,7 +244,8 @@ void write_run_info(const std::filesystem::path& path, const Config& config, con
   j["absorbers"] = absorbers(p, d, grids);
   j["potential"] = potential_settings(p, d);
   j["unit_factors"] = unit_factors();
-  if (p.write_densities || p.write_potential || !p.plot_sites.empty() || p.dt_frames) j["plot_data"] = plot_data(p);
+  if (p.write_densities || p.write_potential || !p.plot_sites.empty() || p.dt_frames || p.norm_budget)
+    j["plot_data"] = plot_data(p);
   if (p.write_2d_pes) j["pes_cut"] = pes_cut(p);
   std::ofstream file(path);
   if (!file) throw std::runtime_error("cannot open output file '" + path.string() + "'");

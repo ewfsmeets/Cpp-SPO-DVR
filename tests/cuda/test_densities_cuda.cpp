@@ -1,7 +1,7 @@
-// Tests: densities/ (writeDensities) and frames/ (dtFrames) on the GPU. The density records come from the device
-// reduction block_densities() and the specular wave (copied exactly), the frames from exact copies of the planes
-// reduced on the host, so a run on the GPU writes the CPU's records to the CPU-vs-GPU level of the propagation
-// (rule "CPU = GPU"), which grows with the number of steps.
+// Tests: densities/ (writeDensities), frames/ (dtFrames) and norm_budget/ (NormBudget) on the GPU. The density and
+// budget records come from the device reduction block_densities() and the specular wave (copied exactly), the frames
+// from exact copies of the planes reduced on the host, so a run on the GPU writes the CPU's records to the
+// CPU-vs-GPU level of the propagation (rule "CPU = GPU"), which grows with the number of steps.
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -51,6 +51,7 @@ nlohmann::json coupled_input() {
   json["nStep"] = 1500;
   json["writeDensities"] = true;
   json["dtFrames"] = 100.0;  // the same record times
+  json["NormBudget"] = true;  // a record per analysis window (10 a.u.)
   return json;
 }
 
@@ -159,5 +160,24 @@ TEST(CudaDensities, ProgramRunWritesTheCpuRecords) {
     if (name == "pop_jmj_z.bin")
       for (std::size_t k = 0; k < records; ++k) dataset_scale[k] = record_maximum(a, size, k);
     EXPECT_EQ(failing_records(record_differences(a, b, size), dataset_scale), 0) << name;
+  }
+
+  // norm_budget/ of the same runs (computed on the host from the densities of either device): every value within
+  // the last record's tolerance of the run's largest density cell (the losses are sums of absorbing cells, so their
+  // own small size would magnify rounding, as for the frames' tail), the norms relative to themselves; the run
+  // loses something.
+  const fs::path cpu_budget = dir.path() / "cpu" / "norm_budget";
+  const fs::path gpu_budget = dir.path() / "gpu" / "norm_budget";
+  EXPECT_EQ(read_values<double>(cpu_budget / "times.bin"), read_values<double>(gpu_budget / "times.bin"));
+  const double largest_cell = *std::max_element(scale.begin(), scale.end());
+  for (const std::string name : {"loss.bin", "loss_error.bin", "norm_start.bin", "norm_end.bin"}) {
+    const std::vector<double> a = read_values<double>(cpu_budget / name);
+    const std::vector<double> b = read_values<double>(gpu_budget / name);
+    ASSERT_EQ(a.size(), b.size()) << name;
+    const double largest = record_maximum(a, a.size(), 0);
+    EXPECT_GT(largest, 1e-9) << name;
+    const bool is_norm = name.starts_with("norm");
+    EXPECT_LE(record_differences(a, b, a.size())[0], record_tolerance(records - 1) * (is_norm ? largest : largest_cell))
+        << name;
   }
 }

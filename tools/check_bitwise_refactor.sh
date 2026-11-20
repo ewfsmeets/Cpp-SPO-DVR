@@ -10,10 +10,12 @@
 #   analysis   onlyAnalysis of first's BK file (run mode 2)
 #   also       prop with alsoAnalysis; both: prop with CheckpointFormat both
 #   sym        cu111_dailight_short_sym (UseSymmetry), 50 steps
+#   plot       cu111_dailight_short, 50 steps, with the plot data of the base: densities/, potential/ (two sites)
+#              and frames/ (every 50 a.u.: tStart, 50, 100)
 #   crp, scm   potential-only set-ups of crp_cu111_srp48_small and scm_cu111_srp48_small
 # The builds run every case with 4 threads; the working tree also runs pot and prop with 1 thread (for
 # prop only the files are compared: the printed memory estimate names the thread count). With --cuda
-# the propagating cases (prop, first, restart, also, both, sym) also run on the GPU with CUDA builds of
+# the propagating cases (prop, first, restart, also, both, sym, plot) also run on the GPU with CUDA builds of
 # both trees. Code paths not exercised by these runs need a direct old-vs-new comparison. Files the
 # working tree writes and the base does not are reported, except run_info.json (top level, or in
 # fine_analysis/ for the analysis-only run) while the base does not write it yet.
@@ -99,6 +101,13 @@ inputs = {
     "also": {**steps(case("hardwall_short"), 50), "alsoAnalysis": True},
     "both": {**steps(case("hardwall_short"), 50), "CheckpointFormat": "both"},
     "sym": steps(case("cu111_dailight_short_sym"), 50),
+    "plot": {
+        **steps(case("cu111_dailight_short"), 50),
+        "writeDensities": True,
+        "writePotential": True,
+        "PlotSites": [{"name": "top", "x": 0.0, "y": 0.0}, {"name": "bridge", "x": 0.5, "y": 0.0}],
+        "dtFrames": 50.0,
+    },
     "crp": {**case("crp_cu111_srp48_small"), "Potential": True},
     "scm": {**case("scm_cu111_srp48_small"), "Potential": True},
 }
@@ -121,8 +130,8 @@ run_case() {
   fi
 }
 
-cpu_cases=(pot prop first restart analysis also both sym crp scm)
-gpu_cases=(prop first restart also both sym)
+cpu_cases=(pot prop first restart analysis also both sym plot crp scm)
+gpu_cases=(prop first restart also both sym plot)
 echo "Running ${#cpu_cases[@]} cases with each build ..."
 for label in base new; do
   write_inputs "$label"

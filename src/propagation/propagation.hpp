@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -31,7 +32,8 @@ namespace spodvr {
 // densities are computed once for both); the time and Z at which the dynamic specular analysis surface
 // becomes fixed; the BK coefficients of every analysis step with the time at its end; with dtFrames, the backend
 // at tStart and every analyses_per_frame analysis steps (the frames read it through z_plane and specular, after the
-// analysis of that step).
+// analysis of that step); with NormBudget, the block densities and the specular wave at tStart and after every
+// analysis step (the averages of those times then use the same densities: one reduction, not two).
 struct PropagationObserver {
   std::function<void(const Averages&)> on_averages;
   std::function<void(const Averages&, std::span<const double> block_densities, const SpecularWave& specular,
@@ -40,6 +42,8 @@ struct PropagationObserver {
   std::function<void(double time, double z)> on_surface_fixed;
   std::function<void(double time, const BkCoefficients&)> on_analysis_step;
   std::function<void(double time, const PropagationBackend& backend, int surface_index)> on_frame;
+  std::function<void(double time, std::span<const double> block_densities, const SpecularWave& specular)>
+      on_analysis_densities;
 };
 
 // A new wave-packet propagation (ProjOp = 2): sets up the initial wave packet, the tables and
@@ -65,6 +69,10 @@ class WavePacketPropagation {
   [[nodiscard]] const AnalysisBasis& analysis_basis() const { return analysis_basis_; }
   [[nodiscard]] const AnalysisEnergies& analysis_energies() const { return s_matrix_.energies(); }
 
+  // NormBudget: the wall-clock time of the block densities of every analysis step and the observer's work on them
+  // (the averages rows' own reductions included), for the cost line at the end of the run.
+  [[nodiscard]] double analysis_densities_seconds() const { return analysis_densities_seconds_; }
+
   // Propagates from tStart to tEnd, analysing the wave packet after every analysis step.
   void run(const PropagationObserver& observer);
 
@@ -79,8 +87,15 @@ class WavePacketPropagation {
   [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(); }
 
  private:
-  // The averages at `time` for the observer (and the densities they come from, when it asks for them).
-  void report_averages(double time, const PropagationObserver& observer) const;
+  // The averages at `time` for the observer (and the densities they come from, when it asks for them), from
+  // `densities` when they were computed already at this time (NormBudget), else from a new reduction.
+  void report_averages(double time, const PropagationObserver& observer,
+                       const std::optional<std::vector<double>>& densities) const;
+
+  // NormBudget: the block densities of this time handed to the observer (which keeps nothing of them) and returned
+  // for the averages of the same time; nothing without NormBudget (then no reduction runs).
+  [[nodiscard]] std::optional<std::vector<double>> report_analysis_densities(double time,
+                                                                             const PropagationObserver& observer);
 
   // Declaration order = construction order (the backend references basis_ and tables_).
   const Config& config_;
@@ -93,6 +108,7 @@ class WavePacketPropagation {
   AnalysisBasis analysis_basis_;
   BalintKurtiAnalyzer balint_kurti_;
   SMatrixAccumulator s_matrix_;
+  double analysis_densities_seconds_ = 0.0;  // NormBudget's time (analysis_densities_seconds)
 };
 
 }  // namespace spodvr

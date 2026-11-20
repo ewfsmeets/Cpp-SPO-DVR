@@ -227,6 +227,7 @@ add_library(spodvr_core
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
   src/analysis/fine_analysis.cpp
+  src/analysis/norm_budget.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp
   src/io/series_writer.cpp
@@ -258,6 +259,7 @@ add_library(spodvr_core
   src/report/run_info_file.cpp
   src/report/densities_files.cpp
   src/report/frame_files.cpp
+  src/report/norm_budget_files.cpp
   src/report/plot_data.cpp
   src/report/potential_files.cpp
   src/report/pes_cut_file.cpp

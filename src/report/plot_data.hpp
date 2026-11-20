@@ -19,6 +19,13 @@ namespace spodvr {
 // ixy = iy + nY ix.
 [[nodiscard]] nlohmann::ordered_json plot_sites_json(const InputParameters& p);
 
+// Measured on the thesis DZ grid (8 threads; the GPU an RTX 4070 Ti), the plot plan's measurements: seconds per
+// complex value of psi (nZ nR nX nY nrot) for one time step, the scale of the plot data's projected costs, and the
+// share of the propagation above which a PLOT DATA line warns.
+inline constexpr double step_seconds_per_value_cpu = 10.5e-9;
+inline constexpr double step_seconds_per_value_gpu = 1.84e-9;
+inline constexpr double cost_warning_fraction = 0.02;
+
 // The plot data a run will write: the directory, the key that asks for it, the projected bytes and what it
 // costs (docs/output_files.md, "Series directories").
 struct PlotDataSize {
@@ -29,7 +36,7 @@ struct PlotDataSize {
 };
 
 // The plot data of the run's switches (empty when none is on): densities/ (writeDensities), potential/
-// (writePotential) and frames/ (dtFrames).
+// (writePotential), frames/ (dtFrames) and norm_budget/ (NormBudget).
 [[nodiscard]] std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids,
                                                         const AngularGrid& angular);
 

@@ -1,6 +1,7 @@
 // Set-up and time loop of a new wave-packet propagation. Fortran: Main.f90
 #include "propagation/propagation.hpp"
 
+#include <chrono>
 #include <utility>
 
 namespace spodvr {
@@ -20,13 +21,27 @@ WavePacketPropagation::WavePacketPropagation(const Config& config, const Spatial
       balint_kurti_(config, grids, analysis_basis_, gas, tables_, fft),
       s_matrix_(config, analysis_basis_, gas) {}
 
-void WavePacketPropagation::report_averages(double time, const PropagationObserver& observer) const {
+void WavePacketPropagation::report_averages(double time, const PropagationObserver& observer,
+                                            const std::optional<std::vector<double>>& densities) const {
   if (!observer.on_averages && !observer.on_average_densities) return;
-  const std::vector<double> densities = backend_->block_densities();
+  const std::vector<double> computed = densities ? std::vector<double>{} : backend_->block_densities();
+  const std::span<const double> used =
+      densities ? std::span<const double>(*densities) : std::span<const double>(computed);
   const SpecularWave& specular = backend_->specular();
-  const Averages averages = compute_averages(time, densities, specular, config_, grids_, surface_.index());
+  const Averages averages = compute_averages(time, used, specular, config_, grids_, surface_.index());
   if (observer.on_averages) observer.on_averages(averages);
-  if (observer.on_average_densities) observer.on_average_densities(averages, densities, specular, surface_.index());
+  if (observer.on_average_densities) observer.on_average_densities(averages, used, specular, surface_.index());
+}
+
+std::optional<std::vector<double>> WavePacketPropagation::report_analysis_densities(
+    double time, const PropagationObserver& observer) {
+  if (!observer.on_analysis_densities) return std::nullopt;
+  const auto start = std::chrono::steady_clock::now();
+  std::vector<double> densities = backend_->block_densities();
+  observer.on_analysis_densities(time, densities, backend_->specular());
+  const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+  analysis_densities_seconds_ += elapsed.count();
+  return densities;
 }
 
 // Fortran: Main.f90 DO propStep = nanspo, nstep, nanspo
@@ -37,7 +52,8 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
   const int n_per_frame = config_.derived.analyses_per_frame;  // 0 without frames (then on_frame is unset)
 
   const double t_start = p.t_end - p.n_steps * p.time_step;
-  report_averages(t_start, observer);
+  const std::optional<std::vector<double>> start_densities = report_analysis_densities(t_start, observer);
+  report_averages(t_start, observer, start_densities);
   if (observer.on_frame) observer.on_frame(t_start, *backend_, surface_.index());
 
   int analysis_count = 0;
@@ -55,7 +71,8 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
     if (observer.on_analysis_step) observer.on_analysis_step(time, bk);
 
     analysis_count = analysis_count + 1;
-    if (analysis_count % n_per_average == 0) report_averages(time, observer);
+    const std::optional<std::vector<double>> densities = report_analysis_densities(time, observer);
+    if (analysis_count % n_per_average == 0) report_averages(time, observer, densities);
     if (observer.on_frame && n_per_frame > 0 && analysis_count % n_per_frame == 0)
       observer.on_frame(time, *backend_, surface_.index());
   }

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <complex>
 
+#include "analysis/norm_budget.hpp"
 #include "grids/rotational_basis.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "propagation/angular_transform.hpp"
@@ -85,6 +86,11 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
           nz * p.nr * n_xy + (grids.z_specular.size() - nz) * p.nr + nz * n_rot + std::size_t(p.nr) * n_rot;
       estimate.items.push_back(
           {"Frame record (dtFrames)", frame_values, frame_values * sizeof(double), "on the host", false, true});
+    }
+    if (p.norm_budget) {  // NormBudget: the absorption and probabilities of every cell, on the host
+      const std::size_t cells = (grids.z_scattering.size() + grids.z_specular.size()) * std::size_t(p.nr);
+      estimate.items.push_back(
+          {"Norm budget (NormBudget)", cells, NormBudget::memory_bytes(grids, p.nr), "on the host", false, true});
     }
   }
 

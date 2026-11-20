@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <format>
 
 namespace spodvr {
 
@@ -43,6 +44,8 @@ std::string format_duration(double seconds) {
     std::snprintf(buffer, sizeof buffer, "%lld:%02lld", minutes, total % 60);
   return buffer;
 }
+
+std::string percent(double fraction) { return std::format("{:.2g} %", 100.0 * fraction); }
 
 std::string format_bytes(std::size_t bytes) {
   if (bytes < 1024) return std::to_string(bytes) + " B";

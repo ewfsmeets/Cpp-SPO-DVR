@@ -1,5 +1,5 @@
-// Input checks of the plot-data keys (C++ only): writeDensities, writePotential, PlotSites. Each check names its
-// key (exit 2).
+// Input checks of the plot-data keys (C++ only): writeDensities, writePotential, PlotSites, dtFrames, NormBudget.
+// Each check names its key (exit 2).
 #include "input/validate_outputs.hpp"
 
 #include <algorithm>
@@ -45,6 +45,16 @@ bool whole_multiple(double t, double dt, double tolerance) {
   return std::abs(ratio - validation::nint(ratio)) <= tolerance;
 }
 
+// dtAna / dtStep must be a whole number for a key whose records follow the analysis steps (the program truncates
+// it, Fortran INT, so the records would come at other times than dtAna says); `key` names the key that needs it.
+void check_whole_analysis_steps(const InputParameters& p, const std::string& key) {
+  using validation::nint;
+  const double steps = p.dt_analysis / p.time_step;
+  check(static_cast<int>(steps) != nint(steps) || static_cast<int>(steps) < 1, "dtAna",
+        "dtAna / dtStep is not a whole number with " + key +
+            " (the program truncates it, so its records would come at other times than dtAna says)");
+}
+
 // dtFrames: frames line up with the analysis steps and, across restarts, with tStart and tEnd (C++ only checks, so
 // relative to the frame interval rather than the Fortran's absolute 1e-12).
 void check_frames(const InputParameters& p, bool propagates) {
@@ -55,11 +65,7 @@ void check_frames(const InputParameters& p, bool propagates) {
   const double dt = *p.dt_frames;
   check(p.write_2d_pes, "dtFrames", "write2DPES stops the run after the cut of the PES, before the propagation");
   check(!propagates, "dtFrames", "only a propagating run (a new run or a restart) writes frames");
-  // The program truncates dtAna / dtStep (Fortran INT): with frames the count must be the intended one.
-  const double steps = p.dt_analysis / p.time_step;
-  check(static_cast<int>(steps) != nint(steps) || static_cast<int>(steps) < 1, "dtAna",
-        "dtAna / dtStep is not a whole number with dtFrames (the program truncates it, so frames would come at "
-        "other times than dtFrames says)");
+  check_whole_analysis_steps(p, "dtFrames");
   check(!(dt > 0.0), "dtFrames", "dtFrames <= 0.");
   check(rlt(dt, p.dt_analysis), "dtFrames", "dtFrames < dtAna.");
   check(rne(nint(dt / p.dt_analysis) * p.dt_analysis, dt), "dtFrames", "dtFrames must be a whole multiple of dtAna.");
@@ -112,6 +118,11 @@ void validate_output_keys(const Config& config) {
         "an analysis-only run (onlyAnalysis) computes no 6D potential to write");
   check_frames(p, propagates);
   check_sites(p);
+  if (p.norm_budget) {  // NormBudget: one record per analysis window of the propagation
+    check(p.write_2d_pes, "NormBudget", "write2DPES stops the run after the cut of the PES, before the propagation");
+    check(!propagates, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget");
+    check_whole_analysis_steps(p, "NormBudget");
+  }
 }
 
 }  // namespace spodvr

@@ -2,11 +2,14 @@
 // inputs, written by the current program into SPODVR_PLOT_FIXTURES_DIR. One ctest in one process
 // (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
 // directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
-// Every fixture writes the plot data: the propagating ones densities/ (writeDensities) and frames/ (dtFrames
-// 100 a.u.), and all potential/ (writePotential, with PlotSites: hardwall_tiny "origin" and "centre",
-// dailight_oblique "top" and "bridge").
+// Every fixture writes the plot data: the propagating ones densities/ (writeDensities), frames/ (dtFrames
+// 100 a.u.) and norm_budget/ (NormBudget), and all potential/ (writePotential, with PlotSites: hardwall_tiny
+// "origin" and "centre", dailight_oblique "top" and "bridge").
 //   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
 //   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
+//   hardwall_budget           hardwall_tiny with dtAve = dtAna = 10 (a densities/ record at every window's end, for
+//                             recomputing the norm budget) ...
+//   hardwall_budget_dt4       ... and the same with dtAna = dtAve = 4 (the budget's error falls with dtAna^2)
 //   dailight_oblique          cu111_dailight_small with nX = nY = 4, JMax = MJMax = 2, EParallel 0.1 eV at
 //                             17 degrees, nZ 192, the Z absorber at 10.16-13.28 (its length, ending on the last
 //                             point) and tEnd 14000 (JMax 2: a run takes about 65 s; with JMax 4 it took 183 s)
@@ -24,6 +27,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 
@@ -92,6 +96,7 @@ nlohmann::json hardwall_tiny() {
   json["writeDensities"] = true;
   json["writePotential"] = true;
   json["dtFrames"] = 100.0;
+  json["NormBudget"] = true;
   json["PlotSites"] = {{{"name", "origin"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "centre"}, {"x", 0.5}, {"y", 0.5}}};
   return with_times(json, 0.0, 10000.0);
 }
@@ -112,6 +117,7 @@ nlohmann::json dailight_oblique() {
   json["alsoAnalysis"] = true;
   json["writeDensities"] = true;
   json["dtFrames"] = 100.0;
+  json["NormBudget"] = true;
   json["writePotential"] = true;
   json["PlotSites"] = {{{"name", "top"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "bridge"}, {"x", 0.5}, {"y", 0.0}}};
   return with_times(json, 0.0, dailight_t_end);
@@ -168,6 +174,24 @@ TEST(PlotRuns, HardwallTinySplit) {
   expect_run_files(root / "second");
 }
 
+// hardwall_tiny with the averages (and so densities/) at every analysis step of dtAna: the budget's windows and the
+// cells they start and end at.
+nlohmann::json hardwall_budget(double dt_analysis) {
+  nlohmann::json json = hardwall_tiny();
+  json["dtAna"] = dt_analysis;
+  json["dtAve"] = dt_analysis;
+  return json;
+}
+
+TEST(PlotRuns, HardwallBudget) {
+  for (const auto& [name, dt_analysis] : {std::pair{"hardwall_budget", 10.0}, std::pair{"hardwall_budget_dt4", 4.0}}) {
+    const fs::path dir = fixtures_dir / name;
+    ASSERT_EQ(run(hardwall_budget(dt_analysis), dir), 0) << name;
+    EXPECT_TRUE(fs::exists(dir / "norm_budget" / "times.bin")) << name;
+    EXPECT_TRUE(fs::exists(dir / "densities" / "times.bin")) << name;
+  }
+}
+
 TEST(PlotRuns, DailightOblique) {
   const fs::path dir = fixtures_dir / "dailight_oblique";
   ASSERT_EQ(run(dailight_oblique(), dir), 0);
@@ -196,8 +220,9 @@ TEST(PlotRuns, PotentialOnly) {
   nlohmann::json json = hardwall_tiny();
   json["Potential"] = true;
   json.erase("alsoAnalysis");
-  json.erase("writeDensities");  // densities/ and frames/ belong to a propagating run; potential/ is written at set-up
-  json.erase("dtFrames");
+  json.erase("writeDensities");  // densities/, frames/ and norm_budget/ belong to a propagating run; potential/ is
+  json.erase("dtFrames");        // written at set-up
+  json.erase("NormBudget");
   const fs::path dir = fixtures_dir / "potential_only";
   ASSERT_EQ(run(json, dir), 0);
   EXPECT_TRUE(fs::exists(dir / "run_info.json"));
@@ -207,7 +232,8 @@ TEST(PlotRuns, PotentialOnly) {
 
 TEST(PlotRuns, PesCut) {
   nlohmann::json json = dailight_oblique();
-  for (const std::string key : {"alsoAnalysis", "writeDensities", "writePotential", "dtFrames", "PlotSites"})
+  for (const std::string key :
+       {"alsoAnalysis", "writeDensities", "writePotential", "dtFrames", "NormBudget", "PlotSites"})
     json.erase(key);
   json["write2DPES"] = true;
   json["x2DPES"] = 2.42;  // the bridge: alat / 2 (alat 4.84 bohr)

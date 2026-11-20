@@ -16,7 +16,13 @@ from program.real_compare import rlt, seq
 # Value types (JsonReader::as_real, as_integer, as_logical, as_string, and the PlotSites list).
 REAL, INTEGER, LOGICAL, STRING, SITE_LIST = "real", "integer", "logical", "string", "site list"
 SITE_FIELDS = ("name", "x", "y")  # the fields of a PlotSites entry (validate_outputs.cpp plot_site_fields)
-PLOT_DATA_KEYS = ("writeDensities", "writePotential", "PlotSites", "dtFrames")  # not modelled by the designer
+PLOT_DATA_KEYS = (  # not modelled by the designer
+    "writeDensities",
+    "writePotential",
+    "PlotSites",
+    "dtFrames",
+    "NormBudget",
+)
 
 INT_MIN, INT_MAX = -(2**31), 2**31 - 1  # the range of a C++ int
 
@@ -142,6 +148,7 @@ OPTIONAL_KEYS = (
     InputKey("writePotential", LOGICAL, None),
     InputKey("PlotSites", SITE_LIST, None),
     InputKey("dtFrames", REAL, None),
+    InputKey("NormBudget", LOGICAL, None),
     InputKey("DoDump", LOGICAL, None),
     InputKey("FullSMatrix", LOGICAL, None),
 )
