@@ -116,3 +116,8 @@ def periodic(values: np.ndarray) -> np.ndarray:
     values of the cells of cell_geometry."""
     nx, ny = values.shape
     return np.asarray(values)[np.arange(nx + 1) % nx][:, np.arange(ny + 1) % ny]
+
+
+def cell_volume_bohr4(grids: dict) -> float:
+    """dZ dr dx dy sin(skew) of a (Z, r, x, y) cell (bohr^4), from run_info.json's grids."""
+    return float(grids["dz"]) * float(grids["dr"]) * float(grids["xy_volume_element"])

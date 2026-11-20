@@ -20,6 +20,7 @@ from readers.tables import AsymptoticPotential
 
 ENERGY_CAP_EV = 3.0  # heuristic: maps and elbows show V up to this above the gas-phase minimum (walls reach keV)
 CONTOUR_STEP_EV = 0.1  # the elbows' filled-contour spacing
+FRAME_CONTOUR_STEP_EV = 0.5  # the spacing of V_min's contour lines over the frame movies (a divisor of the cap)
 CONTOUR_LINE_EVERY = 5  # a contour line every this many filled steps
 MAX_ELBOW_SITES = 4  # the elbows of the first this many sites of PlotSites
 V_MAX_CLAMP_RTOL = 1e-12  # relative: a barrier this close to VMax is the clamp, not the surface
