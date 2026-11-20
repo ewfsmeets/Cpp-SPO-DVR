@@ -36,6 +36,7 @@ from compute.potential import (
     CONTOUR_STEP_EV,
     ENERGY_CAP_EV,
     MAX_ELBOW_SITES,
+    RAW_PES,
     PointOfInterest,
     barrier_on,
     barriers_on_grid,
@@ -104,6 +105,7 @@ from readers.binary import read_bk_coefficients, read_checkpoint
 from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
+from readers.pes_cut import read_pes_cut
 from readers.potential import PotentialData, read_potential
 from readers.run_info import RunInfo, lattice_of
 from readers.segments import read_joined_averages
@@ -356,7 +358,7 @@ def figure_potential_maps(runs: list[Path], info: RunInfo, options: argparse.Nam
     marks = [(site.name, x, y) for site, x, y in positions_bohr(potential.sites, lattice)]
     marks += [(point_label(p), x, y) for p, x, y in positions_bohr([lowest], lattice)]
     scale = potential_color_scale(ENERGY_CAP_EV)
-    notes = (MIN_OVER_ORIENTATIONS, *not_finite_notes(potential.v_min_hartree))
+    notes = (MIN_OVER_ORIENTATIONS, *not_finite_notes(potential.v_min_hartree, "V_min"))
     fig = new_figure(n_notes=len(notes), width_in=10.0)
     axes = fig.subplots(1, 3)
     z, r, r_bond = potential.z_bohr[iz], potential.r_bohr[ir], potential.r_bohr[ir_bond]
@@ -373,10 +375,33 @@ def figure_potential_maps(runs: list[Path], info: RunInfo, options: argparse.Nam
     return [("potential_maps", fig)]
 
 
-def not_finite_notes(values: np.ndarray) -> tuple[str, ...]:
-    """A note when V holds NaN or inf (drawn hatched, like the walls above the cap)."""
+PES_ITSELF = "V of the PES itself (no switching to the gas phase, no VMin/VMax), relative to min V_asy"
+
+
+def figure_pes_cut(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """V(Z, r) of the PES at the fixed x, y, theta, phi of a write2DPES run, with its minimax barrier."""
+    cut = read_pes_cut(runs[-1], info.data["grids"]["nz"], info.data["grids"]["nr"])
+    reference = gas_phase_minimum_hartree(read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat"))
+    barrier = barrier_on(cut.v_hartree, r_absorber_first_index(info, len(cut.r_bohr)), RAW_PES)
+    height_ev = float(relative_ev(barrier.height_hartree, reference, info.hartree_to_ev))
+    x, y, theta, phi = (value + 0.0 for value in (cut.x_bohr, cut.y_bohr, cut.theta_deg, cut.phi_deg))  # no -0
+    where = f"x {x:.4g}, y {y:.4g} bohr, theta {theta:.4g}, phi {phi:.4g} deg"
+    notes = (PES_ITSELF, *not_finite_notes(cut.v_hartree, "V"))
+    fig = new_figure(n_notes=len(notes), height_in=4.5)
+    ax = fig.subplots()
+    scale = potential_color_scale(ENERGY_CAP_EV)
+    v_ev = relative_ev(cut.v_hartree, reference, info.hartree_to_ev)
+    title = barrier_title(where, barrier, cut.z_bohr, cut.r_bohr, height_ev, "at this orientation")
+    draw_elbow(ax, cut.z_bohr, cut.r_bohr, v_ev, scale, CONTOURS, barrier, title)
+    add_potential_colorbar(fig, [ax], scale)
+    add_info_box(fig, info, ["pes_cut_2d.dat", "asymptotic_potential.dat", "run_info.json"], notes=notes)
+    return [("pes_cut", fig)]
+
+
+def not_finite_notes(values: np.ndarray, quantity: str) -> tuple[str, ...]:
+    """A note when a potential (named `quantity`) holds NaN or inf (drawn hatched, like the walls above the cap)."""
     n = count_not_finite(values)
-    return (f"{n} values of V_min are NaN or inf: hatched like the walls",) if n else ()
+    return (f"{n} values of {quantity} are NaN or inf: hatched like the walls",) if n else ()
 
 
 def figure_elbows(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
@@ -387,7 +412,7 @@ def figure_elbows(runs: list[Path], info: RunInfo, options: argparse.Namespace) 
     sites = site_points(potential, ir_c)
     points = sites[:MAX_ELBOW_SITES] if sites else [lowest_barrier(potential, barriers_on_grid(potential, ir_c))]
     more = (f"elbows of the first {len(points)} of {len(sites)} sites",) if len(sites) > len(points) else ()
-    notes = (MIN_OVER_ORIENTATIONS, *more, *not_finite_notes(potential.v_min_hartree))
+    notes = (MIN_OVER_ORIENTATIONS, *more, *not_finite_notes(potential.v_min_hartree, "V_min"))
     fig = new_figure(n_notes=len(notes), height_in=6.5 if sites else 4.0)
     axes = fig.subplots(2 if sites else 1, len(points), squeeze=False)
     scale = potential_color_scale(ENERGY_CAP_EV)
@@ -475,6 +500,7 @@ PLOTS = [
     ("potential_maps", figure_potential_maps, ["potential/manifest.json", "asymptotic_potential.dat"]),
     ("elbows", figure_elbows, ["potential/manifest.json", "asymptotic_potential.dat"]),
     ("orientation", figure_orientation, ["potential/v_sites.bin", "asymptotic_potential.dat"]),
+    ("pes_cut", figure_pes_cut, ["pes_cut_2d.dat", "asymptotic_potential.dat"]),
 ]
 
 

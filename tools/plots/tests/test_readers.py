@@ -12,6 +12,7 @@ from readers.arrays import read_arrays, read_series
 from readers.binary import BK_MAGIC, CHECKPOINT_MAGIC, FORMAT_VERSION, read_bk_coefficients, read_checkpoint
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
+from readers.pes_cut import read_pes_cut
 from readers.potential import read_potential
 from readers.run_info import read_run_info
 from readers.segments import join_records, joined_first_non_finite
@@ -378,3 +379,47 @@ def test_potential_reader_refuses_what_it_cannot_index(tmp_path: Path) -> None:
     for k, (reason, change) in enumerate(cases.items()):
         with pytest.raises(ReadError, match=reason):
             read_potential(potential_directory(tmp_path / f"case{k}", change))
+
+
+PES_CUT_HEADER = (
+    "# V(r, Z) of the PES at fixed x, y, theta, phi (write2DPES)\n"
+    "# x = 1.5000000000000000e+00 bohr, y = 0.0000000000000000e+00 bohr (along the lattice vectors)\n"
+    "# theta = 9.0000000000000000e+01 deg (1.5707963267948966e+00 rad), phi = 4.5000000000000000e+01 deg "
+    "(7.8539816339744828e-01 rad)\n"
+    "# r(bohr)  Z(bohr)  V(hartree)  V(eV); Z fastest, a blank line after each r\n"
+)
+
+
+def pes_cut_text(rows: list[tuple[float, float, float]], block: int) -> str:
+    """A pes_cut_2d.dat of rows (r, Z, V hartree) with a blank line after every `block` rows."""
+    lines = []
+    for k, (r, z, v) in enumerate(rows):
+        lines.append(f"{r:.16e} {z:.16e} {v:.16e} {v * 27.2114:.16e}")
+        if (k + 1) % block == 0:
+            lines.append("")
+    return PES_CUT_HEADER + "\n".join(lines) + "\n"
+
+
+def test_pes_cut(tmp_path: Path) -> None:
+    """A cut of 2 r x 3 Z points: V(Z, r) with Z first (V = 10 r + Z here), the grids and the header's position and
+    orientation. Each a ReadError: a file cut inside its first block or a block short (the count from run_info.json),
+    a cut last line, a repeated block (r not increasing), a Z grid that differs between blocks, a missing header."""
+    rows = [(r, z, 10.0 * r + z) for r in (1.0, 2.0) for z in (-1.0, 0.0, 1.0)]
+    (tmp_path / "pes_cut_2d.dat").write_text(pes_cut_text(rows, 3), encoding="utf-8")
+    cut = read_pes_cut(tmp_path, 3, 2)
+    assert cut.v_hartree.shape == (3, 2) and cut.v_hartree[2, 1] == 21.0 and cut.v_hartree[0, 0] == 9.0
+    assert cut.z_bohr.tolist() == [-1.0, 0.0, 1.0] and cut.r_bohr.tolist() == [1.0, 2.0]
+    assert (cut.x_bohr, cut.y_bohr, cut.theta_deg, cut.phi_deg) == (1.5, 0.0, 90.0, 45.0)
+    broken = [  # (the reason the error names, the file)
+        ("2 points, not nR x nZ = 2 x 3", pes_cut_text(rows[:2], 3)),
+        ("5 points, not nR x nZ", pes_cut_text(rows[:-1], 3)),
+        ("fields, not 4", pes_cut_text(rows, 3).rstrip("\n").rsplit(" ", 1)[0] + "\n"),
+        ("increasing Z points per increasing r", pes_cut_text([*rows[:3], *rows[:3]], 3)),
+        ("increasing Z points per increasing r", pes_cut_text([*rows[:5], (2.0, 1.5, 0.0)], 3)),
+        ("no '# x = ...'", pes_cut_text(rows, 3).replace("# x = ", "# u = ")),
+    ]
+    for k, (reason, text) in enumerate(broken):
+        (tmp_path / f"case{k}").mkdir()
+        (tmp_path / f"case{k}" / "pes_cut_2d.dat").write_text(text, encoding="utf-8")
+        with pytest.raises(ReadError, match=reason):
+            read_pes_cut(tmp_path / f"case{k}", 3, 2)

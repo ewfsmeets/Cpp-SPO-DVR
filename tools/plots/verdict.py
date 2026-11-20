@@ -50,6 +50,8 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
     mode = info.data["run_mode"]
     if mode["code"] not in PROPAGATING_RUN_MODES:
         return [not_checked("the propagation", f"a {mode['name']} run does not propagate")]
+    if "pes_cut" in info.data:  # run_info.json of a write2DPES run, which stops after the cut of the PES
+        return [not_checked("the propagation", "a write2DPES run stops after the cut of the PES")]
     last = runs[-1]
     bk_path = last / "bk_coefficients.bin"
     bk = read_bk_coefficients(bk_path) if bk_path.is_file() else None

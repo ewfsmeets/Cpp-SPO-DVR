@@ -33,6 +33,7 @@ EXPECTED = {
         "norm by region at the end",
     ],
     "potential_only": ["not checked: the propagation"],
+    "pes_cut": ["not checked: the propagation"],  # a write2DPES run (run mode 0) stops after the cut
 }
 
 

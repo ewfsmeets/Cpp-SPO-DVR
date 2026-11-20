@@ -19,6 +19,7 @@ TITLES = {
     "potential_maps": "The potential over the unit cell",
     "elbows": "Elbow plots and the minimax barrier",
     "orientation": "The potential against the orientation",
+    "pes_cut": "A 2D cut of the PES (write2DPES)",
     "bk": "Balint-Kurti coefficients and convergence in time",
 }
 
@@ -142,5 +143,16 @@ FIGURES = {
         "are the nodes, the only orientations the run has, each drawn as the cell around it. A homonuclear molecule "
         "has theta <= 90 deg only, and at theta = 90 deg phi and phi + 180 deg are the same orientation. Hatched: "
         f"more than {ENERGY_CAP_EV:g} eV above the gas-phase minimum."
+    ),
+    "pes_cut": (
+        "V(Z, r) of the PES itself at the one x, y (along the lattice vectors), theta (from the surface normal) and "
+        "phi (from the first lattice vector) of a write2DPES run, on the r grid and the whole scattering Z grid: "
+        "no switching to the gas phase and no VMin/VMax, unlike the run's potential (potential/), and at any "
+        "orientation, not only the DVR nodes. The minimax barrier and a path to it as in the elbows, from the "
+        "lowest point of the last Z row (the gas phase far out) to r >= r_c: the barrier at this fixed position "
+        "and orientation. Relative to min V_asy of the run (asymptotic_potential.dat: V at zasymp, which with "
+        "UseSwitching is ZmaxSwitch); the raw PES far out need not reach it, which offsets every height and can "
+        f"turn a small barrier into none. Filled contours every {CONTOUR_STEP_EV:g} eV, hatched: more than "
+        f"{ENERGY_CAP_EV:g} eV above it."
     ),
 }

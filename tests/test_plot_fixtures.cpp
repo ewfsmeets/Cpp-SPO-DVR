@@ -12,8 +12,10 @@
 //   dailight_oblique_split    the same in two segments, split at the multiple of 100 a.u. nearest the time
 //                             of minimum <Z> of dailight_oblique (split_time.txt)
 //   potential_only            hardwall_tiny with Potential: true (potential/ only)
-//   pes_cut                   dailight_oblique with write2DPES at the bridge (x = alat / 2, y = 0), theta 90, phi 0:
-//                             pes_cut_2d.dat, asymptotic_potential.dat and run_info.json only (no plot keys)
+//   pes_cut                   dailight_oblique with write2DPES at the bridge (x = alat / 2, y = 0), at the last
+//                             theta node of the run (in degrees) and phi 0, so that the plot tool's tests can
+//                             compare it with dailight_oblique's potential/ at the bridge site: pes_cut_2d.dat,
+//                             asymptotic_potential.dat and run_info.json only (no plot keys)
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -26,6 +28,10 @@
 
 #include "app/cli.hpp"
 #include "app/run.hpp"
+#include "core/unit_conversion.hpp"
+#include "grids/angular_grid.hpp"
+#include "input/json_input.hpp"
+#include "input/process.hpp"
 
 using namespace spodvr;
 namespace fs = std::filesystem;
@@ -201,8 +207,9 @@ TEST(PlotRuns, PesCut) {
   json["write2DPES"] = true;
   json["x2DPES"] = 2.42;  // the bridge: alat / 2 (alat 4.84 bohr)
   json["y2DPES"] = 0.0;
-  json["theta2DPES"] = 90.0;
-  json["phi2DPES"] = 0.0;
+  const AngularGrid angular = make_angular_grid(build_config(parse_input(dailight_oblique())));
+  json["theta2DPES"] = rad_to_deg(angular.thetas().back());  // a node of the run's angular grid
+  json["phi2DPES"] = 0.0;                                     // the first phi node
   const fs::path dir = fixtures_dir / "pes_cut";
   ASSERT_EQ(run(json, dir), 0);
   EXPECT_TRUE(fs::exists(dir / "pes_cut_2d.dat"));

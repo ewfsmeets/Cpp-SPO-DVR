@@ -23,6 +23,16 @@ CONTOUR_STEP_EV = 0.1  # the elbows' filled-contour spacing
 CONTOUR_LINE_EVERY = 5  # a contour line every this many filled steps
 MAX_ELBOW_SITES = 4  # the elbows of the first this many sites of PlotSites
 V_MAX_CLAMP_RTOL = 1e-12  # relative: a barrier this close to VMax is the clamp, not the surface
+# A write2DPES cut: the PES itself, no switching and no clamp.
+RAW_PES = PotentialLimits(
+    use_switching=False,
+    z_min_switch_bohr=0.0,
+    z_max_switch_bohr=0.0,
+    impose_v_min=False,
+    v_min_clamp_hartree=0.0,
+    impose_v_max=False,
+    v_max_clamp_hartree=0.0,
+)
 
 
 def relative_ev(v_hartree: np.ndarray, reference_hartree: float, hartree_to_ev: float) -> np.ndarray:
@@ -103,9 +113,10 @@ def path_to(cell: tuple[int, int], previous: dict[tuple[int, int], tuple[int, in
 
 
 def barrier_on(v_zr_hartree: np.ndarray, ir_c: int, limits: PotentialLimits) -> Barrier:
-    """The minimax barrier of V(Z, r) (nz_potential, nr): from the lowest point of the last Z row (the gas-phase
-    side, just below zasymp) to any point with r index >= ir_c (the dissociated side: the r absorber's first point,
-    the program's own index). An all-NaN last row has no start: an infinite barrier at its first point."""
+    """The minimax barrier of V(Z, r) (nz, nr: the run's potential below zasymp, or a write2DPES cut over the whole
+    Z grid): from the lowest point of the last Z row (the gas-phase side) to any point with r index >= ir_c (the
+    dissociated side: the r absorber's first point, the program's own index). An all-NaN last row has no start: an
+    infinite barrier at its first point."""
     v = np.asarray(v_zr_hartree, dtype=float)
     last = v.shape[0] - 1
     if np.all(np.isnan(v[last])):

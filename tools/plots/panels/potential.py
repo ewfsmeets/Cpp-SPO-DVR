@@ -42,10 +42,18 @@ def point_label(point: PointOfInterest) -> str:
     return f"lowest barrier (x {point.fraction_x:g}, y {point.fraction_y:g})"
 
 
-def barrier_title(label: str, barrier: Barrier, z_bohr: np.ndarray, r_bohr: np.ndarray, height_ev: float) -> str:
-    """A title naming the point and what the minimax pass found on the run's nodes: a barrier (height in eV above
-    the gas-phase minimum and place), or its highest point at r_c (no saddle before the dissociated side), or none
-    (V falls from the gas-phase side), or that r_c is not reached; and when the barrier is the VMax clamp."""
+def barrier_title(
+    label: str,
+    barrier: Barrier,
+    z_bohr: np.ndarray,
+    r_bohr: np.ndarray,
+    height_ev: float,
+    found_on: str = "at the run's nodes",
+) -> str:
+    """A title naming the point and what the minimax pass found (found_on: on which V, e.g. the run's nodes): a
+    barrier (height in eV above the gas-phase minimum and place), or its highest point at r_c (no saddle before the
+    dissociated side), or none (V falls from the gas-phase side), or that r_c is not reached; and when the barrier
+    is the VMax clamp."""
     if barrier.kind == UNREACHED:
         return f"{label}: r >= r_c not reached"
     if barrier.kind == AT_START:
@@ -54,7 +62,7 @@ def barrier_title(label: str, barrier: Barrier, z_bohr: np.ndarray, r_bohr: np.n
         return f"{label}: no saddle before r_c\n(highest point {height_ev:.2f} eV at r_c)"
     clamp = " = VMax clamp" if barrier.at_v_max else ""
     place = f"Z {z_bohr[barrier.iz]:.2f}, r {r_bohr[barrier.ir]:.2f} bohr"
-    return f"{label}: barrier {height_ev:.2f} eV{clamp}\n(at the run's nodes; {place})"
+    return f"{label}: barrier {height_ev:.2f} eV{clamp}\n({found_on}; {place})"
 
 
 def draw_cell_map(

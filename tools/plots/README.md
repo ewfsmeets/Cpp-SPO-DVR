@@ -61,6 +61,7 @@ is a bug of the tool.
 | `potential_maps` | over the unit cell: the minimax barrier of each (x, y) point; V_min (V minimised over the DVR nodes) at the lowest barrier's (Z, r) or `--z`, `--r`; V_min at that Z and the gas-phase bond length; the sites and the lowest barrier's point marked | potential/ (`writePotential`), asymptotic_potential.dat |
 | `elbows` | V_min(Z, r) at the first four sites (or the lowest barrier's point) with the minimax barrier at the run's nodes and a path to it (or "no saddle"); V at the barrier's node with its own barrier | potential/, asymptotic_potential.dat |
 | `orientation` | V at every DVR node (θ, φ), as a map, at the barrier point of the site with the lowest barrier | potential/ with `PlotSites`, asymptotic_potential.dat |
+| `pes_cut` | V(Z, r) of the PES itself (no switching, no VMin/VMax) at the fixed x, y, θ, φ of a `write2DPES` run, with its minimax barrier | pes_cut_2d.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
 Every figure also reads `run_info.json` (the run's metadata). The file formats:
@@ -113,6 +114,7 @@ flowchart LR
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
 | `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes and limits; the datasets' axes and shapes checked | `src/report/potential_files.cpp` |
+| `readers/pes_cut.py` | pes_cut_2d.dat (`write2DPES`): V(Z, r) of the cut, its grids, position and orientation; whole r blocks checked | `src/report/pes_cut_file.cpp` |
 | `readers/sites.py` | the sites of PlotSites as the plot data record them (fractions, grid point, the ixy check) | `src/input/validate_outputs.cpp` |
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
 | `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must equal the kept one to 1e-12 of its largest value) | — |
@@ -225,7 +227,9 @@ averages.dat (1e-13), give its ⟨Z⟩ and ⟨r⟩ (1e-12), equal the probabilit
 `checkpoint.bin` (1e-12 of the largest cell, also mid-run, in a restart's first segment), and a split run's
 segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`). potential/ must hold V_min equal to
 the minimum of each site's values over the nodes and the stored node's value (bitwise), and the hard wall's V equal
-to its formula, computed in numpy, within 1e-15 of d + V_z (`tests/test_runs_potential.py`).
+to its formula, computed in numpy, within 1e-15 of d + V_z (`tests/test_runs_potential.py`). The write2DPES cut,
+taken at a site and a DVR node, must equal that site's V in potential/ where neither switching nor a clamp changed
+it (`tests/test_runs_pes_cut.py`).
 
 ## Limits
 

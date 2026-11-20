@@ -42,15 +42,18 @@ KINDS = {  # fixture directories of each kind of run ("stopped": the stopped_run
     "split": ["hardwall_tiny_split/first", "hardwall_tiny_split/second"],
     "stopped": [],
     "potential only": ["potential_only"],
+    "pes cut": ["pes_cut"],
 }
 ALL = {name for name, _, _ in PLOTS}
 POTENTIAL = {"potential_maps", "elbows", "orientation"}  # potential/ is written at set-up
+PROPAGATING = ALL - {"pes_cut"}  # pes_cut_2d.dat: only a write2DPES run, which stops after it
 EXPECTED = {  # the PLOTS entries each kind of run allows
-    "oblique": ALL,
-    "hard wall": ALL,
-    "split": ALL,
+    "oblique": PROPAGATING,
+    "hard wall": PROPAGATING,
+    "split": PROPAGATING,
     "stopped": {"verdict", "gas_phase", "bk", "densities", "density_movie", *POTENTIAL},
     "potential only": {"verdict", "gas_phase", *POTENTIAL},
+    "pes cut": {"verdict", "pes_cut"},
 }
 PIXEL_SLACK = 1  # bounding boxes are rounded to whole pixels
 
@@ -342,3 +345,18 @@ def test_potential_figures_without_sites(no_sites_run: Path) -> None:
     ((_, maps),) = figure_potential_maps([no_sites_run], info, default_options())
     assert any(m.startswith("lowest barrier (x") for m in annotations(maps.axes[0]))
     assert not has_files(no_sites_run, next(needed for name, _, needed in PLOTS if name == "orientation"))
+
+
+def test_pes_cut_figure_content(fixture_runs: Path, stopped_run: Path) -> None:
+    """The cut of the write2DPES fixture: one panel titled with the cut's position and orientation and what the
+    minimax pass found on it, the pass drawn (a path and, for a barrier, its mark), one colour bar open at the
+    bottom, and the note that V is the PES itself."""
+    fig = drawn("pes_cut", "pes cut", fixture_runs, stopped_run)
+    (panel,) = [ax for ax in fig.axes if ax.get_label() != "<colorbar>"]
+    title = panel.get_title()
+    assert title.startswith("x 2.42, y 0 bohr, theta ") and "phi 0 deg" in title
+    assert "barrier" in title or "no saddle" in title or "not reached" in title
+    assert len(panel.get_lines()) >= 1
+    (bar,) = [ax for ax in fig.axes if ax.get_label() == "<colorbar>"]
+    assert bar._colorbar.extend == "min"
+    assert "the PES itself" in fig.texts[0].get_text()
