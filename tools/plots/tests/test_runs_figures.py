@@ -41,7 +41,7 @@ from readers.run_info import RunInfo, lattice_of, read_run_info
 from readers.segments import joined_info, ordered_segments
 from readers.tables import read_asymptotic_potential, read_s_matrix
 from report import save
-from style import Movie, add_info_box, save_movie
+from style import SURFACE, Movie, add_info_box, save_movie
 
 KINDS = {  # fixture directories of each kind of run ("stopped": the stopped_run fixture)
     "oblique": ["dailight_oblique"],
@@ -143,9 +143,21 @@ def test_bk_channels_differ_by_style_and_marker(fixture_runs: Path, stopped_run:
 
 
 def test_results_panels(fixture_runs: Path, stopped_run: Path) -> None:
-    """Two levels scattered into (oblique): a log P(v') panel; one level (hard wall): no such panel and a note."""
+    """Two levels scattered into (oblique): P_reaction on a log axis (filled points above the unitarity error and
+    open points inside it, both in this run) and on a linear one, the packet's spectrum on a linear axis from 0, a
+    log P(v') panel; one level (hard wall): no P(v') panel and a note."""
     oblique = drawn("results", "oblique", fixture_runs, stopped_run)
     titles = {ax.get_title(): ax for ax in oblique.axes}
+    reaction_log = titles["Reaction probability (log)\n(includes flux not yet analysed and basis loss)"]
+    assert reaction_log.get_yscale() == "log"
+    points = {line.get_label(): line for line in reaction_log.get_lines() if line.get_linestyle() == "None"}
+    assert set(points) == {"above the unitarity error", "inside the unitarity error"}
+    assert legend_texts(reaction_log) == ["above the unitarity error", "inside the unitarity error"]
+    assert points["inside the unitarity error"].get_markerfacecolor() == "none"
+    assert points["above the unitarity error"].get_markerfacecolor() != "none"
+    assert titles["Reaction probability (linear)\n(includes flux not yet analysed and basis loss)"]
+    spectrum = titles["The packet's energy spectrum\n(the S matrix divides by it)"]
+    assert spectrum.get_yscale() == "linear" and spectrum.get_ylim()[0] == 0.0
     assert titles["Final vibrational state"].get_yscale() == "log"
     hard_wall = drawn("results", "hard wall", fixture_runs, stopped_run)
     assert "Final vibrational state" not in {ax.get_title() for ax in hard_wall.axes}
@@ -358,7 +370,8 @@ def test_potential_figures_without_sites(no_sites_run: Path) -> None:
 def test_pes_cut_figure_content(fixture_runs: Path, stopped_run: Path) -> None:
     """The cut of the write2DPES fixture: one panel titled with the cut's position and orientation and what the
     minimax pass found on the PES itself over the whole Z grid (the title of that barrier, recomputed here), the
-    pass drawn (its path, and the mark of a saddle), one colour bar, and the note that V is the PES itself."""
+    pass drawn (its path, and the mark of a saddle) in white on the sequential scale (V stays above the gas-phase
+    minimum here), one colour bar, the note that V is the PES itself, and no analysis energies (it printed nan once)."""
     runs, info = run_of("pes cut", fixture_runs, stopped_run)
     cut = read_pes_cut(runs[-1], info)
     barrier = barrier_on(cut.v_hartree, r_absorber_first_index(info, len(cut.r_bohr)), RAW_PES)
@@ -370,8 +383,10 @@ def test_pes_cut_figure_content(fixture_runs: Path, stopped_run: Path) -> None:
     (panel,) = [ax for ax in fig.axes if ax.get_label() != "<colorbar>"]
     assert panel.get_title() == expected
     assert len(panel.get_lines()) == (2 if barrier.saddle else 1)
+    assert {line.get_color() for line in panel.get_lines()} == {SURFACE}
     assert len([ax for ax in fig.axes if ax.get_label() == "<colorbar>"]) == 1
     assert "the PES itself" in fig.texts[0].get_text()
+    assert "no analysis energies" in fig.texts[0].get_text() and "nan" not in fig.texts[0].get_text()
 
 
 def test_frame_movies_content(fixture_runs: Path, stopped_run: Path) -> None:
@@ -461,8 +476,8 @@ def legend_texts(ax: object) -> list[str]:
 
 def test_frame_extras_content(fixture_runs: Path, stopped_run: Path) -> None:
     """The oblique run's FrameExtras figures: the axis distribution at the surface and in the last frame with one
-    colour bar naming the isotropic value, the homonuclear mirror noted and theta from 0 to 90 degrees (the cells
-    around the nodes); P(n, m; Z) with MAX_ORDERS orders and the rest (4 x 4 orders), the same orders in both panels,
+    colour bar naming the isotropic value, the homonuclear mirror noted, one square per node and theta from 0
+    to past the last node; P(n, m; Z) with MAX_ORDERS orders and the rest (4 x 4 orders), the same orders in both panels,
     zasymp and Zana (equal here) marked as one line; P(v; Z) with the fixture's two analysed levels, the other levels
     below V_asy(r_end) and those above; the moments in three frames with the reference levels of <P2>; the momentum
     panels, and the edges with the limit, the title answering as the verdict does (no: the outer diffraction orders of
@@ -473,7 +488,11 @@ def test_frame_extras_content(fixture_runs: Path, stopped_run: Path) -> None:
     assert [ax.get_title().split(":")[0] for ax in maps] == ["At the surface", "Last frame"]
     assert bar.get_ylabel() == f"probability per steradian (isotropic {1 / (4 * np.pi):.3f})"
     assert all("theta > 90: the mirror (180 - theta, phi + 180)" in annotations(ax) for ax in maps)
-    assert all(tuple(np.round(sorted(ax.get_ylim()), 9)) == (0.0, 90.0) for ax in maps)
+    for ax in maps:  # theta from 0 down past the last node, which lies at 90 degrees here; one square per node
+        (squares,) = ax.collections
+        bottom, top = ax.get_ylim()
+        assert top == 0.0 and bottom > 90.0 and len(squares.get_paths()) == len(squares.get_array())
+        assert np.max([path.vertices[:, 1].max() for path in squares.get_paths()]) < bottom
     diffraction = drawn("diffraction_z", "oblique", fixture_runs, stopped_run).axes
     labels = [legend_texts(ax) for ax in diffraction]
     assert labels[0] == labels[1] and len(labels[0]) == MAX_ORDERS + 1 and labels[0][-1] == "other orders"

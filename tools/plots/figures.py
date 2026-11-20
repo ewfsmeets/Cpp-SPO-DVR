@@ -90,7 +90,7 @@ from compute.potential import (
     saddle_heights_hartree,
     site_points,
 )
-from compute.results import matched_differences, results
+from compute.results import matched_differences, packet_spectrum_per_ev, results
 from compute.series import evenly_spaced_records, usable_records
 from compute.states import level_map, mj_fractions, state_to_state
 from compute.time_series import (
@@ -141,8 +141,9 @@ from panels.results import (
     draw_fine_comparison,
     draw_fine_difference,
     draw_mean_energies,
+    draw_packet_spectrum,
     draw_reaction,
-    draw_scattering,
+    draw_reaction_log,
     draw_vibrational_probabilities,
 )
 from panels.states import draw_alignment, draw_level_map, draw_level_probabilities, draw_mj_distribution
@@ -209,15 +210,20 @@ def figure_verdict(runs: list[Path], info: RunInfo, options: argparse.Namespace)
 
 
 def figure_results(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """The scattering and reaction probabilities, P(v') (two or more levels) and the mean final energies
-    against the collision energy."""
+    """The reaction probability (log and linear), the packet's energy spectrum, the mean final energies and P(v')
+    (two or more levels) against the collision energy."""
     run_results = results(read_scattering_summary(runs[-1] / "scattering_summary.tsv"))
-    bottom_right = "vibration" if run_results.p_vibration else "energies"
+    energies = run_results.collision_energy_ev
+    spectrum = packet_spectrum_per_ev(info, energies)
+    layout = [["reaction_log", "reaction"], ["spectrum", "energies"]]
+    if run_results.p_vibration:
+        layout.append(["vibration", "vibration"])
     notes = () if run_results.p_vibration else ("P(v') not drawn: fewer than two levels are scattered into",)
-    fig = new_figure(n_notes=len(notes), height_in=7.0)
-    axes = fig.subplot_mosaic([["scattered", "reaction"], ["energies", bottom_right]])
-    draw_scattering(axes["scattered"], run_results)
+    fig = new_figure(n_notes=len(notes), height_in=3.4 * len(layout))
+    axes = fig.subplot_mosaic(layout)
+    draw_reaction_log(axes["reaction_log"], run_results)
     draw_reaction(axes["reaction"], run_results)
+    draw_packet_spectrum(axes["spectrum"], energies, spectrum)
     draw_mean_energies(axes["energies"], run_results, info.data["wave_packet"]["e_parallel_ev"])
     if run_results.p_vibration:
         draw_vibrational_probabilities(axes["vibration"], run_results)
@@ -341,9 +347,11 @@ def figure_fine_analysis(runs: list[Path], info: RunInfo, options: argparse.Name
     grid = read_fine_grid(fine_dir / "grid.json")
     energies_ev, difference = matched_differences(fine, on_the_fly, "P_scattered")
     outside = ", ".join(f"{e_z:.3g}" for e_z, _ in grid.skipped) or "none"
+    resolution_mev = 1000 * 2 * np.pi / grid.effective_time_au * info.hartree_to_ev  # 2 pi hbar / T_eff
     notes = (
-        f"fine grid: spacing {1000 * grid.spectral_resolution_ev:.3g} meV, effective time {grid.effective_time_au:g} "
-        f"a.u.; analysis energies (E_n, eV) outside it: {outside}",
+        f"fine grid: spacing {1000 * grid.spectral_resolution_ev:.3g} meV (pi hbar / T_eff), effective time "
+        f"T_eff {grid.effective_time_au:g} a.u. (energy resolution 2 pi hbar / T_eff = {resolution_mev:.3g} meV); "
+        f"analysis energies (E_n, eV) outside it: {outside}",
     )
     fig = new_figure(n_notes=len(notes))
     left, right = fig.subplots(1, 2)
@@ -422,7 +430,8 @@ def figure_potential_maps(runs: list[Path], info: RunInfo, options: argparse.Nam
     marks = [(site.name, x, y) for site, x, y in positions_bohr(potential.sites, lattice)]
     marks += [(point_label(p), x, y) for p, x, y in positions_bohr([lowest], lattice)]
     images = other_images([(s.fraction_x, s.fraction_y) for s in potential.sites], info)  # the sites' only
-    scale = potential_color_scale(ENERGY_CAP_EV)
+    shown = (heights, v[iz, ir], v[iz, ir_bond])
+    scale = potential_color_scale(ENERGY_CAP_EV, list(shown))
     notes = (MIN_OVER_ORIENTATIONS, *not_finite_notes(potential.v_min_hartree, "V_min"))
     fig = new_figure(n_notes=len(notes), width_in=10.0)
     axes = fig.subplots(1, 3)
@@ -433,7 +442,7 @@ def figure_potential_maps(runs: list[Path], info: RunInfo, options: argparse.Nam
         f"V_min at Z = {z:.2f},\nr = {r:.2f} bohr{default}",
         f"V_min at Z = {z:.2f},\nr = {r_bond:.2f} bohr (bond)",
     )
-    for ax, values, title in zip(axes, (heights, v[iz, ir], v[iz, ir_bond]), titles, strict=True):
+    for ax, values, title in zip(axes, shown, titles, strict=True):
         draw_cell_map(ax, cell, periodic(values), scale, marks, title, images)
     add_potential_colorbar(fig, list(axes), scale)
     add_info_box(fig, info, ["potential/", "asymptotic_potential.dat", "run_info.json"], notes=notes)
@@ -454,8 +463,8 @@ def figure_pes_cut(runs: list[Path], info: RunInfo, options: argparse.Namespace)
     notes = (PES_ITSELF, *not_finite_notes(cut.v_hartree, "V"))
     fig = new_figure(n_notes=len(notes), height_in=4.5)
     ax = fig.subplots()
-    scale = potential_color_scale(ENERGY_CAP_EV)
     v_ev = relative_ev(cut.v_hartree, reference, info.hartree_to_ev)
+    scale = potential_color_scale(ENERGY_CAP_EV, [v_ev])
     title = barrier_title(where, barrier, cut.z_bohr, cut.r_bohr, height_ev, "at this orientation")
     draw_elbow(ax, cut.z_bohr, cut.r_bohr, v_ev, scale, CONTOURS, barrier, title)
     add_potential_colorbar(fig, [ax], scale)
@@ -480,7 +489,9 @@ def figure_elbows(runs: list[Path], info: RunInfo, options: argparse.Namespace) 
     notes = (MIN_OVER_ORIENTATIONS, *more, *not_finite_notes(potential.v_min_hartree, "V_min"))
     fig = new_figure(n_notes=len(notes), height_in=6.5 if sites else 4.0)
     axes = fig.subplots(2 if sites else 1, len(points), squeeze=False)
-    scale = potential_color_scale(ENERGY_CAP_EV)
+    shown = [potential.v_min_hartree[:, :, p.ix, p.iy] for p in points]  # the top row; the bottom row's nodes:
+    shown += [potential.v_sites_hartree[p.isite] for p in points if p.isite is not None]  # all of the site's nodes
+    scale = potential_color_scale(ENERGY_CAP_EV, [relative_ev(v, reference, info.hartree_to_ev) for v in shown])
     for k, point in enumerate(points):
         bottom = axes[1, k] if sites else None
         elbow_column(axes[0, k], bottom, potential, point, (reference, info.hartree_to_ev), ir_c, scale)
@@ -526,7 +537,7 @@ def figure_orientation(runs: list[Path], info: RunInfo, options: argparse.Namesp
     values = relative_ev(potential.v_sites_hartree[site.isite, barrier.iz, barrier.ir], reference, info.hartree_to_ev)
     edges = node_edges_deg(potential.theta_rad, potential.phi_rad, potential.homonuclear)
     nodes = (np.degrees(potential.theta_rad), np.degrees(potential.phi_rad))
-    scale = potential_color_scale(ENERGY_CAP_EV)
+    scale = potential_color_scale(ENERGY_CAP_EV, [values])
     fig = new_figure()
     ax = fig.add_subplot()
     z, r = potential.z_bohr[barrier.iz], potential.r_bohr[barrier.ir]
@@ -753,7 +764,7 @@ def budget_title(budget: Budget) -> str:
     answer = "Yes" if check.closes else "No"
     return (
         f"Does the budget close? {answer}:\n"
-        f"|residual| {abs(budget.residual[k]):.1e} at t = {budget.times_au[k]:g} a.u. "
+        f"|residual| {abs(budget.residual[k]):.1e} at t = {budget.times_au[k]:g} a.u.\n"
         f"(error estimate {budget.error_estimate[k]:.1e})"
     )
 
@@ -783,17 +794,15 @@ def figure_steric(runs: list[Path], info: RunInfo, options: argparse.Namespace) 
     iz_last = densest_z(frames, k_last, frames.nz_scattering)
     at_surface = steric_distribution_at(frames, k_surface, iz_surface)
     last = steric_distribution_at(frames, k_last, iz_last)
-    nodes = frames.extras.angular
-    edges = node_edges_deg(nodes.theta_rad, nodes.phi_rad, nodes.homonuclear)
     color_scale = linear_color_scale(np.array([at_surface.per_sr, last.per_sr]))
     fig = new_figure(n_notes=len(notes) + 1, width_in=9.0)
     left, right = fig.subplots(1, 2)
     surface_title = (
         f"At the surface: t = {at_surface.t_au:g} a.u.,\nZ = {at_surface.z_bohr:.2f} bohr (densest below zasymp)"
     )
-    draw_steric_distribution(left, at_surface, edges, color_scale, surface_title)
+    draw_steric_distribution(left, at_surface, color_scale, surface_title)
     last_title = f"Last frame: t = {last.t_au:g} a.u.,\nZ = {last.z_bohr:.2f} bohr (densest)"
-    draw_steric_distribution(right, last, edges, color_scale, last_title)
+    draw_steric_distribution(right, last, color_scale, last_title)
     add_steric_colorbar(fig, [left, right], color_scale)
     note = "per steradian at the DVR nodes, normalised to 1 over the sphere at that Z (prob_angle_z / w_t dphi)"
     add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, note))

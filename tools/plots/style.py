@@ -4,7 +4,8 @@ GIF + a PNG of its still).
 
 Colours: the wave-packet designer's (tools/wave_packet_designer/plots.py; tests/test_style.py checks that they
 stay equal) with the same meanings in grid and absorber panels: the scattering grid blue, the specular grid
-aqua, r orange. Elsewhere series differ by line style, marker and direct labels, never by colour alone. The
+aqua, r orange. Elsewhere series differ by colour (SERIES_COLORS, colour-blind safe), line style, marker and
+direct labels, never by colour alone. The
 only colour maps: viridis and cividis (sequential), PuOr (diverging). This module holds every colour of the
 tool: tests/test_style.py fails on a hex colour or a colour-map name in any other module.
 """
@@ -35,6 +36,11 @@ GRID_COLOR = {"scattering": BLUE, "specular": AQUA, "r": ORANGE}
 SEQUENTIAL = "viridis"
 SEQUENTIAL_GREY_SAFE = "cividis"
 DIVERGING = "PuOr"
+# The colours of a panel's series, in order (Okabe & Ito's colour-blind-safe set without its yellow, black first),
+# beside a line style and marker each, so identity never rests on colour alone. Its blue, vermillion and green are
+# close in hue to BLUE, ORANGE and AQUA: where a panel draws both (the gas-phase |psi| over the r absorber's faint
+# band), the band carries a label and the lines differ by style.
+SERIES_COLORS = [INK, "#0072b2", "#d55e00", "#009e73", "#cc79a7", "#e69f00", "#56b4e9"]
 LINE_STYLES = ["-", "--", ":", "-."]
 MARKERS = ["o", "s", "^", "D", "v", "P", "X"]
 
@@ -72,7 +78,7 @@ def apply_style() -> None:
             "grid.linewidth": 0.6,
             "lines.linewidth": 2.0,
             "legend.frameon": False,
-            "axes.prop_cycle": matplotlib.cycler(color=[INK]),
+            "axes.prop_cycle": matplotlib.cycler(color=SERIES_COLORS),
             "figure.dpi": DPI,
             "savefig.dpi": DPI,
             "image.cmap": SEQUENTIAL,
@@ -83,6 +89,12 @@ def apply_style() -> None:
 def axis_label(quantity: str, unit: str = "") -> str:
     """ "Collision energy (eV)"; a dimensionless quantity has no unit."""
     return f"{quantity} ({unit})" if unit else quantity
+
+
+def legend_over_data(ax: Axes) -> None:
+    """A legend placed where matplotlib finds room, on a light frame so that it stays readable where it covers
+    curves (panels with many series)."""
+    ax.legend(loc="best", fontsize=7, frameon=True, framealpha=0.85, facecolor=SURFACE, edgecolor=GRID)
 
 
 def masked(values: np.ndarray, floor: float) -> np.ndarray:
@@ -173,7 +185,8 @@ def info_lines(
     d = info.data
     g = d["grids"]
     s = d["initial_state"]
-    energies = d["analysis_energies"]["collision_ev"] or [float("nan")]
+    energies = d["analysis_energies"]["collision_ev"]
+    energy_range = f"E_coll {energies[0]:.3g}-{energies[-1]:.3g} eV" if energies else "no analysis energies"
     packet = d["wave_packet"]
     incidence = (
         f"E_par {packet['e_parallel_ev']:g} eV at phi {packet['phi_parallel_deg']:g} deg (E_n = E_coll - E_par)"
@@ -182,7 +195,7 @@ def info_lines(
     )
     lines = [
         f"{d['title']} | {d['system_id']} | (v, j, mJ) = ({s['v']}, {s['j']}, {s['mJ']})",
-        f"E_coll {energies[0]:.3g}-{energies[-1]:.3g} eV, {incidence} | t {info.t_start_au:g}-{info.t_end_au:g} a.u."
+        f"{energy_range}, {incidence} | t {info.t_start_au:g}-{info.t_end_au:g} a.u."
         + (f" | frame t = {time_au:g} a.u." if time_au is not None else ""),
         f"grids nZ {g['nz']}/{g['nz_specular']} x nR {g['nr']} x {g['nx']} x {g['ny']}, JMax {g['j_max']}, "
         f"MJMax {g['mj_max']}",

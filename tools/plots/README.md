@@ -49,7 +49,7 @@ is a bug of the tool.
 | Figure | Shows | Needs |
 |---|---|---|
 | `verdict` | the run verdict as a text panel (the report prints it as text) | whatever the run has |
-| `results` | P_scattered; P_reaction on its own axis with the unitarity-error band; the mean final energies; P(v') (when two or more levels are scattered into) | scattering_summary.tsv |
+| `results` | P_reaction on a log axis (above and inside the unitarity error) and on a linear one with the unitarity-error band; the packet's energy spectrum \|a(E)\|² per eV; the mean final energies; P(v') (when two or more levels are scattered into) | scattering_summary.tsv |
 | `state_to_state` | P(v', j') against energy and at one energy; P(mJ') and the alignment A0(2) (quantisation axis the surface normal) | s_matrix.tsv |
 | `diffraction` | the spots at their Cartesian parallel momentum at one energy; P per order and the fraction out of the plane against energy | s_matrix.tsv |
 | `scattering_angles` | polar and azimuthal angle of every open final state (summed over mJ') at one energy, and the specular direction | s_matrix.tsv, bk_coefficients.bin |
@@ -97,7 +97,7 @@ judgement); `verdict.py` reads the run's files for them.
 | packet at the edge of the basis: … (momentum grid, above the first frame's) | warning | in some frame, the probability at \|k\| above 0.8 of a momentum grid's largest (k_r of ψ_full, k_Z of the specular wave χ; `FrameExtras` `momentum`) or in the orders with \|n\| or \|m\| above 0.8 of the largest (`diffraction`) rises by more than 1e-6 of the initial norm above the first frame's: the FFT folds larger momenta over (the 0.8: `NYQUIST_FRACTION` in `compute/frame_extras.py`) |
 | packet at the edge of the basis: top J or \|mJ\| | information | in some frame, more than 1e-6 of the initial norm in the top J, or in the top \|mJ\| when it is below the top J: normal while the packet is at the surface; the j′ check of the S matrix decides whether the basis is large enough |
 | norm budget does not close | warning | the norm that left the grids minus the absorbers' summed losses exceeds its error estimate by more than 1e-4 of the initial norm (norm_budget/) at some window end |
-| gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
+| gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat); the advice names the end: a smaller RStart (the first point) or a longer r grid (the last) |
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
 | norm by region at the end | information | where the norm left sits at the last densities/ record: below Zana not yet analysed; between Zana and the specular analysis line the specular wave not yet either (the rest norm), the scattering wave already; beyond both lines analysed but not yet absorbed; r ≥ r_c dissociating (counted as reaction). A densities/ that cannot be read is a "not checked" finding |

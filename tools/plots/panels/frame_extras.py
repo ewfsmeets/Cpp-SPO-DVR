@@ -5,6 +5,7 @@ several times, and a momentum distribution at several times with the edge of its
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.cm import ScalarMappable
+from matplotlib.collections import PolyCollection
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 
@@ -13,13 +14,14 @@ from compute.frame_extras import ISOTROPIC_PER_SR, MomentumDistribution, StericD
 from panels.densities import draw_marks
 from style import (
     DENSITY_FLOOR,
-    INK,
     LINE_STYLES,
     MARKERS,
     MUTED,
     SEQUENTIAL,
+    SERIES_COLORS,
     apply_scale,
     axis_label,
+    legend_over_data,
     masked,
     scale_and_limits,
 )
@@ -28,28 +30,40 @@ MARKS_EVERY = 12  # a line over many grid points carries a marker at every this 
 
 
 def plot_series(ax: Axes, x: np.ndarray, y: np.ndarray, k: int, label: str) -> None:
-    """Line k of a panel: its own line style and marker (identity never by colour alone), the markers of different
-    lines at different points."""
+    """Line k of a panel: its own colour, line style and marker (identity never by colour alone), the markers of
+    different lines at different points."""
     style, marker = LINE_STYLES[k % len(LINE_STYLES)], MARKERS[k % len(MARKERS)]
     every = (k % MARKS_EVERY, MARKS_EVERY)
-    ax.plot(x, y, linestyle=style, marker=marker, markevery=every, markersize=3, color=INK, label=label)
+    color = SERIES_COLORS[k % len(SERIES_COLORS)]
+    ax.plot(x, y, linestyle=style, marker=marker, markevery=every, markersize=3, color=color, label=label)
 
 
-def draw_steric_distribution(
-    ax: Axes,
-    steric: StericDistribution,
-    edges_deg: tuple[np.ndarray, np.ndarray],
-    color_scale: Normalize,
-    title: str,
-) -> None:
-    """The distribution of the axis per steradian (x: phi, y: theta; each node's cell between the edges (theta_edges,
-    phi_edges): compute.potential.node_edges_deg) on a linear colour scale from zero, the nodes marked; for a
-    homonuclear molecule a note that the other hemisphere is the mirror."""
-    theta_edges, phi_edges = edges_deg
-    ax.pcolormesh(phi_edges, theta_edges, steric.per_sr, cmap=SEQUENTIAL, norm=color_scale, rasterized=True)
-    phi_grid, theta_grid = np.meshgrid(steric.phi_deg, steric.theta_deg)
-    ax.plot(phi_grid.ravel(), theta_grid.ravel(), marker=".", color=INK, markersize=3, linestyle="none")
-    ax.grid(False)
+SQUARE_FRACTION = 0.6  # a node's square spans this fraction of the smallest node spacing: neighbours never touch
+
+
+def node_squares(theta_deg: np.ndarray, phi_deg: np.ndarray) -> tuple[np.ndarray, float, float]:
+    """The squares drawn at the nodes: their corners (ntheta * nphi, 4, 2) as (phi, theta) in degrees, theta fastest
+    in phi order (as per_sr.ravel() of (ntheta, nphi)), and their half width in phi and half height in theta, both a
+    SQUARE_FRACTION of the smallest spacing, so the squares shrink as the grid grows."""
+    half_phi = 0.5 * SQUARE_FRACTION * 360.0 / len(phi_deg)
+    spacing = np.diff(theta_deg)
+    half_theta = 0.5 * SQUARE_FRACTION * (float(np.min(spacing)) if spacing.size else 90.0)
+    phi, theta = (a.ravel() for a in np.meshgrid(phi_deg, theta_deg))
+    dx, dy = np.array([-1, 1, 1, -1]) * half_phi, np.array([-1, -1, 1, 1]) * half_theta
+    corners = np.stack([phi[:, None] + dx, theta[:, None] + dy], axis=-1)
+    return corners, half_phi, half_theta
+
+
+def draw_steric_distribution(ax: Axes, steric: StericDistribution, color_scale: Normalize, title: str) -> None:
+    """The distribution of the axis per steradian at the DVR nodes only (x: phi, y: theta from the surface normal),
+    each node a coloured square (node_squares) on a linear scale from zero: the run knows nothing between them, so
+    no cells are drawn; theta from 0 to past the last node (homonuclear: 90 degrees, with a note on the mirror)."""
+    corners, half_phi, half_theta = node_squares(steric.theta_deg, steric.phi_deg)
+    squares = PolyCollection(corners, cmap=SEQUENTIAL, norm=color_scale, edgecolors=MUTED, linewidths=0.5, zorder=3)
+    squares.set_array(steric.per_sr.ravel())
+    ax.add_collection(squares)
+    ax.set_xlim(steric.phi_deg[0] - 2.0 * half_phi, steric.phi_deg[-1] + 2.0 * half_phi)
+    ax.set_ylim(max(steric.theta_deg[-1] + 2.0 * half_theta, 90.0 if steric.homonuclear else 180.0), 0.0)
     ax.set_xlabel(axis_label("phi, from the first lattice vector", "deg"))
     ax.set_ylabel(axis_label("theta, from the surface normal", "deg"))
     if steric.homonuclear:
@@ -79,7 +93,7 @@ def draw_z_profiles(ax: Axes, z_bohr: np.ndarray, profiles: ZProfiles, marks: Ma
         plot_series(ax, z_bohr, masked(values, scale.lower) if scale.kind == "log" else values, k, label)
     apply_scale(ax, scale)
     draw_marks(ax, marks)
-    ax.legend(loc="best", fontsize=7)
+    legend_over_data(ax)
     ax.set_xlabel(axis_label("Z", "bohr"))
     ax.set_ylabel(axis_label("Probability per Z point"))
     ax.set_title(title)
@@ -101,7 +115,7 @@ def draw_moment(
     for label, value in references:
         ax.axhline(value, color=MUTED, linestyle="--", linewidth=0.8)
         ax.annotate(f" {label}", (0.0, value), xycoords=("axes fraction", "data"), va="bottom", fontsize=6)
-    ax.legend(loc="best", fontsize=7)
+    legend_over_data(ax)
     ax.set_xlabel(axis_label("Z", "bohr"))
     ax.set_ylabel(y_label)
     ax.set_title(title)
@@ -120,7 +134,7 @@ def draw_momentum_distribution(
     for side in (-edge, edge):
         ax.axvline(side, color=MUTED, linestyle="--", linewidth=0.8)
     apply_scale(ax, scale)
-    ax.legend(loc="best", fontsize=7)
+    legend_over_data(ax)
     ax.set_xlabel(axis_label(quantity, "bohr^-1"))
     ax.set_ylabel(axis_label("Probability per momentum point"))
     ax.set_title(title)

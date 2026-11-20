@@ -46,5 +46,5 @@ def draw_wave_functions(ax: Axes, states: GasPhaseStates, j: int, count: int, r_
     ax.axvspan(r_opt_start_bohr, states.r_bohr[-1], color=GRID_COLOR["r"], alpha=0.15, label="r absorber")
     ax.set_xlabel(axis_label("r", "bohr"))
     ax.set_ylabel(axis_label("|psi(r)|", "bohr^-1/2"))
-    ax.set_title(f"|psi|, j = {j}: tails in the r absorber?")
+    ax.set_title(f"|psi|, j = {j}: tails at the r grid's ends?")
     ax.legend(loc="best", fontsize=7)

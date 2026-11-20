@@ -317,18 +317,26 @@ def outer_diffraction_channels(fraction: np.ndarray, energies_ev: np.ndarray) ->
     return basis_edge("outermost diffraction channels", float(fraction[worst]), energies_ev[worst], meaning)
 
 
-def r_grid_ends(largest_ratio: float, level: tuple[int, int]) -> Finding | None:
-    """Warning when |psi_v,j(r)| of an analysed level at either end of the r grid exceeds R_EDGE_LIMIT of its
-    maximum: the grid cuts the gas-phase states."""
+def r_grid_ends(largest_ratio: float, level: tuple[int, int], inner: bool | None) -> Finding | None:
+    """Warning when |psi_v,j(r)| of an analysed level at an end of the r grid exceeds R_EDGE_LIMIT of its
+    maximum: the grid cuts the gas-phase states. inner: the larger end is the first r point (RStart too large;
+    on the periodic grid that tail also reappears at the last point), False the last (the grid too short), None
+    unknown (a NaN state: both advices)."""
     if largest_ratio <= R_EDGE_LIMIT:
         return None
+    ends = {
+        True: ("the first r point", "a smaller RStart"),
+        False: ("the last r point", "a longer r grid"),
+        None: ("an end of the r grid", "a smaller RStart or a longer r grid"),
+    }
+    end, advice = ends[inner]
     return Finding(
         "warning",
         "gas-phase states reach the ends of the r grid",
-        f"|psi| at an end {largest_ratio:.2e} of its maximum (v = {level[0]}, j = {level[1]})",
+        f"|psi| at {end} {largest_ratio:.2e} of its maximum (v = {level[0]}, j = {level[1]})",
         f"<= {R_EDGE_LIMIT:g}",
         "the r grid cuts the gas-phase states: their energies shift, and the r absorber removes part of the "
-        "initial state from the start (counted as reaction); widen the r grid",
+        f"initial state from the start (counted as reaction); use {advice}",
         SECTION_VERIFY,
     )
 

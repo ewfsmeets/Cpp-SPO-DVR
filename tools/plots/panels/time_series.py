@@ -14,6 +14,7 @@ from style import (
     SEQUENTIAL,
     apply_scale,
     axis_label,
+    legend_over_data,
     masked,
     scale_and_limits,
 )
@@ -76,7 +77,7 @@ def draw_channel_densities(ax: Axes, times_au: np.ndarray, densities: np.ndarray
     ax.set_xlabel(axis_label("Time", "a.u."))
     ax.set_ylabel(axis_label("|c(t)|^2 at the analysis line", "bohr^-1"))
     ax.set_title("When does each channel pass the analysis line?")
-    ax.legend(loc="best", fontsize=7)
+    legend_over_data(ax)
 
 
 def draw_convergence(ax: Axes, s: ScatteringInTime) -> None:
@@ -107,7 +108,7 @@ def draw_energy_series(ax: Axes, energies_ev: np.ndarray, values: np.ndarray, la
         ax.plot(energies_ev, shown, linestyle=style, marker=marker, markersize=3, linewidth=1.4, label=label)
     apply_scale(ax, scale)
     ax.set_xlabel(axis_label("Collision energy", "eV"))
-    ax.legend(loc="best", fontsize=7)
+    legend_over_data(ax)
 
 
 def draw_time_delays(ax: Axes, energies_ev: np.ndarray, tau_au: np.ndarray, labels: list[str]) -> None:

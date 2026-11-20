@@ -1,10 +1,12 @@
-"""The results against energy: scattering and reaction probabilities, P(v'), the mean final energies and
-the unitarity error."""
+"""The results against energy: scattering and reaction probabilities, P(v'), the mean final energies, the
+unitarity error, and the packet's energy spectrum."""
 
 from dataclasses import dataclass
 
 import numpy as np
 
+from copies.s_matrix import normal_momentum, packet_weight
+from readers.run_info import RunInfo
 from readers.tables import Table
 
 MEAN_ENERGY_FLOOR = 1e-6  # heuristic: below this P_scattered a mean final energy is not drawn
@@ -44,6 +46,25 @@ def results(summary: Table) -> Results:
     levels = scattered_levels(summary)
     p_vibration = levels if len(levels) > 1 else {}  # one level: P(v') is P_scattered
     return Results(summary["E_coll"], p_scattered, summary["P_reaction"], p_vibration, mean_energy_ev, unitarity_error)
+
+
+def packet_spectrum_per_ev(info: RunInfo, collision_energy_ev: np.ndarray) -> np.ndarray:
+    """|a(E)|^2 per eV: the initial packet's probability per unit collision energy (its momentum distribution
+    exp(-(k0 - kz)^2 / (2 alpha)) / sqrt(2 pi alpha), normalised over the normal momentum k0, times dk0/dE = M / k0;
+    the parallel momentum fixed). It integrates to 1 over the energies the packet holds."""
+    packet, lattice = info.data["wave_packet"], info.data["lattice"]
+    total_mass_me = info.data["molecule"]["total_mass"]
+    k0 = normal_momentum(
+        np.asarray(collision_energy_ev, dtype=float),
+        total_mass_me=total_mass_me,
+        hartree_to_ev=info.hartree_to_ev,
+        kx_per_bohr=packet["kx"],
+        ky_per_bohr=packet["ky"],
+        skew_angle_rad=lattice["skew_angle_rad"],
+    )
+    alpha = packet["alpha"]
+    per_momentum = packet_weight(k0, packet["kz"], alpha) / np.sqrt(2.0 * np.pi * alpha)
+    return per_momentum * total_mass_me / k0 / info.hartree_to_ev
 
 
 def matched_differences(fine: Table, on_the_fly: Table, column: str) -> tuple[np.ndarray, np.ndarray]:

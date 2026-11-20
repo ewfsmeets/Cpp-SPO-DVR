@@ -42,11 +42,16 @@ FIGURES = {
         "the section of inputs/README.md that explains it. Good: no errors; warnings that you understand."
     ),
     "results": (
-        "Top: the scattering probability, and the reaction probability P_reaction = 1 - P_scattered on an axis of "
-        "its own. Flux not yet analysed counts as reaction; the grey band is the unitarity error (-min P_reaction): "
-        "a P_reaction inside it cannot be told from 0. Bottom: the mean final energies of the scattered molecules "
-        "(left out where P_scattered < 1e-6; the diffraction energy is the final parallel kinetic energy, the line "
-        "the initial one), and P(v') when more than one vibrational level is scattered into."
+        "Top: the reaction probability P_reaction = 1 - P_scattered, on a log axis (left; open points lie inside the "
+        "unitarity error, which is minus the most negative P_reaction, and cannot be told from 0) and on a signed "
+        "linear axis (right, the unitarity error as a grey band). It counts everything that is not scattered: flux "
+        "not yet analysed and probability the basis loses at the surface as well as reaction; the norm_budget "
+        "figure says how much of each. Middle left: the packet's energy spectrum |a(E)|^2 (per eV). The S matrix "
+        "divides by it; the program analyses only energies inside EMinWP..EMaxWP, where the weight per momentum "
+        "stays above exp(-2) = 0.14 of its peak (inputs/README.md section 3), so no result rests on a vanishing "
+        "weight. Middle right: the mean final energies of the scattered molecules (left out where P_scattered < "
+        "1e-6; the diffraction energy is the final parallel kinetic energy, the line the initial one). Bottom: P(v') "
+        "when more than one vibrational level is scattered into."
     ),
     "state_to_state": (
         "Top left: P(v', j') of the most probable final levels against the collision energy. Top right: P(v', j') "
@@ -80,9 +85,13 @@ FIGURES = {
     ),
     "fine_analysis": (
         "Left: P_scattered of the on-the-fly analysis, of the fine analysis on its spectral grid (dots) and "
-        "interpolated to the analysis energies (squares). Right: their difference. Good: the two agree to well "
-        "below the effect you study; a difference that changes sign from point to point is the interpolation "
-        "between the fine grid's points. The analysis energies outside the fine grid are listed below."
+        "interpolated to the analysis energies (squares). Right: their difference. The fine analysis sums the time "
+        "series only up to T_eff (the longest FFT length of whole records, in the notes), samples |S|^2 every pi "
+        "hbar / T_eff and interpolates linearly. Where P_scattered still oscillates on the energy scale of the "
+        "resolution 2 pi hbar / T_eff (the time sums cut off while flux still passes: the bk figure), the sampling at "
+        "half that scale gives a difference that changes sign from point to point; it shrinks with a "
+        "longer tEnd. Good: the two agree to well below the effect you study. The analysis energies outside the fine "
+        "grid are listed below."
     ),
     "bk": (
         "Left: |c(t)|^2 at the analysis line of the strongest channels: when each channel's flux passes. Right: "
@@ -220,8 +229,8 @@ FIGURES = {
     ),
     "steric": (
         "The distribution of the molecular axis at one Z point, per steradian at the DVR nodes (x: phi from the first "
-        "lattice vector, y: theta from the surface normal; the dots are the nodes), normalised to 1 over the sphere at "
-        "that Z, so that an isotropic distribution is 1 / 4 pi everywhere. Left: when most of the packet is below "
+        "lattice vector, y: theta from the surface normal; one square per node, coloured by its value: the run knows "
+        "the distribution at the nodes only), normalised to 1 over the sphere at that Z, so that an isotropic distribution is 1 / 4 pi everywhere. Left: when most of the packet is below "
         "zasymp, at its densest Z point below zasymp; right: the last frame, at its densest Z point. For a homonuclear "
         "molecule (an alignment, not an orientation) the nodes cover theta <= 90 degrees and the other hemisphere is "
         "the mirror. Brighter at theta = 0: molecules standing up; at 90 degrees: lying flat."

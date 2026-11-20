@@ -47,7 +47,7 @@ def test_a_clean_run_has_no_error_or_warning() -> None:
             d.unitarity(0.0, 0.3),
             d.top_rotational_level(np.zeros(5), energies, 2),
             d.outer_diffraction_channels(np.zeros(5), energies),
-            d.r_grid_ends(1e-9, (0, 0)),
+            d.r_grid_ends(1e-9, (0, 0), False),
             d.still_moving(p, p, energies),
             d.norm_left(1e-5),
         ]
@@ -62,8 +62,11 @@ def test_each_finding_fires_just_above_its_limit_and_for_nan() -> None:
     assert d.unanalysed_flux(NAN)
     assert d.unitarity(1.01 * d.UNITARITY_LIMIT, 0.3) and not d.unitarity(d.UNITARITY_LIMIT, 0.3)
     assert d.unitarity(NAN, 0.3)
-    assert d.r_grid_ends(1.01 * d.R_EDGE_LIMIT, (0, 0)) and not d.r_grid_ends(d.R_EDGE_LIMIT, (0, 0))
-    assert d.r_grid_ends(NAN, (0, 0))
+    assert d.r_grid_ends(1.01 * d.R_EDGE_LIMIT, (0, 0), False) and not d.r_grid_ends(d.R_EDGE_LIMIT, (0, 0), False)
+    assert "a smaller RStart or a longer r grid" in d.r_grid_ends(NAN, (0, 0), None).meaning
+    inner = d.r_grid_ends(1e-2, (0, 0), True)
+    assert "at the first r point" in inner.value and "a smaller RStart" in inner.meaning
+    assert "a longer r grid" in d.r_grid_ends(1e-2, (0, 0), False).meaning
     energies = np.array([0.3, 0.4])
     above, at, nan = (np.array([0.0, x]) for x in (1.01 * d.EDGE_LIMIT, d.EDGE_LIMIT, NAN))
     top = d.top_rotational_level
@@ -114,9 +117,12 @@ def test_slow_probability_sums_the_channels_below_e_n_min() -> None:
 
 
 def test_sections_are_headings_of_the_inputs_readme() -> None:
-    """Every section a finding cites is a '## ' heading of inputs/README.md."""
+    """Every section a finding cites (every SECTION_* of compute/diagnostics.py) is a '## ' heading of
+    inputs/README.md."""
     headings = set(re.findall(r"^## (.+)$", README.read_text(encoding="utf-8"), re.MULTILINE))
-    for section in (d.SECTION_TIME, d.SECTION_STEPS):
+    sections = [value for name, value in vars(d).items() if name.startswith("SECTION_")]
+    assert len(sections) >= 3
+    for section in sections:
         assert section in headings, section
 
 

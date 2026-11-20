@@ -18,11 +18,11 @@ from compute.potential import (
     orientation_at,
     site_points,
 )
-from panels.potential import add_potential_colorbar, potential_color_scale
+from panels.potential import add_potential_colorbar, potential_color_scale, potential_colormap
 from readers.potential import PotentialData, PotentialLimits
 from readers.run_info import Lattice
 from readers.sites import Site
-from style import new_figure
+from style import DIVERGING, SEQUENTIAL, new_figure
 
 NO_LIMITS = PotentialLimits(False, 6.0, 8.0, False, -1.0, False, 10.0)
 
@@ -143,9 +143,20 @@ def test_node_edges() -> None:
     assert node_edges_deg(theta, phi, homonuclear=False)[0][-1] == 180.0
 
 
-def test_colour_bar_is_open_at_the_bottom_only() -> None:
-    """The colour bar has an arrow at the bottom only (values below the scale get the lowest colour; values above are
-    not drawn, which the panels' hatching shows)."""
+def test_colour_scale_is_sequential_unless_a_deep_well() -> None:
+    """Barriers only (0.2 to 1.5 eV, walls far above the cap): sequential from zero to the largest value below the cap
+    (3 eV), the colour bar closed (nothing below its bottom). A 10 meV dip (below 5 % of the top) keeps it sequential
+    from the dip. A 0.5 eV well: diverging, -3 to 3 eV, the bar open at the bottom. NaN is ignored; only NaN gives
+    the cap."""
+    barriers = np.array([0.2, 1.5, np.nan])
+    scale = potential_color_scale(3.0, [barriers, np.array([1.0])])
+    assert (scale.vmin, scale.vmax) == (0.0, 1.5) and potential_colormap(scale) == SEQUENTIAL
+    assert potential_color_scale(3.0, [np.array([0.2, 2e3])]).vmax == 3.0
+    dip = potential_color_scale(3.0, [np.array([-0.01, 0.2, 2e3])])
+    assert (dip.vmin, dip.vmax) == (-0.01, 3.0) and potential_colormap(dip) == SEQUENTIAL
+    well = potential_color_scale(3.0, [np.array([-0.5, 0.2, 2e3])])
+    assert (well.vmin, well.vmax) == (-3.0, 3.0) and potential_colormap(well) == DIVERGING
+    assert (potential_color_scale(3.0, [np.array([np.nan])]).vmax) == 3.0
     fig = new_figure()
-    bar = add_potential_colorbar(fig, [fig.add_subplot()], potential_color_scale(3.0))
-    assert bar.extend == "min"
+    assert add_potential_colorbar(fig, [fig.add_subplot()], scale).extend == "neither"
+    assert add_potential_colorbar(fig, [fig.add_subplot()], well).extend == "min"

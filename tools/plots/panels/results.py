@@ -9,13 +9,41 @@ from style import GRID, LINE_STYLES, MARKERS, MUTED, apply_scale, axis_label, ma
 MEAN_ENERGY_AXIS_EV = 0.01  # the mean-energy axis spans at least 0-10 meV, so rounding noise stays flat at 0
 
 
-def draw_scattering(ax: Axes, results: Results) -> None:
-    """P_scattered against the collision energy (linear, from 0)."""
-    ax.plot(results.collision_energy_ev, results.p_scattered, linestyle="-", marker="o", markersize=3)
-    ax.set_ylim(0.0, max(1.05 * float(np.nanmax(results.p_scattered, initial=0.0)), 1.05))
+def draw_reaction_log(ax: Axes, results: Results) -> None:
+    """P_reaction = 1 - P_scattered on a log axis, the field's usual view: the points above the unitarity error
+    filled, those inside it (not distinguishable from 0) open, values <= 0 not drawn."""
+    energies, p = results.collision_energy_ev, results.p_reaction
+    trusted = p > results.unitarity_error
+    ax.plot(energies, np.where(p > 0, p, np.nan), linestyle="-", color=MUTED, linewidth=1.0)
+    if np.any(trusted):
+        ax.plot(
+            energies[trusted], p[trusted], linestyle="none", marker="o", markersize=3, label="above the unitarity error"
+        )
+    inside = (p > 0) & ~trusted
+    if np.any(inside):
+        ax.plot(
+            energies[inside],
+            p[inside],
+            linestyle="none",
+            marker="o",
+            markersize=3,
+            markerfacecolor="none",
+            label="inside the unitarity error",
+        )
+    ax.set_yscale("log")
     ax.set_xlabel(axis_label("Collision energy", "eV"))
-    ax.set_ylabel("P_scattered")
-    ax.set_title("Scattering probability")
+    ax.set_ylabel("P_reaction = 1 - P_scattered")
+    ax.set_title("Reaction probability (log)\n(includes flux not yet analysed and basis loss)")
+    ax.legend(loc="best", fontsize=7)
+
+
+def draw_packet_spectrum(ax: Axes, energies_ev: np.ndarray, spectrum_per_ev: np.ndarray) -> None:
+    """The packet's energy spectrum |a(E)|^2 (per eV) at the analysis energies, on a linear axis from zero."""
+    ax.plot(energies_ev, spectrum_per_ev, linestyle="-", marker="o", markersize=3)
+    ax.set_ylim(bottom=0.0)
+    ax.set_xlabel(axis_label("Collision energy", "eV"))
+    ax.set_ylabel(axis_label("Packet spectrum |a(E)|^2", "eV^-1"))
+    ax.set_title("The packet's energy spectrum\n(the S matrix divides by it)")
 
 
 def draw_reaction(ax: Axes, results: Results) -> None:
@@ -30,7 +58,7 @@ def draw_reaction(ax: Axes, results: Results) -> None:
     ax.axhline(0.0, linewidth=0.8, color=MUTED)
     ax.set_xlabel(axis_label("Collision energy", "eV"))
     ax.set_ylabel("P_reaction = 1 - P_scattered")
-    ax.set_title("Reaction (and flux not yet analysed)")
+    ax.set_title("Reaction probability (linear)\n(includes flux not yet analysed and basis loss)")
     ax.legend(loc="best", fontsize=7)
 
 

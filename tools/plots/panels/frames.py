@@ -13,7 +13,6 @@ from compute.grids import CellGeometry
 from panels.potential import draw_cell_outline
 from panels.time_series import mark_segments
 from style import (
-    INK,
     LINE_STYLES,
     MARKERS,
     MUTED,
@@ -123,7 +122,7 @@ def draw_j_populations(
     for k, j in enumerate(j_values):
         style = LINE_STYLES[k % len(LINE_STYLES)]
         marker = MARKERS[k % len(MARKERS)]
-        ax.plot(times_au, per_j[:, k], linestyle=style, marker=marker, markersize=3, color=INK, label=f"J = {j}")
+        ax.plot(times_au, per_j[:, k], linestyle=style, marker=marker, markersize=3, label=f"J = {j}")
     apply_scale(ax, scale_and_limits([per_j]))
     ax.locator_params(axis="x", nbins=5)  # long times: fewer ticks, so that their labels do not collide
     mark_segments(ax, starts_au)
@@ -146,7 +145,7 @@ def draw_edge_series(
     one line style and marker each, labelled), with the verdict's limit (dashed, in the legend) when given."""
     for k, edge in enumerate(series):
         style, marker = LINE_STYLES[k % len(LINE_STYLES)], MARKERS[k % len(MARKERS)]
-        ax.plot(times_au, edge.values, linestyle=style, marker=marker, markersize=3, color=INK, label=edge.label)
+        ax.plot(times_au, edge.values, linestyle=style, marker=marker, markersize=3, label=edge.label)
     limits = [np.array([limit])] if limit is not None else []
     if limit is not None:
         ax.axhline(limit, color=MUTED, linestyle="--", linewidth=1.0, label=f"limit {limit:g} (heuristic)")

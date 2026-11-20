@@ -188,13 +188,14 @@ def gas_phase_edges(run: Path, info: RunInfo) -> Finding | None:
     states = read_gas_phase_states(run / "gas_phase_states.dat")
     j_values = {j for j, _ in info.data["rotational_basis"]["states"]}
     v_top = int(np.max(read_s_matrix(run / "s_matrix.tsv")["v"]))
-    worst, worst_level = 0.0, (0, 0)
+    worst, worst_level, inner = 0.0, (0, 0), False
     for psi, v, j in zip(states.wave_functions, states.v, states.j, strict=True):
         if v <= v_top and j in j_values:
             ratio = max(abs(psi[0]), abs(psi[-1])) / np.max(np.abs(psi))
             if not ratio <= worst:  # a NaN is the worst
+                inner = None if np.isnan(ratio) else bool(abs(psi[0]) >= abs(psi[-1]))  # NaN: neither end
                 worst, worst_level = ratio, (int(v), int(j))
-    return r_grid_ends(worst, worst_level)
+    return r_grid_ends(worst, worst_level, inner)
 
 
 def first_bad_time(averages: Averages | None, bk: BkCoefficients | None) -> float | None:
