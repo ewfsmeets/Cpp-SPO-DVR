@@ -155,7 +155,7 @@ fi
 # The printed output without what legitimately differs between runs: paths, the thread count and
 # loop schedule, and wall-clock timings.
 filtered() {
-  grep -vE 'Data files written to|Restarted from|Fine analysis of|Fine-analysis files written to| computed in [0-9]+(\.[0-9]+)? s$|Propagation time:|Fine analysis time:' "$1" \
+  grep -vE 'Data files written to|Plot data written to|Frames \(dtFrames\):|Norm budget \(NormBudget\):|Restarted from|Fine analysis of|Fine-analysis files written to| computed in [0-9]+(\.[0-9]+)? s$|Propagation time:|Fine analysis time:' "$1" \
     | sed -E 's/[0-9]* OpenMP thread\(s\)(, loop schedule [^ ]+ \([^)]*\))?//'
 }
 

@@ -708,7 +708,7 @@ def figure_norm_budget(runs: list[Path], info: RunInfo, options: argparse.Namesp
     axes = fig.subplot_mosaic([["went", "legend", "closes"]], width_ratios=[3, 1.2, 3])
     draw_where_the_norm_went(axes["went"], axes["legend"], budget)
     draw_budget_residual(axes["closes"], budget, budget_title(budget))
-    note = f"each window {records.steps_per_window} time steps (dtAna); losses: mean of the start and end estimates"
+    note = f"each window {records.steps_per_window} time steps (dtAna); losses: the program's estimate per cell"
     add_info_box(fig, info, ["norm_budget/", "run_info.json"], notes=(*notes, note))
     return [("norm_budget", fig)]
 
