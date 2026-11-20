@@ -138,9 +138,9 @@ Next steps: an H₂/Cu(111) calculation on a small grid, and your own input ([In
   configure).
 - **[uv](https://docs.astral.sh/uv/)** and Python: the tests run the scripts in `tools/` with the
   repository's own Python environment, which `uv sync` creates in `.venv/` from `pyproject.toml` and
-  `uv.lock` (numpy, matplotlib, pytest) with Python 3.14, as `.python-version` names (uv downloads it
-  if the system has no 3.14). Without uv: configure with `-DPython3_EXECUTABLE=` a Python ≥ 3.10 that
-  has those three packages.
+  `uv.lock` (numpy, matplotlib, pytest, and shellcheck for the pre-commit hook) with Python 3.14, as
+  `.python-version` names (uv downloads it if the system has no 3.14). Without uv: configure with
+  `-DPython3_EXECUTABLE=` a Python ≥ 3.10 that has the three test packages (numpy, matplotlib, pytest).
 - **Optional, for the GPU backend:** an NVIDIA GPU of compute capability 7.5 (Turing) or newer, its
   driver, and the CUDA toolkit (nvcc, cudart, cuFFT). At run time the cuFFT callback also needs
   nvJitLink and NVRTC.
@@ -218,12 +218,12 @@ pipx install uv
 ```
 
 Then, in the repository after cloning it ([Building](#building)), `uv sync` creates `.venv/` (numpy,
-matplotlib, pytest).
+matplotlib, pytest, shellcheck).
 
 - CMake's tests use `.venv/bin/python`; a configure without `.venv/` stops and says to run `uv sync`.
   An existing build directory switches to it at its next configure. Another Python with numpy,
   matplotlib and pytest (e.g. apt's `python3-numpy python3-matplotlib python3-pytest`):
-  `-DPython3_EXECUTABLE=/usr/bin/python3`.
+  `-DPython3_EXECUTABLE=/usr/bin/python3` (the shellcheck pre-commit hook still needs `uv sync`).
 - After `git pull`, run `uv sync` again if `uv.lock` changed.
 - `pipx install` puts `uv` into `~/.local/bin`; `pipx ensurepath` adds that to `PATH` if it is not
   there yet.

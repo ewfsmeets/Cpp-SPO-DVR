@@ -1,7 +1,9 @@
 # The repository's Python set-up: the packages its tests and tools import, and the settings of the Python
 # and Markdown linters that pre-commit runs (.pre-commit-config.yaml).
 # `uv sync` installs the packages into .venv/ in the checkout; CMake's tests use .venv/bin/python
-# (README "Dependencies"; another Python with these packages: -DPython3_EXECUTABLE=...).
+# (README "Dependencies"; another Python with the tests' packages: -DPython3_EXECUTABLE=..., but the
+# pre-commit hook still needs `uv sync`). The dev group also holds shellcheck (shellcheck-py), which the
+# pre-commit hook runs from .venv/bin.
 # Not covered here: the windows of the GUI tools (each lists its packages in a PEP 723 header and runs
 # with `uv run`) and the scripts of docs/validation_thesis_fig5_3_dz/ (pandas, pymupdf).
 # The interpreter: .python-version (3.14, the system Python of the development machine; uv downloads
@@ -14,7 +16,7 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "matplotlib"]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = ["pytest", "shellcheck-py"]
 
 [tool.uv]
 package = false
