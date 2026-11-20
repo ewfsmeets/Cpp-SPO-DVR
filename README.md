@@ -431,6 +431,10 @@ uv run python -I -B tools/plots/spodvr_plot.py report runs/hardwall_small --out 
 uv run python -I -B tools/plots/spodvr_plot.py verdict runs/hardwall_small    # the verdict only
 ```
 
+A run with frames (`dtFrames`) can also be looked at in a window: `uv run tools/plots/view.py <run directory>`
+shows the probability over the unit cell and ρ(Z, r) above a point picked by a click, against time
+([the viewer](tools/plots/README.md#the-viewer)).
+
 The figures, the verdict's findings and how to add a plot: [tools/plots/README.md](tools/plots/README.md).
 
 ## Inputs

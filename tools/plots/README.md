@@ -106,6 +106,32 @@ judgement); `verdict.py` reads the run's files for them.
 E_n,min is a lower bound on the time a run needs: "P_scattered still moving" is the empirical check. The
 report shows the verdict as a table; `verdict` prints it as text.
 
+### The viewer
+
+An interactive window on a run's frames/ (`dtFrames`), with potential/ for the contours when the run wrote it:
+
+```sh
+uv run tools/plots/view.py <run directory>...                    # the window (uv installs PyQt6 once)
+uv run tools/plots/view.py <run directory>... --self-test DIR    # drives it, saves 4 PNGs into DIR, closes it
+```
+
+![The viewer on the oblique Dai-Light fixture: the probability over the unit cell below zasymp, and rho(Z, r)
+above the bridge site, at t = 7000 a.u.](images/viewer.png)
+
+- Left: the probability per area over the unit cell (drawn skewed as it is), summed over a window of Z and r (the
+  two range sliders, in bohr; it opens on the points below zasymp), with the probability in the window in the
+  title; a window holding less than 1e-8 of the initial norm is left empty. The sites are marked where PlotSites
+  puts them (filled, labelled) and at their symmetry-equivalent points (open: the run's point group and the
+  lattice; also in `xy_maps` and `potential_maps`). A click picks the grid point whose drawn cell holds it. Its colour scale is the frame's own, or (the Scale button) one over all frames.
+- Right: ρ(Z, r) above the picked point (the first site of PlotSites at the start), one log colour scale over all
+  frames, with V_min's contours, Zana, the end of the scattering grid and where the absorbers start.
+- The time slider (a.u.) picks the frame, Play steps through them; hovering shows what a panel or control shows,
+  Explain lays the panels' explanations over them, the key s saves the window as a PNG in the working directory.
+- The screenshot is the self-test's third PNG on the `dailight_oblique` fixture (`ctest -R '^PlotRuns\.'` writes it
+  into `build/tests/plot_fixtures`).
+- Without a window (no display, or no GUI backend) it says so and writes the frame movies of the sites into
+  `--out` (spodvr_plot.py's `frame_movie`). On WSL2 the window opens through WSLg.
+
 ## Architecture
 
 The tool is plain numpy and matplotlib in layers; a module imports only from lower layers (or its own
@@ -116,6 +142,8 @@ flowchart LR
     copies["copies/ (0)"] --> readers["readers/ (1)"] --> compute["compute/ (2)"]
     compute --> look["style.py, explanations.py, verdict.py (3)"] --> panels["panels/ (4)"]
     panels --> figures["figures.py (5)"] --> report["report.py (6)"] --> cli["spodvr_plot.py (7)"]
+    figures --> viewer["viewer.py (6)"] --> view["view.py (7)"]
+    report --> view
 ```
 
 | Module | Responsibility | Shadows (the C++ it follows) |
@@ -136,7 +164,7 @@ flowchart LR
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
 | `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must equal the kept one to 1e-12 of its largest value) | — |
 | `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
-| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; Cartesian positions and periodic cells of the (x, y) grid; the r absorber's first point; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
+| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; Cartesian positions and periodic cells of the (x, y) grid, the grid point nearest a Cartesian point (the viewer's click); the r absorber's first point; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
 | `compute/states.py` | P(v', j'), P(mJ'), the alignment A0(2) and its limits, the (v', j') map | — |
 | `compute/diffraction.py` | P per channel and order, in and out of plane, the scattering angles (summed over mJ') | — |
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
@@ -151,11 +179,13 @@ flowchart LR
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
 | `verdict.py` | the verdict of a run: reads what its files allow, a missing file is a finding | — |
 | `style.py` | colours, rcParams, the scale rule, the info box, saving figures and movies (`Movie`) | the designer's colours (`tools/wave_packet_designer/plots.py`) |
-| `explanations.py` | each figure's title and what it shows (printed under it in the report) | — |
+| `explanations.py` | each figure's title and what it shows (printed under it in the report); the viewer's panels and controls (`PANELS`, `CONTROLS`) | — |
 | `panels/*.py` | one `draw_<panel>(ax, …)` per panel; draws (and masks values outside its range: below a floor, or above a cap where the background is hatched), computes nothing | — |
 | `figures.py` | one `figure_<name>(runs, info, options)` per entry, and `PLOTS`, the only list of entries | — |
 | `report.py` | report.md with the verdict first; the overwrite guard of `plot` and `report` | — |
 | `spodvr_plot.py` | the command line | — |
+| `viewer.py` | the viewer's window (`FrameViewer`: the state, the widgets wired to the panels of frames/), its self-test; the only module that uses pyplot | — |
+| `view.py` | the viewer's entry (PEP 723 header: numpy, matplotlib, PyQt6) | — |
 
 To change… edit:
 
@@ -164,6 +194,7 @@ To change… edit:
 - which files the verdict reads: `verdict.py`;
 - a colour, a font or the scale rule: `style.py` (the only place with colours);
 - a figure's title or the text under it: `explanations.py`;
+- the viewer's layout, controls or help texts: `viewer.py`, `explanations.py` (`PANELS`, `CONTROLS`);
 - a file format the program writes: the reader whose `Shadows:` line names that writer
   (`grep -rn 'Shadows:.*<file>' tools/plots`); the fixture runs (written by the current program) fail the
   readers' tests until it follows.
@@ -175,13 +206,13 @@ To change… edit:
   with a unit suffix on every dimensioned value (`_ev`, `_hartree`, `_bohr`, `_au`, `_per_bohr`; none =
   dimensionless); unit factors from `RunInfo`, never module constants.
 - Readers, `copies/` and `compute/` never print or draw; panels never compute; figures are
-  `matplotlib.figure.Figure` objects (no pyplot). These are kept by review.
+  `matplotlib.figure.Figure` objects (no pyplot; only `viewer.py`, the window, uses it). These are kept by review.
 - Dataclasses are `@dataclass(frozen=True, kw_only=True)`: immutable (a changed copy through
   `dataclasses.replace`) and built with keywords; older ones follow when a change touches them.
 - `tests/test_structure.py` checks: the layers; numpy only in layers 0–2 and matplotlib from layer 3 up (no
   other third-party package); functions of at most 40 code lines (except in `copies/`); a docstring on nested
   functions too; decorators only `@dataclass`, `@pytest.fixture` and `@pytest.mark.parametrize`; no classes
-  but dataclasses and `ReadError`; no lambda or `partial` in `figures.py`; no `matplotlib.use`; no test
+  but dataclasses, `ReadError` and the viewer's window `FrameViewer`; no lambda or `partial` in `figures.py`; no `matplotlib.use`; no test
   module importing a name that starts with `Test`; every `Shadows:` line names an existing C++ file and a
   function it defines or calls.
 - `copies/` reproduce the C++'s formulas and, where they are plain double arithmetic, its operation order; the
@@ -273,7 +304,8 @@ the unsplit one bitwise (`tests/test_runs_norm_budget.py`).
 
 ## Limits
 
-- One run at a time (its restart segments joined); no comparison of runs.
+- One run at a time (its restart segments joined); no comparison of runs. A run in several segments is joined in
+  memory: its series are read whole (frames/ of a production run: about 1.3 GB), one segment's stay memory-mapped.
 - The potential is the run's (except in `pes_cut`, the PES itself at the one orientation of a write2DPES run, over
   the whole Z grid): at its grid points of Z < zasymp and its DVR nodes only (no interpolation); V_min is
   the lower envelope over the nodes at fixed (x, y) (no rotational or zero-point energy), and the minimax barrier
