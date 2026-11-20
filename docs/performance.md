@@ -59,6 +59,13 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
     on-the-fly exp(−iV dt) path is compiled differently from the precomputed one; they differ by up
     to 1.1e-15 on values of order 1 (measured 2026-11-15). With plain `-ffast-math` they did not
     fail.
+  - `PlotRuns.pes_cut` (`test_cut_equals_the_site_potential_at_its_node`) and `PlotRuns.potential`
+    (`test_hard_wall_equals_its_formula`), the plot tool's checks of `pes_cut_2d.dat` and `potential/` on the
+    fixture runs: the cut's Z grid points differ by an ulp from those of `potential/` (both computed
+    as ZStart + i·dZ, compiled differently), and the hard wall's V misses its formula by more than
+    1e-15 of (d + |V_Z|). Full ctest of `build-fast` on 2026-11-20 (at the commit that adds the
+    frames): of 873 tests 857 passed, these 10 failed and 6 were skipped; `build-cuda-fast`'s 30 GPU
+    tests (`-R Cuda`) pass, the 2 long ones skipped.
   - With plain `-ffast-math` 21 tests failed (2026-11-15, the same sources in another build
     tree): the NaN tests (GCC folded `std::isnan` to false), most of the above, and
     `RegressionHardWall.Gate1AsymptoticPotentialTable` and
@@ -178,6 +185,25 @@ header line.
   only in a CUDA build), then `spodvr_compare_wave <a> <b> [tolerance]` (largest difference
   relative to the largest amplitude; tolerance default 0, i.e. bitwise identical; a NaN or inf in
   either file fails, naming the first such element).
+
+## Plot data on the thesis DZ grid (2026-11-20)
+
+The cost of the plot data whose work grows with ψ, measured on `inputs/thesis_fig5_3_dz` cut to 200 steps
+(500 a.u.) with `dtFrames` 100 a.u. (6 frames), 8 threads and the RTX 4070 Ti; the program prints it at the end of
+the run ("Frames (dtFrames)") and projects it at set-up (the PLOT DATA line, from the per-value costs below).
+
+| | CPU | GPU |
+|---|---|---|
+| a frame (`dtFrames`: one pass over ψ's Z planes, reduced on the host) | 0.216 s | 0.982 s (most of it the plane copies to the host) |
+| per complex value of ψ (nZ·nR·nX·nY·nrot = 4.0e8) | 0.54 ns | 2.45 ns |
+| share of the propagation at dtFrames = 5 dtAna (this run) | 0.14 % | 4 % |
+| at dtFrames = 25 dtAna (500 a.u.: 200 steps between frames) | 0.02 % | 0.7 % |
+| propagation time of the run (200 steps) | 901.9 s | 147.1 s |
+
+A frame is 7.6 MiB (45.5 MiB for the six). The CPU's and the GPU's frames of this run are equal at tStart and
+differ by 1.2e-13 of the frame's largest cell after 200 steps, the propagation's own drift between the devices (the
+frame reductions are bitwise equal on the same ψ: `CudaBackend.FrameOfTheSameWaveIsTheCpus`). Without `dtFrames` the
+loop is unchanged (`TimeLoopCalls.*`, `compare_speed.sh`).
 
 ## Measurements (AMD Ryzen 7 5800X, 16 threads, WSL2; propagation time only)
 

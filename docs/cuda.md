@@ -334,6 +334,15 @@ Considered and not done (2026-11-06):
   analysis of the previous one). Skipped: an nsys trace of DZ showed the GPU idle for less than
   1 ms per time step.
 
+### Plot data (`dtFrames`)
+
+A frame (`frames/`) is reduced on the host from exact copies of the Z planes (`z_plane`), as on the CPU, so the GPU
+backend adds no kernel for it. On the thesis DZ grid a frame costs 0.98 s, most of it the copies of the 160 planes
+(0.73 s measured alone): 0.7 % of the propagation at dtFrames = 25 dtAna (500 a.u.), 4 % at 5 dtAna
+([performance.md](performance.md#plot-data-on-the-thesis-dz-grid-2026-11-20)). The frames of the same ψ are bitwise
+the CPU's (`CudaBackend.FrameOfTheSameWaveIsTheCpus`). Without `dtFrames` the loop is unchanged
+(`CudaTimeLoopCalls.*`).
+
 ### Fast build (`build-cuda-fast`: FMA in the kernels)
 
 ```bash
