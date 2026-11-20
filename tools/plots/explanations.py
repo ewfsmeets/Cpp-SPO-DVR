@@ -3,6 +3,7 @@ title (the report's heading) and the explanation the report prints under the fig
 checks that every PLOTS entry has both and that every text has an entry."""
 
 from compute.diagnostics import EDGE_LIMIT, FRAME_EDGE_LIMIT
+from compute.frame_extras import MAX_ORDERS, NYQUIST_FRACTION
 from compute.frames import EDGE_POINTS, MAX_FRAME_SITES
 from compute.potential import CONTOUR_LINE_EVERY, CONTOUR_STEP_EV, ENERGY_CAP_EV, FRAME_CONTOUR_STEP_EV, MAX_ELBOW_SITES
 
@@ -27,6 +28,11 @@ TITLES = {
     "rotational_states": "Rotational states over Z and in time",
     "basis_edges": "The packet at the edges of the basis",
     "norm_budget": "Where the norm went (norm budget)",
+    "steric": "The distribution of the molecular axis",
+    "diffraction_z": "Parallel-momentum orders over Z",
+    "vibration_z": "Vibrational levels over Z",
+    "rotation_moments": "Alignment and rotational kinetic energy over Z",
+    "momentum": "Momentum distributions and the momentum grids' edges",
     "bk": "Balint-Kurti coefficients and convergence in time",
 }
 
@@ -211,5 +217,48 @@ FIGURES = {
         "transform at the surface keeps only the rotational basis's part of the wave packet at every time step (the "
         "Fortran's method too); the small Dai-Light test grids lose about 4e-3 of the norm there, less with a smaller "
         "dtStep. That probability counts as reaction in P_reaction = 1 - P_scattered."
+    ),
+    "steric": (
+        "The distribution of the molecular axis at one Z point, per steradian at the DVR nodes (x: phi from the first "
+        "lattice vector, y: theta from the surface normal; the dots are the nodes), normalised to 1 over the sphere at "
+        "that Z, so that an isotropic distribution is 1 / 4 pi everywhere. Left: when most of the packet is below "
+        "zasymp, at its densest Z point below zasymp; right: the last frame, at its densest Z point. For a homonuclear "
+        "molecule (an alignment, not an orientation) the nodes cover theta <= 90 degrees and the other hemisphere is "
+        "the mirror. Brighter at theta = 0: molecules standing up; at 90 degrees: lying flat."
+    ),
+    "diffraction_z": (
+        f"The probability per parallel-momentum order (n, m) against Z (the {MAX_ORDERS} largest over both panels, the "
+        "same orders in both, the rest summed): psi_full transformed over (x, y) after removing the incident parallel "
+        "momentum, as the analysis does. Left: when most of the packet is below zasymp; right: the last frame. Above "
+        "zasymp, where the surface no longer acts, an order with probability that moves out is a diffraction channel "
+        "(whether it is open depends on the vibrational and rotational state, summed here; (0, 0) also holds the "
+        "incoming packet); below zasymp the orders only describe how the packet is spread over the cell."
+    ),
+    "vibration_z": (
+        "The probability per vibrational level against Z: the projection of psi_full on the gas-phase levels "
+        "phi_vJ(r) of each J, summed over J, for the analysed v, the other levels below V_asy at the last r point and "
+        "those above it (a discretised continuum; the r absorber, which removes levels reaching into it, is ignored in "
+        "this split). Left: when most of the packet is below zasymp; right: the last frame. Near the surface the "
+        "levels only describe the packet's r motion (stretched or reacting); above zasymp they are the vibrational "
+        "states. The split operator itself moves about 1e-8 out of v = 0 on the test grids, with no coupling at all: "
+        "a floor on a log axis, not excitation."
+    ),
+    "rotation_moments": (
+        "Left: <P2(cos theta)> against Z, theta from the surface normal: +1 for molecules standing up, -1/2 lying "
+        "flat, 0 for an isotropic distribution, from the exact matrix elements of P2 in the rotational basis. Right: "
+        "the rotational kinetic energy <J(J+1) / (2 mu r^2)> = <L^2 / (2 mu r^2)> at every Z; it is not the rotational "
+        "energy E_vJ - E_v0 of the gas phase (lower by the centrifugal stretch: about 0.5 % at J = 2, 7 % at J = 10) "
+        "and falls when r stretches at fixed J. Each in the first frame, when most of the packet is below zasymp, and "
+        "in the last frame; not drawn where the probability at that Z is negligible."
+    ),
+    "momentum": (
+        "Left and middle: the probability per momentum point of psi_full in r and of the specular wave (the incident "
+        "channel: (0, 0), the initial J and mJ, every v) in Z, in the first frame, at the surface and in the last "
+        "frame. Right: against time, the probability the run brings to the edges of the momentum grids above the "
+        f"first frame's, |k| above {NYQUIST_FRACTION:g} of the grid's largest momentum (dashed in the left panels), "
+        f"and, with the diffraction extra, the orders with |n| or |m| above {NYQUIST_FRACTION:g} of the largest. The "
+        "grid cannot hold larger momenta: the FFT folds them over to the other side. Not checked: the normal "
+        "momentum of the other channels (rotational de-excitation, diffraction to a smaller parallel momentum). The "
+        f"verdict warns above {FRAME_EDGE_LIMIT:g} of the initial norm (heuristic); good is far below it."
     ),
 }

@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
 from compute.diffraction import diffraction
+from compute.frame_extras import MAX_ORDERS
 from compute.frames import most_at_surface, usable_frames, window_probability
 from compute.grids import cell_geometry, r_absorber_first_index
 from compute.potential import RAW_PES, barrier_on, gas_phase_minimum_hartree, relative_ev
@@ -451,3 +452,41 @@ def test_norm_budget_content(fixture_runs: Path, stopped_run: Path) -> None:
     ]
     assert closes.get_title().startswith("Does the budget close? No:")
     assert [t.get_text() for t in closes.get_legend().get_texts()] == ["error estimate", "residual"]
+
+
+def legend_texts(ax: object) -> list[str]:
+    """The texts of an axes' legend."""
+    return [t.get_text() for t in ax.get_legend().get_texts()]
+
+
+def test_frame_extras_content(fixture_runs: Path, stopped_run: Path) -> None:
+    """The oblique run's FrameExtras figures: the axis distribution at the surface and in the last frame with one
+    colour bar naming the isotropic value, the homonuclear mirror noted and theta from 0 to 90 degrees (the cells
+    around the nodes); P(n, m; Z) with MAX_ORDERS orders and the rest (4 x 4 orders), the same orders in both panels,
+    zasymp and Zana (equal here) marked as one line; P(v; Z) with the fixture's two analysed levels, the other levels
+    below V_asy(r_end) and those above; the moments in three frames with the reference levels of <P2>; the momentum
+    panels, and the edges with the limit, the title answering as the verdict does (no: the outer diffraction orders of
+    the 4 x 4 grid)."""
+    steric = drawn("steric", "oblique", fixture_runs, stopped_run)
+    maps = [ax for ax in steric.axes if ax.get_label() != "<colorbar>"]
+    (bar,) = [ax for ax in steric.axes if ax.get_label() == "<colorbar>"]
+    assert [ax.get_title().split(":")[0] for ax in maps] == ["At the surface", "Last frame"]
+    assert bar.get_ylabel() == f"probability per steradian (isotropic {1 / (4 * np.pi):.3f})"
+    assert all("theta > 90: the mirror (180 - theta, phi + 180)" in annotations(ax) for ax in maps)
+    assert all(tuple(np.round(sorted(ax.get_ylim()), 9)) == (0.0, 90.0) for ax in maps)
+    diffraction = drawn("diffraction_z", "oblique", fixture_runs, stopped_run).axes
+    labels = [legend_texts(ax) for ax in diffraction]
+    assert labels[0] == labels[1] and len(labels[0]) == MAX_ORDERS + 1 and labels[0][-1] == "other orders"
+    assert all("zasymp = Zana" in annotations(ax) for ax in diffraction)
+    levels = ["v = 0", "v = 1", "other levels below V_asy(r_end)", "levels above V_asy(r_end)"]
+    assert all(legend_texts(ax) == levels for ax in drawn("vibration_z", "oblique", fixture_runs, stopped_run).axes)
+    alignment, energy = drawn("rotation_moments", "oblique", fixture_runs, stopped_run).axes
+    frames = ["first frame", "at the surface", "in the last frame"]
+    assert all([label.split(",")[0] for label in legend_texts(ax)] == frames for ax in (alignment, energy))
+    assert {"isotropic 0", "upright +1", "flat -1/2"} <= set(annotations(alignment))
+    k_r, k_z, edges = drawn("momentum", "oblique", fixture_runs, stopped_run).axes
+    assert len(k_r.get_lines()) == len(k_z.get_lines()) == 3 + 2  # three frames, two dashed edge lines
+    title = edges.get_title()
+    assert title.startswith("Does the momentum grid\nhold the wave? No:") and "(outer diffraction orders)" in title
+    edge_labels = ["k_r", "k_Z of the specular wave", "outer diffraction orders", "limit 1e-06 (heuristic)"]
+    assert legend_texts(edges) == edge_labels

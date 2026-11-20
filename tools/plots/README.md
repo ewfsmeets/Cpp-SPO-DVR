@@ -66,6 +66,11 @@ is a bug of the tool.
 | `xy_maps` | the probability over the unit cell below zasymp when most of the packet is there, and inside the r absorber (below zasymp, r ≥ r_c) when the most is there | frames/ |
 | `rotational_states` | P(J, mJ; Z) when most of the packet is below zasymp, and the J populations against time (χ beyond the scattering grid in the initial J) | frames/ |
 | `basis_edges` | left the probability at the top J and the top \|mJ\| (when below the top J); right how much the first and last r points (both grids) and the first Z points gain above the first frame, against the verdict's limit | frames/ |
+| `steric` | the distribution of the molecular axis per steradian (normalised over the sphere) at the DVR nodes, at the densest Z below zasymp when most of the packet is there and at the densest Z of the last frame | frames/ with `FrameExtras` `angular` |
+| `diffraction_z` | P(n, m; Z): the probability per parallel-momentum order against Z (the six largest over both panels, the rest summed), at the surface and in the last frame | frames/ with `diffraction` |
+| `vibration_z` | P(v; Z): the probability per gas-phase level against Z (the analysed v, from s_matrix.tsv; the other levels below V_asy at the last r point; those above it), at the surface and in the last frame | frames/ with `vibration`, gas_phase_states.dat, asymptotic_potential.dat |
+| `rotation_moments` | ⟨P₂(cos θ)⟩ and the rotational kinetic energy ⟨J(J+1)/(2μr²)⟩ against Z in the first frame, at the surface and in the last frame | frames/ with `rotation_moments` |
+| `momentum` | P(k_r) of ψ_full and P(k_Z) of the specular wave in three frames; what the run brings to the edges of the momentum grids (and to the outer diffraction orders) against time, against the verdict's limit | frames/ with `momentum` |
 | `norm_budget` | where the norm went: what each absorber took, summed over the analysis windows, against the norm that left the grids; the residual against its error estimate | norm_budget/ (`NormBudget`) |
 | `pes_cut` | V(Z, r) of the PES itself (no switching, no VMin/VMax) at the fixed x, y, θ, φ of a `write2DPES` run, with its minimax barrier | pes_cut_2d.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
@@ -89,6 +94,7 @@ judgement); `verdict.py` reads the run's files for them.
 | unitarity error | warning | P_reaction below −1e-4 |
 | flux at the edge of the basis | warning | more than 1e-3 of P_scattered in j′ = JMax, or in the outermost analysed diffraction channels (s_matrix.tsv) |
 | packet at the edge of the basis: a grid edge | warning | in some frame (frames/), more than 1e-6 of the initial norm beyond the first frame's at the first or last 2 r points (both grids) or the first 2 Z points (the FFT wraps the packet around) |
+| packet at the edge of the basis: … (momentum grid, above the first frame's) | warning | in some frame, the probability at \|k\| above 0.8 of a momentum grid's largest (k_r of ψ_full, k_Z of the specular wave χ; `FrameExtras` `momentum`) or in the orders with \|n\| or \|m\| above 0.8 of the largest (`diffraction`) rises by more than 1e-6 of the initial norm above the first frame's: the FFT folds larger momenta over (the 0.8: `NYQUIST_FRACTION` in `compute/frame_extras.py`) |
 | packet at the edge of the basis: top J or \|mJ\| | information | in some frame, more than 1e-6 of the initial norm in the top J, or in the top \|mJ\| when it is below the top J: normal while the packet is at the surface; the j′ check of the S matrix decides whether the basis is large enough |
 | norm budget does not close | warning | the norm that left the grids minus the absorbers' summed losses exceeds its error estimate by more than 1e-4 of the initial norm (norm_budget/) at some window end |
 | gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
@@ -123,7 +129,7 @@ flowchart LR
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
 | `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes and limits; the datasets' axes and shapes checked | `src/report/potential_files.cpp` |
-| `readers/frames.py` | frames/: the joined records, the grids, the rotational states and the sites | `src/report/frame_files.cpp` |
+| `readers/frames.py` | frames/: the joined records, the grids, the rotational states, the sites, and the `FrameExtras` datasets with their grids (DVR nodes, J values) | `src/report/frame_files.cpp` |
 | `readers/norm_budget.py` | norm_budget/: the joined windows and the absorbers of the loss datasets | `src/report/norm_budget_files.cpp` |
 | `readers/pes_cut.py` | pes_cut_2d.dat (`write2DPES`): V(Z, r) of the cut, its grids, position and orientation; whole r blocks checked | `src/report/pes_cut_file.cpp` |
 | `readers/sites.py` | the sites of PlotSites as the plot data record them (fractions, grid point, the ixy check) | `src/input/validate_outputs.cpp` |
@@ -138,6 +144,7 @@ flowchart LR
 | `compute/gas_phase.py` | the levels and which are bound | — |
 | `compute/potential.py` | energies relative to the gas-phase minimum, the minimax barrier on V(Z, r) (at one and at every (x, y) point), the points the figures show, the DVR nodes' cells | — |
 | `compute/frames.py` | from frames/ (read through `usable_frames`, which drops the records from the first NaN or inf on): ρ(Z, r) at a grid point and V_min's contours there, the probability over the cell in a (Z, r) window, J populations, the shares at the basis edges and the grid edges' rises | — |
+| `compute/frame_extras.py` | from the `FrameExtras` datasets of frames/: the orientation per steradian, P(n, m; Z) and P(v; Z) split into labelled parts, the rotational moments, the momentum grids and the probability at their edges | — |
 | `compute/norm_budget.py` | from norm_budget/: each absorber's loss summed over the windows, the residual and its error estimate, and whether the budget closes (one check for the verdict and the figure) | — |
 | `compute/series.py` | any series: the records before a NaN or inf (with a note), records evenly spaced for a movie | — |
 | `compute/densities.py` | from densities/: both waves summed, Z and r profiles, the norm per region and inside each absorber, the specular line, the marks of a map | — |
@@ -224,9 +231,11 @@ unless `still=k` names another (`figure_frame_movie`: the frame when most of the
 pytest, one ctest per test module, registered by a glob in the repository's `tests/CMakeLists.txt`: the file
 name decides how. `tests/test_runs_<name>.py` becomes `PlotRuns.<name>`: it reads the fixture runs, which the
 C++ test `PlotRuns.Fixtures` ([tests/test_plot_fixtures.cpp](../../tests/test_plot_fixtures.cpp)) writes with
-the current program into `build/tests/plot_fixtures` (about 160 s; ctest runs it first), and gets
+the current program into `build/tests/plot_fixtures` (about 280 s at 8 threads; ctest runs it first), and gets
 `--fixture-runs`. Any other `tests/test_<name>.py` becomes `Plots.<name>` and runs without them.
-`tests/conftest.py` also makes runs that stopped early from one fixture. The `PlotRuns.*` tests are not in the
+`tests/conftest.py` also makes runs that stopped early from one fixture. Helpers shared by test modules live in
+modules without the `test_` prefix (`tests/frame_helpers.py`, `tests/absorber_profiles.py`), imported as
+`tests.<module>` (tests/ has no `__init__.py`). The `PlotRuns.*` tests are not in the
 quick tier: after changing the tool, run them too ([docs/CONTRIBUTING.md](../../docs/CONTRIBUTING.md#testing)):
 
 ```sh
@@ -249,8 +258,15 @@ it (`tests/test_runs_pes_cut.py`). frames/ must sum to the norm, give the densit
 and the cells' sums per Z summed over the rotational states (1e-13), equal ψ_full rebuilt in numpy from
 `checkpoint.bin` with s2s from its Cartesian formula (1e-12, at the end and mid-run; with conj(s2s) it fails where
 the cross terms matter), and a split run's frames must join to the unsplit run's bitwise
-(`tests/test_runs_frames.py`). norm_budget/ must equal a numpy recomputation from the densities' cells and the
-absorbers of run_info.json (losses and error indicators, 1e-12), close (the residual within its error estimate) on
+(`tests/test_runs_frames.py`). The `FrameExtras` datasets must sum to the frame's probability at each Z (1e-13)
+and equal numpy on the checkpoints (1e-12): the angular one through normalised associated Legendre functions built
+from numpy's Legendre series on numpy's Gauss-Legendre grid (without the cross terms of ψ_scat and s2s·χ it fails
+mid-run), the diffraction one through numpy's FFT of exp(−i k∥·R) ψ_full (without the shift it fails at oblique
+incidence), the vibration one through the levels of gas_phase_states.dat, the momenta through numpy's FFTs, the P₂
+elements through a 64-point quadrature; ⟨P₂⟩ agrees with the DVR quadrature within 1.5 P(J = JMax); on the hard wall
+nothing leaves the (0, 0) order (1e-14) and the vibrational populations follow a numpy split-operator propagation of
+the r motion alone (1e-12) (`tests/test_runs_frame_extras.py`). norm_budget/ must equal a numpy recomputation from
+the densities' cells and the absorbers of run_info.json (losses and error indicators, 1e-12), close (the residual within its error estimate) on
 the hard-wall fixtures and open on the coupled one while the packet is at the surface, have an error indicator that
 falls with dtAna squared (from 10 to 4 a.u.: within 4 to 9), chain its window norms bitwise, and join a split run to
 the unsplit one bitwise (`tests/test_runs_norm_budget.py`).
@@ -266,8 +282,8 @@ the unsplit one bitwise (`tests/test_runs_norm_budget.py`).
   Python: on a 16 x 16 (x, y) grid of 160 x 64 (Z, r) points the barrier map takes up to about 5 s (measured with
   every point explored).
 - Only what the run's files hold: the wave packet is seen through its (Z, r) density (`writeDensities`) and its
-  frames (`dtFrames`: over (x, y) and the rotational states); its angular distribution, diffraction orders and
-  vibrational states are not plotted yet.
+  frames (`dtFrames`: over (x, y) and the rotational states; with `FrameExtras` also its orientation, parallel
+  momenta, vibrational levels, rotational moments and momenta, all on the run's own grids).
 - The fine analysis is compared with the on-the-fly results of the same run; an `onlyAnalysis` run (its
   results only in `fine_analysis/`) is not plotted yet.
 - Time delays are in atomic units of time, like every time axis of the tool (1 a.u. = 0.0242 fs).

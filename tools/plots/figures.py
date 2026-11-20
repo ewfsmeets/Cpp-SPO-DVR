@@ -15,6 +15,8 @@ from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
 from compute.densities import (
+    Mark,
+    Marks,
     combined_probability,
     density_marks,
     r_profile_per_bohr,
@@ -24,6 +26,17 @@ from compute.densities import (
 )
 from compute.diagnostics import FRAME_EDGE_LIMIT
 from compute.diffraction import diffraction, out_of_plane_fraction, p_per_order, scattering_angles
+from compute.frame_extras import (
+    NYQUIST_FRACTION,
+    bound_levels,
+    densest_z,
+    diffraction_profiles,
+    momentum_distribution,
+    momentum_edges,
+    rotation_moments,
+    steric_distribution_at,
+    vibration_profiles,
+)
 from compute.frames import (
     EDGE_POINTS,
     MAX_FRAME_SITES,
@@ -97,6 +110,13 @@ from panels.densities import (
 )
 from panels.diagnostics import VERDICT_LINE_IN, draw_verdict, wrapped_verdict
 from panels.diffraction import draw_orders, draw_out_of_plane, draw_scattering_angles, draw_spot_map
+from panels.frame_extras import (
+    add_steric_colorbar,
+    draw_moment,
+    draw_momentum_distribution,
+    draw_steric_distribution,
+    draw_z_profiles,
+)
 from panels.frames import (
     add_cell_density_colorbar,
     draw_cell_density,
@@ -144,7 +164,16 @@ from readers.potential import PotentialData, read_potential
 from readers.run_info import RunInfo, lattice_of
 from readers.segments import read_joined_averages
 from readers.tables import read_asymptotic_potential, read_gas_phase_states, read_s_matrix, read_scattering_summary
-from style import DENSITY_FLOOR, Movie, add_info_box, density_color_scale, info_lines, linear_color_scale, new_figure
+from style import (
+    DENSITY_FLOOR,
+    Movie,
+    add_info_box,
+    axis_label,
+    density_color_scale,
+    info_lines,
+    linear_color_scale,
+    new_figure,
+)
 from verdict import run_verdict
 
 Figures = list[tuple[str, Figure | Movie]]
@@ -726,6 +755,142 @@ def budget_title(budget: Budget) -> str:
     )
 
 
+def surface_and_last(frames: Frames, info: RunInfo) -> list[tuple[str, int]]:
+    """The two records the extras' Z panels show: the one with the most probability below zasymp (named "at the
+    surface") and the last one."""
+    k_surface = most_at_surface(frames, int(info.data["grids"]["nz_potential"]))
+    return [("at the surface", k_surface), ("in the last frame", len(frames.series.times_au) - 1)]
+
+
+def z_marks(info: RunInfo) -> Marks:
+    """The Z lines the extras' Z panels mark: zasymp and the analysis line Zana (labelled together where equal)."""
+    lines = [
+        Mark(label="zasymp", position_bohr=info.data["z_asymptotic"], grid=None),
+        Mark(label="Zana", position_bohr=info.data["analysis"]["z_ana"], grid=None),
+    ]
+    return Marks(z_lines=lines, r_lines=[])
+
+
+def figure_steric(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The distribution of the molecular axis per steradian at the densest Z below zasymp when most of the packet is
+    there, and at the densest Z of the last frame (angular extra)."""
+    frames, notes = usable_frames(runs)
+    (_, k_surface), (_, k_last) = surface_and_last(frames, info)
+    iz_surface = densest_z(frames, k_surface, int(info.data["grids"]["nz_potential"]))
+    iz_last = densest_z(frames, k_last, frames.nz_scattering)
+    at_surface = steric_distribution_at(frames, k_surface, iz_surface)
+    last = steric_distribution_at(frames, k_last, iz_last)
+    nodes = frames.extras.angular
+    edges = node_edges_deg(nodes.theta_rad, nodes.phi_rad, nodes.homonuclear)
+    color_scale = linear_color_scale(np.array([at_surface.per_sr, last.per_sr]))
+    fig = new_figure(n_notes=len(notes) + 1, width_in=9.0)
+    left, right = fig.subplots(1, 2)
+    surface_title = (
+        f"At the surface: t = {at_surface.t_au:g} a.u.,\nZ = {at_surface.z_bohr:.2f} bohr (densest below zasymp)"
+    )
+    draw_steric_distribution(left, at_surface, edges, color_scale, surface_title)
+    last_title = f"Last frame: t = {last.t_au:g} a.u.,\nZ = {last.z_bohr:.2f} bohr (densest)"
+    draw_steric_distribution(right, last, edges, color_scale, last_title)
+    add_steric_colorbar(fig, [left, right], color_scale)
+    note = "per steradian at the DVR nodes, normalised to 1 over the sphere at that Z (prob_angle_z / w_t dphi)"
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, note))
+    return [("steric", fig)]
+
+
+def figure_diffraction_z(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The probability per parallel-momentum order against Z at the surface and in the last frame, the same orders in
+    both (diffraction extra)."""
+    frames, notes = usable_frames(runs)
+    shown = surface_and_last(frames, info)
+    profiles = diffraction_profiles(frames, [k for _, k in shown])
+    z = frames.z_bohr[: frames.nz_scattering]
+    fig = new_figure(n_notes=len(notes) + 1, width_in=9.0)
+    for ax, (name, _), profile in zip(fig.subplots(1, 2), shown, profiles, strict=True):
+        draw_z_profiles(ax, z, profile, z_marks(info), f"P(n, m; Z) {name},\nt = {profile.t_au:g} a.u.")
+    note = "parallel momentum K = k_par + n b1 + m b2 of psi_full; only open orders at Z >= zasymp are diffraction"
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, note))
+    return [("diffraction_z", fig)]
+
+
+def analysed_levels(run: Path) -> int:
+    """How many vibrational levels the analysis resolves: one more than the largest v of s_matrix.tsv (1 without it)."""
+    s_matrix = run / "s_matrix.tsv"
+    if not s_matrix.is_file():
+        return 1
+    return int(np.max(read_s_matrix(s_matrix)["v"])) + 1
+
+
+def figure_vibration_z(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The probability per vibrational level (the analysed v, the other levels below V_asy at the last r point, those
+    above it) against Z at the surface and in the last frame (vibration extra)."""
+    frames, notes = usable_frames(runs)
+    states = read_gas_phase_states(runs[-1] / "gas_phase_states.dat")
+    potential = read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat")
+    gas_levels = levels(states, potential, info.hartree_to_ev)
+    bound = bound_levels(gas_levels, frames.extras.vibration_j_values, len(frames.r_bohr))
+    n_analysed = analysed_levels(runs[-1])
+    z = frames.z_bohr[: frames.nz_scattering]
+    fig = new_figure(n_notes=len(notes) + 1, width_in=9.0)
+    for ax, (name, k) in zip(fig.subplots(1, 2), surface_and_last(frames, info), strict=True):
+        profiles = vibration_profiles(frames, k, bound, n_analysed)
+        draw_z_profiles(ax, z, profiles, z_marks(info), f"P(v; Z) {name},\nt = {profiles.t_au:g} a.u.")
+    note = "projection on the gas-phase levels phi_vJ(r), summed over J: also where the molecule is not free"
+    sources = ["frames/", "gas_phase_states.dat", "asymptotic_potential.dat", "s_matrix.tsv", "run_info.json"]
+    add_info_box(fig, info, sources, notes=(*notes, note))
+    return [("vibration_z", fig)]
+
+
+def figure_rotation_moments(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """<P2(cos theta)> and the rotational kinetic energy <J(J+1) / (2 mu r^2)> against Z in the first frame, at the
+    surface and in the last frame (rotation_moments extra)."""
+    frames, notes = usable_frames(runs)
+    records = [("first frame", 0), *surface_and_last(frames, info)]
+    moments = [(name, rotation_moments(frames, k, info.hartree_to_ev)) for name, k in records]
+    z = frames.z_bohr[: frames.nz_scattering]
+    fig = new_figure(n_notes=len(notes) + 1, width_in=9.0)
+    left, right = fig.subplots(1, 2)
+    p2 = [(f"{name}, t = {m.t_au:g} a.u.", m.p2, m.probability) for name, m in moments]
+    references = [("isotropic 0", 0.0), ("upright +1", 1.0), ("flat -1/2", -0.5)]
+    draw_moment(left, z, p2, references, "<P2(cos theta)>", "Alignment of the axis against Z")
+    energy = [(f"{name}, t = {m.t_au:g} a.u.", m.rotational_energy_ev, m.probability) for name, m in moments]
+    energy_label = axis_label("<J(J+1) / (2 mu r^2)>", "eV")
+    draw_moment(right, z, energy, [], energy_label, "Rotational kinetic energy against Z")
+    note = (
+        f"moments of psi_full at each Z; not drawn where the probability there is below {DENSITY_FLOOR:g} of the most"
+    )
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, note))
+    return [("rotation_moments", fig)]
+
+
+def figure_momentum(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """P(k_r) of psi_full and P(k_Z) of the specular wave in the first frame, at the surface and in the last frame,
+    and whether the momentum grids hold the wave: what the run brings to their edges against time (momentum extra;
+    the outer diffraction orders with the diffraction extra)."""
+    frames, notes = usable_frames(runs)
+    records = [("first frame", 0), *surface_and_last(frames, info)]
+    fig = new_figure(n_notes=len(notes) + 1, width_in=11.0)
+    left, middle, right = fig.subplots(1, 3)
+    for ax, dataset, quantity, title in (
+        (left, "prob_kr", "k_r", "P(k_r) of psi_full"),
+        (middle, "prob_kz_spec", "k_Z", "P(k_Z) of the specular wave"),
+    ):
+        distributions = [momentum_distribution(frames, k, dataset) for _, k in records]
+        series = [(f"{name}, t = {d.t_au:g} a.u.", d) for (name, _), d in zip(records, distributions, strict=True)]
+        draw_momentum_distribution(ax, series, quantity, title)
+    edges = momentum_edges(frames, edge_shares(frames).reference)
+    largest = largest_edge(edges)
+    rise = float(largest.values[worst_record(largest)])
+    answer = "Yes" if rise <= FRAME_EDGE_LIMIT else "No"  # the verdict's momentum_edge test (NaN: No)
+    title = f"Does the momentum grid\nhold the wave? {answer}: up to\n{rise:.1e} ({largest.label})"
+    draw_edge_series(right, frames.series.times_au, edges, FRAME_EDGE_LIMIT, frames.starts_au, EDGE_RISE_LABEL, title)
+    note = (
+        f"edges: |k| above {NYQUIST_FRACTION:g} of the grid's largest (dashed); with the diffraction extra the orders "
+        f"with |n| >= {NYQUIST_FRACTION:g} nX/2 or |m| >= {NYQUIST_FRACTION:g} nY/2"
+    )
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, note))
+    return [("momentum", fig)]
+
+
 FINE_ANALYSIS_FILES = ["fine_analysis/scattering_summary.tsv", "fine_analysis/spectrum/scattering_summary.tsv"]
 
 # name, figure function, the files it needs in the last segment's directory
@@ -754,6 +919,11 @@ PLOTS = [
     ("xy_maps", figure_xy_maps, ["frames/manifest.json"]),
     ("rotational_states", figure_rotational_states, ["frames/manifest.json"]),
     ("basis_edges", figure_basis_edges, ["frames/manifest.json"]),
+    ("steric", figure_steric, ["frames/prob_angle_z.bin"]),
+    ("diffraction_z", figure_diffraction_z, ["frames/pop_nm_z.bin"]),
+    ("vibration_z", figure_vibration_z, ["frames/pop_vj_z.bin", "gas_phase_states.dat", "asymptotic_potential.dat"]),
+    ("rotation_moments", figure_rotation_moments, ["frames/p2_numerator_z.bin"]),
+    ("momentum", figure_momentum, ["frames/prob_kr.bin"]),
     ("norm_budget", figure_norm_budget, ["norm_budget/manifest.json"]),
 ]
 
