@@ -430,3 +430,24 @@ def test_rotational_states_and_edges_content(fixture_runs: Path, stopped_run: Pa
     assert grid.get_title().startswith("Does the grid hold the wave? Yes:")
     legend = [t.get_text() for t in grid.get_legend().get_texts()]
     assert legend == ["first r points", "last r points", "first Z points", "limit 1e-06 (heuristic)"]
+
+
+def test_norm_budget_content(fixture_runs: Path, stopped_run: Path) -> None:
+    """The oblique run's norm budget: left, the norm on the grids, the norm that left them and each absorber with its
+    grid, in norm_budget/'s order (its legend beside the panel); right, the residual against its error band, the
+    title answering as the verdict does (no: the fixture loses about 4e-3 of the norm in the angular transform at the
+    surface)."""
+    fig = drawn("norm_budget", "oblique", fixture_runs, stopped_run)
+    went, legend_ax, closes = fig.axes
+    assert went.get_title() == "Where did the norm go?"
+    labels = [t.get_text() for t in legend_ax.get_legend().get_texts()]
+    assert labels == [
+        "on the grids",
+        "left the grids",
+        "taken by ZOpt (scattering grid)",
+        "taken by ROpt (scattering grid)",
+        "taken by ZSpOpt (specular grid)",
+        "taken by ROpt (specular grid)",
+    ]
+    assert closes.get_title().startswith("Does the budget close? No:")
+    assert [t.get_text() for t in closes.get_legend().get_texts()] == ["error estimate", "residual"]

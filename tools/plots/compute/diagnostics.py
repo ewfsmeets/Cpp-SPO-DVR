@@ -19,6 +19,10 @@ SLOW_CHANNELS_LIMIT = 1e-3  # heuristic: probability already seen in channels to
 EDGE_LIMIT = 1e-3  # heuristic: a basis edge (top j', outermost diffraction channels) holding more of P_scattered
 R_EDGE_LIMIT = 1e-3  # heuristic: |psi_v,j| at an end of the r grid above this fraction of its maximum
 FRAME_EDGE_LIMIT = 1e-6  # heuristic: probability at a basis edge in a frame, relative to the initial norm
+BUDGET_LIMIT = 1e-4  # heuristic: probability that may leave the grids beyond the absorbers' losses and their error
+# indicator, relative to the initial norm (the scale of the unitarity error's limit): it covers the time stepping's
+# own error of the absorbers (second order in dtStep: 4.1e-7 by t = 6000 a.u. on the hard-wall fixture at dtStep 2,
+# 1.05e-7 at dtStep 1, ROpt eating the bound state's tail on the specular grid)
 
 SECTION_TIME = "8. Total time and energy grid"
 SECTION_STEPS = "4. dZ: the grid must hold the momenta"  # also the time step dtStep
@@ -331,4 +335,23 @@ def norm_by_region(time_au: float, regions: dict[str, float], specular_inside_li
         "inside its own analysis line (listed last: the rest norm of averages.dat), and wait to be absorbed; "
         "r >= r_c is dissociating, counted as reaction",
         SECTION_TIME,
+    )
+
+
+def budget_open(*, excess: float, residual: float, error_estimate: float, t_au: float) -> Finding | None:
+    """Warning when the norm budget does not close: at some window end the residual (the norm that left the grids
+    minus the absorbers' summed losses) exceeds its error estimate by more than BUDGET_LIMIT of the initial norm
+    (excess > 0, a NaN counts; compute.norm_budget.budget_check, at its worst window)."""
+    if excess <= 0.0:
+        return None
+    return Finding(
+        "warning",
+        "norm budget does not close",
+        f"|residual| {abs(residual):.2e} at t = {t_au:g} a.u., error estimate {error_estimate:.2e}",
+        f"|residual| <= error estimate + {BUDGET_LIMIT:g} of the initial norm",
+        "the absorbers' losses do not account for the norm that left the grids: probability left another way, most "
+        "likely through the angular transform while the packet is at the surface (it keeps only the rotational "
+        "basis's part at every time step; less with a smaller dtStep), or the run diverged; it counts as reaction in "
+        "P_reaction = 1 - P_scattered",
+        SECTION_VERIFY,
     )

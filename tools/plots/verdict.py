@@ -12,6 +12,7 @@ from compute.analysis import analysis_energies, analysis_time_step_au, channel_e
 from compute.densities import combined_probability, region_norms, specular_inside_line
 from compute.diagnostics import (
     Finding,
+    budget_open,
     diverged,
     grid_edge,
     lowest_converged_normal_energy_ev,
@@ -34,6 +35,7 @@ from compute.diagnostics import (
     unitarity,
 )
 from compute.frames import edge_shares, grid_edge_rises, rotational_edges, usable_frames
+from compute.norm_budget import budget_check, summed_budget, usable_budget
 from compute.results import Results, results
 from compute.series import usable_records
 from compute.time_series import p_scattered_stopped_at
@@ -41,6 +43,7 @@ from readers.binary import BkCoefficients, read_bk_coefficients, read_checkpoint
 from readers.densities import DIRECTORY, read_densities
 from readers.errors import ReadError
 from readers.frames import DIRECTORY as FRAMES
+from readers.norm_budget import DIRECTORY as BUDGET
 from readers.run_info import RunInfo
 from readers.segments import read_joined_averages
 from readers.tables import Averages, Table, read_gas_phase_states, read_s_matrix, read_scattering_summary
@@ -73,10 +76,32 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
         unitarity(run_results.unitarity_error, worst_unitarity_energy(run_results)),
         *basis_edges(last, info),
         *frames_at_edges(runs),
+        norm_budget_finding(runs),
         norm_left(averages.norm[-1]),
         regions_at_end(runs, info),
     ]
     return sorted_findings(findings)
+
+
+def norm_budget_finding(runs: list[Path]) -> Finding | None:
+    """The norm budget (norm_budget/, NormBudget) before any NaN or inf: a warning where its residual exceeds its
+    error estimate; nothing without norm_budget/, a "not checked" when it cannot be read or holds no finite
+    record."""
+    if not (runs[-1] / BUDGET / "manifest.json").is_file():
+        return None
+    try:
+        records, _ = usable_budget(runs)
+    except ReadError as error:
+        return not_checked("the norm budget", str(error))
+    budget = summed_budget(records)
+    check = budget_check(budget)
+    k = check.window
+    return budget_open(
+        excess=check.excess,
+        residual=float(budget.residual[k]),
+        error_estimate=float(budget.error_estimate[k]),
+        t_au=float(budget.times_au[k]),
+    )
 
 
 def regions_at_end(runs: list[Path], info: RunInfo) -> Finding | None:

@@ -26,6 +26,7 @@ TITLES = {
     "xy_maps": "The packet over the unit cell",
     "rotational_states": "Rotational states over Z and in time",
     "basis_edges": "The packet at the edges of the basis",
+    "norm_budget": "Where the norm went (norm budget)",
     "bk": "Balint-Kurti coefficients and convergence in time",
 }
 
@@ -196,5 +197,19 @@ FIGURES = {
         "own tail there). A packet that reaches an edge leaves through one end of the grid and comes back at the "
         f"other (the FFT wraps it around); the verdict warns above {FRAME_EDGE_LIMIT:g} (heuristic), and the title "
         "answers as the verdict does."
+    ),
+    "norm_budget": (
+        "Left: against time, the norm on the grids, the norm that left them since the start, and what each absorber "
+        "took (summed over the analysis windows; each absorber in its grid's colour, ROpt in the r colour, one entry "
+        "per grid). A window's loss is the program's estimate per cell, exact for a constant inflow during the window. "
+        "Right: the residual, the norm that left the grids minus the absorbers' losses, against its error estimate "
+        "(gamma^2 / 6 of each cell's inflow, gamma the absorbers' exponent over the window: the leading distance of the "
+        "loss from the mean of its two one-sided estimates; it falls with dtAna squared). Beyond the band the residual "
+        "holds the time stepping's own error (the absorbers act once per time step: second order in dtStep, 4e-7 of "
+        "the norm on the hard-wall test grid by t = 6000 a.u.); the verdict and the title allow 1e-4 of the initial "
+        "norm beyond the band. A larger residual is probability that left another way: in a coupled system the angular "
+        "transform at the surface keeps only the rotational basis's part of the wave packet at every time step (the "
+        "Fortran's method too); the small Dai-Light test grids lose about 4e-3 of the norm there, less with a smaller "
+        "dtStep. That probability counts as reaction in P_reaction = 1 - P_scattered."
     ),
 }

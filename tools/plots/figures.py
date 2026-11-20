@@ -52,6 +52,7 @@ from compute.grids import (
     r_absorber,
     r_absorber_first_index,
 )
+from compute.norm_budget import Budget, budget_check, summed_budget, usable_budget
 from compute.potential import (
     CONTOUR_LINE_EVERY,
     CONTOUR_STEP_EV,
@@ -105,6 +106,7 @@ from panels.frames import (
     draw_state_populations,
 )
 from panels.gas_phase import draw_potential_and_levels, draw_wave_functions
+from panels.norm_budget import draw_budget_residual, draw_where_the_norm_went
 from panels.potential import (
     add_potential_colorbar,
     barrier_title,
@@ -698,6 +700,32 @@ def figure_basis_edges(runs: list[Path], info: RunInfo, options: argparse.Namesp
     return [("basis_edges", fig)]
 
 
+def figure_norm_budget(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """Where the norm went (the absorbers' losses summed over the analysis windows) and whether the budget closes."""
+    records, notes = usable_budget(runs)
+    budget = summed_budget(records)
+    fig = new_figure(n_notes=len(notes) + 1, width_in=10.0)
+    axes = fig.subplot_mosaic([["went", "legend", "closes"]], width_ratios=[3, 1.2, 3])
+    draw_where_the_norm_went(axes["went"], axes["legend"], budget)
+    draw_budget_residual(axes["closes"], budget, budget_title(budget))
+    note = f"each window {records.steps_per_window} time steps (dtAna); losses: mean of the start and end estimates"
+    add_info_box(fig, info, ["norm_budget/", "run_info.json"], notes=(*notes, note))
+    return [("norm_budget", fig)]
+
+
+def budget_title(budget: Budget) -> str:
+    """The residual panel's title, answering as the verdict does (compute.norm_budget.budget_check), with the worst
+    window's residual and error estimate."""
+    check = budget_check(budget)
+    k = check.window
+    answer = "Yes" if check.closes else "No"
+    return (
+        f"Does the budget close? {answer}:\n"
+        f"|residual| {abs(budget.residual[k]):.1e} at t = {budget.times_au[k]:g} a.u. "
+        f"(error estimate {budget.error_estimate[k]:.1e})"
+    )
+
+
 FINE_ANALYSIS_FILES = ["fine_analysis/scattering_summary.tsv", "fine_analysis/spectrum/scattering_summary.tsv"]
 
 # name, figure function, the files it needs in the last segment's directory
@@ -726,6 +754,7 @@ PLOTS = [
     ("xy_maps", figure_xy_maps, ["frames/manifest.json"]),
     ("rotational_states", figure_rotational_states, ["frames/manifest.json"]),
     ("basis_edges", figure_basis_edges, ["frames/manifest.json"]),
+    ("norm_budget", figure_norm_budget, ["norm_budget/manifest.json"]),
 ]
 
 

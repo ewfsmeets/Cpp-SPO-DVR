@@ -66,6 +66,7 @@ is a bug of the tool.
 | `xy_maps` | the probability over the unit cell below zasymp when most of the packet is there, and inside the r absorber (below zasymp, r ≥ r_c) when the most is there | frames/ |
 | `rotational_states` | P(J, mJ; Z) when most of the packet is below zasymp, and the J populations against time (χ beyond the scattering grid in the initial J) | frames/ |
 | `basis_edges` | left the probability at the top J and the top \|mJ\| (when below the top J); right how much the first and last r points (both grids) and the first Z points gain above the first frame, against the verdict's limit | frames/ |
+| `norm_budget` | where the norm went: what each absorber took, summed over the analysis windows, against the norm that left the grids; the residual against its error estimate | norm_budget/ (`NormBudget`) |
 | `pes_cut` | V(Z, r) of the PES itself (no switching, no VMin/VMax) at the fixed x, y, θ, φ of a `write2DPES` run, with its minimax barrier | pes_cut_2d.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
@@ -89,6 +90,7 @@ judgement); `verdict.py` reads the run's files for them.
 | flux at the edge of the basis | warning | more than 1e-3 of P_scattered in j′ = JMax, or in the outermost analysed diffraction channels (s_matrix.tsv) |
 | packet at the edge of the basis: a grid edge | warning | in some frame (frames/), more than 1e-6 of the initial norm beyond the first frame's at the first or last 2 r points (both grids) or the first 2 Z points (the FFT wraps the packet around) |
 | packet at the edge of the basis: top J or \|mJ\| | information | in some frame, more than 1e-6 of the initial norm in the top J, or in the top \|mJ\| when it is below the top J: normal while the packet is at the surface; the j′ check of the S matrix decides whether the basis is large enough |
+| norm budget does not close | warning | the norm that left the grids minus the absorbers' summed losses exceeds its error estimate by more than 1e-4 of the initial norm (norm_budget/) at some window end |
 | gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
@@ -122,6 +124,7 @@ flowchart LR
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
 | `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes and limits; the datasets' axes and shapes checked | `src/report/potential_files.cpp` |
 | `readers/frames.py` | frames/: the joined records, the grids, the rotational states and the sites | `src/report/frame_files.cpp` |
+| `readers/norm_budget.py` | norm_budget/: the joined windows and the absorbers of the loss datasets | `src/report/norm_budget_files.cpp` |
 | `readers/pes_cut.py` | pes_cut_2d.dat (`write2DPES`): V(Z, r) of the cut, its grids, position and orientation; whole r blocks checked | `src/report/pes_cut_file.cpp` |
 | `readers/sites.py` | the sites of PlotSites as the plot data record them (fractions, grid point, the ixy check) | `src/input/validate_outputs.cpp` |
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
@@ -135,6 +138,7 @@ flowchart LR
 | `compute/gas_phase.py` | the levels and which are bound | — |
 | `compute/potential.py` | energies relative to the gas-phase minimum, the minimax barrier on V(Z, r) (at one and at every (x, y) point), the points the figures show, the DVR nodes' cells | — |
 | `compute/frames.py` | from frames/ (read through `usable_frames`, which drops the records from the first NaN or inf on): ρ(Z, r) at a grid point and V_min's contours there, the probability over the cell in a (Z, r) window, J populations, the shares at the basis edges and the grid edges' rises | — |
+| `compute/norm_budget.py` | from norm_budget/: each absorber's loss summed over the windows, the residual and its error estimate, and whether the budget closes (one check for the verdict and the figure) | — |
 | `compute/series.py` | any series: the records before a NaN or inf (with a note), records evenly spaced for a movie | — |
 | `compute/densities.py` | from densities/: both waves summed, Z and r profiles, the norm per region and inside each absorber, the specular line, the marks of a map | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
@@ -245,7 +249,11 @@ it (`tests/test_runs_pes_cut.py`). frames/ must sum to the norm, give the densit
 and the cells' sums per Z summed over the rotational states (1e-13), equal ψ_full rebuilt in numpy from
 `checkpoint.bin` with s2s from its Cartesian formula (1e-12, at the end and mid-run; with conj(s2s) it fails where
 the cross terms matter), and a split run's frames must join to the unsplit run's bitwise
-(`tests/test_runs_frames.py`).
+(`tests/test_runs_frames.py`). norm_budget/ must equal a numpy recomputation from the densities' cells and the
+absorbers of run_info.json (losses and error indicators, 1e-12), close (the residual within its error estimate) on
+the hard-wall fixtures and open on the coupled one while the packet is at the surface, have an error indicator that
+falls with dtAna squared (from 10 to 4 a.u.: within 4 to 9), chain its window norms bitwise, and join a split run to
+the unsplit one bitwise (`tests/test_runs_norm_budget.py`).
 
 ## Limits
 
