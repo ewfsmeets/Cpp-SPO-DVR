@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <ostream>
+#include <string_view>
 
 #include "potential/pes_cut.hpp"
 #include "report/format.hpp"
@@ -11,7 +12,7 @@
 namespace spodvr {
 
 // The file name of the cut in the output directory (the Fortran writes 2dpes.dat).
-inline constexpr const char* pes_cut_file_name = "pes_cut_2d.dat";
+inline constexpr std::string_view pes_cut_file_name = "pes_cut_2d.dat";
 
 // Writes the cut: '#' lines with x, y (bohr), theta, phi (degrees and radians) and the columns, then one line
 // "r Z V(hartree) V(eV)" (%.16e) per point, Z fastest, with a blank line after each r block (the Fortran's

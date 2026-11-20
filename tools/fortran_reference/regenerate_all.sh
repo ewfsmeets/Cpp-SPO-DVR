@@ -51,10 +51,13 @@ setup() {
   require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" fortran_setup_stdout.txt debug_asyp.dat pes_reference.txt
 }
 
-# pes_cut CASE: the write2DPES cuts of the case's pes_cuts.json (each of these cases lists two).
+# pes_cut CASE: the write2DPES cuts of the case's pes_cuts.json, pes_cut_1.dat .. pes_cut_<n>.dat.
 pes_cut() {
+  local n k outputs=()
   "${tools_dir}/run_pes_cut_reference.sh" "$1"
-  require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" pes_cut_1.dat pes_cut_2.dat
+  n="$(python3 -I -B "${tools_dir}/pes_cuts.py" count "${FORTRAN_REPO_DIR}/tests/reference/$1/pes_cuts.json")"
+  for ((k = 1; k <= n; ++k)); do outputs+=("pes_cut_${k}.dat"); done
+  require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" "${outputs[@]}"
 }
 
 propagation() {

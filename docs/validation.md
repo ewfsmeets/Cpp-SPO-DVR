@@ -122,15 +122,19 @@ derived from exactly the same parameters.
      1.01× the tolerance at the largest |V| there only; 0.99× at the worst point passes.
    - Gate 1c on hardwall_small, cu111_dailight_small, cu111_persson_small, crp_cu111_srp48_small and
      scm_cu111_srp48_small, two cuts each (the Fortran defaults x = y = 0, θ = 90°, φ = 0; and
-     x ≈ 0.3 alat, y ≈ 0.1 blat, θ = 37°, φ = 113°), 5280–9856 points per cut: every V within half a
+     x ≈ 0.3 alat, y ≈ 0.1 blat, θ = 37°, φ = 113°; the hard wall's V depends on neither, so its two cuts
+     hold the same values), 5280–9856 points per cut, each Fortran file's header (x, y, θ, φ to its 10
+     decimals) checked against the cut it should be: every V within half a
      printed unit of the e15.8 value plus `potential_tolerance_of(case)` × max(|V|, 1 eV) (the printed
      half unit binds: the worst points are at 0.989–0.990 of the tolerance, i.e. the C++ agrees with all
      8 printed digits); r and Z within half a printed unit plus 1e-14 bohr (the Fortran's Z = 0 is
      4.4e-16 in the C++). Measured 2026-11-20. Negative tests (`RegressionPesCutChecks`): one Fortran
      value moved by one printed unit away from the C++ value fails at exactly that point, a NaN at exactly
-     that point. A C++-only cross-check: a cut at a grid point and a DVR node (in degrees) equals the
-     potential grid of cu111_dailight_small at its 5656 points with Z ≤ ZminSwitch within 1e-13 of
-     max(|V|, 1 eV), and x and y swapped fails at exactly the points where the grid differs.
+     that point, and the angles handed to the PES in degrees (a porting slip) fail at most points of the
+     Dai–Light cut 2. Gate 1c checks V to its 8 printed digits; the tight check is this C++-only one: a
+     cut at a grid point and a DVR node (in degrees) equals the potential grid of cu111_dailight_small at
+     its 5656 points with Z ≤ ZminSwitch within 1e-13 of max(|V|, 1 eV), and x and y swapped fails at
+     exactly the points where the grid differs.
 2. **Gas-phase rovibrational states** (same tests; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): the
    energy and wave function of every (v, j) level against the Fortran's full-precision dump
    `debug_asyp.dat` (`run_setup_reference.sh` sets `DoDump`): the analysed levels to 1e-12 relative

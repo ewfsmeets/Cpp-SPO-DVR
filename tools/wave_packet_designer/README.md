@@ -213,7 +213,7 @@ flowchart TB
 | `program/point_group.py` | the φ multiple and order of each point group | `src/symmetry/point_group.cpp` |
 | `dz_gas_phase.py` | the DZ input's printed V(r): the stand-in for other potentials, and test data | — |
 | `expected_cases.json` | the drift guard: twelve cases with the designer's grid indices, angular sizes and memory estimates (written by `write_expected_cases.py`) | read by `tests/designer_cases.hpp` for the C++ tests |
-| `program/potential_systems.py` | Z_asymptotic and point group per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
+| `program/potential_systems.py` | Z_asymptotic, point group and (for the analytic potentials) the lattice constants per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
 | `program/fft_sizes.py`, `real_compare.py`, `unit_conversion.py` | valid FFT sizes; the Fortran's tolerant comparisons and NINT; units and π | `src/fft/fft_sizes.cpp`, `src/core/real_compare.hpp`, `src/core/unit_conversion.hpp`, `src/core/constants.hpp` |
 | `program/findings.py` | an error or warning of the program | `src/core/error.hpp` |
 
@@ -225,7 +225,8 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
 
 - **a C++ file named in a `Shadows:` line:** edit the Python modules whose `Shadows:` lines name it
   (grep, see above). The tests in `tests/` compare with the program:
-  - `test_validate.py`: the key and message of every check, in order, with `validate.cpp`;
+  - `test_validate.py`: the key and message of every check, in order, with `validate.cpp`; the analytic
+    potentials' lattice constants with the literals of their C++ sources;
   - `test_input_reading.py`: the key table with `json_input.cpp`;
   - `test_packet.py`, `test_grids.py`, `test_absorbers.py`: the set-up output of the DZ run (masses, α and kz bitwise, the grid
     indices, the packet's norms and |ψ(k)|, the absorber strengths) and the L/λ the Fortran printed;

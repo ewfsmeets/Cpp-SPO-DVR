@@ -175,7 +175,7 @@ json plot_data(const InputParameters& p) {
 
 // The cut of a write2DPES run (written only by such a run, which stops after it).
 json pes_cut(const InputParameters& p) {
-  return {{"file", pes_cut_file_name},
+  return {{"file", std::string(pes_cut_file_name)},
           {"x", p.x_2d_pes},
           {"y", p.y_2d_pes},
           {"theta_deg", p.theta_2d_pes},

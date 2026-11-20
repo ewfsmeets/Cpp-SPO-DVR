@@ -150,7 +150,9 @@ TEST(PesCut, RunWritesTheCutAndStops) {
 }
 
 // The Fortran writes the cut in every run mode before it reads a restart file: so does a restart whose
-// RestartDir does not exist. Plot data keys are refused: the run stops before anything writes them.
+// RestartDir does not exist. An output directory that is RestartDir is refused (its run_info.json would be
+// replaced), in an analysis-only run too, which otherwise writes into RestartDir/fine_analysis. Plot data keys
+// are refused: the run stops before anything writes them.
 TEST(PesCut, RunNeedsNoRestartFilesAndRefusesPlotData) {
   TemporaryDirectory dir("pes_cut_restart");
   Json json = cut_json();
@@ -160,6 +162,14 @@ TEST(PesCut, RunNeedsNoRestartFilesAndRefusesPlotData) {
   json["tEnd"] = 1000.0 + json["nStep"].get<double>() * json["dtStep"].get<double>();
   json["RestartDir"] = (dir.path() / "no_such_directory").string();
   EXPECT_EQ(run(dir, json).status, 0);
+  for (const bool analysis_only : {false, true}) {
+    Json same = json;
+    same["RestartDir"] = (dir.path() / "out").string();  // the output directory of run()
+    if (analysis_only) same["onlyAnalysis"] = true;
+    const RunResult refused = run(dir, same);
+    EXPECT_EQ(refused.status, 2) << analysis_only;
+    EXPECT_NE(refused.err.find("RestartDir"), std::string::npos) << refused.err;
+  }
   Json plot = cut_json();
   plot["writePotential"] = true;
   const RunResult refused = run(dir, plot);

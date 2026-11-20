@@ -13,9 +13,9 @@
 #                    VMin/VMax) as 3(4x,e15.8), Z fastest, a blank line after each r block
 #                    (Potential.f90 Write2DPESToFile)
 # and their lines in the case's MANIFEST.tsv (inputs: the DVR.inp as run and the staged data files).
-# Refuses, before the runs, a bad pes_cuts.json, a case DVR.inp that sets one of these keys itself, a
-# pes_cut_<n + 1>.dat left from more cuts, and to overwrite a file of these that differs from git
-# (require_unmodified).
+# Refuses, before the runs, a bad pes_cuts.json and a case DVR.inp that sets one of these keys itself (both
+# checked by pes_cuts.py), a pes_cut_<n + 1>.dat left from more cuts, and to overwrite a file of these that
+# differs from git (require_unmodified).
 #
 # Usage: tools/fortran_reference/run_pes_cut_reference.sh [case] [scratch_dir]
 #   case         reference case directory name (default: hardwall_small); it needs a pes_cuts.json
@@ -31,47 +31,18 @@ case_dir="${FORTRAN_REPO_DIR}/tests/reference/${1:-hardwall_small}"
 cuts_file="${case_dir}/pes_cuts.json"
 [[ -f "${cuts_file}" ]] || refuse "${cuts_file} not found; name a case with write2DPES cuts"
 
-# cut_lines FILE K: the DVR.inp lines of cut K (from 1) of FILE, or the number of cuts when K is 0;
-# refuses (exit 1) a file that is not JSON with a list "cuts", a key that is not a write2DPES coordinate
-# and a value that is not a finite number. Python's repr of a float is the shortest decimal that reads back
-# to the same double, so gfortran and the C++ (which reads the JSON) get the same values.
-cut_lines() {
-  python3 -I -B -c '
-import json, math, sys
-path, k = sys.argv[1], int(sys.argv[2])
-try:
-    cuts = json.load(open(path, encoding="utf-8"))["cuts"]
-    assert isinstance(cuts, list) and all(isinstance(cut, dict) for cut in cuts)
-except (ValueError, KeyError, TypeError, AssertionError):
-    sys.exit(f"error: {path} is not JSON with a list \"cuts\" of objects; fix the file")
-if k == 0:
-    print(len(cuts))
-    sys.exit(0)
-for key, value in cuts[k - 1].items():
-    if key not in ("x2DPES", "y2DPES", "theta2DPES", "phi2DPES"):
-        sys.exit(f"error: {path}: cut {k}: {key} is not a write2DPES coordinate; use x2DPES, y2DPES, theta2DPES"
-                 " or phi2DPES")
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-        sys.exit(f"error: {path}: cut {k}: {key} = {value!r} is not a finite number; give a number")
-    print(f"{key} : REAL : {float(value)!r};")
-' "$1" "$2"
-}
-
-n_cuts="$(cut_lines "${cuts_file}" 0)"
+cuts=("${FORTRAN_REPO_DIR}/tools/fortran_reference/pes_cuts.py")  # the cuts' count and DVR.inp lines
+n_cuts="$(python3 -I -B "${cuts[@]}" count "${cuts_file}")"
 ((n_cuts > 0)) || refuse "${cuts_file} lists no cut; add one"
 stale="${case_dir}/pes_cut_$((n_cuts + 1)).dat"
 [[ ! -e "${stale}" ]] ||
   refuse "${stale} is left from more cuts than ${cuts_file} lists; delete it and its MANIFEST.tsv line"
-# The appended keys must be the only ones: a second line of a key in DVR.inp would be ambiguous.
-if [[ -f "${case_dir}/DVR.inp" ]] &&
-  grep -qiE '^[[:space:]]*(write2DPES|x2DPES|y2DPES|theta2DPES|phi2DPES)[[:space:]]*:' "${case_dir}/DVR.inp"; then
-  refuse "${case_dir}/DVR.inp sets a write2DPES key itself; remove it (pes_cuts.json gives the cuts)"
-fi
+[[ ! -f "${case_dir}/DVR.inp" ]] || python3 -I -B "${cuts[@]}" check-dvr "${case_dir}/DVR.inp"
 # Every cut is read before the first run, so that a bad one stops the script before anything is written.
 cut_inputs=()
 outputs=()
 for ((k = 1; k <= n_cuts; ++k)); do
-  lines="$(cut_lines "${cuts_file}" "${k}")"
+  lines="$(python3 -I -B "${cuts[@]}" lines "${cuts_file}" "${k}")"
   cut_inputs+=("${lines}")
   outputs+=("pes_cut_${k}.dat")
 done

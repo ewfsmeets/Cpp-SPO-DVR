@@ -469,7 +469,9 @@ def test_added_file(work):
     expect_failure(*compare(old, new, "--no-provenance"), r"pes_slice_1.dat: added in NEW; not allowed")
     old, new = make_trees(work, INSTALL_ID)
     write_tree(old, {f"{HARDWALL}/pes_cut_1.dat": PES_CUT.replace("1.5707963268", "1.5707963267")})
-    expect_failure(*compare(old, new, "--no-provenance"), r"added .*hardwall_small/pes_cut_1.dat")
+    expect_failure(
+        *compare(old, new, "--no-provenance"), r"added .*hardwall_small/pes_cut_1.dat: .*not allowed: line 1: number 3"
+    )
 
 
 def test_install_mismatch(work):

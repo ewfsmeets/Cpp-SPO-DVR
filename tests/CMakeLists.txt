@@ -165,6 +165,12 @@ add_pytest_test(NAME FortranReference.ExtractPesScmRecords TOOL tools/fortran_re
 add_pytest_test(NAME FortranReference.ExtractPesRefusals TOOL tools/fortran_reference
                 SELECT test_extract_pes.py::test_refusals)
 
+# pes_cuts.py (tools/fortran_reference/test_pes_cuts.py): the write2DPES cuts of run_pes_cut_reference.sh.
+add_pytest_test(NAME FortranReference.PesCutsCountAndLines TOOL tools/fortran_reference
+                SELECT test_pes_cuts.py::test_count_and_lines)
+add_pytest_test(NAME FortranReference.PesCutsRefusals TOOL tools/fortran_reference
+                SELECT test_pes_cuts.py::test_refusals)
+
 # refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1713.tsv is valid and
 # matches the committed files, every class it allows passes, each fault and each refusal fails. The
 # copies of refdata.py's MANIFEST header, reference trees and NOT_A_CASE (ReferenceManifest.cmake,

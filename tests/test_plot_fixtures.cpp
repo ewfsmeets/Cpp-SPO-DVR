@@ -203,7 +203,7 @@ TEST(PlotRuns, PotentialOnly) {
 
 TEST(PlotRuns, PesCut) {
   nlohmann::json json = dailight_oblique();
-  for (const char* key : {"alsoAnalysis", "writeDensities", "writePotential", "PlotSites"}) json.erase(key);
+  for (const std::string key : {"alsoAnalysis", "writeDensities", "writePotential", "PlotSites"}) json.erase(key);
   json["write2DPES"] = true;
   json["x2DPES"] = 2.42;  // the bridge: alat / 2 (alat 4.84 bohr)
   json["y2DPES"] = 0.0;

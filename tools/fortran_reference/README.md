@@ -17,6 +17,7 @@ strings the three together.
 | [build_fortran_reference.sh](build_fortran_reference.sh) | Builds the pinned upstream commit into a read-only reference install |
 | `run_setup_reference.sh [case]` | Potential-only run: `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` (gates 1, 2) |
 | `run_pes_cut_reference.sh [case]` | write2DPES runs, one per cut of the case's `pes_cuts.json` (its keys added to DVR.inp): `pes_cut_<k>.dat` = the Fortran's 2dpes.dat (gate 1c) |
+| [pes_cuts.py](pes_cuts.py) | Reads and checks a case's `pes_cuts.json` for `run_pes_cut_reference.sh` and `regenerate_all.sh`: the number of cuts, the DVR.inp lines of one, and that the case's DVR.inp sets none of the appended keys |
 | [extract_pes.py](extract_pes.py) | Writes `pes_reference.txt` from the Fortran's binary `.pes` file (run by `run_setup_reference.sh`): the angular grid and a subsample of V; the six extra records of an SCM run, detected by counting records, become `#` lines |
 | `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4) |
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
@@ -27,7 +28,7 @@ strings the three together.
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
 | [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1713.tsv](expected/r1713.tsv) ([below](#comparing-two-reference-trees)) |
 | [ReferenceManifest.cmake](ReferenceManifest.cmake) | Checks every file a `MANIFEST.tsv` lists against its sha256 (`ctest -R ReferenceManifest`) |
-| `test_reference_tools.sh`, `test_refdata.py`, `test_extract_pes.py` | The tests of these tools (`ctest -R FortranReference`; no Fortran run, stub installs; they write only to scratch). Every refusal (`error: …`, exit 1) of the shell and Python tools of this directory and its subdirectories has a negative test there, but one: `scm_driver/make_scm_inputs.py` "no position exactly on the cut-off sphere" depends only on the script's constants, so it cannot fire without editing the code. A new refusal gets a test |
+| `test_reference_tools.sh`, `test_refdata.py`, `test_extract_pes.py`, `test_pes_cuts.py` | The tests of these tools (`ctest -R FortranReference`; no Fortran run, stub installs; they write only to scratch). Every refusal (`error: …`, exit 1) of the shell and Python tools of this directory and its subdirectories has a negative test there, but one: `scm_driver/make_scm_inputs.py` "no position exactly on the cut-off sphere" depends only on the script's constants, so it cannot fire without editing the code. A new refusal gets a test |
 
 Each script's header gives its arguments, outputs, environment and run time. Every run script
 records the files it writes in the case's `MANIFEST.tsv`.
@@ -242,7 +243,8 @@ python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected FILE
 main checkout), `NEW` with regenerated ones (e.g. a worktree after `regenerate_all.sh`). It
 classifies each file by the row of the expected-differences file whose glob matches its path (a file
 that two rows match is refused); a file that no row matches must be byte-identical, and a file added
-in `NEW` fails unless a row of class `added` matches it (and, for a generated file, NEW's MANIFEST lists it). It prints one line per file that is not identical (`ok` or `FAIL`, the class,
+in `NEW` fails unless a row of class `added` matches it (and, for a generated file, NEW's MANIFEST lists
+it). It prints one line per file that is not identical (`ok` or `FAIL`, the class,
 what differs: lines, numbers, the largest absolute difference and printed units, a changed line
 count, or for BK files the fraction of the gate-4 scale), a note for each row that matches no file,
 and a summary. Exit status 0 only if every difference is allowed; it takes 4–7 s on the full trees

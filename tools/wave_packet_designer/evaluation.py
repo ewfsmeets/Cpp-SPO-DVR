@@ -149,6 +149,15 @@ class Evaluation:
         return self.stopped_at is None
 
 
+def unchecked_cut_bounds(p: InputParameters, system: SystemParameters) -> list[Finding]:
+    """A warning when write2DPES is on and the lattice is unknown here (a CRP data set): the program also checks
+    x2DPES <= alat and y2DPES <= blat, which the designer then cannot."""
+    if not p.write_2d_pes or system.lattice_a is not None:
+        return []
+    message = "the lattice of this PES is unknown here: x2DPES <= alat and y2DPES <= blat are not checked"
+    return [Finding(Severity.WARNING, "x2DPES", message, "designer settings")]
+
+
 def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
     """Runs the program's set-up stages on `p` as far as they go."""
     system = system_parameters(p.system_id, settings.z_asymptotic, settings.point_group)
@@ -156,7 +165,7 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         return missing_system_parameters(p, settings)
 
     z_asymptotic = effective_z_asymptotic(p, system)
-    findings = validate_input(p, system, z_asymptotic)
+    findings = validate_input(p, system, z_asymptotic) + unchecked_cut_bounds(p, system)
     if has_errors(findings):
         return Evaluation(p, settings, system, z_asymptotic, findings=tuple(findings), stopped_at="validate_input")
     settings_errors = check_settings(p, system, settings)

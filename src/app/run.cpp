@@ -169,12 +169,20 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
 
 // Run modes 1 and 2, right after the input and before the (possibly long) set-up: RestartDir
 // holds every file the run will read (the readers check their contents later), and a restart
-// does not overwrite the files it continues from. A write2DPES run reads nothing from RestartDir:
-// it stops after the cut of the PES, as the Fortran does before it reads any restart file.
+// does not overwrite the files it continues from. A write2DPES run reads nothing from RestartDir
+// (the Fortran stops after the cut, before it reads any restart file), but it writes run_info.json
+// and asymptotic_potential.dat into the output directory: never over those of the run it names.
 void check_restart_directory(const Config& config, const std::filesystem::path& output_dir) {
   if (config.derived.run_mode != 1 && config.derived.run_mode != 2) return;
-  if (config.input.write_2d_pes) return;
   const std::filesystem::path dir = config.input.restart_dir;
+  if (config.input.write_2d_pes) {
+    std::error_code not_comparable;  // e.g. no RestartDir: then the two are not the same directory
+    if (std::filesystem::equivalent(dir, output_dir, not_comparable))
+      throw InputError("RestartDir",
+                       "a write2DPES run writes into the output directory, which must differ from "
+                       "RestartDir (its run_info.json would be replaced)");
+    return;
+  }
   if (!std::filesystem::is_directory(restart_path_status(dir)))
     throw InputError("RestartDir", "'" + dir.string() + "' is not a directory");
   for (const RestartFile& file : restart_files(config)) require_restart_file(dir, file, config.input.restart_format);

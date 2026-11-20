@@ -301,7 +301,9 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
   naming `PosFilepath` (exit code 2, after the set-up report and before the 6D potential) when ΔV
   changes V_asy at any of its points (V ≠ V_CRP there): a slab atom that reaches the gas phase would
   make the gas-phase states depend on the slab. So every run the C++ accepts has the same V_asy in
-  both codes and in every run mode. With `UseSwitching` the same check covers the points where the
+  both codes and in every run mode. A write2DPES run stops before this check, as the Fortran stops
+  before it computes V_asy: the `asymptotic_potential.dat` it writes (only the plots' energy
+  reference; the Fortran writes none) is not checked. With `UseSwitching` the same check covers the points where the
   switch takes its V_gas, at the PES's own zasymp (`Potential.f90 switchPotentialToGasPhase`; ΔV is
   in it in both codes, but it must not depend on the slab either). The set-up report also gives the
   largest |V − V_CRP| on the plane Z = z_asymptotic over the grid's (x, y, θ, φ) and its

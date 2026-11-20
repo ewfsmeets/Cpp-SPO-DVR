@@ -2,6 +2,7 @@
 (program/initial_wave_packet.py)."""
 
 from evaluation import evaluate
+from program.findings import Severity
 from program.potential_systems import ANALYTIC_SYSTEMS
 from program.process import build_derived
 from settings import Settings
@@ -59,3 +60,14 @@ def test_no_packet_in_a_potential_only_run() -> None:
     check(e.accepted and e.packet is None, f"accepted {e.accepted}, packet {e.packet is not None}")
     s = e.packet_summary
     check(s.sigma_k > 0.0 and s.norm_outside is None and s.tolsp_measure is None, f"summary {s}")
+
+
+def test_write2dpes_bounds_unchecked_for_a_data_set() -> None:
+    """With a CRP data set (lattice unknown here) a write2DPES input gets a warning that the x2DPES and y2DPES upper
+    bounds are not checked; with the Dai-Light potential (lattice known) none."""
+    crp = load_parameters(DZ_INPUT, write_2d_pes=True, system_id="CRPlibrary", crp_dataset="some/data_set")
+    e = evaluate(crp, Settings(z_asymptotic=15.0, point_group="C3v"))
+    warnings = [f for f in e.findings if f.key == "x2DPES"]
+    check(len(warnings) == 1 and warnings[0].severity == Severity.WARNING, f"warnings {warnings}")
+    dz = evaluate(load_parameters(DZ_INPUT, write_2d_pes=True), Settings())
+    check(not any(f.key == "x2DPES" for f in dz.findings), "a warning for a known lattice")

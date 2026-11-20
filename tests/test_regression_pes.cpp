@@ -260,8 +260,10 @@ namespace {
 
 constexpr double cut_grid_floor = 1e-14;  // bohr
 
-// One Fortran cut: r, Z (bohr) and V (eV) per point, in the file's order (r outer, Z inner).
+// One Fortran cut: its header's x, y (bohr), theta, phi (rad; '#u= x v= y theta= t phi= p', f20.10) and r, Z
+// (bohr) and V (eV) per point, in the file's order (r outer, Z inner).
 struct FortranPesCut {
+  std::vector<double> header;  // x, y, theta, phi
   std::vector<double> r, z, v_ev;
 };
 
@@ -270,6 +272,16 @@ FortranPesCut read_fortran_pes_cut(const fs::path& path) {
   FortranPesCut cut;
   std::string line;
   while (std::getline(file, line)) {
+    if (line.starts_with("#u=")) {
+      std::istringstream fields(line);
+      std::string label;
+      for (int k = 0; k < 4; ++k) {
+        double value = 0.0;
+        fields >> label >> value;
+        cut.header.push_back(value);
+      }
+      continue;
+    }
     if (line.empty() || line.starts_with("#")) continue;
     std::istringstream fields(line);
     double r = 0.0, z = 0.0, v = 0.0;
@@ -328,6 +340,16 @@ CutComparison compare_cut(const PesCut& cpp, const FortranPesCut& fortran, doubl
   return result;
 }
 
+// The number of the header's four fields (x, y, theta, phi) that differ from the cut's beyond the header's 10
+// printed decimals (4 when the file has no header).
+int header_mismatches(const PesCut& cpp, const FortranPesCut& fortran) {
+  if (fortran.header.size() != 4) return 4;
+  const std::vector<double> where = {cpp.x, cpp.y, cpp.theta, cpp.phi};
+  int mismatches = 0;
+  for (int i = 0; i < 4; ++i) mismatches += (std::abs(fortran.header[i] - where[i]) <= 0.6e-10) ? 0 : 1;
+  return mismatches;
+}
+
 // Cut k of a case, computed by the C++ from the case's PES and grids, and read from the Fortran file.
 struct CutPair {
   PesCut cpp;
@@ -356,6 +378,8 @@ TEST_P(RegressionPesCut, Gate1cPotentialCut) {
     ASSERT_TRUE(fs::exists(file)) << file << " missing; run tools/fortran_reference/run_pes_cut_reference.sh " << name;
     const CutPair pair = cut_pair(name, k);
     ASSERT_EQ(pair.fortran.v_ev.size(), pair.cpp.v_ev.size()) << "cut " << k;
+    // The Fortran file is of this cut: its header (10 decimals) gives the cut's position and orientation.
+    EXPECT_EQ(header_mismatches(pair.cpp, pair.fortran), 0) << "cut " << k;
     const CutComparison result = compare_cut(pair.cpp, pair.fortran, potential_tolerance_of(name));
     EXPECT_EQ(result.failing, 0) << "cut " << k;
     EXPECT_LE(result.worst_v, 1.0) << "cut " << k;
@@ -408,11 +432,23 @@ GridComparison compare_cut_with_grid(const Calculation& c, const PesCut& cut, st
 
 // Negative tests of gate 1c on the Dai-Light cut 2: one Fortran value moved by one printed unit away from the
 // C++ value fails at exactly that point; a NaN in the C++ cut fails at exactly that point and makes the worst
-// deviation NaN.
+// deviation NaN; the angles passed to the PES in degrees (a realistic porting slip) fail at most points; the file
+// of cut 1 (x = y = 0, theta 90, phi 0) mismatches cut 2 in all four header fields.
 TEST(RegressionPesCutChecks, OnePrintedUnitOrNaNFails) {
   const std::string name = "cu111_dailight_small";
   CutPair pair = cut_pair(name, 2);
+  ASSERT_GT(pair.fortran.v_ev.size(), 1000U);
+  ASSERT_EQ(pair.fortran.v_ev.size(), pair.cpp.v_ev.size());
   ASSERT_EQ(compare_cut(pair.cpp, pair.fortran, potential_tolerance_of(name)).failing, 0);
+  EXPECT_EQ(header_mismatches(pair.cpp, read_fortran_pes_cut(case_dir(name) / "pes_cut_1.dat")), 4);
+  const Calculation& c = calculation(name);
+  Config degrees = cut_config(name, 2);
+  degrees.input.theta_2d_pes = rad_to_deg(degrees.input.theta_2d_pes);  // so that the cut gets degrees as radians
+  degrees.input.phi_2d_pes = rad_to_deg(degrees.input.phi_2d_pes);
+  const PesCut in_degrees = compute_pes_cut(*c.pes, degrees.input, c.grids);
+  const int slipped = compare_cut(in_degrees, pair.fortran, potential_tolerance_of(name)).failing;
+  EXPECT_GT(slipped, static_cast<int>(pair.fortran.v_ev.size()) / 2);
+  std::cout << "  angles in degrees: " << slipped << " of " << pair.fortran.v_ev.size() << " points fail\n";
   const std::size_t i = pair.fortran.v_ev.size() / 2;
   const double unit = 2.0 * printed_half_unit(pair.fortran.v_ev[i]) / 1.01;
   const int nz = static_cast<int>(pair.cpp.z.size());

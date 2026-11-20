@@ -210,18 +210,14 @@ def test_pes_cut_bounds_without_a_lattice() -> None:
 
 
 def test_lattice_constants_match_the_cpp() -> None:
-    """The lattice constants of the analytic potentials are the literals of their C++ sources (the Persson one in
-    angstrom, converted with the legacy factor as the C++ converts it)."""
-    sources = {
-        "HardWallPES": (r"parameters_\{([\d.]+), ([\d.]+),", "hard_wall_potential.cpp"),
-        "H2Cu111DaiLight": (r"lattice_constant = ([\d.]+);", "dai_light_cu111_potential.cpp"),
-        "H2Cu111Persson": (r"cc = ([\d.]+);", "persson_cu111_potential.cpp"),
-    }
-    for name, (pattern, file) in sources.items():
-        found = re.search(pattern, (REPOSITORY / "src/potential" / file).read_text())
-        check(found is not None, f"{pattern} not found in {file}: the pattern no longer matches")
-        a, b = float(found.group(1)), float(found.group(found.lastindex))  # one group: the same for a and b
-        if name == "H2Cu111Persson":
-            a, b = angstrom_to_bohr(a), angstrom_to_bohr(b)
+    """The lattice constants of the analytic potentials are the literals of their C++ sources (Persson's in
+    angstrom, converted with the legacy factor as persson_cu111_potential.cpp converts it)."""
+    cases = [  # (SystemID, C++ source, the text that holds the constants there, (a, b) in bohr)
+        ("HardWallPES", "hard_wall_potential.cpp", "parameters_{6.239660, 5.239660,", (6.239660, 5.239660)),
+        ("H2Cu111DaiLight", "dai_light_cu111_potential.cpp", "lattice_constant = 4.84;", (4.84, 4.84)),
+        ("H2Cu111Persson", "persson_cu111_potential.cpp", "cc = 2.5173;", (angstrom_to_bohr(2.5173),) * 2),
+    ]
+    for name, file, text, (a, b) in cases:
+        check(text in (REPOSITORY / "src/potential" / file).read_text(), f"{text} not in {file}: update this test")
         system = ANALYTIC_SYSTEMS[name]
         check_equal((system.lattice_a, system.lattice_b), (a, b), f"lattice of {name}")

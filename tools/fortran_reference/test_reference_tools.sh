@@ -455,7 +455,7 @@ touch averages.out fort.21 fort.25"
   run-script-refusals)
     repo="${work}/repo"
     scratch_repo "${repo}" run_fine_analysis_reference.sh run_crp_reference.sh run_scm_reference.sh \
-      run_pes_cut_reference.sh
+      run_pes_cut_reference.sh pes_cuts.py
     scripts="${repo}/tools/fortran_reference"
     expect_refusal "no_case/fortran_fort21\.bin not found" "${scripts}/run_fine_analysis_reference.sh" no_case full
     stub_driver_build "${scripts}/crp_driver" 0
@@ -518,7 +518,7 @@ touch averages.out fort.21 fort.25"
     cut_refusal "pes_cut_2\.dat is left from more cuts"
     rm "${cut_case}/pes_cut_2.dat"
     printf 'Title : "x";\nx2DPES : REAL : 1.0;\n' > "${cut_case}/DVR.inp"
-    cut_refusal "DVR\.inp sets a write2DPES key itself"
+    cut_refusal "DVR\.inp:2 sets x2DPES itself"
     ;;
   unmodified-targets)
     repo="${work}/repo"
