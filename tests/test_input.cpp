@@ -116,6 +116,21 @@ TEST(Input, UnsupportedFeatures) {
   EXPECT_THROW((void)build(json), NotSupportedError);
 }
 
+// dtFrames needs dtAna / dtStep to be whole as the program counts it: it truncates (Fortran INT), and 2.4 / 0.8 is
+// 2.9999999999999996, so the analysis step would be 2 time steps (1.6 a.u.), not 3. Without dtFrames the input is
+// accepted as the Fortran accepts it; with dtFrames it is refused, naming dtAna.
+TEST(Input, DtFramesNeedsAWholeNumberOfStepsPerAnalysis) {
+  Json json = reference_json();
+  json["dtStep"] = 0.8;
+  json["nStep"] = 18000;
+  json["tEnd"] = 14400.0;
+  json["dtAna"] = 2.4;
+  json["dtAve"] = 24.0;
+  EXPECT_EQ(build(json).derived.steps_per_analysis, 2);
+  json["dtFrames"] = 24.0;
+  EXPECT_NE(expect_input_error(json, "dtAna").find("truncates"), std::string::npos);
+}
+
 // write2DPES and its coordinates (Fortran defaults false, 0, 0, 90, 0). The coordinates are checked only with
 // write2DPES, with the Fortran's tolerant .RLT./.RGT. (1e-12): a value 5e-13 beyond a bound passes, 2e-12 does
 // not. The bounds of x and y are the PES's lattice constants (hard wall: 6.239660, 5.239660 bohr).
@@ -672,6 +687,27 @@ INSTANTIATE_TEST_SUITE_P(
                   [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["name"] = 1; },
                   "PlotSites"},
         Violation{"PlotSitesWithoutUser", [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); }, "PlotSites"},
+        // dtFrames (frames/): propagating runs only, on whole multiples of dtAna (itself of dtStep), from a tStart
+        // and to a tEnd on the frame grid.
+        Violation{"DtFramesNotPositive", [](Json& j) { j["dtFrames"] = 0.0; }, "dtFrames"},
+        Violation{"DtFramesBelowDtAna", [](Json& j) { j["dtFrames"] = 5.0; }, "dtFrames"},
+        Violation{"DtFramesNotAMultipleOfDtAna", [](Json& j) { j["dtFrames"] = 15.0; }, "dtFrames"},
+        Violation{"DtFramesTEndOffTheGrid", [](Json& j) { j["dtFrames"] = 300.0; }, "dtFrames"},
+        Violation{"DtFramesTStartOffTheGrid",
+                  [](Json& j) {
+                    j["NewCalc"] = false;
+                    j["RestartDir"] = "earlier";
+                    j["tStart"] = 150.0;
+                    j["tEnd"] = 150.0 + j["nStep"].get<double>() * j["dtStep"].get<double>();
+                    j["dtFrames"] = 100.0;  // tStart 150 is not on its grid (checked before tEnd)
+                  },
+                  "dtFrames"},
+        Violation{"DtFramesDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["dtFrames"] = 100.0; }, "dtAna"},
+        Violation{"DtFramesAnalysisOnly",
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["dtFrames"] = 100.0; },
+                  "dtFrames"},
+        Violation{"DtFramesPotentialOnly", [](Json& j) { j["Potential"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
+        Violation{"DtFramesWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
         Violation{"PlotSitesOutsideTheCell",
                   [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 1.0, 0.0}}); }, "PlotSites"},
         Violation{"PlotSitesOffTheGrid",

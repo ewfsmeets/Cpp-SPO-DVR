@@ -99,6 +99,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
 
   d.steps_per_analysis = static_cast<int>(p.dt_analysis / p.time_step);
   d.analyses_per_average = static_cast<int>(p.dt_averages / p.dt_analysis);
+  // Rounded, not truncated as the counts above: dtFrames must be a whole multiple of dtAna (validate_outputs.cpp).
+  d.analyses_per_frame = p.dt_frames ? static_cast<int>(std::lround(*p.dt_frames / p.dt_analysis)) : 0;
 
   d.fixed_z_analysis_specular = !p.dynamical_zsp_analysis;
 }

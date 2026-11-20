@@ -23,6 +23,7 @@
 #include "core/real_compare.hpp"
 #include "core/system_memory.hpp"
 #include "fft/fftw_fft.hpp"
+#include "frames/frame_source.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
 #include "grids/rotational_basis.hpp"
@@ -43,6 +44,7 @@
 #include "report/analysis_report.hpp"
 #include "report/densities_files.hpp"
 #include "report/fine_analysis_report.hpp"
+#include "report/frame_files.hpp"
 #include "report/pes_cut_file.hpp"
 #include "report/plot_data.hpp"
 #include "report/potential_files.hpp"
@@ -257,8 +259,29 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
       }
     };
   }
+  std::optional<FrameSource> frame_source;  // dtFrames: a frame of the wave packet every dtFrames
+  std::optional<FrameFiles> frames;
+  int frames_written = 0;
+  if (p.dt_frames) {
+    frame_source.emplace(config, grids, propagation.rotational_basis(), propagation.tables());
+    frames.emplace(output_dir, config, grids, propagation.rotational_basis(), frame_source->layout());
+    observer.on_frame = [&](double time, const PropagationBackend& wave_packet, int surface_index) {
+      if (!frames) return;
+      const FrameRecord& record = frame_source->frame(wave_packet);
+      try {
+        frames->append(time, record, surface_index);
+        ++frames_written;
+      } catch (const CheckpointError& e) {  // a full disk: optional output, so the propagation goes on
+        table.print_note(std::string("dtFrames: ") + e.what() + "; frames/ stops here", time);
+        frames.reset();
+      }
+    };
+  }
+  const auto loop_start = std::chrono::steady_clock::now();
   propagation.run(observer);
+  const std::chrono::duration<double> loop_time = std::chrono::steady_clock::now() - loop_start;
   table.finish();
+  if (frame_source) print_frame_cost(out, frames_written, frame_source->seconds(), loop_time.count());
 
   // Checkpoint for a restart. Fortran: SaveWaveFunc
   const AnalysisSurfaceState surface = propagation.analysis_surface().state();
@@ -280,6 +303,7 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   if (write_native) out << ", " << checkpoint_file;
   if (write_fortran) out << ", " << fortran_bk_file << ", " << fortran_wave_function_file;
   if (densities) out << ", densities/";
+  if (frames) out << ", frames/";
   out << '\n';
 }
 

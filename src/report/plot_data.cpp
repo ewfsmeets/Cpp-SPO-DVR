@@ -1,5 +1,5 @@
-// The plot data of a run (densities/, potential/): their projected sizes, the free-space check before the set-up
-// and the "PLOT DATA" lines. C++ only.
+// The plot data of a run (densities/, potential/, frames/): their projected sizes, the free-space check before the
+// set-up and the "PLOT DATA" lines. C++ only.
 #include "report/plot_data.hpp"
 
 #include <cstddef>
@@ -8,15 +8,30 @@
 #include <nlohmann/json.hpp>
 
 #include "core/error.hpp"
+#include "grids/rotational_basis.hpp"
+#include "input/validate_outputs.hpp"
 #include "report/densities_files.hpp"
+#include "report/frame_files.hpp"
 #include "report/potential_files.hpp"
 
 namespace spodvr {
+
+nlohmann::ordered_json plot_sites_json(const InputParameters& p) {
+  nlohmann::ordered_json sites = nlohmann::ordered_json::array();
+  for (const PlotSite& site : p.plot_sites) {
+    const int ixy = plot_site_ixy(site, p.nx, p.ny);
+    sites.push_back(
+        {{"name", site.name}, {"x", site.x}, {"y", site.y}, {"ix", ixy / p.ny}, {"iy", ixy % p.ny}, {"ixy", ixy}});
+  }
+  return sites;
+}
 
 std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids, const AngularGrid& angular) {
   std::vector<PlotDataSize> sizes;
   if (const auto densities = densities_data_size(config, grids)) sizes.push_back(*densities);
   if (const auto potential = potential_data_size(config, grids, angular)) sizes.push_back(*potential);
+  const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+  if (const auto frames = frames_data_size(config, grids, basis)) sizes.push_back(*frames);
   return sizes;
 }
 

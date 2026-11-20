@@ -78,6 +78,14 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
     const std::size_t work_values = std::max(zr_unit, xy_group + dvr_blocks + exp_scratch);
     estimate.items.push_back({"Work arrays", work_values, work_values * complex_bytes * n_threads,
                               "per thread, x " + std::to_string(n_threads) + " threads", false, true});
+    if (p.dt_frames) {  // dtFrames: one frame record and its per-r sums on the host (FrameSource::memory_values)
+      const std::size_t nz = grids.z_scattering.size();
+      const std::size_t n_rot = basis.size();
+      const std::size_t frame_values =
+          nz * p.nr * n_xy + (grids.z_specular.size() - nz) * p.nr + nz * n_rot + std::size_t(p.nr) * n_rot;
+      estimate.items.push_back(
+          {"Frame record (dtFrames)", frame_values, frame_values * sizeof(double), "on the host", false, true});
+    }
   }
 
   for (const MemoryItem& item : estimate.items) {

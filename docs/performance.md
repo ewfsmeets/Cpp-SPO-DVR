@@ -168,8 +168,8 @@ header line.
 - Two builds of the time loop, e.g. before and after a change: `tools/benchmark/compare_speed.sh
   --base-build DIR --new-build DIR [--cuda]` alternates their runs and judges the difference against the
   spread of the runs ([CONTRIBUTING: Additions to the time loop](CONTRIBUTING.md#additions-to-the-time-loop)).
-  Plot data (`writeDensities`, input_schema.md "Plot data keys") are off by default and add nothing
-  to the loop when off.
+  Plot data (`writeDensities`, `dtFrames`, input_schema.md "Plot data keys") are off by default and add
+  nothing to the loop when off.
 - Check the results of every change: `tools/check_bitwise_refactor.sh` (must be bitwise identical)
   or `tools/compare_propagation.sh` (rounding-level changes, ≤ 1e-13), then the gates
   (`ctest`, and `SPODVR_LONG_TESTS=1 ctest -R 'Long($|\.)'` for the full 7000-step run).

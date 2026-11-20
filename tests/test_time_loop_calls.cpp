@@ -43,6 +43,23 @@ TEST(TimeLoopCalls, WriteDensitiesAddsNoCall) {
   EXPECT_TRUE(std::filesystem::exists(dir.path() / "densities" / "times.bin"));
 }
 
+// dtFrames: each frame (tStart and every 100 a.u.: 11) reads every Z plane of the scattering grid once, and
+// nothing else; the wave packet is never copied to the host in the loop.
+TEST(TimeLoopCalls, FramesReadEachPlaneOncePerFrame) {
+  TemporaryDirectory dir("time_loop_calls");
+  BackendCallCounts counts;
+  nlohmann::json json = small_hardwall_input();
+  json["dtFrames"] = 100.0;
+  ASSERT_EQ(run_counted(json, dir.path(), make_cpu_backend, counts), 0);
+  const int frames = 11;
+  const int nz = json["nZ"].get<int>();
+  EXPECT_EQ(counts.propagate_analysis_step, small_hardwall_analysis_steps);
+  EXPECT_EQ(counts.z_plane, small_hardwall_analysis_steps + nz * frames);
+  EXPECT_EQ(counts.block_densities, small_hardwall_averages_rows);
+  EXPECT_EQ(counts.wave_packet_on_host, 1);
+  EXPECT_EQ(counts.read_wave_packet, 0);
+}
+
 // The Fortran checkpoint files: the wave packet on the host twice after the loop, never in it.
 TEST(TimeLoopCalls, BothCheckpointFormatsReadTheWavePacketTwiceAfterTheLoop) {
   TemporaryDirectory dir("time_loop_calls");

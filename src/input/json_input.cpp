@@ -259,6 +259,7 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("writeDensities", p.write_densities, optional);
   in.read("writePotential", p.write_potential, optional);
   in.read("PlotSites", p.plot_sites, optional);
+  in.read("dtFrames", p.dt_frames);
 
   in.read("DoDump", p.do_dump, optional);
   in.read("FullSMatrix", p.full_s_matrix, optional);

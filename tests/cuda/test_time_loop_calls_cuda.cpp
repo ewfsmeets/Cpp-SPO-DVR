@@ -26,3 +26,17 @@ TEST(CudaTimeLoopCalls, WithoutPlotKeysAndWithWriteDensities) {
     EXPECT_EQ(counts.read_wave_packet, 0) << densities;
   }
 }
+
+// dtFrames: every Z plane of the scattering grid once per frame (11 frames), as on the CPU.
+TEST(CudaTimeLoopCalls, FramesReadEachPlaneOncePerFrame) {
+  SPODVR_REQUIRE_GPU();
+  TemporaryDirectory dir("cuda_time_loop_calls");
+  BackendCallCounts counts;
+  nlohmann::json json = small_hardwall_input();
+  json["dtFrames"] = 100.0;
+  ASSERT_EQ(run_counted(json, dir.path(), cuda::make_cuda_backend, counts), 0);
+  EXPECT_EQ(counts.propagate_analysis_step, small_hardwall_analysis_steps);
+  EXPECT_EQ(counts.z_plane, small_hardwall_analysis_steps + json["nZ"].get<int>() * 11);
+  EXPECT_EQ(counts.block_densities, small_hardwall_averages_rows);
+  EXPECT_EQ(counts.wave_packet_on_host, 1);
+}

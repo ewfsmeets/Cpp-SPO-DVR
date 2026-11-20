@@ -7,6 +7,7 @@
 #include <format>
 #include <set>
 
+#include "core/real_compare.hpp"
 #include "input/validation_helpers.hpp"
 
 namespace spodvr {
@@ -14,6 +15,8 @@ namespace spodvr {
 using validation::check;
 
 namespace {
+
+constexpr double frame_grid_tolerance = 1e-9;  // tStart / dtFrames and tEnd / dtFrames: whole to this
 
 constexpr double on_grid_tolerance = 1e-9;  // |fraction * n - nearest integer|: a site lies on a grid point
 
@@ -36,9 +39,38 @@ void check_site_coordinate(const PlotSite& site, const std::string& axis, double
         std::format("site '{}': {} = {} rounds to 1, the next cell's {} = 0: give 0", site.name, axis, fraction, axis));
 }
 
+// Whether t / dt is a whole number to `tolerance` (in units of dt, so that it holds for any size of t and dt).
+bool whole_multiple(double t, double dt, double tolerance) {
+  const double ratio = t / dt;
+  return std::abs(ratio - validation::nint(ratio)) <= tolerance;
+}
+
+// dtFrames: frames line up with the analysis steps and, across restarts, with tStart and tEnd (C++ only checks, so
+// relative to the frame interval rather than the Fortran's absolute 1e-12).
+void check_frames(const InputParameters& p, bool propagates) {
+  using fortran_compare::rlt;
+  using fortran_compare::rne;
+  using validation::nint;
+  if (!p.dt_frames) return;
+  const double dt = *p.dt_frames;
+  check(p.write_2d_pes, "dtFrames", "write2DPES stops the run after the cut of the PES, before the propagation");
+  check(!propagates, "dtFrames", "only a propagating run (a new run or a restart) writes frames");
+  // The program truncates dtAna / dtStep (Fortran INT): with frames the count must be the intended one.
+  const double steps = p.dt_analysis / p.time_step;
+  check(static_cast<int>(steps) != nint(steps) || static_cast<int>(steps) < 1, "dtAna",
+        "dtAna / dtStep is not a whole number with dtFrames (the program truncates it, so frames would come at "
+        "other times than dtFrames says)");
+  check(!(dt > 0.0), "dtFrames", "dtFrames <= 0.");
+  check(rlt(dt, p.dt_analysis), "dtFrames", "dtFrames < dtAna.");
+  check(rne(nint(dt / p.dt_analysis) * p.dt_analysis, dt), "dtFrames", "dtFrames must be a whole multiple of dtAna.");
+  check(!whole_multiple(p.t_start, dt, frame_grid_tolerance), "dtFrames",
+        "tStart must be a whole multiple of dtFrames (the frames of a restart continue those of the run before)");
+  check(!whole_multiple(p.t_end, dt, frame_grid_tolerance), "dtFrames", "tEnd must be a whole multiple of dtFrames.");
+}
+
 void check_sites(const InputParameters& p) {
   if (p.plot_sites.empty()) return;
-  check(!p.write_potential, "PlotSites", "no plot key uses the sites: set writePotential");
+  check(!p.write_potential && !p.dt_frames, "PlotSites", "no plot key uses the sites: set writePotential or dtFrames");
   check(static_cast<int>(p.plot_sites.size()) > max_plot_sites, "PlotSites",
         std::format("{} sites: at most {}", p.plot_sites.size(), max_plot_sites));
   std::set<std::string> names;
@@ -78,6 +110,7 @@ void validate_output_keys(const Config& config) {
         "only a propagating run (a new run or a restart) writes densities");
   check(p.write_potential && mode == 2, "writePotential",
         "an analysis-only run (onlyAnalysis) computes no 6D potential to write");
+  check_frames(p, propagates);
   check_sites(p);
 }
 

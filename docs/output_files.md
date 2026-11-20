@@ -91,7 +91,7 @@ in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
 | `absorbers` | `power`, and `list`: per absorber its `name` (`ZOpt`, `ROpt`, `ZSpOpt`, and `ZOptLow`, `ZSpOptLow` when on), its `grid` (scattering, specular, both), `coordinate`, `start`, `end`, effective `strength` (hartree, after the energy table) and the grid `points` inside it (`first`, `last`, 0-based) |
 | `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
 | `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
-| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, and `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`) |
+| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), and `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`) |
 | `pes_cut` | only in a `write2DPES` run: `file` (`pes_cut_2d.dat`), `x`, `y` (bohr), `theta_deg`, `phi_deg`. Such a run stops before the gas phase: `initial_state` `energy` and the `analysis_energies` are null; `run_mode` stays the input's (new, restart, …) although the run does none of it |
 
 ## Data files (space-separated)
@@ -151,6 +151,24 @@ The manifest adds `record_interval_au` (dtAve) and `grids` (`z_start`, `dz`, `nz
 numbers the averages are computed from, so the sum of both datasets over all cells is the norm (to
 rounding), and writing them adds no computation to the time loop. A probability per cell divided by
 dZ·dr is a density in bohr⁻².
+
+### `frames/` (`dtFrames`)
+
+One record at tStart and at every dtFrames, of the whole wave packet ψ_full = ψ_scat + s2s·χ, the scattering
+wave with the specular wave χ added in the initial rotational channel (s2s(x, y) = exp(i k∥·R)·unit-cell norm,
+the factor of the two-grid projection), reduced over the axes each dataset leaves out:
+
+| File | Type and shape | Meaning |
+|---|---|---|
+| `prob_zrxy.bin` | `<f8` [nZ, nR, nX, nY] | probability per (Z, r, x, y) cell of ψ_full, summed over the rotational states: Σ\|ψ_full\|²·dZ·dr·dx·dy·sin(skew) |
+| `prob_tail_zr.bin` | `<f8` [nZSp − nZ, nR] | probability per (Z, r) cell of χ beyond the scattering grid (its first row is Z index nZ): \|χ\|²·dZ·dr |
+| `pop_jmj_z.bin` | `<f8` [nZ, nrot] | probability per (Z, rotational state) of ψ_full, summed over r, x, y; the states in the order of `rotational_states` |
+| `surface_index.bin` | `<i4` [] | 0-based Z index of the specular analysis surface |
+
+The manifest adds `record_interval_au` (dtFrames), `grids` (`z_start`, `dz`, `nz`, `nz_specular`, `r_start`,
+`dr`, `nr`, `nx`, `ny`), `rotational_states` ([J, mJ] per state), `initial_index` (the state that holds χ)
+and `sites` (as in `potential/`). The sum of `prob_zrxy` and `prob_tail_zr` is the norm (ψ_scat holds no
+initial-channel component: the cross terms with χ vanish in the sum over x, y, not point by point).
 
 ### `potential/` (`writePotential`)
 

@@ -34,8 +34,11 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
   const InputParameters& p = config_.input;
   const int n_per_analysis = config_.derived.steps_per_analysis;
   const int n_per_average = config_.derived.analyses_per_average;
+  const int n_per_frame = config_.derived.analyses_per_frame;  // 0 without frames (then on_frame is unset)
 
-  report_averages(p.t_end - p.n_steps * p.time_step, observer);
+  const double t_start = p.t_end - p.n_steps * p.time_step;
+  report_averages(t_start, observer);
+  if (observer.on_frame) observer.on_frame(t_start, *backend_, surface_.index());
 
   int analysis_count = 0;
   for (int step = n_per_analysis; step <= p.n_steps; step += n_per_analysis) {
@@ -53,6 +56,8 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
 
     analysis_count = analysis_count + 1;
     if (analysis_count % n_per_average == 0) report_averages(time, observer);
+    if (observer.on_frame && n_per_frame > 0 && analysis_count % n_per_frame == 0)
+      observer.on_frame(time, *backend_, surface_.index());
   }
 }
 

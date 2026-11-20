@@ -1,6 +1,7 @@
-// Tests: densities/ (writeDensities) on the GPU. The records come from the device reduction
-// block_densities() and the specular wave (copied exactly), so a run on the GPU writes the CPU's records to
-// the CPU-vs-GPU level of the propagation (rule "CPU = GPU"), which grows with the number of steps.
+// Tests: densities/ (writeDensities) and frames/ (dtFrames) on the GPU. The density records come from the device
+// reduction block_densities() and the specular wave (copied exactly), the frames from exact copies of the planes
+// reduced on the host, so a run on the GPU writes the CPU's records to the CPU-vs-GPU level of the propagation
+// (rule "CPU = GPU"), which grows with the number of steps.
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -49,6 +50,7 @@ nlohmann::json coupled_input() {
   json["tEnd"] = 3000.0;
   json["nStep"] = 1500;
   json["writeDensities"] = true;
+  json["dtFrames"] = 100.0;  // the same record times
   return json;
 }
 
@@ -134,5 +136,28 @@ TEST(CudaDensities, ProgramRunWritesTheCpuRecords) {
     std::vector<double> wrong = scat_gpu;
     wrong[peak] = planted;
     EXPECT_EQ(failing_records(record_differences(scat_cpu, wrong, scat_size), scale), 1) << planted;
+  }
+
+  // frames/ of the same runs, every record within the same tolerance: prob_zrxy and prob_tail_zr against the
+  // frame's largest cell of either (cells of one distribution: the tail alone can be nearly empty, where its own
+  // largest value would magnify rounding), pop_jmj_z against its own largest value.
+  const fs::path cpu_frames = dir.path() / "cpu" / "frames";
+  const fs::path gpu_frames = dir.path() / "gpu" / "frames";
+  EXPECT_EQ(read_values<double>(cpu_frames / "times.bin"), read_values<double>(cpu / "times.bin"));
+  const std::vector<double> cells = read_values<double>(cpu_frames / "prob_zrxy.bin");
+  const std::vector<double> tail = read_values<double>(cpu_frames / "prob_tail_zr.bin");
+  std::vector<double> frame_scale;
+  for (std::size_t k = 0; k < records; ++k)
+    frame_scale.push_back(spodvr::testing::nan_aware_max(record_maximum(cells, cells.size() / records, k),
+                                                         record_maximum(tail, tail.size() / records, k)));
+  for (const std::string name : {"prob_zrxy.bin", "prob_tail_zr.bin", "pop_jmj_z.bin"}) {
+    const std::vector<double> a = read_values<double>(cpu_frames / name);
+    const std::vector<double> b = read_values<double>(gpu_frames / name);
+    ASSERT_EQ(a.size(), b.size()) << name;
+    const std::size_t size = a.size() / records;
+    std::vector<double> dataset_scale = frame_scale;
+    if (name == "pop_jmj_z.bin")
+      for (std::size_t k = 0; k < records; ++k) dataset_scale[k] = record_maximum(a, size, k);
+    EXPECT_EQ(failing_records(record_differences(a, b, size), dataset_scale), 0) << name;
   }
 }

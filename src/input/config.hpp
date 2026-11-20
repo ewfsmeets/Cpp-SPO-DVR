@@ -185,6 +185,7 @@ struct InputParameters {
   bool write_densities = false;  // writeDensities: densities/, the probability per (Z, r) cell every dtAve
   bool write_potential = false;  // writePotential: potential/, the run's potential on its grid at set-up
   std::vector<PlotSite> plot_sites;  // PlotSites: named (x, y) grid points for the plot data
+  std::optional<double> dt_frames;   // dtFrames (a.u.): frames/, reductions of psi every dtFrames (C++ only)
 
   // --- tolerances -------------------------------------------------------------------------
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)
@@ -243,6 +244,7 @@ struct DerivedParameters {
 
   int steps_per_analysis;           // Fortran: nanspo
   int analyses_per_average;         // Fortran: nave
+  int analyses_per_frame = 0;       // dtFrames / dtAna (nint); 0 without frames (C++ only)
   bool fixed_z_analysis_specular;   // Fortran: FixedZAnalysisSpec
 
   // Setup.f90 MiscellaneousSetup

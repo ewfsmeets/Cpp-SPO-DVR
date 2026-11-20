@@ -49,12 +49,6 @@ std::vector<DatasetSpec> potential_datasets(const Config& config, const SpatialG
 nlohmann::ordered_json potential_manifest_fields(const Config& config, const SpatialGrids& grids,
                                                  const AngularGrid& angular) {
   const InputParameters& p = config.input;
-  nlohmann::ordered_json sites = nlohmann::ordered_json::array();
-  for (const PlotSite& site : p.plot_sites) {
-    const int ixy = plot_site_ixy(site, p.nx, p.ny);
-    sites.push_back(
-        {{"name", site.name}, {"x", site.x}, {"y", site.y}, {"ix", ixy / p.ny}, {"iy", ixy % p.ny}, {"ixy", ixy}});
-  }
   const std::span<const double> thetas = angular.thetas();
   const std::span<const double> weights = angular.theta_weights();
   const std::span<const double> phis = angular.phis();
@@ -71,7 +65,7 @@ nlohmann::ordered_json potential_manifest_fields(const Config& config, const Spa
           {"theta_weights", std::vector<double>(weights.begin(), weights.end())},
           {"phi_nodes_rad", std::vector<double>(phis.begin(), phis.end())},
           {"homonuclear", angular.homonuclear()},
-          {"sites", sites},
+          {"sites", plot_sites_json(p)},
           {"limits",
            {{"use_switching", p.use_switching},
             {"z_min_switch", p.z_min_switch},

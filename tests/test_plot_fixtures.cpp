@@ -2,8 +2,9 @@
 // inputs, written by the current program into SPODVR_PLOT_FIXTURES_DIR. One ctest in one process
 // (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
 // directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
-// Every fixture writes the plot data: densities/ (writeDensities, the propagating ones) and potential/
-// (writePotential, with PlotSites: hardwall_tiny "origin" and "centre", dailight_oblique "top" and "bridge").
+// Every fixture writes the plot data: the propagating ones densities/ (writeDensities) and frames/ (dtFrames
+// 100 a.u.), and all potential/ (writePotential, with PlotSites: hardwall_tiny "origin" and "centre",
+// dailight_oblique "top" and "bridge").
 //   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
 //   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
 //   dailight_oblique          cu111_dailight_small with nX = nY = 4, JMax = MJMax = 2, EParallel 0.1 eV at
@@ -90,6 +91,7 @@ nlohmann::json hardwall_tiny() {
   json["writeRDProbs"] = true;
   json["writeDensities"] = true;
   json["writePotential"] = true;
+  json["dtFrames"] = 100.0;
   json["PlotSites"] = {{{"name", "origin"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "centre"}, {"x", 0.5}, {"y", 0.5}}};
   return with_times(json, 0.0, 10000.0);
 }
@@ -109,6 +111,7 @@ nlohmann::json dailight_oblique() {
   json["ZOptEnd"] = 13.28;
   json["alsoAnalysis"] = true;
   json["writeDensities"] = true;
+  json["dtFrames"] = 100.0;
   json["writePotential"] = true;
   json["PlotSites"] = {{{"name", "top"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "bridge"}, {"x", 0.5}, {"y", 0.0}}};
   return with_times(json, 0.0, dailight_t_end);
@@ -193,7 +196,8 @@ TEST(PlotRuns, PotentialOnly) {
   nlohmann::json json = hardwall_tiny();
   json["Potential"] = true;
   json.erase("alsoAnalysis");
-  json.erase("writeDensities");  // densities/ belong to a propagating run; potential/ is written at set-up
+  json.erase("writeDensities");  // densities/ and frames/ belong to a propagating run; potential/ is written at set-up
+  json.erase("dtFrames");
   const fs::path dir = fixtures_dir / "potential_only";
   ASSERT_EQ(run(json, dir), 0);
   EXPECT_TRUE(fs::exists(dir / "run_info.json"));
@@ -203,13 +207,14 @@ TEST(PlotRuns, PotentialOnly) {
 
 TEST(PlotRuns, PesCut) {
   nlohmann::json json = dailight_oblique();
-  for (const std::string key : {"alsoAnalysis", "writeDensities", "writePotential", "PlotSites"}) json.erase(key);
+  for (const std::string key : {"alsoAnalysis", "writeDensities", "writePotential", "dtFrames", "PlotSites"})
+    json.erase(key);
   json["write2DPES"] = true;
   json["x2DPES"] = 2.42;  // the bridge: alat / 2 (alat 4.84 bohr)
   json["y2DPES"] = 0.0;
   const AngularGrid angular = make_angular_grid(build_config(parse_input(dailight_oblique())));
   json["theta2DPES"] = rad_to_deg(angular.thetas().back());  // a node of the run's angular grid
-  json["phi2DPES"] = 0.0;                                     // the first phi node
+  json["phi2DPES"] = 0.0;  // the first phi node
   const fs::path dir = fixtures_dir / "pes_cut";
   ASSERT_EQ(run(json, dir), 0);
   EXPECT_TRUE(fs::exists(dir / "pes_cut_2d.dat"));

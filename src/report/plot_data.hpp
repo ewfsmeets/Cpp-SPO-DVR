@@ -6,12 +6,18 @@
 #include <string>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 #include "grids/angular_grid.hpp"
 #include "grids/spatial_grids.hpp"
 #include "input/config.hpp"
 #include "report/format.hpp"
 
 namespace spodvr {
+
+// The sites of PlotSites as the plot-data manifests record them: name, fractions x, y, grid point ix, iy and
+// ixy = iy + nY ix.
+[[nodiscard]] nlohmann::ordered_json plot_sites_json(const InputParameters& p);
 
 // The plot data a run will write: the directory, the key that asks for it, the projected bytes and what it
 // costs (docs/output_files.md, "Series directories").
@@ -22,8 +28,8 @@ struct PlotDataSize {
   std::string cost;  // when it is written and what it adds to the run
 };
 
-// The plot data of the run's switches (empty when none is on): densities/ (writeDensities) and potential/
-// (writePotential).
+// The plot data of the run's switches (empty when none is on): densities/ (writeDensities), potential/
+// (writePotential) and frames/ (dtFrames).
 [[nodiscard]] std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids,
                                                         const AngularGrid& angular);
 

@@ -29,7 +29,9 @@ namespace spodvr {
 // analysis steps; with them the data they are computed from (writeDensities: the block densities of the
 // scattering wave in izr order, the specular wave and the analysis-surface index; no extra work, the
 // densities are computed once for both); the time and Z at which the dynamic specular analysis surface
-// becomes fixed; the BK coefficients of every analysis step with the time at its end.
+// becomes fixed; the BK coefficients of every analysis step with the time at its end; with dtFrames, the backend
+// at tStart and every analyses_per_frame analysis steps (the frames read it through z_plane and specular, after the
+// analysis of that step).
 struct PropagationObserver {
   std::function<void(const Averages&)> on_averages;
   std::function<void(const Averages&, std::span<const double> block_densities, const SpecularWave& specular,
@@ -37,6 +39,7 @@ struct PropagationObserver {
       on_average_densities;
   std::function<void(double time, double z)> on_surface_fixed;
   std::function<void(double time, const BkCoefficients&)> on_analysis_step;
+  std::function<void(double time, const PropagationBackend& backend, int surface_index)> on_frame;
 };
 
 // A new wave-packet propagation (ProjOp = 2): sets up the initial wave packet, the tables and
