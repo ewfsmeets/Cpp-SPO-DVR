@@ -99,7 +99,7 @@ package), which `tests/test_structure.py` checks. An arrow means "is used by":
 ```mermaid
 flowchart LR
     copies["copies/ (0)"] --> readers["readers/ (1)"] --> compute["compute/ (2)"]
-    compute --> style["style.py, explanations.py, verdict.py (3)"] --> panels["panels/ (4)"]
+    compute --> look["style.py, explanations.py, verdict.py (3)"] --> panels["panels/ (4)"]
     panels --> figures["figures.py (5)"] --> report["report.py (6)"] --> cli["spodvr_plot.py (7)"]
 ```
 
