@@ -70,7 +70,7 @@ PRE_MANIFEST_REF = "5.19 (pre-MANIFEST)"
 OUTSIDE_REFERENCE_TREES = ":(exclude,glob)tests/**/reference/**"
 # The committed inputs of a case (see is_input) and the directories of the reference trees that
 # hold no Fortran output (fortran_unformatted/: hand-made gfortran test records).
-CASE_INPUT_FILES = ("DVR.inp", "input.json")
+CASE_INPUT_FILES = ("DVR.inp", "input.json", "pes_cuts.json")  # pes_cuts.json: the write2DPES cuts (gate 1c)
 CASE_INPUT_SUFFIX = ".in"  # the CRP driver's point lists
 CASE_INPUT_DIR = "dataset"  # a CRP data set
 NOT_A_CASE = ("fortran_unformatted",)
@@ -142,9 +142,9 @@ def checked_field(name, value):
 
 
 def is_input(path):
-    """True for a committed input of a case (never generated, never deleted): the case's DVR.inp
-    and input.json, the CRP point lists (*.in) and data set (dataset/). Everything else in a case
-    directory is generated, including fine_<variant>/DVR.inp."""
+    """True for a committed input of a case (never generated, never deleted): the case's DVR.inp,
+    input.json and pes_cuts.json, the CRP point lists (*.in) and data set (dataset/). Everything else
+    in a case directory is generated, including fine_<variant>/DVR.inp."""
     parts = PurePosixPath(path).parts
     at_top = len(parts) == 1
     return (

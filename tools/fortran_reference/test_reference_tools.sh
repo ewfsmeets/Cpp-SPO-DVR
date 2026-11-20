@@ -33,7 +33,10 @@
 #   run-script-refusals  run_fine_analysis/crp/scm_reference.sh in a scratch repository with stub
 #                      driver builds: each missing input, a driver that fails or does not finish, an
 #                      output git does not track (CRP, SCM); scm_driver/make_scm_inputs.py: a
-#                      params.dat of 35 values
+#                      params.dat of 35 values; run_pes_cut_reference.sh: no pes_cuts.json, a file
+#                      that is not JSON, no cut, a key that is not a coordinate, a value that is
+#                      a string, a bool or not finite, a pes_cut file left from more cuts, a DVR.inp
+#                      that sets a write2DPES key (each before the scratch directory is made)
 #   unmodified-targets require_unmodified in a scratch git repository passes an unchanged, an absent
 #                      and a deleted target, and refuses an edited file, a directory with an edited
 #                      file, a file added to the index, an untracked file, a directory with one, a
@@ -451,7 +454,8 @@ touch averages.out fort.21 fort.25"
     ;;
   run-script-refusals)
     repo="${work}/repo"
-    scratch_repo "${repo}" run_fine_analysis_reference.sh run_crp_reference.sh run_scm_reference.sh
+    scratch_repo "${repo}" run_fine_analysis_reference.sh run_crp_reference.sh run_scm_reference.sh \
+      run_pes_cut_reference.sh
     scripts="${repo}/tools/fortran_reference"
     expect_refusal "no_case/fortran_fort21\.bin not found" "${scripts}/run_fine_analysis_reference.sh" no_case full
     stub_driver_build "${scripts}/crp_driver" 0
@@ -487,6 +491,34 @@ touch averages.out fort.21 fort.25"
     expect_refusal "params\.dat has 35 values, not 36" \
       python3 -I -B "${tools_dir}/scm_driver/make_scm_inputs.py" example "${work}/scm_case" "${work}/example"
     [[ ! -e "${work}/scm_case" ]] || fail "the refused generator created ${work}/scm_case"
+    # run_pes_cut_reference.sh: the cut definitions are checked before the scratch directory is made.
+    cut_case="${repo}/tests/reference/cut_case"
+    cut_scratch="${work}/cut_scratch"
+    mkdir -p "${cut_case}"
+    # cut_refusal PATTERN: the script refuses the case with PATTERN and makes no scratch directory.
+    cut_refusal() {
+      expect_refusal "$1" "${scripts}/run_pes_cut_reference.sh" cut_case "${cut_scratch}"
+      [[ ! -e "${cut_scratch}" ]] || fail "the refused run made ${cut_scratch}"
+    }
+    cut_refusal "cut_case/pes_cuts\.json not found"
+    echo '{"cuts": ' > "${cut_case}/pes_cuts.json"
+    cut_refusal "pes_cuts\.json is not JSON with a list"
+    echo '{"cuts": []}' > "${cut_case}/pes_cuts.json"
+    cut_refusal "pes_cuts\.json lists no cut"
+    echo '{"cuts": [{}, {"z2DPES": 1.0}]}' > "${cut_case}/pes_cuts.json"
+    cut_refusal "cut 2: z2DPES is not a write2DPES coordinate"
+    echo '{"cuts": [{"x2DPES": "1.0"}]}' > "${cut_case}/pes_cuts.json"
+    cut_refusal "cut 1: x2DPES = '1\.0' is not a finite number"
+    echo '{"cuts": [{"x2DPES": true}]}' > "${cut_case}/pes_cuts.json"
+    cut_refusal "cut 1: x2DPES = True is not a finite number"
+    echo '{"cuts": [{"phi2DPES": NaN}]}' > "${cut_case}/pes_cuts.json"
+    cut_refusal "cut 1: phi2DPES = nan is not a finite number"
+    echo '{"cuts": [{}]}' > "${cut_case}/pes_cuts.json"
+    touch "${cut_case}/pes_cut_2.dat"
+    cut_refusal "pes_cut_2\.dat is left from more cuts"
+    rm "${cut_case}/pes_cut_2.dat"
+    printf 'Title : "x";\nx2DPES : REAL : 1.0;\n' > "${cut_case}/DVR.inp"
+    cut_refusal "DVR\.inp sets a write2DPES key itself"
     ;;
   unmodified-targets)
     repo="${work}/repo"

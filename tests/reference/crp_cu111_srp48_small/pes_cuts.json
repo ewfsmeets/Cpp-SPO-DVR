@@ -1,0 +1,12 @@
+{
+  "about": "The write2DPES cuts of this case (gate 1c, docs/validation.md): each object's keys are added to input.json (the C++) and DVR.inp (the Fortran, tools/fortran_reference/run_pes_cut_reference.sh); cut k (from 1) gives pes_cut_<k>.dat. A key left out keeps the Fortran default (x2DPES 0, y2DPES 0, theta2DPES 90, phi2DPES 0).",
+  "cuts": [
+    {},
+    {
+      "x2DPES": 1.4748,
+      "y2DPES": 0.4916,
+      "theta2DPES": 37.0,
+      "phi2DPES": 113.0
+    }
+  ]
+}

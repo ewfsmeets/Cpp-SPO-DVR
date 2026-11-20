@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Regenerates every Fortran reference file of the repository from the committed inputs (each
-# case's DVR.inp and input.json, the CRP data sets and point lists), in dependency order:
+# case's DVR.inp, input.json and pes_cuts.json, the CRP data sets and point lists), in dependency order:
 #   1. deletes the files the MANIFEST.tsv of each case lists, and the MANIFESTs;
-#   2. setup runs (gates 1, 2), 3. propagation (gates 3, 4), 4. the Fortran restart,
+#   2. setup runs (gates 1, 2) and the write2DPES cuts (gate 1c), 3. propagation (gates 3, 4),
+#   4. the Fortran restart,
 #   5. fine analysis (gate 5, on the fortran_fort21.bin just regenerated),
 #   6. the CRP driver on the committed point lists, 7. the SCM driver on the committed point lists
 #   and slab files;
@@ -48,6 +49,12 @@ require_outputs() {
 setup() {
   "${tools_dir}/run_setup_reference.sh" "$1"
   require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" fortran_setup_stdout.txt debug_asyp.dat pes_reference.txt
+}
+
+# pes_cut CASE: the write2DPES cuts of the case's pes_cuts.json (each of these cases lists two).
+pes_cut() {
+  "${tools_dir}/run_pes_cut_reference.sh" "$1"
+  require_outputs "${FORTRAN_REPO_DIR}/tests/reference/$1" pes_cut_1.dat pes_cut_2.dat
 }
 
 propagation() {
@@ -114,6 +121,13 @@ setup crp_c6v_synthetic_small
 setup crp_cu111_srp48_small
 setup scm_cu111_srp48_small
 setup scm_cu111_srp48_small_rescaling_off
+
+# 2b. write2DPES cuts (gate 1c).
+pes_cut hardwall_small
+pes_cut cu111_dailight_small
+pes_cut cu111_persson_small
+pes_cut crp_cu111_srp48_small
+pes_cut scm_cu111_srp48_small
 
 # 3. Propagation runs.
 propagation hardwall_short

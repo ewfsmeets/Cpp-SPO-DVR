@@ -16,6 +16,7 @@ strings the three together.
 | [reference_config.sh](reference_config.sh) | The one home of the pins, paths, thread count and environment, and the functions the scripts share (sourced, not run) |
 | [build_fortran_reference.sh](build_fortran_reference.sh) | Builds the pinned upstream commit into a read-only reference install |
 | `run_setup_reference.sh [case]` | Potential-only run: `fortran_setup_stdout.txt`, `debug_asyp.dat`, `pes_reference.txt` (gates 1, 2) |
+| `run_pes_cut_reference.sh [case]` | write2DPES runs, one per cut of the case's `pes_cuts.json` (its keys added to DVR.inp): `pes_cut_<k>.dat` = the Fortran's 2dpes.dat (gate 1c) |
 | [extract_pes.py](extract_pes.py) | Writes `pes_reference.txt` from the Fortran's binary `.pes` file (run by `run_setup_reference.sh`): the angular grid and a subsample of V; the six extra records of an SCM run, detected by counting records, become `#` lines |
 | `run_propagation_reference.sh [case]` | Full run: `fortran_stdout.txt`, `fortran_averages.out`, `fortran_fort21.bin`, `fortran_fort25.txt` (gates 3, 4) |
 | `run_restart_reference.sh` | hardwall_small as two runs, the second a Fortran restart: `fortran_restart_stdout.txt` |
@@ -139,8 +140,8 @@ those checks, e.g. on a build made elsewhere.
 ## MANIFEST.tsv
 
 Each reference case directory has a `MANIFEST.tsv`: one line per file a Fortran run generated
-there (not the inputs: the case's `DVR.inp` and `input.json`, the CRP `dataset/`, the driver
-inputs `*.in`).
+there (not the inputs: the case's `DVR.inp`, `input.json` and `pes_cuts.json`, the CRP `dataset/`,
+the driver inputs `*.in`).
 The run scripts write it through `refdata.py manifest record`, which replaces the lines of the
 files it records and refuses the inputs (and `fortran_unformatted/`, hand-made test records), so
 that a regeneration can never delete one. It is a TSV file: `#` writer lines, a header row, `-` for a value that was not
@@ -216,8 +217,9 @@ git status --short tests/reference tests/crplib/reference tests/scm/reference
 
 The script refuses unless the reference trees are clean in git, checks the install, then deletes
 every file the MANIFESTs list and the MANIFESTs themselves, so that nothing stale survives. It
-runs the steps in dependency order: setup, propagation, the restart, fine analysis (on the
-regenerated `fortran_fort21.bin`), the CRP driver and the SCM driver on the committed inputs. Each step
+runs the steps in dependency order: setup, the write2DPES cuts, propagation, the restart, fine
+analysis (on the regenerated `fortran_fort21.bin`), the CRP driver and the SCM driver on the committed
+inputs. Each step
 checks its required outputs; the end runs the `ReferenceManifest` check. Its list of steps is the
 list of reference cases: a new case adds its step in the commit that adds the case. The scratch
 directories of all runs stay in one new `mktemp -d` directory, printed at the start. The whole
