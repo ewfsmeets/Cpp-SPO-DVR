@@ -28,6 +28,8 @@ EXPECTED = {
         "flux at the edge of the basis: j' = 2",
         "flux at the edge of the basis: outermost diffraction channels",
         "gas-phase states reach the ends of the r grid",
+        # frames/ with FrameExtras: 13 % of the norm in the outer orders (n or m = 2) of the 4 x 4 (x, y) grid
+        "packet at the edge of the basis: outer diffraction orders (momentum grid, above the first frame's)",
         "norm budget does not close",  # norm_budget/: the angular transform at the surface (JMax 2)
         "slowest converged energy",
         "packet at the edge of the basis: top J",  # frames/, information (JMax 2: J = 2 holds up to half the norm)

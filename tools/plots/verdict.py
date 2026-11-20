@@ -16,6 +16,7 @@ from compute.diagnostics import (
     diverged,
     grid_edge,
     lowest_converged_normal_energy_ev,
+    momentum_edge,
     moving_window_start,
     norm_by_region,
     norm_inside_analysis_lines,
@@ -34,6 +35,7 @@ from compute.diagnostics import (
     unanalysed_flux,
     unitarity,
 )
+from compute.frame_extras import momentum_edges
 from compute.frames import edge_shares, grid_edge_rises, rotational_edges, usable_frames
 from compute.norm_budget import budget_check, summed_budget, usable_budget
 from compute.results import Results, results
@@ -122,8 +124,9 @@ def regions_at_end(runs: list[Path], info: RunInfo) -> Finding | None:
 
 def frames_at_edges(runs: list[Path]) -> list[Finding | None]:
     """The basis edges in the frames (frames/, dtFrames) before any NaN or inf: information for the rotational
-    edges, a warning for a grid edge that rises above its first frame's share (compute.diagnostics rotational_edge,
-    grid_edge); nothing without frames/, a "not checked" when it cannot be read or holds no finite record."""
+    edges, a warning for a grid edge that rises above its first frame's share and for a momentum grid's edge (with
+    the momentum or diffraction extra) (compute.diagnostics rotational_edge, grid_edge, momentum_edge); nothing
+    without frames/, a "not checked" when it cannot be read or holds no finite record."""
     if not (runs[-1] / FRAMES / "manifest.json").is_file():
         return []
     try:
@@ -132,7 +135,9 @@ def frames_at_edges(runs: list[Path]) -> list[Finding | None]:
         return [not_checked("the basis edges of frames/", str(error))]
     edges = edge_shares(frames)
     rotational = [rotational_edge(s.label, s.values, edges.times_au) for s in rotational_edges(edges)]
-    return rotational + [grid_edge(s.label, s.values, edges.times_au) for s in grid_edge_rises(edges)]
+    grid = [grid_edge(s.label, s.values, edges.times_au) for s in grid_edge_rises(edges)]
+    momenta = [momentum_edge(s.label, s.values, edges.times_au) for s in momentum_edges(frames, edges.reference)]
+    return rotational + grid + momenta
 
 
 def worst_unitarity_energy(run_results: Results) -> float:

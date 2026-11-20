@@ -258,15 +258,17 @@ def basis_edge(what: str, largest_fraction: float, energy_ev: float, meaning: st
     )
 
 
-def frame_edge(severity: str, what: str, shares: np.ndarray, times_au: np.ndarray, meaning: str) -> Finding | None:
+def frame_edge(
+    severity: str, what: str, shares: np.ndarray, times_au: np.ndarray, meaning: str, section: str = SECTION_VERIFY
+) -> Finding | None:
     """A finding of the given severity when, in some frame, a basis edge holds more than FRAME_EDGE_LIMIT of the
-    initial norm (shares: per frame; NaN counts as above)."""
+    initial norm (shares: per frame; NaN counts as above), citing the given section of inputs/README.md."""
     worst = int(np.argmax(np.nan_to_num(shares, nan=np.inf)))
     if shares[worst] <= FRAME_EDGE_LIMIT:
         return None
     value = f"up to {shares[worst]:.2e} of the initial norm (t = {times_au[worst]:g} a.u.)"
     return Finding(
-        severity, f"packet at the edge of the basis: {what}", value, f"<= {FRAME_EDGE_LIMIT:g}", meaning, SECTION_VERIFY
+        severity, f"packet at the edge of the basis: {what}", value, f"<= {FRAME_EDGE_LIMIT:g}", meaning, section
     )
 
 
@@ -287,6 +289,17 @@ def grid_edge(what: str, rises: np.ndarray, times_au: np.ndarray) -> Finding | N
     edge, where the FFT wraps it around to the other end."""
     meaning = "the packet reaches the edge of the grid, where the FFT wraps it around to the other end"
     return frame_edge("warning", f"{what} (above the first frame's)", rises, times_au, meaning)
+
+
+def momentum_edge(what: str, rises: np.ndarray, times_au: np.ndarray) -> Finding | None:
+    """Warning when, in some frame, the probability at the edge of a momentum grid rises by more than
+    FRAME_EDGE_LIMIT of the initial norm above the first frame's (rises: compute.frame_extras.momentum_edges; |k|
+    near the grid's largest momentum, or the outer diffraction orders): the FFT cannot hold larger momenta and folds
+    them over. Cites inputs/README.md section 4 (the grid must hold the momenta)."""
+    meaning = "momenta reach the edge of the grid: the FFT folds larger ones over to the other side (aliasing)"
+    return frame_edge(
+        "warning", f"{what} (momentum grid, above the first frame's)", rises, times_au, meaning, SECTION_STEPS
+    )
 
 
 def top_rotational_level(fraction: np.ndarray, energies_ev: np.ndarray, j_top: int) -> Finding | None:

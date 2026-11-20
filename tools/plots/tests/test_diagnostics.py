@@ -154,3 +154,15 @@ def test_rotational_and_grid_edges() -> None:
     assert grid.severity == "warning" and "above the first frame's" in grid.name
     assert grid.value == "up to 3.00e-06 of the initial norm (t = 100 a.u.)"
     assert d.grid_edge("first r points", np.array([0.0, np.nan, 0.0]), times) is not None
+
+
+def test_momentum_edge() -> None:
+    """A momentum grid's edge is a warning on its rise above the first frame (compute.frame_extras.momentum_edges),
+    citing section 4 (the grid must hold the momenta): a rise of 3e-6 warns with its time; 1e-6 does not (the limit
+    is inclusive)."""
+    times = np.array([0.0, 100.0])
+    finding = d.momentum_edge("k_r", np.array([0.0, 3e-6]), times)
+    assert finding.severity == "warning" and finding.section == d.SECTION_STEPS
+    assert finding.name == "packet at the edge of the basis: k_r (momentum grid, above the first frame's)"
+    assert finding.value == "up to 3.00e-06 of the initial norm (t = 100 a.u.)" and "aliasing" in finding.meaning
+    assert d.momentum_edge("k_r", np.array([0.0, d.FRAME_EDGE_LIMIT]), times) is None
