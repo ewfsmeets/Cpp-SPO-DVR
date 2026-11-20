@@ -15,16 +15,12 @@ from readers.binary import read_checkpoint
 from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.frames import Frames, read_frames
-from readers.run_info import RunInfo, read_run_info
+from readers.run_info import read_run_info
+from tests.frame_helpers import psi_full_of, relative_misses, run_with_frames_manifest, s2s_of
 
 RUNS = ["hardwall_tiny", "dailight_oblique"]
 SUM_TOLERANCE = 1e-13  # relative: sums over many cells in another order than the program's
 NUMPY_TOLERANCE = 1e-12  # relative to the record's largest cell: psi_full rebuilt from the checkpoint
-
-
-def relative_misses(a: np.ndarray, b: np.ndarray, scale: np.ndarray, tolerance: float) -> int:
-    """How many entries of a differ from b by more than tolerance x scale (NaN counts)."""
-    return int(np.count_nonzero(~(np.abs(a - b) <= tolerance * scale)))
 
 
 @pytest.mark.parametrize("run", RUNS)
@@ -87,31 +83,12 @@ def test_state_populations_sum_to_the_cells(fixture_runs: Path, run: str) -> Non
     assert relative_misses(wrong, by_cell, scale, SUM_TOLERANCE) == 1
 
 
-def s2s_of(info: RunInfo, nx: int, ny: int) -> np.ndarray:
-    """(nx, ny): the specular-to-scattering factor s2s = exp(i k_par . R) unit_cell_norm from its Cartesian formula:
-    k_par of magnitude k_parallel at the azimuth phi_incidence from the first lattice vector, R = (x + y cos(gamma),
-    y sin(gamma)) with x = ix dx along the first lattice vector and y = iy dy along the second (independent of the
-    program's table, which uses skewed components). Only the oblique runs test its phase (k_par = 0 elsewhere)."""
-    wave, grids, lattice = info.data["wave_packet"], info.data["grids"], info.data["lattice"]
-    k = wave["k_parallel"] * np.array([np.cos(wave["phi_incidence_rad"]), np.sin(wave["phi_incidence_rad"])])
-    gamma = lattice["skew_angle_rad"]
-    x, y = np.meshgrid(np.arange(nx) * grids["dx"], np.arange(ny) * grids["dy"], indexing="ij")
-    phase = k[0] * (x + y * np.cos(gamma)) + k[1] * y * np.sin(gamma)
-    return np.exp(1j * phase) * grids["unit_cell_norm"]
-
-
 def frame_from_checkpoint(run: Path, frames: Frames, s2s: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """(prob_zrxy, pop_jmj_z) of psi_full built from the run's checkpoint.bin with the given s2s (nx, ny)."""
-    info = read_run_info(run)
-    checkpoint = read_checkpoint(run / "checkpoint.bin")
-    nz, nr, nx, ny = frames.nz_scattering, len(frames.r_bohr), frames.nx, frames.ny
-    psi = np.array(checkpoint.scattering).reshape(nz, nr, nx * ny, -1)  # izr = ir + nr iz, then ixy, irot
-    chi = np.asarray(checkpoint.specular)[:nz]  # (nz, nr)
-    psi[:, :, :, frames.initial_index] += s2s.reshape(-1)[None, None, :] * chi[:, :, None]
-    g = info.data["grids"]
-    volume = g["dz"] * g["dr"] * g["xy_volume_element"]
-    density = np.abs(psi) ** 2 * volume  # (nz, nr, nxy, nrot)
-    return density.sum(axis=3).reshape(nz, nr, nx, ny), density.sum(axis=(1, 2))
+    psi, _ = psi_full_of(run, frames, s2s)
+    g = read_run_info(run).data["grids"]
+    density = np.abs(psi) ** 2 * (g["dz"] * g["dr"] * g["xy_volume_element"])  # (nz, nr, nx, ny, nrot)
+    return density.sum(axis=4), density.sum(axis=(1, 2, 3))
 
 
 @pytest.mark.parametrize("run", ["hardwall_tiny", "dailight_oblique", "dailight_oblique_split/first"])
@@ -155,27 +132,6 @@ def test_split_run_joins_to_the_unsplit_frames(fixture_runs: Path, run: str) -> 
     assert np.array_equal(joined.series.times_au, whole.series.times_au)
     for name in ("prob_zrxy", "prob_tail_zr", "pop_jmj_z", "surface_index"):
         assert np.array_equal(np.asarray(joined.series.arrays[name]), np.asarray(whole.series.arrays[name])), name
-
-
-def run_with_frames_manifest(fixture: Path, work: Path, change: dict) -> Path:
-    """A copy of a fixture run (its files linked) whose frames/manifest.json has the top-level fields in `change`
-    replaced (None: removed), the data files linked."""
-    work.mkdir()
-    for path in fixture.iterdir():
-        if path.name != "frames":
-            (work / path.name).symlink_to(path.resolve())
-    (work / "frames").mkdir()
-    for path in (fixture / "frames").iterdir():
-        if path.name != "manifest.json":
-            (work / "frames" / path.name).symlink_to(path.resolve())
-    manifest = json.loads((fixture / "frames" / "manifest.json").read_text(encoding="utf-8"))
-    for key, value in change.items():
-        if value is None:
-            del manifest[key]
-        else:
-            manifest[key] = value
-    (work / "frames" / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-    return work
 
 
 def test_reader_refuses_frames_it_cannot_index(fixture_runs: Path, tmp_path: Path) -> None:

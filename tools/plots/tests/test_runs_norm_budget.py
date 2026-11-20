@@ -16,32 +16,13 @@ from compute.norm_budget import budget_check, excess_over_error, summed_budget
 from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.norm_budget import read_norm_budget
-from readers.run_info import RunInfo, read_run_info
+from readers.run_info import read_run_info
+from tests.absorber_profiles import absorber_factors, absorbers_on
 
 NUMPY_TOLERANCE = 1e-12  # relative to the largest loss of the run: sums over cells in another order
 HARD_WALL_RUNS = ["hardwall_tiny", "hardwall_budget", "hardwall_budget_dt4"]  # no angular coupling
 SURFACE_REACHED_AU = 2000.0  # dailight_oblique: the packet reaches Z < zasymp after this (densities/)
 SURFACE_LEFT_AU = 6000.0  # ... and has left it by this time
-
-
-def absorbers_on(info: RunInfo, coordinate: str, grid: str) -> list[dict]:
-    """The absorbers of run_info.json on `coordinate` ("Z" or "r") that act on `grid` (ROpt's grid is "both")."""
-    return [a for a in info.data["absorbers"]["list"] if a["coordinate"] == coordinate and a["grid"] in (grid, "both")]
-
-
-def absorber_factors(info: RunInfo, absorbers: list[dict], points: np.ndarray) -> np.ndarray:
-    """exp(-V_opt dt) per time step at the grid points (1 outside), from each absorber's start, end, strength and the
-    power p: V_opt = strength (p + 1) / 2 x^p, x rising from 0 at the start of a high-end absorber to 1 at its end
-    (falling for a low-end one, *Low; a later absorber overwrites an earlier one where they meet). The formula of
-    src/propagation/propagation_tables.cpp set_optical_factors (Fortran: Absorption.f90 SetupAbsorpPot)."""
-    power, dt = info.data["absorbers"]["power"], info.data["times"]["dt_step"]
-    factors = np.ones(len(points))
-    for a in absorbers:
-        inside = (points >= a["start"]) & (points <= a["end"])
-        length = a["end"] - a["start"]
-        x = (a["end"] - points) / length if a["name"].endswith("Low") else (points - a["start"]) / length
-        factors = np.where(inside, np.exp(-(a["strength"] * 0.5 * (power + 1) * x**power) * dt), factors)
-    return factors
 
 
 @dataclass(frozen=True, kw_only=True)
