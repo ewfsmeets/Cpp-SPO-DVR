@@ -26,6 +26,14 @@ from compute.densities import (
 )
 from compute.diagnostics import FRAME_EDGE_LIMIT
 from compute.diffraction import diffraction, out_of_plane_fraction, p_per_order, scattering_angles
+from compute.energy_resolved import (
+    area_density,
+    in_valid_z,
+    profile_change,
+    stationary_state,
+    valid_region,
+    z_profile,
+)
 from compute.frame_extras import (
     NYQUIST_FRACTION,
     bound_levels,
@@ -111,6 +119,7 @@ from panels.densities import (
 )
 from panels.diagnostics import VERDICT_LINE_IN, draw_verdict, wrapped_verdict
 from panels.diffraction import draw_orders, draw_out_of_plane, draw_scattering_angles, draw_spot_map
+from panels.energy_resolved import add_rho_e_colorbar, draw_profiles, draw_rho_e_map, mark_valid_region
 from panels.frame_extras import (
     add_steric_colorbar,
     draw_moment,
@@ -157,6 +166,7 @@ from panels.time_series import (
 )
 from readers.binary import read_bk_coefficients, read_checkpoint
 from readers.densities import read_densities
+from readers.energy_resolved import EnergyResolved, read_energy_resolved
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
 from readers.frames import Frames
@@ -905,6 +915,54 @@ def figure_momentum(runs: list[Path], info: RunInfo, options: argparse.Namespace
 
 FINE_ANALYSIS_FILES = ["fine_analysis/scattering_summary.tsv", "fine_analysis/spectrum/scattering_summary.tsv"]
 
+MAX_SUM_ENERGIES = 3  # the energy_resolved figure shows the first this many energies (one row each)
+MAX_SUM_SITES = 6  # ... and the profiles of the first this many sites (six line styles stay legible)
+DENSITY_NOT_PROBABILITY = "A rho_E: a stationary density per unit-cell area, not a reaction probability"
+
+
+def sum_figure_notes(sums: EnergyResolved, rows: int, sites: range) -> tuple[str, ...]:
+    """The energy_resolved figure's notes: what A rho_E is, and which energies and sites it leaves out."""
+    notes = [DENSITY_NOT_PROBABILITY]
+    if len(sums.collision_ev) > rows:
+        notes.append(f"the first {rows} of {len(sums.collision_ev)} energies")
+    if len(sums.sites) > len(sites):
+        notes.append(f"profiles of the first {len(sites)} of {len(sums.sites)} sites")
+    return tuple(notes)
+
+
+def figure_energy_resolved(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The stationary scattering state at each energy of the sums: A rho_E(Z, r) at the first site and its r integral
+    against Z at every site, in the valid region."""
+    sums = read_energy_resolved(runs[-1])
+    region = valid_region(info)
+    rows = min(len(sums.collision_ev), MAX_SUM_ENERGIES)
+    sites = range(min(len(sums.sites), MAX_SUM_SITES))
+    notes = sum_figure_notes(sums, rows, sites)
+    fig = new_figure(n_notes=len(notes), width_in=10.0, height_in=3.4 * rows)
+    axes = fig.subplots(rows, 2, squeeze=False)
+    valid_z = in_valid_z(sums.z_bohr, region)
+    inside = valid_z[:, None] & (sums.r_bohr < region.r_high_bohr)[None, :]
+    for e in range(rows):
+        densities = [area_density(stationary_state(sums, info, k, e), info) for k in sites]
+        profiles = [
+            (sums.sites[k].name, np.where(valid_z, z_profile(d, sums.r_bohr, region), np.nan))
+            for k, d in zip(sites, densities, strict=True)
+        ]
+        shown = np.where(inside, densities[0], np.nan)
+        scale = linear_color_scale(shown[inside])
+        changed = max(profile_change(sums, info, k, e, region) for k in sites)
+        energy = f"E_coll {sums.collision_ev[e]:g} eV"
+        draw_rho_e_map(
+            axes[e, 0], sums.z_bohr, sums.r_bohr, shown, scale, f"{energy}: A rho_E above {sums.sites[0].name}"
+        )
+        mark_valid_region(axes[e, 0], region, horizontal_r=True)
+        add_rho_e_colorbar(fig, axes[e, 0], scale)
+        title = f"{energy}: integral over r\n(changed after t = {sums.partial_time_au:g} a.u. by up to {changed:.1e})"
+        draw_profiles(axes[e, 1], sums.z_bohr, profiles, region, title)
+    add_info_box(fig, info, ["energy_resolved/", "run_info.json"], notes=notes)
+    return [("energy_resolved", fig)]
+
+
 # name, figure function, the files it needs in the last segment's directory
 PLOTS = [
     ("verdict", figure_verdict, []),
@@ -937,6 +995,7 @@ PLOTS = [
     ("rotation_moments", figure_rotation_moments, ["frames/p2_numerator_z.bin"]),
     ("momentum", figure_momentum, ["frames/prob_kr.bin"]),
     ("norm_budget", figure_norm_budget, ["norm_budget/manifest.json"]),
+    ("energy_resolved", figure_energy_resolved, ["energy_resolved/manifest.json"]),
 ]
 
 

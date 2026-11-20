@@ -16,6 +16,10 @@
 //   dailight_oblique_split    the same in two segments, split at the multiple of 100 a.u. nearest the time
 //                             of minimum <Z> of dailight_oblique (split_time.txt)
 //   potential_only            hardwall_tiny with Potential: true (potential/ only)
+//   hardwall_long             hardwall_tiny to tEnd 20000 with only the energy-resolved sums at "origin" and the
+//                             collision energies 0.3, 0.4, 0.5 eV (energy_resolved/; the hard-wall gate of rho_E)
+//   dailight_rho_e            dailight_oblique with only the energy-resolved sums, at all 16 grid points (PlotSites
+//                             g<ix><iy>) and the analysis energies 0.45 and 0.55 eV (the S-matrix gate of rho_E)
 //   pes_cut                   dailight_oblique with write2DPES at the bridge (x = alat / 2, y = 0), at the last
 //                             theta node of the run (in degrees) and phi 0, so that the plot tool's tests can
 //                             compare it with dailight_oblique's potential/ at the bridge site: pes_cut_2d.dat,
@@ -221,6 +225,41 @@ TEST(PlotRuns, DailightObliqueSplit) {
   ASSERT_EQ(run(second, root / "second"), 0);
   expect_run_files(root / "first");
   expect_run_files(root / "second");
+}
+
+// The plot keys of the fixtures above, left out where a fixture writes only the energy-resolved sums.
+void without_plot_keys(nlohmann::json& json) {
+  for (const std::string key :
+       {"alsoAnalysis", "writeDensities", "writePotential", "dtFrames", "FrameExtras", "NormBudget", "PlotSites"})
+    json.erase(key);
+}
+
+TEST(PlotRuns, HardwallLong) {
+  nlohmann::json json = with_times(hardwall_tiny(), 0.0, 20000.0);
+  without_plot_keys(json);
+  json["PlotSites"] = {{{"name", "origin"}, {"x", 0.0}, {"y", 0.0}}};
+  json["EnergyResolvedSites"] = {"origin"};
+  json["EnergyResolvedEnergies"] = {0.3, 0.4, 0.5};
+  const fs::path dir = fixtures_dir / "hardwall_long";
+  ASSERT_EQ(run(json, dir), 0);
+  EXPECT_TRUE(fs::exists(dir / "energy_resolved" / "steps_summed.bin"));
+}
+
+TEST(PlotRuns, DailightRhoE) {
+  nlohmann::json json = dailight_oblique();
+  without_plot_keys(json);
+  json["PlotSites"] = nlohmann::json::array();
+  json["EnergyResolvedSites"] = nlohmann::json::array();
+  for (int ix = 0; ix < 4; ++ix)
+    for (int iy = 0; iy < 4; ++iy) {
+      const std::string name = "g" + std::to_string(ix) + std::to_string(iy);
+      json["PlotSites"].push_back({{"name", name}, {"x", ix / 4.0}, {"y", iy / 4.0}});
+      json["EnergyResolvedSites"].push_back(name);
+    }
+  json["EnergyResolvedEnergies"] = {0.45, 0.55};  // analysis energies: 0.3 + 0.01 k collision
+  const fs::path dir = fixtures_dir / "dailight_rho_e";
+  ASSERT_EQ(run(json, dir), 0);
+  EXPECT_TRUE(fs::exists(dir / "energy_resolved" / "steps_summed.bin"));
 }
 
 TEST(PlotRuns, PotentialOnly) {

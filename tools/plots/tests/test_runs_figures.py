@@ -50,10 +50,12 @@ KINDS = {  # fixture directories of each kind of run ("stopped": the stopped_run
     "stopped": [],
     "potential only": ["potential_only"],
     "pes cut": ["pes_cut"],
+    "energy resolved": ["dailight_rho_e"],
 }
 ALL = {name for name, _, _ in PLOTS}
 POTENTIAL = {"potential_maps", "elbows", "orientation"}  # potential/ is written at set-up
-PROPAGATING = ALL - {"pes_cut"}  # pes_cut_2d.dat: only a write2DPES run, which stops after it
+SUMS = {"energy_resolved"}  # energy_resolved/: only the runs with EnergyResolvedSites
+PROPAGATING = ALL - {"pes_cut"} - SUMS  # pes_cut_2d.dat: only a write2DPES run, which stops after it
 EXPECTED = {  # the PLOTS entries each kind of run allows
     "oblique": PROPAGATING,
     "hard wall": PROPAGATING,
@@ -61,6 +63,19 @@ EXPECTED = {  # the PLOTS entries each kind of run allows
     "stopped": {"verdict", "gas_phase", "bk", "densities", "density_movie", *POTENTIAL},
     "potential only": {"verdict", "gas_phase", *POTENTIAL},
     "pes cut": {"verdict", "pes_cut"},
+    # the energy-resolved sums only: no fine analysis, densities, potential, frames or norm budget
+    "energy resolved": {
+        "verdict",
+        "results",
+        "state_to_state",
+        "diffraction",
+        "scattering_angles",
+        "time_delay",
+        "bk",
+        "averages",
+        "gas_phase",
+        "energy_resolved",
+    },
 }
 PIXEL_SLACK = 1  # bounding boxes are rounded to whole pixels
 XY_MAPS_COLORBARS = 2  # the oblique run: both maps hold more than the floor

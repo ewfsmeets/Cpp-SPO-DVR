@@ -35,7 +35,8 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
 - **Known test failures** (full ctest of `build-fast`, 2026-11-15, GCC 15.2, `-march=native` on
   the Ryzen 7 5800X, with the commit that added `-fno-finite-math-only`): of 809 tests 795 passed,
   8 failed and 6 were skipped (the long tests and one CRP case, as in the default build). All 8
-  compare exact values; no NaN test fails, and every regression gate passes. `build-cuda-fast`
+  compare exact values; no NaN test fails, and every regression gate passes. On 2026-11-20 (840 tests) a ninth, the
+  energy-resolved sums' exact-value test, joined them (below). `build-cuda-fast`
   (same date and commit) fails the same 8 of its CPU tests; its 24 GPU tests (`-R Cuda`) pass, the
   2 long ones skipped.
   - `PropagationTables.FftScaleFactors`: dz/√(2π) and dr/√(2π) are 1 ulp off (presumably the
@@ -54,6 +55,9 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
     the PES tests run as suites ([CONTRIBUTING: Selecting tests](CONTRIBUTING.md#selecting-tests)),
     ctest reports this as the failure of the test `RegressionPesScmNegative`; its output names the
     failing case.
+  - `EnergyResolved.AccumulatorEqualsTheSumByHand` (since 2026-11-20): the accumulator's sum + value · phase · dt
+    and the test's own sum, compiled with fast-math, associate the products differently; 88 of the 204 compared
+    elements differ in the last bits (equal to the printed digits).
   - `PotentialOperator.PrecomputedAndOnTheFlyExponentialsAreBitwiseIdentical` and
     `SymmetricPotentialOperator.BitwiseEqualToTheExpandedPotential` (on-the-fly case only): the
     on-the-fly exp(−iV dt) path is compiled differently from the precomputed one; they differ by up

@@ -72,6 +72,7 @@ is a bug of the tool.
 | `rotation_moments` | ⟨P₂(cos θ)⟩ and the rotational kinetic energy ⟨J(J+1)/(2μr²)⟩ against Z in the first frame, at the surface and in the last frame | frames/ with `rotation_moments` |
 | `momentum` | P(k_r) of ψ_full and P(k_Z) of the specular wave in three frames; what the run brings to the edges of the momentum grids (and to the outer diffraction orders) against time, against the verdict's limit | frames/ with `momentum` |
 | `norm_budget` | where the norm went: what each absorber took, summed over the analysis windows, against the norm that left the grids; the residual against its error estimate | norm_budget/ (`NormBudget`) |
+| `energy_resolved` | the stationary scattering state at each energy of the sums (up to three): A ρ_E(Z, r) above the first site and its r integral against Z at the first six sites, in the region where it is the stationary state; how much the last 20 % of the run changed it | energy_resolved/ (`EnergyResolvedSites`, `EnergyResolvedEnergies`) |
 | `pes_cut` | V(Z, r) of the PES itself (no switching, no VMin/VMax) at the fixed x, y, θ, φ of a `write2DPES` run, with its minimax barrier | pes_cut_2d.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
@@ -166,6 +167,7 @@ flowchart LR
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
 | `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes and limits; the datasets' axes and shapes checked | `src/report/potential_files.cpp` |
+| `readers/energy_resolved.py` | energy_resolved/: the time sums at the sites (final and partial), their sites with s2s, energies and grids; the datasets' axes and shapes checked | `src/report/energy_resolved_files.cpp` |
 | `readers/frames.py` | frames/: the joined records, the grids, the rotational states, the sites, and the `FrameExtras` datasets with their grids (DVR nodes, J values) | `src/report/frame_files.cpp` |
 | `readers/norm_budget.py` | norm_budget/: the joined windows and the absorbers of the loss datasets | `src/report/norm_budget_files.cpp` |
 | `readers/pes_cut.py` | pes_cut_2d.dat (`write2DPES`): V(Z, r) of the cut, its grids, position and orientation; whole r blocks checked | `src/report/pes_cut_file.cpp` |
@@ -180,6 +182,7 @@ flowchart LR
 | `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
 | `compute/potential.py` | energies relative to the gas-phase minimum, the minimax barrier on V(Z, r) (at one and at every (x, y) point), the points the figures show, the DVR nodes' cells | — |
+| `compute/energy_resolved.py` | the stationary state ψ_E from the sums (the S matrix's prefactor), A ρ_E, its r integral, the valid region, the truncation indicator | — |
 | `compute/frames.py` | from frames/ (read through `usable_frames`, which drops the records from the first NaN or inf on): ρ(Z, r) at a grid point and V_min's contours there, the probability over the cell in a (Z, r) window, J populations, the shares at the basis edges and the grid edges' rises | — |
 | `compute/frame_extras.py` | from the `FrameExtras` datasets of frames/: the orientation per steradian, P(n, m; Z) and P(v; Z) split into labelled parts, the rotational moments, the momentum grids and the probability at their edges | — |
 | `compute/norm_budget.py` | from norm_budget/: each absorber's loss summed over the windows, the residual and its error estimate, and whether the budget closes (one check for the verdict and the figure) | — |

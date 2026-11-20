@@ -28,6 +28,7 @@ TITLES = {
     "rotational_states": "Rotational states over Z and in time",
     "basis_edges": "The packet at the edges of the basis",
     "norm_budget": "Where the norm went (norm budget)",
+    "energy_resolved": "Stationary states at chosen energies",
     "steric": "The distribution of the molecular axis",
     "diffraction_z": "Parallel-momentum orders over Z",
     "vibration_z": "Vibrational levels over Z",
@@ -212,6 +213,20 @@ FIGURES = {
         "own tail there). A packet that reaches an edge leaves through one end of the grid and comes back at the "
         f"other (the FFT wraps it around); the verdict warns above {FRAME_EDGE_LIMIT:g} (heuristic), and the title "
         "answers as the verdict does."
+    ),
+    "energy_resolved": (
+        "The stationary scattering state at each energy of EnergyResolvedEnergies (up to three rows), from the run's "
+        "time sums of the wave packet (energy_resolved/): psi_E = (sum over t of psi(t) exp(i E_tot t) dt, the "
+        "specular wave added back in the initial channel) times (alpha / 2 pi)^(1/4) / M * k0 / sqrt(weight), the S "
+        "matrix's prefactor and the packet's weight at the energy, so that the incident wave alone has A rho_E = "
+        "|phi_v(r)|^2 (A the unit cell's area): integrated over r it is 1. Left: A rho_E(Z, r) above the first site; "
+        "right: its r integral against Z at each site. Between the dashed lines (above the low-Z absorbers, below the "
+        "Z absorbers and the starting packet's Z0 - 6 sigma_Z, below the r absorber) psi_E is the stationary state; "
+        "elsewhere it is not drawn. Beyond zasymp the incident and the reflected waves interfere: with a reflection "
+        "amplitude R the profile oscillates between (1 - |R|)^2 and (1 + |R|)^2 (period pi / k0, beats with the other "
+        "channels); only near the turning points can it rise above (1 + |R|)^2, where the molecules slow down. The "
+        "title gives how much the profiles changed after the partial sums' time (0.8 tEnd): where that is large, a "
+        "longer tEnd changes the result. A density, not a reaction probability."
     ),
     "norm_budget": (
         "Left: against time, the norm on the grids, the norm that left them since the start, and what each absorber "
