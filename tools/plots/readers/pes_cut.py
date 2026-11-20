@@ -1,23 +1,21 @@
 """pes_cut_2d.dat of a write2DPES run: V(r, Z) of the PES itself (no switching, no VMin/VMax) at one fixed x, y,
-theta, phi, on the r grid and the whole scattering Z grid (docs/output_files.md, "Data files"). The '#' lines name
-the position and orientation; then one line "r Z V(hartree) V(eV)" per point, Z fastest, a blank line after
-each r.
+theta, phi, on the r grid and the whole scattering Z grid (docs/output_files.md, "Data files"): '#' lines, then one
+line "r Z V(hartree) V(eV)" per point, Z fastest, a blank line after each r. Where the cut was taken and the grid
+sizes come from the run's run_info.json (its "pes_cut" and "grids"), not from the file's '#' lines.
 
-Shadows: src/report/pes_cut_file.cpp (write_pes_cut_file)
+Shadows: src/report/pes_cut_file.cpp (write_pes_cut_file), src/report/run_info_file.cpp (pes_cut)
 """
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
 from readers.errors import ReadError
+from readers.run_info import RunInfo
 from readers.tables import numbers, text_of
 
 FILE = "pes_cut_2d.dat"
-POSITION = re.compile(r"^# x = (\S+) bohr, y = (\S+) bohr")
-ORIENTATION = re.compile(r"^# theta = (\S+) deg \(\S+ rad\), phi = (\S+) deg")
 
 
 @dataclass
@@ -33,23 +31,22 @@ class PesCut:
     phi_deg: float
 
 
-def read_pes_cut(run: Path, n_z: int, n_r: int) -> PesCut:
-    """The cut of a write2DPES run with the grid sizes of its run_info.json (nZ and nR); ReadError when the file is
-    missing, lacks its '#' lines or a number, or its points are not n_r blocks of the same n_z increasing Z points
-    at increasing r (a damaged or a foreign file).
+def read_pes_cut(run: Path, info: RunInfo) -> PesCut:
+    """The cut of a write2DPES run, its position and orientation from run_info.json; ReadError when run_info.json
+    is not a write2DPES run's, or the file is missing, lacks a number, or its points are not nR blocks of the same
+    nZ increasing Z points at increasing r (a damaged or a foreign file).
 
-    Source: <run>/pes_cut_2d.dat (docs/output_files.md, "Data files").
+    Source: <run>/pes_cut_2d.dat (docs/output_files.md, "Data files") and run_info.json ("Run metadata").
     """
+    try:
+        where, grids = info.data["pes_cut"], info.data["grids"]
+        position = (float(where["x"]), float(where["y"]), float(where["theta_deg"]), float(where["phi_deg"]))
+        n_z, n_r = int(grids["nz"]), int(grids["nr"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ReadError(f"{info.directory}: run_info.json without a valid {error} of a write2DPES run") from None
     path = run / FILE
-    text = text_of(path)
-    header = [line for line in text.splitlines() if line.startswith("#")]
-    position = next((m for m in map(POSITION.match, header) if m), None)
-    orientation = next((m for m in map(ORIENTATION.match, header) if m), None)
-    if position is None or orientation is None:
-        raise ReadError(f"{path}: no '# x = ...' or '# theta = ...' line; give a pes_cut_2d.dat written by spodvr")
-    r_bohr, z_bohr, v_hartree = blocks_of(numbers(path, text, 4), n_z, n_r, path)
-    x, y = float(position.group(1)), float(position.group(2))
-    return PesCut(v_hartree, z_bohr, r_bohr, x, y, float(orientation.group(1)), float(orientation.group(2)))
+    r_bohr, z_bohr, v_hartree = blocks_of(numbers(path, text_of(path), 4), n_z, n_r, path)
+    return PesCut(v_hartree, z_bohr, r_bohr, *position)
 
 
 def blocks_of(columns: np.ndarray, n_z: int, n_r: int, path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -380,7 +380,7 @@ PES_ITSELF = "V of the PES itself (no switching to the gas phase, no VMin/VMax),
 
 def figure_pes_cut(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
     """V(Z, r) of the PES at the fixed x, y, theta, phi of a write2DPES run, with its minimax barrier."""
-    cut = read_pes_cut(runs[-1], info.data["grids"]["nz"], info.data["grids"]["nr"])
+    cut = read_pes_cut(runs[-1], info)
     reference = gas_phase_minimum_hartree(read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat"))
     barrier = barrier_on(cut.v_hartree, r_absorber_first_index(info, len(cut.r_bohr)), RAW_PES)
     height_ev = float(relative_ev(barrier.height_hartree, reference, info.hartree_to_ev))

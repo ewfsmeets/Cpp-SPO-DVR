@@ -86,7 +86,7 @@ judgement); `verdict.py` reads the run's files for them.
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
 | norm by region at the end | information | where the norm left sits at the last densities/ record: below Zana not yet analysed; between Zana and the specular analysis line the specular wave not yet either (the rest norm), the scattering wave already; beyond both lines analysed but not yet absorbed; r ≥ r_c dissociating (counted as reaction). A densities/ that cannot be read is a "not checked" finding |
-| not checked: … | information | a check the run's files do not allow: no checkpoint.bin (`CheckpointFormat` `fortran`), fewer than two BK records, or a run that does not propagate (potential only, analysis only) |
+| not checked: … | information | a check the run's files do not allow: no checkpoint.bin (`CheckpointFormat` `fortran`), fewer than two BK records, or a run that does not propagate (potential only, analysis only, a write2DPES run) |
 
 E_n,min is a lower bound on the time a run needs: "P_scattered still moving" is the empirical check. The
 report shows the verdict as a table; `verdict` prints it as text.
@@ -177,9 +177,9 @@ To change… edit:
 3. The panel: `draw_<panel>(ax, data…)` in `panels/<topic>.py`.
 4. A `figure_<name>` in `figures.py` (the first line of its docstring is what `list` prints), its line in
    `PLOTS` (from there `list`, `plot` and `report` find it), and its title and text in `explanations.py`.
-5. A content test (the texts, marks and curves the panel must show) in `tests/test_runs_figures.py`; if the
-   figure needs a file that a stopped or potential-only run lacks, nothing else; otherwise add its name to
-   those kinds in that test's `EXPECTED` table.
+5. A content test (the texts, marks and curves the panel must show) in `tests/test_runs_figures.py`, and the
+   figure's name in that test's `EXPECTED` table for each kind of run that has its files (`ALL` and
+   `PROPAGATING` follow `PLOTS`; the stopped, potential-only and write2DPES kinds list their entries).
 
 The averages figure, as `figures.py` has it (its info box also counts the segments):
 
@@ -234,7 +234,8 @@ it (`tests/test_runs_pes_cut.py`).
 ## Limits
 
 - One run at a time (its restart segments joined); no comparison of runs.
-- The potential is the run's: at its grid points of Z < zasymp and its DVR nodes only (no interpolation); V_min is
+- The potential is the run's (except in `pes_cut`, the PES itself at the one orientation of a write2DPES run, over
+  the whole Z grid): at its grid points of Z < zasymp and its DVR nodes only (no interpolation); V_min is
   the lower envelope over the nodes at fixed (x, y) (no rotational or zero-point energy), and the minimax barrier
   is taken on that grid at those nodes, from the gas-phase side to r >= r_c (the r absorber's first point): the
   PES's own barrier can be lower when the best orientation lies between nodes. The barrier search is plain

@@ -14,7 +14,7 @@ from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
 from readers.pes_cut import read_pes_cut
 from readers.potential import read_potential
-from readers.run_info import read_run_info
+from readers.run_info import RunInfo, read_run_info
 from readers.segments import join_records, joined_first_non_finite
 from readers.tables import read_averages, read_gas_phase_states, read_table
 
@@ -381,13 +381,7 @@ def test_potential_reader_refuses_what_it_cannot_index(tmp_path: Path) -> None:
             read_potential(potential_directory(tmp_path / f"case{k}", change))
 
 
-PES_CUT_HEADER = (
-    "# V(r, Z) of the PES at fixed x, y, theta, phi (write2DPES)\n"
-    "# x = 1.5000000000000000e+00 bohr, y = 0.0000000000000000e+00 bohr (along the lattice vectors)\n"
-    "# theta = 9.0000000000000000e+01 deg (1.5707963267948966e+00 rad), phi = 4.5000000000000000e+01 deg "
-    "(7.8539816339744828e-01 rad)\n"
-    "# r(bohr)  Z(bohr)  V(hartree)  V(eV); Z fastest, a blank line after each r\n"
-)
+PES_CUT_HEADER = "# V(r, Z) of the PES at fixed x, y, theta, phi (write2DPES)\n# r(bohr)  Z(bohr)  V(hartree)  V(eV)\n"
 
 
 def pes_cut_text(rows: list[tuple[float, float, float]], block: int) -> str:
@@ -400,13 +394,20 @@ def pes_cut_text(rows: list[tuple[float, float, float]], block: int) -> str:
     return PES_CUT_HEADER + "\n".join(lines) + "\n"
 
 
+def cut_info(directory: Path, n_z: int, n_r: int) -> RunInfo:
+    """The run_info.json fields of a write2DPES run that the cut reader uses."""
+    cut = {"file": "pes_cut_2d.dat", "x": 1.5, "y": 0.0, "theta_deg": 90.0, "phi_deg": 45.0}
+    return RunInfo(directory, {"pes_cut": cut, "grids": {"nz": n_z, "nr": n_r}}, 27.2114, 0.0, 0.0)
+
+
 def test_pes_cut(tmp_path: Path) -> None:
-    """A cut of 2 r x 3 Z points: V(Z, r) with Z first (V = 10 r + Z here), the grids and the header's position and
-    orientation. Each a ReadError: a file cut inside its first block or a block short (the count from run_info.json),
-    a cut last line, a repeated block (r not increasing), a Z grid that differs between blocks, a missing header."""
+    """A cut of 2 r x 3 Z points: V(Z, r) with Z first (V = 10 r + Z here), the grids, and the position and
+    orientation of run_info.json. Each a ReadError: a file cut inside its first block or a block short (the count
+    from run_info.json), a cut last line, a repeated block (r not increasing), a Z grid that differs between
+    blocks, a run_info.json without "pes_cut" (not a write2DPES run)."""
     rows = [(r, z, 10.0 * r + z) for r in (1.0, 2.0) for z in (-1.0, 0.0, 1.0)]
     (tmp_path / "pes_cut_2d.dat").write_text(pes_cut_text(rows, 3), encoding="utf-8")
-    cut = read_pes_cut(tmp_path, 3, 2)
+    cut = read_pes_cut(tmp_path, cut_info(tmp_path, 3, 2))
     assert cut.v_hartree.shape == (3, 2) and cut.v_hartree[2, 1] == 21.0 and cut.v_hartree[0, 0] == 9.0
     assert cut.z_bohr.tolist() == [-1.0, 0.0, 1.0] and cut.r_bohr.tolist() == [1.0, 2.0]
     assert (cut.x_bohr, cut.y_bohr, cut.theta_deg, cut.phi_deg) == (1.5, 0.0, 90.0, 45.0)
@@ -416,10 +417,12 @@ def test_pes_cut(tmp_path: Path) -> None:
         ("fields, not 4", pes_cut_text(rows, 3).rstrip("\n").rsplit(" ", 1)[0] + "\n"),
         ("increasing Z points per increasing r", pes_cut_text([*rows[:3], *rows[:3]], 3)),
         ("increasing Z points per increasing r", pes_cut_text([*rows[:5], (2.0, 1.5, 0.0)], 3)),
-        ("no '# x = ...'", pes_cut_text(rows, 3).replace("# x = ", "# u = ")),
     ]
     for k, (reason, text) in enumerate(broken):
         (tmp_path / f"case{k}").mkdir()
         (tmp_path / f"case{k}" / "pes_cut_2d.dat").write_text(text, encoding="utf-8")
         with pytest.raises(ReadError, match=reason):
-            read_pes_cut(tmp_path / f"case{k}", 3, 2)
+            read_pes_cut(tmp_path / f"case{k}", cut_info(tmp_path, 3, 2))
+    not_a_cut = RunInfo(tmp_path, {"grids": {"nz": 3, "nr": 2}}, 27.2114, 0.0, 0.0)
+    with pytest.raises(ReadError, match="without a valid 'pes_cut'"):
+        read_pes_cut(tmp_path, not_a_cut)

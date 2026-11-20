@@ -49,8 +49,7 @@ def node_of(potential: PotentialData, cut: PesCut) -> tuple[int, int]:
 def test_cut_equals_the_site_potential_at_its_node(fixture_runs: Path) -> None:
     """The cut fixture (dailight_oblique's input at the bridge, the last theta node, phi 0) against dailight_oblique's
     V at the bridge site and that node: none of more than 1000 compared points beyond the tolerance."""
-    grids = read_run_info(fixture_runs / "pes_cut").data["grids"]
-    cut = read_pes_cut(fixture_runs / "pes_cut", grids["nz"], grids["nr"])
+    cut = read_pes_cut(fixture_runs / "pes_cut", read_run_info(fixture_runs / "pes_cut"))
     potential = read_potential(fixture_runs / "dailight_oblique")
     to_ev = read_run_info(fixture_runs / "dailight_oblique").hartree_to_ev
     (bridge,) = [k for k, site in enumerate(potential.sites) if site.name == "bridge"]

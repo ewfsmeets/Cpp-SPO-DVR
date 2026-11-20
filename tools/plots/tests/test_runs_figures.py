@@ -12,7 +12,8 @@ from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
 from compute.diffraction import diffraction
-from compute.grids import cell_geometry
+from compute.grids import cell_geometry, r_absorber_first_index
+from compute.potential import RAW_PES, barrier_on, gas_phase_minimum_hartree, relative_ev
 from compute.series import evenly_spaced_records
 from explanations import FIGURES, TITLES
 from figures import (
@@ -26,13 +27,15 @@ from figures import (
     figure_potential_maps,
     has_files,
 )
+from panels.potential import barrier_title
 from readers.arrays import read_series
 from readers.densities import read_densities
 from readers.errors import ReadError
+from readers.pes_cut import read_pes_cut
 from readers.potential import read_potential
 from readers.run_info import RunInfo, lattice_of, read_run_info
 from readers.segments import joined_info, ordered_segments
-from readers.tables import read_s_matrix
+from readers.tables import read_asymptotic_potential, read_s_matrix
 from report import save
 from style import Movie, add_info_box, save_movie
 
@@ -349,14 +352,18 @@ def test_potential_figures_without_sites(no_sites_run: Path) -> None:
 
 def test_pes_cut_figure_content(fixture_runs: Path, stopped_run: Path) -> None:
     """The cut of the write2DPES fixture: one panel titled with the cut's position and orientation and what the
-    minimax pass found on it, the pass drawn (a path and, for a barrier, its mark), one colour bar open at the
-    bottom, and the note that V is the PES itself."""
+    minimax pass found on the PES itself over the whole Z grid (the title of that barrier, recomputed here), the
+    pass drawn (its path, and the mark of a saddle), one colour bar, and the note that V is the PES itself."""
+    runs, info = run_of("pes cut", fixture_runs, stopped_run)
+    cut = read_pes_cut(runs[-1], info)
+    barrier = barrier_on(cut.v_hartree, r_absorber_first_index(info, len(cut.r_bohr)), RAW_PES)
+    reference = gas_phase_minimum_hartree(read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat"))
+    height_ev = float(relative_ev(barrier.height_hartree, reference, info.hartree_to_ev))
+    where = f"x 2.42, y 0 bohr, theta {cut.theta_deg:.4g}, phi 0 deg"
+    expected = barrier_title(where, barrier, cut.z_bohr, cut.r_bohr, height_ev, "at this orientation")
     fig = drawn("pes_cut", "pes cut", fixture_runs, stopped_run)
     (panel,) = [ax for ax in fig.axes if ax.get_label() != "<colorbar>"]
-    title = panel.get_title()
-    assert title.startswith("x 2.42, y 0 bohr, theta ") and "phi 0 deg" in title
-    assert "barrier" in title or "no saddle" in title or "not reached" in title
-    assert len(panel.get_lines()) >= 1
-    (bar,) = [ax for ax in fig.axes if ax.get_label() == "<colorbar>"]
-    assert bar._colorbar.extend == "min"
+    assert panel.get_title() == expected
+    assert len(panel.get_lines()) == (2 if barrier.saddle else 1)
+    assert len([ax for ax in fig.axes if ax.get_label() == "<colorbar>"]) == 1
     assert "the PES itself" in fig.texts[0].get_text()
