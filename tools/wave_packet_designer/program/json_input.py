@@ -106,6 +106,11 @@ OPTIONAL_KEYS = (
     InputKey("UseSwitching", LOGICAL, "use_switching"),
     InputKey("ZminSwitch", REAL, "z_min_switch"),
     InputKey("ZmaxSwitch", REAL, "z_max_switch"),
+    InputKey("write2DPES", LOGICAL, "write_2d_pes"),
+    InputKey("x2DPES", REAL, "x_2d_pes"),
+    InputKey("y2DPES", REAL, "y_2d_pes"),
+    InputKey("theta2DPES", REAL, "theta_2d_pes"),
+    InputKey("phi2DPES", REAL, "phi_2d_pes"),
     InputKey("UseSymmetry", LOGICAL, "use_symmetry"),
     InputKey("nPhisOptimal", LOGICAL, "phis_optimal"),
     InputKey("SymmetryTolerance", REAL, "symmetry_tolerance"),
@@ -141,17 +146,8 @@ OPTIONAL_KEYS = (
 )
 
 # Fortran features this program does not have (reject_unsupported_keys).
-UNSUPPORTED_LOGICAL_KEYS = ("SystemMix", "UseRCutOff", "write2DPES")  # accepted when false
-UNSUPPORTED_KEYS = (
-    "SystemID2",
-    "SystemMixCoeff",
-    "RCutOff",
-    "x2DPES",
-    "y2DPES",
-    "theta2DPES",
-    "phi2DPES",
-    "PESMixingAlfa",
-)  # rejected when present
+UNSUPPORTED_LOGICAL_KEYS = ("SystemMix", "UseRCutOff")  # accepted when false
+UNSUPPORTED_KEYS = ("SystemID2", "SystemMixCoeff", "RCutOff", "PESMixingAlfa")  # rejected when present
 
 # The absorbers that always need an energy or a factor.
 ABSORBER_KEY_PAIRS = (("ZOptEnergy", "ZOptFactor"), ("ROptEnergy", "ROptFactor"), ("ZSpOptEnergy", "ZSpOptFactor"))

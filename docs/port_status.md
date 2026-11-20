@@ -39,7 +39,7 @@ program stops with a "not supported" message (exit code 3).
 | Analysis-only run (`onlyAnalysis`; nread 2) | the fine analysis of the BK coefficients of an earlier run, without propagation | **ported** | [output_files](output_files.md#fine-analysis-onlyanalysis-alsoanalysis) |
 | Fine analysis after the run (`alsoAnalysis`) | the same analysis right after the propagation | **deviation**: the fine results are written next to the on-the-fly ones (the Fortran replaces them) | [fortran_deviations: Fine analysis, kept](fortran_deviations.md#fine-analysis-kept) |
 | Potential-only run (`Potential`; nread 6) | computes the potential and the gas-phase states, then stops | **partly ported**: V is computed and checked; `writePotential` saves it for plots (`potential/`), but the Fortran `.pes` cache (below) is not ported | [input_schema](input_schema.md#optional-keys-fortran-defaults), [.pes cache](fortran_deviations.md#not-ported-pes-cache) |
-| 2D potential cut (`write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`) | writes V(r, Z) at fixed x, y, θ, φ to a file, then stops | **not ported**: refused | [input_schema](input_schema.md#not-supported) |
+| 2D potential cut (`write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`) | writes V(r, Z) at fixed x, y, θ, φ to a file, then stops | **ported** (`pes_cut_2d.dat`; the plot tool draws it) | [input_schema](input_schema.md#optional-keys-fortran-defaults), [output_files](output_files.md#data-files-space-separated) |
 
 ## Grids and wave packet
 

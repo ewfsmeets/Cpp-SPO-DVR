@@ -60,6 +60,7 @@ absorption (absorber D1: the Fortran silently keeps a default strength instead).
 | `ImposeVMin` `VMin` | bool, real | false, −5.5 eV | clamp the potential from below |
 | `ImposeVMax` `VMax` | bool, real | false, 10.0 eV | clamp the potential from above |
 | `UseSwitching` `ZminSwitch` `ZmaxSwitch` | bool, real, real | false, 6.0, 8.0 | switch V to the gas phase; zasymp becomes ZmaxSwitch |
+| `write2DPES` `x2DPES` `y2DPES` `theta2DPES` `phi2DPES` | bool, real, real, real, real | false, 0.0, 0.0, 90.0, 0.0 | write2DPES: write V(r, Z) of the PES at the fixed x, y (bohr, along the lattice vectors), θ, φ (degrees) to `pes_cut_2d.dat` ([output_files](output_files.md#data-files-space-separated)) right after the PES is set up, then stop (exit code 0), in every run mode, before the 6D potential and the gas phase, as the Fortran. Every r grid point and every scattering-grid Z point (also beyond zasymp); V is the PES itself, without switching and without VMin/VMax. With `write2DPES`, 0 ≤ x2DPES ≤ alat, 0 ≤ y2DPES ≤ blat (the PES's lattice constants) and 0 ≤ θ, φ ≤ 360 (the Fortran's tolerant comparisons); the plot keys are refused (nothing writes them) |
 | `UseSymmetry` | bool | false (usePotSymmetry) | compute V only at one (x, y) point per orbit of the PES's surface point group (C2v, C4v, C6v, C3v, C3) and map it to the others; operations that do not fit the grid (nφ, nX ≠ nY) are dropped and reported. Error if none is usable. The Fortran uses this for C6v only. An error with `CRPDistrtSurface` (SCM D2) |
 | `nPhisOptimal` | bool | false | with `UseSymmetry`: nφ becomes a multiple of what the whole group needs (C2v 2, C4v 4, C6v and C3v 6, C3 3) |
 | `CRPlibDataSet` | string | — | directory of the CRP data set (format: [crp_library.md](crp_library.md)), relative to the working directory; required with `SystemID` `CRPlibrary` and `CRPDistrtSurface`, an error with any other PES. The data set is read and checked at start-up; the setup output shows its ranges and the grid points outside them |
@@ -134,8 +135,7 @@ propagation (exit code 2), naming the key whose directory is the largest.
 ## Not supported
 
 These keys give a "not supported" error. Logical keys are accepted when set to `false`. The list
-is: `SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`,
-`RCutOff`, `write2DPES`, `x2DPES`, `y2DPES`, `theta2DPES`, `phi2DPES`, `PESMixingAlfa`.
+is: `SystemMix`, `SystemID2`, `SystemMixCoeff`, `UseRCutOff`, `RCutOff`, `PESMixingAlfa`.
 
 ## Validation
 

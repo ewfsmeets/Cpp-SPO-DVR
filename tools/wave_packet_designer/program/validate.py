@@ -5,7 +5,8 @@ Shadows: src/input/validate.cpp (validate_input)
 Each `checks.error_if(violated, key, message)` line copies one `check(...)` line of validate_input, under
 the same section headings and with the same key and message (tests/test_validate.py compares them). Not
 copied: the flux-analysis block (not ported; a propagating run with doFluxAnalysis stops anyway, see
-evaluation.py).
+evaluation.py). One difference in a check: the write2DPES bounds x2DPES <= alat and y2DPES <= blat are skipped
+when the lattice is unknown here (a CRP data set; with CRPDistrtSurface, the slab snapshot's lattice).
 """
 
 from program.config import InputParameters
@@ -26,6 +27,7 @@ def validate_input(p: InputParameters, system: SystemParameters, z_asymptotic: f
     check_propagation_and_analysis(p, z_asymptotic, checks)
     check_wave_packet_and_state(p, z_asymptotic, checks)
     check_potential_and_absorbers(p, z_asymptotic, checks)
+    check_pes_cut(p, system, checks)
     return checks.findings
 
 
@@ -245,3 +247,18 @@ def check_potential_and_absorbers(p: InputParameters, z_asymptotic: float, check
     # --- switching function ---
     if p.use_switching:
         checks.error_if(rge(p.z_min_switch, p.z_max_switch), "ZminSwitch", "ZminSwitch >= ZmaxSwitch.")
+
+
+def check_pes_cut(p: InputParameters, system: SystemParameters, checks: FindingList) -> None:
+    # --- 2D cut of the PES (write2DPES) ---
+    # alat and blat are unknown here for a CRP data set (with CRPDistrtSurface: the slab snapshot's lattice;
+    # potential_systems.py): then the upper bounds of x and y are not checked.
+    if p.write_2d_pes:
+        checks.error_if(rlt(p.x_2d_pes, 0.0), "x2DPES", "x2DPES < 0.")
+        checks.error_if(system.lattice_a is not None and rgt(p.x_2d_pes, system.lattice_a), "x2DPES", "x2DPES > alat.")
+        checks.error_if(rlt(p.y_2d_pes, 0.0), "y2DPES", "y2DPES < 0.")
+        checks.error_if(system.lattice_b is not None and rgt(p.y_2d_pes, system.lattice_b), "y2DPES", "y2DPES > blat.")
+        checks.error_if(rlt(p.theta_2d_pes, 0.0), "theta2DPES", "theta2DPES < 0.")
+        checks.error_if(rgt(p.theta_2d_pes, 360.0), "theta2DPES", "theta2DPES > 360.")
+        checks.error_if(rlt(p.phi_2d_pes, 0.0), "phi2DPES", "phi2DPES < 0.")
+        checks.error_if(rgt(p.phi_2d_pes, 360.0), "phi2DPES", "phi2DPES > 360.")

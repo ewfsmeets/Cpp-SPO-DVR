@@ -213,6 +213,18 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   // --- switching function -----------------------------------------------------------------
   if (p.use_switching) check(rge(p.z_min_switch, p.z_max_switch), "ZminSwitch", "ZminSwitch >= ZmaxSwitch.");
+
+  // --- 2D cut of the PES (write2DPES) ------------------------------------------------------
+  if (p.write_2d_pes) {
+    check(rlt(p.x_2d_pes, 0.0), "x2DPES", "x2DPES < 0.");
+    check(rgt(p.x_2d_pes, system.lattice_constant_x), "x2DPES", "x2DPES > alat.");
+    check(rlt(p.y_2d_pes, 0.0), "y2DPES", "y2DPES < 0.");
+    check(rgt(p.y_2d_pes, system.lattice_constant_y), "y2DPES", "y2DPES > blat.");
+    check(rlt(p.theta_2d_pes, 0.0), "theta2DPES", "theta2DPES < 0.");
+    check(rgt(p.theta_2d_pes, 360.0), "theta2DPES", "theta2DPES > 360.");
+    check(rlt(p.phi_2d_pes, 0.0), "phi2DPES", "phi2DPES < 0.");
+    check(rgt(p.phi_2d_pes, 360.0), "phi2DPES", "phi2DPES > 360.");
+  }
 }
 
 }  // namespace spodvr

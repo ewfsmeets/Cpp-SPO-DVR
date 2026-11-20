@@ -34,7 +34,7 @@ differences are in [validation.md](validation.md).
   raw value. `VAna < 1` and absent `JAna` are replaced by the program-determined open-channel limits
   (`GasPhase.f90`).
 - <a id="not-ported-pes-cache"></a>Not ported: `.pes` file caching (`ReadPesFromFile`/`WritePesToFile`); the potential is always
-  computed. Also rejected (NotSupportedError): `write2DPES` (+ coordinates), `PESMixingAlfa`.
+  computed. Also rejected (NotSupportedError): `PESMixingAlfa`.
   `FullSMatrix`, which the Fortran only prints, is accepted and ignored.
 - <a id="not-planned-pes-mixing-and-r-cut-off"></a>Not planned (the Fortran has no code to port):
   `SystemMix` (+`SystemID2`, `SystemMixCoeff`; the Fortran reads and checks them, but has no mixing

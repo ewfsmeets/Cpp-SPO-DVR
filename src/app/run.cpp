@@ -32,6 +32,7 @@
 #include "io/checkpoint.hpp"
 #include "io/fortran_files.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
+#include "potential/pes_cut.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
@@ -42,6 +43,7 @@
 #include "report/analysis_report.hpp"
 #include "report/densities_files.hpp"
 #include "report/fine_analysis_report.hpp"
+#include "report/pes_cut_file.hpp"
 #include "report/plot_data.hpp"
 #include "report/potential_files.hpp"
 #include "report/potential_report.hpp"
@@ -167,9 +169,11 @@ BkRecords restore_from_checkpoint(std::ostream& out, const Config& config, WaveP
 
 // Run modes 1 and 2, right after the input and before the (possibly long) set-up: RestartDir
 // holds every file the run will read (the readers check their contents later), and a restart
-// does not overwrite the files it continues from.
+// does not overwrite the files it continues from. A write2DPES run reads nothing from RestartDir:
+// it stops after the cut of the PES, as the Fortran does before it reads any restart file.
 void check_restart_directory(const Config& config, const std::filesystem::path& output_dir) {
   if (config.derived.run_mode != 1 && config.derived.run_mode != 2) return;
+  if (config.input.write_2d_pes) return;
   const std::filesystem::path dir = config.input.restart_dir;
   if (!std::filesystem::is_directory(restart_path_status(dir)))
     throw InputError("RestartDir", "'" + dir.string() + "' is not a directory");
@@ -296,6 +300,21 @@ void run_fine(std::ostream& out, const Style& style, const Config& config, const
   out << '\n';
 }
 
+// write2DPES: the cut of the PES, the gas-phase potential V_asy (the plots' energy reference; the Fortran
+// writes none) and run_info.json (without the gas phase, which is not computed). Fortran: Main.f90
+void write_pes_cut_run(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
+                       const AngularGrid& angular, const Potential& potential, const ProgramInfo& program,
+                       const CommandLine& command_line) {
+  const PesCut cut = compute_pes_cut(potential, config.input, grids);
+  const std::vector<double> asymptotic = compute_asymptotic_potential(potential, config, grids);
+  const std::filesystem::path& dir = command_line.output_dir;
+  std::filesystem::create_directories(dir);
+  write_pes_cut_file(dir / pes_cut_file_name, cut);
+  write_asymptotic_potential_file(dir / "asymptotic_potential.dat", grids, asymptotic);
+  write_run_info(dir / "run_info.json", config, grids, angular, program, command_line.input_file, std::nullopt);
+  print_pes_cut(out, style, cut, dir / pes_cut_file_name);
+}
+
 // The BK file of the run to analyse (RestartDir, RestartFormat). Fortran: fort.22
 BkInput analysis_input(const Config& config) {
   const std::filesystem::path dir = config.input.restart_dir;
@@ -327,7 +346,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     check_restart_directory(config, command_line.output_dir);
     // Checked before the (possibly long) set-up: the GPU must be available in this build.
     const Device device = parse_device(command_line.device);
-    const bool propagates = config.derived.run_mode != 2 && config.derived.run_mode != 6;
+    const bool propagates = config.derived.run_mode != 2 && config.derived.run_mode != 6 && !config.input.write_2d_pes;
     if (device == Device::Cuda && !propagates)
       out << "  Note: --device cuda has no effect in this run mode (no propagation).\n";
     if (device == Device::Cuda && propagates) out << "  " << prepare_device(device) << '\n';
@@ -341,6 +360,13 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (config.input.do_flux_analysis && propagates)
       throw NotSupportedError("doFluxAnalysis = true: the flux analysis is not implemented yet");
     print_grids(out, style, config, grids, angular);
+    // write2DPES: the Fortran writes the cut right after the PES is set up and stops, in every run mode,
+    // before the 6D potential and the gas phase (Main.f90).
+    if (config.input.write_2d_pes) {
+      write_pes_cut_run(out, style, config, grids, angular, *potential, program, command_line);
+      out << '\n' << style.emphasis("2D cut of the PES written; the run stops here (write2DPES).") << '\n';
+      return 0;
+    }
     // Plot data (writeDensities, ...): its projected size, refused before the long set-up when the output file
     // system lacks room. Nothing is queried without a plot key.
     const std::vector<PlotDataSize> plot_data = plot_data_sizes(config, grids, angular);

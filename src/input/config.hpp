@@ -137,6 +137,12 @@ struct InputParameters {
   bool use_switching = false;           // UseSwitching / lswitch
   double z_min_switch = 6.0;            // ZminSwitch / zmin_switch
   double z_max_switch = 8.0;            // ZmaxSwitch / zmax_switch
+  // write2DPES: the run writes V(r, Z) of the PES at one fixed (x, y, theta, phi) and stops (pes_cut_2d.dat)
+  bool write_2d_pes = false;            // write2DPES / write2DPES
+  double x_2d_pes = 0.0;                // x2DPES / x2DPES (bohr, along the first lattice vector)
+  double y_2d_pes = 0.0;                // y2DPES / y2DPES (bohr, along the second lattice vector)
+  double theta_2d_pes = 90.0;           // theta2DPES / theta2DPES (degrees)
+  double phi_2d_pes = 0.0;              // phi2DPES / phi2DPES (degrees)
   bool use_symmetry = false;            // UseSymmetry / usePotSymmetry: V on the symmetry-reduced (x, y) grid
   bool phis_optimal = false;            // nPhisOptimal: nphi a multiple of the point group's multiple
   double symmetry_tolerance = 1e-5;     // SymmetryTolerance (eV): allowed asymmetry of the PES (C++ only)

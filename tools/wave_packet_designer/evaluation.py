@@ -173,8 +173,9 @@ def evaluate(p: InputParameters, settings: Settings) -> Evaluation:
         )
     absorbers = absorber_summaries(p, derived, grids)
 
-    # A propagating run refuses the flux analysis right after the grids.
-    propagates = derived.run_mode in (0, 1)
+    # A propagating run refuses the flux analysis right after the grids. A write2DPES run does not propagate: it
+    # writes its cut of the PES after the grids and stops (run.cpp), so it builds no packet either.
+    propagates = derived.run_mode in (0, 1) and not p.write_2d_pes
     if p.do_flux_analysis and propagates:
         message = "doFluxAnalysis = true: the flux analysis is not implemented yet"
         findings.append(Finding(Severity.ERROR, "doFluxAnalysis", message, "run_program"))

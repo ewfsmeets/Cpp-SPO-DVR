@@ -92,6 +92,7 @@ in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
 | `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
 | `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
 | `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, and `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`) |
+| `pes_cut` | only in a `write2DPES` run: `file` (`pes_cut_2d.dat`), `x`, `y` (bohr), `theta_deg`, `phi_deg`. Such a run stops before the gas phase: `initial_state` `energy` and the `analysis_energies` are null |
 
 ## Data files (space-separated)
 
@@ -103,6 +104,7 @@ name the columns and units; `numpy.loadtxt(f)` reads them.
 | `averages.dat` | averages time (every dtAve) | t (a.u.), norm, ⟨Z⟩ (bohr), ⟨r⟩ (bohr), rest norm (the Fortran's averages.out) |
 | `asymptotic_potential.dat` | r grid point | index ir, r (bohr), V_asy (hartree), V_asy (eV): the gas-phase potential at Z = zasymp, θ = π/2 |
 | `gas_phase_states.dat` | rovibrational state (v, j) | v, j, E (hartree), ψ(r) at every r grid point (a `#` line lists the grid) |
+| `pes_cut_2d.dat` | (r, Z) point of a `write2DPES` run | r (bohr), Z (bohr), V (hartree), V (eV): the PES itself (no switching, no VMin/VMax) at the fixed x, y, θ, φ that the `#` lines give; Z fastest over the scattering grid's nZ points, a blank line after each r (the Fortran's order). The run writes it with `asymptotic_potential.dat` and `run_info.json`, then stops |
 
 ## Series directories (binary, plot data)
 
@@ -180,6 +182,7 @@ memory-estimate item). With the full grid of a run, `v_min.bin` takes nZpot·nR�
 | averages.out | `averages.dat` |
 | fort.9 / fort.8 (wave function) | `checkpoint.bin` (or fort.9 with `CheckpointFormat`) |
 | fort.21 / fort.22 (BK coefficients) | `bk_coefficients.bin` (or fort.21 with `CheckpointFormat`) |
+| 2dpes.dat (`write2DPES`: r, Z, V in eV) | `pes_cut_2d.dat` (r, Z, V in hartree and eV) |
 
 ## Fine analysis (`onlyAnalysis`, `alsoAnalysis`)
 

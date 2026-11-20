@@ -69,6 +69,11 @@ void validate_output_keys(const Config& config) {
   const InputParameters& p = config.input;
   const int mode = config.derived.run_mode;
   const bool propagates = mode == 0 || mode == 1;
+  // write2DPES stops the run right after the PES is set up (as the Fortran does): no plot data follow.
+  check(p.write_2d_pes && p.write_densities, "writeDensities",
+        "write2DPES stops the run after the cut of the PES, before the propagation");
+  check(p.write_2d_pes && p.write_potential, "writePotential",
+        "write2DPES stops the run after the cut of the PES, before the 6D potential");
   check(p.write_densities && !propagates, "writeDensities",
         "only a propagating run (a new run or a restart) writes densities");
   check(p.write_potential && mode == 2, "writePotential",

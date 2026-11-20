@@ -12,6 +12,8 @@
 //   dailight_oblique_split    the same in two segments, split at the multiple of 100 a.u. nearest the time
 //                             of minimum <Z> of dailight_oblique (split_time.txt)
 //   potential_only            hardwall_tiny with Potential: true (potential/ only)
+//   pes_cut                   dailight_oblique with write2DPES at the bridge (x = alat / 2, y = 0), theta 90, phi 0:
+//                             pes_cut_2d.dat, asymptotic_potential.dat and run_info.json only (no plot keys)
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -191,4 +193,19 @@ TEST(PlotRuns, PotentialOnly) {
   EXPECT_TRUE(fs::exists(dir / "run_info.json"));
   EXPECT_TRUE(fs::exists(dir / "potential" / "v_min.bin"));
   EXPECT_FALSE(fs::exists(dir / "averages.dat"));
+}
+
+TEST(PlotRuns, PesCut) {
+  nlohmann::json json = dailight_oblique();
+  for (const char* key : {"alsoAnalysis", "writeDensities", "writePotential", "PlotSites"}) json.erase(key);
+  json["write2DPES"] = true;
+  json["x2DPES"] = 2.42;  // the bridge: alat / 2 (alat 4.84 bohr)
+  json["y2DPES"] = 0.0;
+  json["theta2DPES"] = 90.0;
+  json["phi2DPES"] = 0.0;
+  const fs::path dir = fixtures_dir / "pes_cut";
+  ASSERT_EQ(run(json, dir), 0);
+  EXPECT_TRUE(fs::exists(dir / "pes_cut_2d.dat"));
+  EXPECT_TRUE(fs::exists(dir / "asymptotic_potential.dat"));
+  EXPECT_FALSE(fs::exists(dir / "gas_phase_states.dat"));
 }

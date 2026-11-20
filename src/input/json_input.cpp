@@ -226,6 +226,11 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("UseSwitching", p.use_switching, optional);
   in.read("ZminSwitch", p.z_min_switch, optional);
   in.read("ZmaxSwitch", p.z_max_switch, optional);
+  in.read("write2DPES", p.write_2d_pes, optional);
+  in.read("x2DPES", p.x_2d_pes, optional);
+  in.read("y2DPES", p.y_2d_pes, optional);
+  in.read("theta2DPES", p.theta_2d_pes, optional);
+  in.read("phi2DPES", p.phi_2d_pes, optional);
   in.read("UseSymmetry", p.use_symmetry, optional);
   in.read("nPhisOptimal", p.phis_optimal, optional);
   in.read("SymmetryTolerance", p.symmetry_tolerance, optional);
@@ -261,10 +266,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
 
 // Fortran input fields of features that are not available in this program.
 void reject_unsupported_keys(JsonReader& in) {
-  for (const std::string key : {"SystemMix", "UseRCutOff", "write2DPES"}) in.reject_logical_if_true(key);
-  for (const std::string key :
-       {"SystemID2", "SystemMixCoeff", "RCutOff", "x2DPES", "y2DPES", "theta2DPES", "phi2DPES", "PESMixingAlfa"})
-    in.reject_if_present(key);
+  for (const std::string key : {"SystemMix", "UseRCutOff"}) in.reject_logical_if_true(key);
+  for (const std::string key : {"SystemID2", "SystemMixCoeff", "RCutOff", "PESMixingAlfa"}) in.reject_if_present(key);
 }
 
 // Every optical potential needs its energy or its factor. Fortran reads the factor only when

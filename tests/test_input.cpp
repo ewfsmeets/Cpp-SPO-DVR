@@ -104,7 +104,7 @@ TEST(Input, IntegerAcceptedForRealKey) {
 }
 
 TEST(Input, UnsupportedFeatures) {
-  for (const std::string key : {"SystemMix", "UseRCutOff", "write2DPES"}) {
+  for (const std::string key : {"SystemMix", "UseRCutOff"}) {
     Json json = reference_json();
     json[key] = false;
     EXPECT_NO_THROW((void)build(json)) << key;
@@ -114,6 +114,36 @@ TEST(Input, UnsupportedFeatures) {
   Json json = reference_json();
   json["RCutOff"] = 3.0;
   EXPECT_THROW((void)build(json), NotSupportedError);
+}
+
+// write2DPES and its coordinates (Fortran defaults false, 0, 0, 90, 0). The coordinates are checked only with
+// write2DPES, with the Fortran's tolerant .RLT./.RGT. (1e-12): a value 5e-13 beyond a bound passes, 2e-12 does
+// not. The bounds of x and y are the PES's lattice constants (hard wall: 6.239660, 5.239660 bohr).
+TEST(Input, Write2DPESKeys) {
+  const InputParameters defaults = build(reference_json()).input;
+  EXPECT_FALSE(defaults.write_2d_pes);
+  EXPECT_EQ(defaults.x_2d_pes, 0.0);
+  EXPECT_EQ(defaults.y_2d_pes, 0.0);
+  EXPECT_EQ(defaults.theta_2d_pes, 90.0);
+  EXPECT_EQ(defaults.phi_2d_pes, 0.0);
+  Json json = reference_json();
+  json["x2DPES"] = -1.0;  // not checked without write2DPES (the Fortran checks only inside "if (write2DPES)")
+  json["phi2DPES"] = 400.0;
+  EXPECT_NO_THROW((void)build(json));
+  json = reference_json();
+  json["write2DPES"] = true;
+  json["x2DPES"] = 6.239660 + 5e-13;
+  json["y2DPES"] = -5e-13;
+  json["theta2DPES"] = 360.0;
+  json["phi2DPES"] = 0.0;
+  const InputParameters p = build(json).input;
+  EXPECT_TRUE(p.write_2d_pes);
+  EXPECT_EQ(p.x_2d_pes, 6.239660 + 5e-13);
+  EXPECT_EQ(p.theta_2d_pes, 360.0);
+  json["x2DPES"] = 6.239660 + 2e-12;
+  expect_input_error(json, "x2DPES");
+  json["x2DPES"] = "1.0";
+  EXPECT_THROW((void)build(json), InputError);
 }
 
 // CRPlibDataSet (directory of the CRP data set, relative to the working directory): required with
@@ -710,6 +740,14 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"EParallel", [](Json& j) { j["EParallel"] = -0.1; }, "EParallel"},
         Violation{"PhiParallelNeg", [](Json& j) { j["PhiParallel"] = -1.0; }, "PhiParallel"},
         Violation{"PhiParallelBig", [](Json& j) { j["PhiParallel"] = 361.0; }, "PhiParallel"},
+        Violation{"X2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["x2DPES"] = -0.1; }, "x2DPES"},
+        Violation{"X2DPESBig", [](Json& j) { j["write2DPES"] = true; j["x2DPES"] = 6.3; }, "x2DPES"},
+        Violation{"Y2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["y2DPES"] = -0.1; }, "y2DPES"},
+        Violation{"Y2DPESBig", [](Json& j) { j["write2DPES"] = true; j["y2DPES"] = 5.3; }, "y2DPES"},
+        Violation{"Theta2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["theta2DPES"] = -1.0; }, "theta2DPES"},
+        Violation{"Theta2DPESBig", [](Json& j) { j["write2DPES"] = true; j["theta2DPES"] = 361.0; }, "theta2DPES"},
+        Violation{"Phi2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["phi2DPES"] = -1.0; }, "phi2DPES"},
+        Violation{"Phi2DPESBig", [](Json& j) { j["write2DPES"] = true; j["phi2DPES"] = 361.0; }, "phi2DPES"},
         Violation{"ZAnaSpDynamic", [](Json& j) { j["ZAnaSp"] = 12.0; }, "ZAnaSp"},
         Violation{"ZAnaSpGtOpt", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 17.0; }, "ZAnaSp"},
         Violation{"ZAnaSpLtZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.0; }, "ZAnaSp"},

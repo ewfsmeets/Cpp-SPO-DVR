@@ -14,6 +14,7 @@
 #include "core/unit_conversion.hpp"
 #include "grids/rotational_basis.hpp"
 #include "input/validate_outputs.hpp"
+#include "report/pes_cut_file.hpp"
 
 namespace spodvr {
 
@@ -172,6 +173,15 @@ json plot_data(const InputParameters& p) {
   return {{"write_densities", p.write_densities}, {"write_potential", p.write_potential}, {"sites", sites}};
 }
 
+// The cut of a write2DPES run (written only by such a run, which stops after it).
+json pes_cut(const InputParameters& p) {
+  return {{"file", pes_cut_file_name},
+          {"x", p.x_2d_pes},
+          {"y", p.y_2d_pes},
+          {"theta_deg", p.theta_2d_pes},
+          {"phi_deg", p.phi_2d_pes}};
+}
+
 json potential_settings(const InputParameters& p, const DerivedParameters& d) {
   return {{"use_switching", p.use_switching},
           {"z_min_switch", p.z_min_switch},
@@ -230,6 +240,7 @@ void write_run_info(const std::filesystem::path& path, const Config& config, con
   j["potential"] = potential_settings(p, d);
   j["unit_factors"] = unit_factors();
   if (p.write_densities || p.write_potential || !p.plot_sites.empty()) j["plot_data"] = plot_data(p);
+  if (p.write_2d_pes) j["pes_cut"] = pes_cut(p);
   std::ofstream file(path);
   if (!file) throw std::runtime_error("cannot open output file '" + path.string() + "'");
   file << j.dump(2) << '\n';

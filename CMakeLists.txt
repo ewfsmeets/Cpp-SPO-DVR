@@ -238,6 +238,7 @@ add_library(spodvr_core
   src/potential/persson_cu111_potential.cpp
   src/potential/potential_factory.cpp
   src/potential/potential_grid.cpp
+  src/potential/pes_cut.cpp
   src/potential/potential_symmetry.cpp
   src/symmetry/surface_lattice.cpp
   src/symmetry/surface_operation.cpp
@@ -256,6 +257,7 @@ add_library(spodvr_core
   src/report/densities_files.cpp
   src/report/plot_data.cpp
   src/report/potential_files.cpp
+  src/report/pes_cut_file.cpp
   src/report/fine_analysis_report.cpp
 )
 target_include_directories(spodvr_core PUBLIC src)

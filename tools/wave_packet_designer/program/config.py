@@ -3,9 +3,10 @@
 Shadows: src/input/config.hpp (InputParameters, DerivedParameters)
 
 InputParameters is flat like the C++ struct: one field per input key, the JSON key and unit in the
-comment, the C++ default as the default. Keys the designer only type-checks (Title, the write… switches,
-the SCM and flux keys, …) have no field here; json_input.py lists every key. To add a key: a field here and
-a row in json_input.py (tests/test_input_reading.py checks that every field has its row).
+comment, the C++ default as the default. Keys the designer only type-checks (Title, the output switches
+such as writeSMatrix, the SCM and flux keys, …) have no field here; json_input.py lists every key. To add a
+key: a field here and a row in json_input.py (tests/test_input_reading.py checks that every field has its
+row).
 Lengths are in bohr, energies in eV, masses in amu, times in atomic units.
 """
 
@@ -89,6 +90,11 @@ class InputParameters:
     use_switching: bool = False  # UseSwitching
     z_min_switch: float = 6.0  # ZminSwitch (bohr)
     z_max_switch: float = 8.0  # ZmaxSwitch (bohr): replaces Z_asymptotic with UseSwitching
+    write_2d_pes: bool = False  # write2DPES: the run writes V(r, Z) at one (x, y, theta, phi) and stops
+    x_2d_pes: float = 0.0  # x2DPES (bohr, along the first lattice vector)
+    y_2d_pes: float = 0.0  # y2DPES (bohr, along the second lattice vector)
+    theta_2d_pes: float = 90.0  # theta2DPES (degrees)
+    phi_2d_pes: float = 0.0  # phi2DPES (degrees)
     use_symmetry: bool = False  # UseSymmetry
     phis_optimal: bool = False  # nPhisOptimal
     symmetry_tolerance: float = 1e-5  # SymmetryTolerance (eV)

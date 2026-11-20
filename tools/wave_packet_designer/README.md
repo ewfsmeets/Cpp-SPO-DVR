@@ -317,6 +317,10 @@ check (`draw_window` in `tests/test_plots.py`).
 - No fine-analysis memory estimate (an analysis-only run).
 - No plot data (`writeDensities`, `writePotential`, `PlotSites`): their memory and disk use are not in the
   estimates; reading warns when a plot-data key is set.
+- `write2DPES`: the bounds x2DPES ≤ alat and y2DPES ≤ blat are checked only for the three analytic potentials
+  (the designer does not know the lattice of a CRP data set, or of an SCM slab); the other six checks always.
+  The program writes the cut after the grids and stops: the memory estimates and the gas phase shown are
+  those of the same input without write2DPES.
 - Not checked, as the program does after the grids: that some operation of the point group is usable on
   the grid with `UseSymmetry` (`src/potential/potential_symmetry.cpp`), that the GPU has the memory of the
   GPU estimate (`--device cuda`, `src/app/backend_factory.cpp`), and the physical memory against the CPU

@@ -44,6 +44,15 @@ def test_fixed_specular_analysis_line_limits_the_region() -> None:
     check_equal(e.packet.info.i_high, 174, "last point of the region")
 
 
+def test_no_packet_and_no_flux_refusal_with_write2dpes() -> None:
+    """A write2DPES run stops after the cut of the PES: no wave packet, and doFluxAnalysis is not refused (the
+    program refuses it only in a run that propagates); without write2DPES the same input is refused."""
+    e = evaluate(load_parameters(DZ_INPUT, write_2d_pes=True, do_flux_analysis=True), Settings())
+    check(e.accepted and e.packet is None, f"accepted {e.accepted}, packet {e.packet is not None}")
+    refused = evaluate(load_parameters(DZ_INPUT, do_flux_analysis=True), Settings())
+    check_equal(refused.stopped_at, "run_program", "stage without write2DPES")
+
+
 def test_no_packet_in_a_potential_only_run() -> None:
     """Run mode 6 builds no wave packet; the set-up passes, and the summary has the widths but no norms."""
     e = evaluate(load_parameters(DZ_INPUT, only_potential=True), Settings())

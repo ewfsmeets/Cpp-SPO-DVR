@@ -10,7 +10,8 @@ VIOLATIONS holds one input change per check, starting from the DZ input (valid);
 import ast
 import re
 
-from program.potential_systems import ANALYTIC_SYSTEMS
+from program.potential_systems import ANALYTIC_SYSTEMS, SystemParameters
+from program.unit_conversion import angstrom_to_bohr
 from program.validate import validate_input
 from tests.helpers import DZ_INPUT, REPOSITORY, TOOL_DIR, check, check_equal, check_has_error, load_parameters
 
@@ -117,6 +118,14 @@ VIOLATIONS = [
     ({"phi_parallel": -1.0}, "PhiParallel", "PhiParallel < 0."),
     ({"phi_parallel": 361.0}, "PhiParallel", "PhiParallel > 360 degrees."),
     ({"use_switching": True, "z_min_switch": 8.0, "z_max_switch": 8.0}, "ZminSwitch", "ZminSwitch >= ZmaxSwitch."),
+    ({"write_2d_pes": True, "x_2d_pes": -0.1}, "x2DPES", "x2DPES < 0."),
+    ({"write_2d_pes": True, "x_2d_pes": 4.85}, "x2DPES", "x2DPES > alat."),
+    ({"write_2d_pes": True, "y_2d_pes": -0.1}, "y2DPES", "y2DPES < 0."),
+    ({"write_2d_pes": True, "y_2d_pes": 4.85}, "y2DPES", "y2DPES > blat."),
+    ({"write_2d_pes": True, "theta_2d_pes": -1.0}, "theta2DPES", "theta2DPES < 0."),
+    ({"write_2d_pes": True, "theta_2d_pes": 361.0}, "theta2DPES", "theta2DPES > 360."),
+    ({"write_2d_pes": True, "phi_2d_pes": -1.0}, "phi2DPES", "phi2DPES < 0."),
+    ({"write_2d_pes": True, "phi_2d_pes": 361.0}, "phi2DPES", "phi2DPES > 360."),
 ]
 
 
@@ -188,3 +197,31 @@ def test_every_check_has_a_violating_case() -> None:
     for key, message in python_checks():
         fixed_part = message.split("{}")[0]  # the start of an f-string message, before its first value
         check(any(k == key and m.startswith(fixed_part) for k, m in found), f"no row triggers {key}: '{message}'")
+
+
+def test_pes_cut_bounds_without_a_lattice() -> None:
+    """A system whose lattice the designer does not know (a CRP data set) skips the write2DPES upper bounds of x and
+    y; their lower bounds still apply."""
+    unknown_lattice = SystemParameters(15.0, "C6v")
+    beyond = load_parameters(DZ_INPUT, write_2d_pes=True, x_2d_pes=100.0, y_2d_pes=100.0)
+    check_equal(validate_input(beyond, unknown_lattice, 15.0), [], "findings without a lattice")
+    negative = load_parameters(DZ_INPUT, write_2d_pes=True, x_2d_pes=-1.0)
+    check_has_error(validate_input(negative, unknown_lattice, 15.0), "x2DPES", "x2DPES < 0.", "lower bound")
+
+
+def test_lattice_constants_match_the_cpp() -> None:
+    """The lattice constants of the analytic potentials are the literals of their C++ sources (the Persson one in
+    angstrom, converted with the legacy factor as the C++ converts it)."""
+    sources = {
+        "HardWallPES": (r"parameters_\{([\d.]+), ([\d.]+),", "hard_wall_potential.cpp"),
+        "H2Cu111DaiLight": (r"lattice_constant = ([\d.]+);", "dai_light_cu111_potential.cpp"),
+        "H2Cu111Persson": (r"cc = ([\d.]+);", "persson_cu111_potential.cpp"),
+    }
+    for name, (pattern, file) in sources.items():
+        found = re.search(pattern, (REPOSITORY / "src/potential" / file).read_text())
+        check(found is not None, f"{pattern} not found in {file}: the pattern no longer matches")
+        a, b = float(found.group(1)), float(found.group(found.lastindex))  # one group: the same for a and b
+        if name == "H2Cu111Persson":
+            a, b = angstrom_to_bohr(a), angstrom_to_bohr(b)
+        system = ANALYTIC_SYSTEMS[name]
+        check_equal((system.lattice_a, system.lattice_b), (a, b), f"lattice of {name}")
