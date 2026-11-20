@@ -1,5 +1,5 @@
 // Input checks of the plot-data keys (C++ only): writeDensities, writePotential, PlotSites, dtFrames, FrameExtras,
-// NormBudget. Each check names its key (exit 2).
+// NormBudget, EnergyResolvedSites, EnergyResolvedEnergies. Each check names its key (exit 2).
 #include "input/validate_outputs.hpp"
 
 #include <algorithm>
@@ -76,7 +76,8 @@ void check_frames(const InputParameters& p, bool propagates) {
 
 void check_sites(const InputParameters& p) {
   if (p.plot_sites.empty()) return;
-  check(!p.write_potential && !p.dt_frames, "PlotSites", "no plot key uses the sites: set writePotential or dtFrames");
+  check(!p.write_potential && !p.dt_frames && p.energy_resolved_sites.empty(), "PlotSites",
+        "no plot key uses the sites: set writePotential, dtFrames or EnergyResolvedSites");
   check(static_cast<int>(p.plot_sites.size()) > max_plot_sites, "PlotSites",
         std::format("{} sites: at most {}", p.plot_sites.size(), max_plot_sites));
   std::set<std::string> names;
@@ -86,6 +87,37 @@ void check_sites(const InputParameters& p) {
     check_site_coordinate(site, "x", site.x, p.nx, "nX");
     check_site_coordinate(site, "y", site.y, p.ny, "nY");
   }
+}
+
+// EnergyResolvedSites and EnergyResolvedEnergies: both or neither, in a propagating run; sites named in PlotSites
+// (once each), collision energies inside the packet's range EMinWP..EMaxWP (+ EParallel), at most
+// max_energy_resolved_pairs (site, energy) pairs. Their cost and memory are projected at set-up (the PLOT DATA line
+// warns above 10 % of an analysis step; the memory estimate holds the sums).
+void check_energy_resolved(const InputParameters& p, bool propagates) {
+  const bool sites = !p.energy_resolved_sites.empty();
+  const bool energies = !p.energy_resolved_energies.empty();
+  if (!sites && !energies) return;
+  check(!energies, "EnergyResolvedSites", "set EnergyResolvedEnergies too (the sums need sites and energies)");
+  check(!sites, "EnergyResolvedEnergies", "set EnergyResolvedSites too (the sums need sites and energies)");
+  check(p.write_2d_pes, "EnergyResolvedSites",
+        "write2DPES stops the run after the cut of the PES, before the propagation");
+  check(!propagates, "EnergyResolvedSites", "only a propagating run (a new run or a restart) sums the wave packet");
+  std::set<std::string> seen;
+  for (const std::string& name : p.energy_resolved_sites) {
+    const bool known = std::ranges::any_of(p.plot_sites, [&](const PlotSite& site) { return site.name == name; });
+    check(!known, "EnergyResolvedSites", std::format("'{}' is not a site of PlotSites", name));
+    check(!seen.insert(name).second, "EnergyResolvedSites", std::format("'{}' is listed twice", name));
+  }
+  const double low = p.e_min_wave_packet + p.e_parallel;
+  const double high = p.e_max_wave_packet + p.e_parallel;
+  for (const double energy : p.energy_resolved_energies)
+    check(fortran_compare::rlt(energy, low) || fortran_compare::rgt(energy, high), "EnergyResolvedEnergies",
+          std::format("{:g} eV lies outside the packet's collision energies {:g} .. {:g} eV (EMinWP, EMaxWP + "
+                      "EParallel)",
+                      energy, low, high));
+  const std::size_t pairs = p.energy_resolved_sites.size() * p.energy_resolved_energies.size();
+  check(pairs > max_energy_resolved_pairs, "EnergyResolvedSites",
+        std::format("{} (site, energy) pairs: at most {}", pairs, max_energy_resolved_pairs));
 }
 
 }  // namespace
@@ -133,6 +165,7 @@ void validate_output_keys(const Config& config) {
     }
   }
   check_sites(p);
+  check_energy_resolved(p, propagates);
   if (p.norm_budget) {  // NormBudget: one record per analysis window of the propagation
     check(p.write_2d_pes, "NormBudget", "write2DPES stops the run after the cut of the PES, before the propagation");
     check(!propagates, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget");

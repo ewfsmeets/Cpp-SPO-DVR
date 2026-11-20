@@ -188,6 +188,10 @@ struct InputParameters {
   std::optional<double> dt_frames;   // dtFrames (a.u.): frames/, reductions of psi every dtFrames (C++ only)
   bool norm_budget = false;  // NormBudget: norm_budget/, what each absorber removes per analysis step (C++ only)
   std::vector<std::string> frame_extras;  // FrameExtras: the optional datasets of frames/ (C++ only)
+  // EnergyResolvedSites, EnergyResolvedEnergies (C++ only; each requires the other): the energy-resolved sums of the
+  // wave packet at these PlotSites (names) and collision energies (eV), energy_resolved/.
+  std::vector<std::string> energy_resolved_sites;
+  std::vector<double> energy_resolved_energies;
 
   // --- tolerances -------------------------------------------------------------------------
   double tol_specular = 0.0;            // TolSp / tolsp (required: no Fortran default)

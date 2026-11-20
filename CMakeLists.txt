@@ -226,6 +226,7 @@ add_library(spodvr_core
   src/propagation/memory_estimate.cpp
   src/analysis/analysis_basis.cpp
   src/analysis/balint_kurti.cpp
+  src/analysis/energy_resolved.cpp
   src/analysis/fine_analysis.cpp
   src/analysis/norm_budget.cpp
   src/analysis/s_matrix.cpp
@@ -259,6 +260,7 @@ add_library(spodvr_core
   src/report/analysis_files.cpp
   src/report/run_info_file.cpp
   src/report/densities_files.cpp
+  src/report/energy_resolved_files.cpp
   src/report/frame_files.cpp
   src/report/norm_budget_files.cpp
   src/report/plot_data.cpp

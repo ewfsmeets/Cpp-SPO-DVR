@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <complex>
 
+#include "analysis/energy_resolved.hpp"
 #include "analysis/norm_budget.hpp"
 #include "frames/frame_extras.hpp"
 #include "frames/frame_source.hpp"
@@ -101,6 +102,12 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
       const std::size_t cells = (grids.z_scattering.size() + grids.z_specular.size()) * std::size_t(p.nr);
       estimate.items.push_back(
           {"Norm budget (NormBudget)", cells, NormBudget::memory_bytes(grids, p.nr), "on the host", false, true});
+    }
+    if (!p.energy_resolved_sites.empty()) {  // EnergyResolvedSites: the complex sums and one site's column, on the host
+      const std::size_t values =
+          energy_resolved_memory_values(p, static_cast<int>(basis.size()), static_cast<int>(grids.z_specular.size()));
+      estimate.items.push_back({"Energy-resolved sums (EnergyResolvedSites)", values,
+                                values * sizeof(std::complex<double>), "on the host", false, true});
     }
   }
 

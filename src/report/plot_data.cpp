@@ -11,6 +11,7 @@
 #include "grids/rotational_basis.hpp"
 #include "input/validate_outputs.hpp"
 #include "report/densities_files.hpp"
+#include "report/energy_resolved_files.hpp"
 #include "report/frame_files.hpp"
 #include "report/norm_budget_files.hpp"
 #include "report/potential_files.hpp"
@@ -34,6 +35,7 @@ std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGri
   const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
   if (const auto frames = frames_data_size(config, grids, angular, basis)) sizes.push_back(*frames);
   if (const auto budget = norm_budget_data_size(config)) sizes.push_back(*budget);
+  if (const auto sums = energy_resolved_data_size(config, grids, basis.size())) sizes.push_back(*sums);
   return sizes;
 }
 

@@ -55,6 +55,7 @@ class CudaBackend final : public PropagationBackend {
   [[nodiscard]] const SpecularWave& specular() const override { return host_specular_; }
   [[nodiscard]] std::span<const std::complex<double>> z_plane(int iz) const override;
   [[nodiscard]] std::vector<double> block_densities() const override;
+  void site_column(int ixy, std::span<std::complex<double>> out) const override;
 
  private:
   void upload(const WavePacket& host);
@@ -180,6 +181,12 @@ std::span<const std::complex<double>> CudaBackend::z_plane(int iz) const {
   pack_z_plane(psi_.scattering.data(), psi_.layout, shape_.nr, iz, plane_.data());
   plane_.download(as_device_complex(std::span<cplx>(host_plane_)));
   return host_plane_;
+}
+
+// The device layout (izr, irot, ixy) keeps one ixy's (izr, irot) column contiguous: one copy.
+void CudaBackend::site_column(int ixy, std::span<std::complex<double>> out) const {
+  const DeviceLayout& layout = psi_.layout;
+  psi_.scattering.download(as_device_complex(out), std::size_t(layout(0, 0, ixy)));
 }
 
 std::vector<double> CudaBackend::block_densities() const {

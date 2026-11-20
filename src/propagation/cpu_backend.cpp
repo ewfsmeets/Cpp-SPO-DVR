@@ -50,6 +50,15 @@ std::span<const std::complex<double>> CpuBackend::z_plane(int iz) const {
 
 std::vector<double> CpuBackend::block_densities() const { return spodvr::block_densities(psi_.scattering); }
 
+// A gather from the host layout (irot, ixy, izr) into (izr, irot).
+void CpuBackend::site_column(int ixy, std::span<std::complex<double>> out) const {
+  const Index3D& index = psi_.scattering.index;  // (irot, ixy, izr)
+  const std::size_t n_rot = index.n0;
+  const std::size_t n_zr = index.n2;
+  for (std::size_t irot = 0; irot < n_rot; ++irot)
+    for (std::size_t izr = 0; izr < n_zr; ++izr) out[izr + n_zr * irot] = psi_.scattering.values[index(irot, ixy, izr)];
+}
+
 std::unique_ptr<PropagationBackend> make_cpu_backend(const BackendInput& input, PotentialGrid potential,
                                                      SpecularWave initial) {
   return std::make_unique<CpuBackend>(input, std::move(potential), std::move(initial));

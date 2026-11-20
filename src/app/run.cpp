@@ -44,6 +44,7 @@
 #include "report/analysis_files.hpp"
 #include "report/analysis_report.hpp"
 #include "report/densities_files.hpp"
+#include "report/energy_resolved_files.hpp"
 #include "report/fine_analysis_report.hpp"
 #include "report/frame_files.hpp"
 #include "report/norm_budget_files.hpp"
@@ -63,6 +64,7 @@ namespace {
 // Fortran code (fort.9, fort.21; a Fortran restart reads them as fort.8, fort.22).
 constexpr std::string_view checkpoint_file = "checkpoint.bin";
 constexpr std::string_view bk_file = "bk_coefficients.bin";
+constexpr std::string_view energy_resolved_sums_file = "energy_resolved/sums.bin";  // EnergyResolvedSites
 constexpr std::string_view fortran_wave_function_file = "fort.9";
 constexpr std::string_view fortran_bk_file = "fort.21";
 constexpr std::string_view fortran_wave_function_input = "fort.8";
@@ -96,6 +98,8 @@ std::vector<RestartFile> restart_files(const Config& config) {
   const RestartFile wave_packet =
       native ? RestartFile{{checkpoint_file}, "the wave packet"}
              : RestartFile{{fortran_wave_function_input, fortran_wave_function_file}, "the wave packet"};
+  if (!config.input.energy_resolved_sites.empty())
+    return {wave_packet, bk, RestartFile{{energy_resolved_sums_file}, "the energy-resolved sums"}};
   return {wave_packet, bk};
 }
 
@@ -190,6 +194,8 @@ void check_restart_directory(const Config& config, const std::filesystem::path& 
   if (!std::filesystem::is_directory(restart_path_status(dir)))
     throw InputError("RestartDir", "'" + dir.string() + "' is not a directory");
   for (const RestartFile& file : restart_files(config)) require_restart_file(dir, file, config.input.restart_format);
+  if (config.derived.run_mode == 1 && !config.input.energy_resolved_sites.empty())
+    check_energy_resolved_restart(dir, config.input);  // before the set-up, which can take hours
   // An error here (e.g. no output directory yet) means the two are not the same directory.
   std::error_code not_comparable;
   if (config.derived.run_mode == 1 && std::filesystem::equivalent(dir, output_dir, not_comparable))
@@ -299,6 +305,26 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
       }
     };
   }
+  std::optional<EnergyResolvedFiles> sums_files;  // EnergyResolvedSites/Energies: energy_resolved/
+  if (!p.energy_resolved_sites.empty()) {
+    const double t_start = p.t_end - p.n_steps * p.time_step;
+    EnergyResolvedSums start = empty_energy_resolved_sums(config, gas, propagation.rotational_basis().size(),
+                                                          static_cast<int>(grids.z_specular.size()), t_start);
+    if (config.derived.run_mode == 1)
+      start = read_energy_resolved_sums(p.restart_dir, config, start, static_cast<int>(earlier.size()));
+    sums_files.emplace(output_dir, config, grids, start, propagation.tables().specular_to_scattering);
+    propagation.start_energy_resolved(std::move(start));
+    observer.on_energy_resolved_partial = [&](const EnergyResolvedSums& sums) {
+      if (!sums_files) return;
+      try {
+        sums_files->write_partial(sums);
+      } catch (const CheckpointError& e) {  // a full disk: optional output, so the propagation goes on
+        table.print_note(std::string("EnergyResolvedSites: ") + e.what() + "; energy_resolved/ stops here",
+                         sums.last_time);
+        sums_files.reset();
+      }
+    };
+  }
   const auto loop_start = std::chrono::steady_clock::now();
   propagation.run(observer);
   const std::chrono::duration<double> loop_time = std::chrono::steady_clock::now() - loop_start;
@@ -308,6 +334,9 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
     print_frame_extras_cost(out, frames_written, frame_source->extra_seconds());
   }
   if (budget) print_norm_budget_cost(out, windows_written, propagation.analysis_densities_seconds(), loop_time.count());
+  if (propagation.sums_energy_resolved())
+    print_energy_resolved_cost(out, p.energy_resolved_sites.size() * p.energy_resolved_energies.size(),
+                               propagation.energy_resolved_seconds(), loop_time.count());
 
   // Checkpoint for a restart. Fortran: SaveWaveFunc
   const AnalysisSurfaceState surface = propagation.analysis_surface().state();
@@ -316,6 +345,16 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
                      surface);
   if (write_fortran)
     write_fortran_wave_function(output_dir / fortran_wave_function_file, propagation.wave_packet_on_host(), surface);
+
+  // The energy-resolved sums after the checkpoint, so that a full disk cannot cost the propagation's restart.
+  if (sums_files) {
+    try {
+      sums_files->write_final(propagation.energy_resolved_sums());
+    } catch (const CheckpointError& e) {
+      out << "  EnergyResolvedSites: " << e.what() << "; energy_resolved/ is incomplete\n";
+      sums_files.reset();
+    }
+  }
 
   // Asymptotic analysis: S-matrix and probabilities at the analysis energies.
   const ScatteringResults results = propagation.scattering_results();
@@ -331,6 +370,7 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   if (densities) out << ", densities/";
   if (frames) out << ", frames/";
   if (budget_files) out << ", norm_budget/";
+  if (sums_files) out << ", energy_resolved/";
   out << '\n';
 }
 

@@ -11,6 +11,7 @@ namespace spodvr {
 std::size_t dtype_bytes(const std::string& dtype) {
   if (dtype == "<f8") return 8;
   if (dtype == "<i4") return 4;
+  if (dtype == "<c16") return 16;
   throw std::invalid_argument("unknown dtype '" + dtype + "'");
 }
 

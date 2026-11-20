@@ -53,6 +53,9 @@ class PropagationBackend {
   // sum |psi|^2 over (irot, ixy) at every (Z, r) point izr, summed in memory order.
   // Fortran: Averages.f90 complexInnerProd(1, izr)
   [[nodiscard]] virtual std::vector<double> block_densities() const = 0;
+  // The scattering wave at one (x, y) grid point ixy into `out` (n_zr * n_rot values; the caller's buffer, so the
+  // backend allocates nothing for it), layout (izr, irot) with izr fastest: the energy-resolved sums of a site.
+  virtual void site_column(int ixy, std::span<std::complex<double>> out) const = 0;
 };
 
 // Everything a backend is built from. The references must outlive the backend; the potential

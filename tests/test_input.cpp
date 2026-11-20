@@ -45,6 +45,13 @@ Json site_list(const std::vector<SiteSpec>& sites) {
   return list;
 }
 
+// Valid energy-resolved keys: two sites a, b of PlotSites and one energy inside the packet's range.
+void energy_resolved(Json& j) {
+  j["PlotSites"] = site_list({{"a", 0.0, 0.0}, {"b", 0.5, 0.0}});
+  j["EnergyResolvedSites"] = {"a", "b"};
+  j["EnergyResolvedEnergies"] = {0.3};
+}
+
 // Expects an InputError naming `parameter` for the modified input; returns its message ("" if none).
 std::string expect_input_error(const Json& json, const std::string& parameter) {
   try {
@@ -637,6 +644,26 @@ TEST(Input, NormBudgetInAPropagatingRun) {
   EXPECT_TRUE(build(json).input.norm_budget);
 }
 
+// EnergyResolvedSites with EnergyResolvedEnergies: sites of PlotSites (which need no other plot key then) and collision
+// energies at both ends of the packet's range (EMinWP 0.2 .. EMaxWP 0.6 eV), in a new run and a restart; none by
+// default.
+TEST(Input, EnergyResolvedSumsInAPropagatingRun) {
+  Json json = reference_json();
+  EXPECT_TRUE(build(json).input.energy_resolved_sites.empty());
+  json["PlotSites"] = site_list({{"a", 0.0, 0.0}, {"b", 0.5, 0.0}});
+  json["EnergyResolvedSites"] = {"b", "a"};
+  json["EnergyResolvedEnergies"] = {0.2, 0.45, 0.6};
+  const Config config = build(json);
+  EXPECT_EQ(config.input.energy_resolved_sites, (std::vector<std::string>{"b", "a"}));
+  EXPECT_EQ(config.input.energy_resolved_energies, (std::vector<double>{0.2, 0.45, 0.6}));
+  const double duration = json["tEnd"].get<double>() - json["tStart"].get<double>();
+  json["NewCalc"] = false;
+  json["RestartDir"] = "earlier";
+  json["tStart"] = 1000.0;
+  json["tEnd"] = 1000.0 + duration;
+  EXPECT_EQ(build(json).input.energy_resolved_energies.size(), 3u);
+}
+
 // One violation per check of ValidateInput / ReadInput / Setup.f90.
 struct Violation {
   std::string name;
@@ -751,6 +778,45 @@ INSTANTIATE_TEST_SUITE_P(
                   "NormBudget"},
         Violation{"NormBudgetPotentialOnly", [](Json& j) { j["Potential"] = true; j["NormBudget"] = true; }, "NormBudget"},
         Violation{"NormBudgetWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["NormBudget"] = true; }, "NormBudget"},
+        // EnergyResolvedSites / EnergyResolvedEnergies (energy_resolved/): both or neither, propagating runs only,
+        // sites of PlotSites once each, energies in the packet's range, at most 256 pairs, lists of their type.
+        Violation{"EnergyResolvedSitesWithoutEnergies",
+                  [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["EnergyResolvedSites"] = {"a"}; },
+                  "EnergyResolvedSites"},
+        Violation{"EnergyResolvedEnergiesWithoutSites", [](Json& j) { j["EnergyResolvedEnergies"] = {0.3}; },
+                  "EnergyResolvedEnergies"},
+        Violation{"EnergyResolvedPotentialOnly",
+                  [](Json& j) { energy_resolved(j); j["Potential"] = true; }, "EnergyResolvedSites"},
+        Violation{"EnergyResolvedAnalysisOnly",
+                  [](Json& j) { energy_resolved(j); j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; },
+                  "EnergyResolvedSites"},
+        Violation{"EnergyResolvedWrite2DPES", [](Json& j) { energy_resolved(j); j["write2DPES"] = true; },
+                  "EnergyResolvedSites"},
+        Violation{"EnergyResolvedUnknownSite", [](Json& j) { energy_resolved(j); j["EnergyResolvedSites"] = {"a", "c"}; },
+                  "EnergyResolvedSites"},
+        Violation{"EnergyResolvedSiteTwice", [](Json& j) { energy_resolved(j); j["EnergyResolvedSites"] = {"a", "a"}; },
+                  "EnergyResolvedSites"},
+        Violation{"EnergyResolvedEnergyBelowThePacket",
+                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.3, 0.19}; }, "EnergyResolvedEnergies"},
+        Violation{"EnergyResolvedEnergyAboveThePacket",
+                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.61}; }, "EnergyResolvedEnergies"},
+        Violation{"EnergyResolvedTooManyPairs",
+                  [](Json& j) {
+                    energy_resolved(j);
+                    j["PlotSites"] = Json::array();
+                    j["EnergyResolvedSites"] = Json::array();
+                    for (int k = 0; k < max_plot_sites; ++k) {
+                      j["PlotSites"].push_back(site_list({{"s" + std::to_string(k), 0.0, 0.0}})[0]);
+                      j["EnergyResolvedSites"].push_back("s" + std::to_string(k));
+                    }
+                    j["EnergyResolvedEnergies"] = Json::array();
+                    for (int k = 0; k <= 16; ++k) j["EnergyResolvedEnergies"].push_back(0.2 + 0.02 * k);  // 16 x 17
+                  },
+                  "EnergyResolvedSites"},
+        Violation{"EnergyResolvedEnergiesNotAList", [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = 0.3; },
+                  "EnergyResolvedEnergies"},
+        Violation{"EnergyResolvedEnergiesNotNumbers",
+                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.3, "0.4"}; }, "EnergyResolvedEnergies"},
         Violation{"PlotSitesOutsideTheCell",
                   [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 1.0, 0.0}}); }, "PlotSites"},
         Violation{"PlotSitesOffTheGrid",

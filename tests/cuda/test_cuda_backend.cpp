@@ -241,6 +241,14 @@ TEST(CudaBackend, CopiesAreExactAndDensitiesMatchTheCpu) {
   const std::vector<double> db = gpu->block_densities();
   ASSERT_EQ(da.size(), db.size());
   for (std::size_t i = 0; i < da.size(); ++i) EXPECT_NEAR(db[i], da[i], 1e-14 * da[i]) << "izr = " << i;
+  // site_column (the energy-resolved sums): the same bytes, at the first, an inner and the last grid point
+  const std::size_t column = a.scattering.values.size() / std::size_t(s.config.input.nx * s.config.input.ny);
+  for (const int ixy : {0, 1, s.config.input.nx * s.config.input.ny - 1}) {
+    std::vector<std::complex<double>> ca(column), cb(column);
+    cpu->site_column(ixy, ca);
+    gpu->site_column(ixy, cb);
+    EXPECT_EQ(relative_difference(ca, cb), 0.0) << "ixy = " << ixy;
+  }
 }
 
 // densities/ (writeDensities) of the same wave packet: the specular cells are bitwise equal (an exact copy),

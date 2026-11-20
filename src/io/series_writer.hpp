@@ -14,7 +14,8 @@
 namespace spodvr {
 
 // One dataset of a series: its file (a literal like "prob_scat_zr.bin"; the dataset's name is the file
-// name without ".bin"), its element type ("<f8": double, "<i4": 32-bit int; little-endian), the shape of one
+// name without ".bin"), its element type ("<f8": double, "<i4": 32-bit int, "<c16": complex double as (re, im);
+// little-endian), the shape of one
 // record (empty for a scalar), the names of the axes, the units and a description.
 struct DatasetSpec {
   std::string file;
@@ -69,7 +70,7 @@ class ArraysWriter {
   std::vector<std::unique_ptr<BinaryWriter>> files_;
 };
 
-// Bytes of one value of a dtype ("<f8" 8, "<i4" 4); throws std::invalid_argument for others.
+// Bytes of one value of a dtype ("<f8" 8, "<i4" 4, "<c16" 16); throws std::invalid_argument for others.
 [[nodiscard]] std::size_t dtype_bytes(const std::string& dtype);
 
 // Bytes of one record of a dataset: dtype_bytes times the product of its shape.

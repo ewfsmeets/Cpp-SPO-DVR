@@ -175,7 +175,7 @@ header line.
 - Two builds of the time loop, e.g. before and after a change: `tools/benchmark/compare_speed.sh
   --base-build DIR --new-build DIR [--cuda]` alternates their runs and judges the difference against the
   spread of the runs ([CONTRIBUTING: Additions to the time loop](CONTRIBUTING.md#additions-to-the-time-loop)).
-  Plot data (`writeDensities`, `dtFrames`, `NormBudget`, input_schema.md "Plot data keys") are off by default and add
+  Plot data (`writeDensities`, `dtFrames`, `NormBudget`, `EnergyResolvedSites`, input_schema.md "Plot data keys") are off by default and add
   nothing to the loop when off.
 - Check the results of every change: `tools/check_bitwise_refactor.sh` (must be bitwise identical)
   or `tools/compare_propagation.sh` (rounding-level changes, ≤ 1e-13), then the gates
@@ -217,6 +217,16 @@ after every analysis step (26 in this run; at the averages rows they are the ave
 (1.46 ns per complex value of ψ: 1.7 % of the propagation) and 0.067 s on the GPU (0.17 ns: 1.2 %); the PLOT DATA
 line projects it from these per-value costs. The CPU's and the GPU's budgets agree to 3.3e-12 of the largest loss
 (1.8e-9) and their window norms to 1.1e-13, averages.dat's own difference after 200 steps.
+
+The energy-resolved sums (`EnergyResolvedSites` with one site and `EnergyResolvedEnergies` with two energies, a run
+of its own, the same grid and steps): one copy of the site's (Z, r, rotation) column of ψ (2.8e6 values) per
+analysis step and a complex multiply-add per value and energy on the host, 1.15 s in the 25 analysis steps on the CPU
+(0.099 % of the propagation; 8.3 ns per value per (site, energy) pair, the serial strided gather of the column
+dominating) and 0.38 s with the GPU backend (0.27 %; 2.7 ns per value per pair, one download per site and step);
+the PLOT DATA line projects them from these per-pair costs and warns above 10 % of an analysis step. The CPU's and
+the GPU's sums agree to 4e-14 of the largest sum (the specular wave's; the scattering wave's sums are still small at
+500 a.u., 3.6e-4 against 487, and differ by 8e-16 of that scale). The sums take 128 MiB of host memory here (two
+pairs plus the specular sums and one column), and `energy_resolved/` 171 MiB (the final and the partial sums).
 
 A frame is 7.6 MiB (45.5 MiB for the six). The CPU's and the GPU's frames of this run are equal at tStart and
 differ by 1.2e-13 of the frame's largest cell after 200 steps, the propagation's own drift between the devices (the

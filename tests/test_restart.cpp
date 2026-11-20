@@ -240,6 +240,48 @@ TEST(Restart, SplitRunIsBitwiseIdenticalToTheUnsplitRun) {
             fs::file_size(r.root / "first" / "bk_coefficients.bin"));
 }
 
+// EnergyResolvedSites/Energies: the split run's final sums are bitwise those of the unsplit run (the restart reads the
+// first part's sums and continues them); a restart with other energies, or with a site of the same name at another
+// grid point, stops (exit 2, naming the key), and so does one whose RestartDir holds no sums (before the set-up). The
+// partial sums depend on the split and are not compared.
+TEST(Restart, EnergyResolvedSumsOfASplitRunAreBitwiseThoseOfTheUnsplitRun) {
+  const fs::path root = fs::temp_directory_path() / ("spodvr_restart_rho_e_" + std::to_string(::getpid()));
+  fs::remove_all(root);
+  nlohmann::json json = short_json();
+  json["PlotSites"] = {{{"name", "origin"}, {"x", 0.0}, {"y", 0.0}}};
+  json["EnergyResolvedSites"] = {"origin"};
+  json["EnergyResolvedEnergies"] = {0.3, 0.45};
+  std::string err;
+  ASSERT_EQ(run(with_times(json, 0.0, 120.0, 60), root / "full", err), 0) << err;
+  ASSERT_EQ(run(with_times(json, 0.0, 60.0, 30), root / "first", err), 0) << err;
+  ASSERT_EQ(run(restart_from(with_times(json, 60.0, 120.0, 30), root / "first"), root / "second", err), 0) << err;
+  for (const std::string name : {"sums.bin", "specular_sums.bin", "last_time.bin", "steps_summed.bin"}) {
+    const std::string full = read_file(root / "full" / "energy_resolved" / name);
+    EXPECT_FALSE(full.empty()) << name;
+    EXPECT_EQ(full, read_file(root / "second" / "energy_resolved" / name)) << name;
+  }
+  EXPECT_NE(read_file(root / "full" / "energy_resolved" / "sums.bin"),
+            read_file(root / "first" / "energy_resolved" / "sums.bin"));  // the second part did add something
+
+  nlohmann::json other_energies = restart_from(with_times(json, 60.0, 120.0, 30), root / "first");
+  other_energies["EnergyResolvedEnergies"] = {0.3, 0.46};
+  EXPECT_EQ(run(other_energies, root / "other_energies", err), 2);
+  EXPECT_NE(err.find("EnergyResolvedSites"), std::string::npos) << err;
+
+  nlohmann::json moved = restart_from(with_times(json, 60.0, 120.0, 30), root / "first");
+  moved["PlotSites"] = {{{"name", "origin"}, {"x", 0.5}, {"y", 0.0}}};  // the same name at another grid point
+  EXPECT_EQ(run(moved, root / "moved_site", err), 2);
+  EXPECT_NE(err.find("grid points"), std::string::npos) << err;
+  EXPECT_FALSE(fs::exists(root / "moved_site" / "checkpoint.bin"));  // refused before the set-up
+
+  nlohmann::json no_sums = short_json();
+  ASSERT_EQ(run(with_times(no_sums, 0.0, 60.0, 30), root / "first_without", err), 0) << err;
+  EXPECT_EQ(run(restart_from(with_times(json, 60.0, 120.0, 30), root / "first_without"), root / "no_sums", err), 2);
+  EXPECT_NE(err.find("energy-resolved sums"), std::string::npos) << err;
+  EXPECT_FALSE(fs::exists(root / "no_sums" / "checkpoint.bin"));
+  fs::remove_all(root);
+}
+
 TEST(Restart, MismatchingInputIsAnError) {
   const FirstRun& r = first_run();
   ASSERT_EQ(r.code, 0) << r.err;

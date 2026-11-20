@@ -13,8 +13,9 @@ from program.config import InputParameters, low_z_absorber_enabled
 from program.findings import Finding, FindingList, has_errors
 from program.real_compare import rlt, seq
 
-# Value types (JsonReader::as_real, as_integer, as_logical, as_string, and the PlotSites list).
-REAL, INTEGER, LOGICAL, STRING, SITE_LIST, NAME_LIST = "real", "integer", "logical", "string", "site list", "name list"
+# Value types (JsonReader::as_real, as_integer, as_logical, as_string, and the lists of the plot-data keys).
+REAL, INTEGER, LOGICAL, STRING = "real", "integer", "logical", "string"
+SITE_LIST, NAME_LIST, REAL_LIST = "site list", "name list", "real list"
 SITE_FIELDS = ("name", "x", "y")  # the fields of a PlotSites entry (validate_outputs.cpp plot_site_fields)
 PLOT_DATA_KEYS = (  # not modelled by the designer
     "writeDensities",
@@ -23,6 +24,8 @@ PLOT_DATA_KEYS = (  # not modelled by the designer
     "dtFrames",
     "FrameExtras",
     "NormBudget",
+    "EnergyResolvedSites",
+    "EnergyResolvedEnergies",
 )
 
 INT_MIN, INT_MAX = -(2**31), 2**31 - 1  # the range of a C++ int
@@ -33,7 +36,7 @@ class InputKey:
     """One input key: its JSON name, its value type, and the InputParameters field that holds it."""
 
     name: str
-    kind: str  # REAL, INTEGER, LOGICAL, STRING, SITE_LIST or NAME_LIST
+    kind: str  # REAL, INTEGER, LOGICAL, STRING, SITE_LIST, NAME_LIST or REAL_LIST
     field: str | None  # None: the designer only checks the type
 
 
@@ -151,6 +154,8 @@ OPTIONAL_KEYS = (
     InputKey("dtFrames", REAL, None),
     InputKey("FrameExtras", NAME_LIST, None),
     InputKey("NormBudget", LOGICAL, None),
+    InputKey("EnergyResolvedSites", NAME_LIST, None),
+    InputKey("EnergyResolvedEnergies", REAL_LIST, None),
     InputKey("DoDump", LOGICAL, None),
     InputKey("FullSMatrix", LOGICAL, None),
 )
@@ -245,6 +250,11 @@ def typed_value(kind: str, value: object) -> tuple[object, str | None]:
         if not isinstance(value, list):
             return None, "expected a list of names"
         return (value, None) if all(isinstance(name, str) for name in value) else (None, "expected a string")
+    if kind == REAL_LIST:
+        if not isinstance(value, list):
+            return None, "expected a list of numbers"
+        numbers = all(not isinstance(x, bool) and isinstance(x, (int, float)) for x in value)
+        return ([float(x) for x in value], None) if numbers else (None, "expected a real number")
     return (value, None) if isinstance(value, str) else (None, "expected a string")
 
 

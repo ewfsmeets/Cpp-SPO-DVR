@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,8 @@ void validate_output_keys(const Config& config);
 
 // The most sites PlotSites may name.
 constexpr int max_plot_sites = 16;
+// EnergyResolvedSites x EnergyResolvedEnergies: at most this many (site, energy) pairs (each holds nZ nR nrot sums).
+constexpr std::size_t max_energy_resolved_pairs = 256;
 
 // The (x, y) grid point of a site that passed validate_output_keys: ixy = iy + ny * ix (Fortran order).
 [[nodiscard]] int plot_site_ixy(const PlotSite& site, int nx, int ny);

@@ -29,6 +29,7 @@ struct BackendCallCounts {
   int specular = 0;  // for information: the specular wave is held on the host anyway
   int wave_packet_on_host = 0;
   int read_wave_packet = 0;
+  int site_column = 0;
 };
 
 class CountingBackend : public PropagationBackend {
@@ -59,6 +60,10 @@ class CountingBackend : public PropagationBackend {
   [[nodiscard]] std::vector<double> block_densities() const override {
     ++counts_.block_densities;
     return inner_->block_densities();
+  }
+  void site_column(int ixy, std::span<std::complex<double>> out) const override {
+    ++counts_.site_column;
+    inner_->site_column(ixy, out);
   }
 
  private:

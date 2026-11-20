@@ -64,7 +64,16 @@ class JsonReader {
     }
   }
 
-  // A list of strings (FrameExtras); the names are checked by validate_output_keys.
+  // A list of numbers (EnergyResolvedEnergies); their values are checked by validate_output_keys.
+  void read(const std::string& key, std::vector<double>& target, Presence presence) {
+    if (!present(key, presence)) return;
+    const Json& list = json_.at(key);
+    if (!list.is_array()) throw InputError(key, "expected a list of numbers");
+    target.clear();
+    for (const Json& item : list) target.push_back(as_real(key, item));
+  }
+
+  // A list of strings (FrameExtras, EnergyResolvedSites); the names are checked by validate_output_keys.
   void read(const std::string& key, std::vector<std::string>& target, Presence presence) {
     if (!present(key, presence)) return;
     const Json& list = json_.at(key);
@@ -271,6 +280,8 @@ void read_optional_keys(JsonReader& in, InputParameters& p) {
   in.read("dtFrames", p.dt_frames);
   in.read("NormBudget", p.norm_budget, optional);
   in.read("FrameExtras", p.frame_extras, optional);
+  in.read("EnergyResolvedSites", p.energy_resolved_sites, optional);
+  in.read("EnergyResolvedEnergies", p.energy_resolved_energies, optional);
 
   in.read("DoDump", p.do_dump, optional);
   in.read("FullSMatrix", p.full_s_matrix, optional);

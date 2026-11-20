@@ -8,6 +8,7 @@
 
 #include "analysis/analysis_basis.hpp"
 #include "analysis/balint_kurti.hpp"
+#include "analysis/energy_resolved.hpp"
 #include "analysis/s_matrix.hpp"
 #include "fft/fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -33,7 +34,9 @@ namespace spodvr {
 // becomes fixed; the BK coefficients of every analysis step with the time at its end; with dtFrames, the backend
 // at tStart and every analyses_per_frame analysis steps (the frames read it through z_plane and specular, after the
 // analysis of that step); with NormBudget, the block densities and the specular wave at tStart and after every
-// analysis step (the averages of those times then use the same densities: one reduction, not two).
+// analysis step (the averages of those times then use the same densities: one reduction, not two); with the
+// energy-resolved sums, those sums once, at the first analysis step at or after 0.8 tEnd (the partial sums that show
+// the effect of stopping the time sums early).
 struct PropagationObserver {
   std::function<void(const Averages&)> on_averages;
   std::function<void(const Averages&, std::span<const double> block_densities, const SpecularWave& specular,
@@ -44,6 +47,7 @@ struct PropagationObserver {
   std::function<void(double time, const PropagationBackend& backend, int surface_index)> on_frame;
   std::function<void(double time, std::span<const double> block_densities, const SpecularWave& specular)>
       on_analysis_densities;
+  std::function<void(const EnergyResolvedSums&)> on_energy_resolved_partial;
 };
 
 // A new wave-packet propagation (ProjOp = 2): sets up the initial wave packet, the tables and
@@ -83,6 +87,15 @@ class WavePacketPropagation {
   void restore_analysis_surface(const AnalysisSurfaceState& state) { surface_.restore(state); }
   void add_earlier_analysis_step(double time, const BkCoefficients& bk) { s_matrix_.add(bk, time); }
 
+  // EnergyResolvedSites/Energies: sum every analysis step from `start` on (empty_energy_resolved_sums for a new
+  // run, the earlier segment's sums for a restart). Without this call nothing is summed and site_column never runs.
+  void start_energy_resolved(EnergyResolvedSums start) { energy_resolved_.emplace(std::move(start)); }
+  [[nodiscard]] bool sums_energy_resolved() const { return energy_resolved_.has_value(); }
+  // The sums so far (only after start_energy_resolved).
+  [[nodiscard]] const EnergyResolvedSums& energy_resolved_sums() const { return energy_resolved_.value().sums(); }
+  // The wall-clock time of the sums (column copies and accumulation), for the cost line at the end of the run.
+  [[nodiscard]] double energy_resolved_seconds() const { return energy_resolved_seconds_; }
+
   // S-matrix and probabilities from the analysis steps done so far.
   [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(); }
 
@@ -97,6 +110,10 @@ class WavePacketPropagation {
   [[nodiscard]] std::optional<std::vector<double>> report_analysis_densities(double time,
                                                                              const PropagationObserver& observer);
 
+  // Adds the analysis step ending at `time` to the energy-resolved sums, and hands the partial sums to the observer
+  // at the first step at or after partial_sums_fraction tEnd (partial_written: done in this segment).
+  void sum_energy_resolved(double time, const PropagationObserver& observer, bool& partial_written);
+
   // Declaration order = construction order (the backend references basis_ and tables_).
   const Config& config_;
   const SpatialGrids& grids_;
@@ -108,7 +125,9 @@ class WavePacketPropagation {
   AnalysisBasis analysis_basis_;
   BalintKurtiAnalyzer balint_kurti_;
   SMatrixAccumulator s_matrix_;
+  std::optional<EnergyResolvedAccumulator> energy_resolved_;  // only with EnergyResolvedSites/Energies
   double analysis_densities_seconds_ = 0.0;  // NormBudget's time (analysis_densities_seconds)
+  double energy_resolved_seconds_ = 0.0;     // the energy-resolved sums' time (energy_resolved_seconds)
 };
 
 }  // namespace spodvr

@@ -26,6 +26,7 @@ class CpuBackend final : public PropagationBackend {
   [[nodiscard]] const SpecularWave& specular() const override { return psi_.specular; }
   [[nodiscard]] std::span<const std::complex<double>> z_plane(int iz) const override;
   [[nodiscard]] std::vector<double> block_densities() const override;
+  void site_column(int ixy, std::span<std::complex<double>> out) const override;
 
  private:
   // Declaration order = construction order: the operators reference the members above them.

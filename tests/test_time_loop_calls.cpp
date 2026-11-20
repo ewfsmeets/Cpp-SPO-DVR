@@ -21,6 +21,7 @@ void expect_base_counts(const BackendCallCounts& c) {
   EXPECT_EQ(c.block_densities, small_hardwall_averages_rows);
   EXPECT_EQ(c.wave_packet_on_host, 1);
   EXPECT_EQ(c.read_wave_packet, 0);
+  EXPECT_EQ(c.site_column, 0);
 }
 
 }  // namespace
@@ -88,6 +89,24 @@ TEST(TimeLoopCalls, FrameExtrasAddNoCall) {
   EXPECT_EQ(counts.z_plane, small_hardwall_analysis_steps + json["nZ"].get<int>() * 11);
   EXPECT_EQ(counts.block_densities, small_hardwall_averages_rows);
   EXPECT_EQ(counts.wave_packet_on_host, 1);
+}
+
+// EnergyResolvedSites/Energies: one site column per site and analysis step (2 sites x 100 steps), the energies
+// summed from the same column; nothing else.
+TEST(TimeLoopCalls, EnergyResolvedSumsReadOneColumnPerSiteAndStep) {
+  TemporaryDirectory dir("time_loop_calls");
+  BackendCallCounts counts;
+  nlohmann::json json = small_hardwall_input();
+  json["PlotSites"] = {{{"name", "a"}, {"x", 0.0}, {"y", 0.0}}, {{"name", "b"}, {"x", 0.5}, {"y", 0.0}}};
+  json["EnergyResolvedSites"] = {"a", "b"};
+  json["EnergyResolvedEnergies"] = {0.3, 0.4, 0.5};
+  ASSERT_EQ(run_counted(json, dir.path(), make_cpu_backend, counts), 0);
+  EXPECT_EQ(counts.propagate_analysis_step, small_hardwall_analysis_steps);
+  EXPECT_EQ(counts.z_plane, small_hardwall_analysis_steps);
+  EXPECT_EQ(counts.block_densities, small_hardwall_averages_rows);
+  EXPECT_EQ(counts.wave_packet_on_host, 1);
+  EXPECT_EQ(counts.site_column, 2 * small_hardwall_analysis_steps);
+  EXPECT_TRUE(std::filesystem::exists(dir.path() / "energy_resolved" / "steps_summed.bin"));
 }
 
 // The Fortran checkpoint files: the wave packet on the host twice after the loop, never in it.

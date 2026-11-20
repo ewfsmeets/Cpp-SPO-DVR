@@ -44,6 +44,20 @@ std::optional<std::vector<double>> WavePacketPropagation::report_analysis_densit
   return densities;
 }
 
+void WavePacketPropagation::sum_energy_resolved(double time, const PropagationObserver& observer,
+                                                bool& partial_written) {
+  const auto start = std::chrono::steady_clock::now();
+  energy_resolved_->add(
+      time, [this](int ixy, std::span<std::complex<double>> out) { backend_->site_column(ixy, out); },
+      backend_->specular());
+  const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+  energy_resolved_seconds_ += elapsed.count();
+  if (!partial_written && time >= partial_sums_fraction * config_.input.t_end) {
+    partial_written = true;
+    if (observer.on_energy_resolved_partial) observer.on_energy_resolved_partial(energy_resolved_->sums());
+  }
+}
+
 // Fortran: Main.f90 DO propStep = nanspo, nstep, nanspo
 void WavePacketPropagation::run(const PropagationObserver& observer) {
   const InputParameters& p = config_.input;
@@ -57,6 +71,7 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
   if (observer.on_frame) observer.on_frame(t_start, *backend_, surface_.index());
 
   int analysis_count = 0;
+  bool partial_written = false;  // the energy-resolved partial sums, once per segment
   for (int step = n_per_analysis; step <= p.n_steps; step += n_per_analysis) {
     const double time = p.t_end + (step - p.n_steps) * p.time_step;
     backend_->propagate_analysis_step();
@@ -69,6 +84,7 @@ void WavePacketPropagation::run(const PropagationObserver& observer) {
         balint_kurti_.coefficients(backend_->z_plane(grids_.iz_analysis), backend_->specular(), surface_);
     s_matrix_.add(bk, time);
     if (observer.on_analysis_step) observer.on_analysis_step(time, bk);
+    if (energy_resolved_) sum_energy_resolved(time, observer, partial_written);
 
     analysis_count = analysis_count + 1;
     const std::optional<std::vector<double>> densities = report_analysis_densities(time, observer);

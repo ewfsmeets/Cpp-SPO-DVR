@@ -91,7 +91,7 @@ in a unit (`_ev`, `_amu`, `_deg`, `_rad`); `units` repeats this rule.
 | `absorbers` | `power`, and `list`: per absorber its `name` (`ZOpt`, `ROpt`, `ZSpOpt`, and `ZOptLow`, `ZSpOptLow` when on), its `grid` (scattering, specular, both), `coordinate`, `start`, `end`, effective `strength` (hartree, after the energy table) and the grid `points` inside it (`first`, `last`, 0-based) |
 | `potential` | `use_switching`, `z_min_switch`, `z_max_switch`, `impose_v_min`, `v_min`, `v_min_ev`, `impose_v_max`, `v_max`, `v_max_ev`, `use_symmetry`, `symmetry_tolerance_ev` |
 | `unit_factors` | `hartree_to_ev`, `amu_to_me`, `bohr_to_angstrom`, `hartree_to_wavenumber`: the conversion factors the program uses |
-| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`), `norm_budget` (true; only with `NormBudget`) and `frame_extras` (the names; only with `FrameExtras`) |
+| `plot_data` | only when a plot-data key is set: `write_densities`, `write_potential`, `dt_frames` (null without frames), `sites` (per site of `PlotSites` its `name`, `x`, `y` and its grid point `ix`, `iy`), `norm_budget` (true; only with `NormBudget`), `frame_extras` (the names; only with `FrameExtras`), `energy_resolved_sites` and `energy_resolved_energies_ev` (only with `EnergyResolvedSites`) |
 | `pes_cut` | only in a `write2DPES` run: `file` (`pes_cut_2d.dat`), `x`, `y` (bohr), `theta_deg`, `phi_deg`. Such a run stops before the gas phase: `initial_state` `energy` and the `analysis_energies` are null; `run_mode` stays the input's (new, restart, …) although the run does none of it |
 
 ## Data files (space-separated)
@@ -113,7 +113,8 @@ It is written only when its key is set (input_schema.md, "Plot data keys"), and 
 
 - `manifest.json`: `format_version` (1), `kind` (the directory's name), `byte_order` (`little`),
   `memory_order` (C order: the last axis fastest), `time_dependent`, `times` (file, dtype, units) and,
-  under `datasets`, per dataset its `file`, `dtype` (`<f8` double, `<i4` 32-bit integer), the `shape` of
+  under `datasets`, per dataset its `file`, `dtype` (`<f8` double, `<i4` 32-bit integer, `<c16` complex double as
+  (real, imaginary)), the `shape` of
   one record (`[]` for a scalar), `axes`, `units` and `description`; then the fields of the series (grids,
   record interval);
 - `times.bin`: the time of each record (`<f8`, atomic units);
@@ -226,6 +227,44 @@ budget's residual is attributed to it. On a 4 × 4 Dai–Light grid with JMax 2 
 a.u. with every absorber switched off (4.6e-3 at normal incidence, 4.5e-3 of residual with JMax 4), while the packet
 was at the surface; halving dtStep reduced it to 3.2e-3. The hard wall, without angular coupling, loses nothing.
 That probability counts as reaction in P_reaction = 1 − P_scattered.
+
+### `energy_resolved/` (`EnergyResolvedSites`, `EnergyResolvedEnergies`)
+
+Written in two steps, not a time series (`time_dependent` false, no `times.bin`): the partial sums at the first
+analysis step at or after 0.8 tEnd, and the final sums when the propagation ends. For each site of
+`EnergyResolvedSites` (its (x, y) grid point) and each collision energy E of `EnergyResolvedEnergies`, the time sum
+
+```text
+s(Z, r, rot; E) = Σ_t ψ_scat(Z, r, rot; t) · exp(i E_tot t) · Δt_ana
+```
+
+over the analysis steps t (their end times, as the S matrix's sums: the same phase factors and operation order;
+E_tot = E + E(vin, jin) in hartree, Δt_ana = nanspo · dtStep), and per energy the same sum σ(Z, r; E) of the
+specular wave χ. ψ is in the program's normalisation (Σ |ψ|² dZ dr dA = 1 over both grids, dA the area per (x, y)
+point), so the sums are in bohr⁻² times atomic units of time. The sum of the whole wave packet at a site is
+s + s2s·σ in the initial rotational channel (s2s: the manifest's `specular_to_scattering` of the site, the factor with
+which χ enters the scattering grid); the plot tool multiplies by the S matrix's prefactor (α/2π)^{1/4}/M · k0/√weight
+to get the stationary scattering state at energy E (tools/plots/README.md).
+
+| File | Type and shape | Meaning |
+|---|---|---|
+| `sums.bin` | `<c16` [nSites, nE, nZ, nR, nRot] | s of the whole run (a restart continues the earlier segment's) |
+| `specular_sums.bin` | `<c16` [nE, nZSp, nR] | σ of the whole run |
+| `sums_partial.bin` | `<c16` [nSites, nE, nZ, nR, nRot] | s up to `partial_time`: the change to `sums.bin` shows the effect of ending the time sums early |
+| `specular_sums_partial.bin` | `<c16` [nE, nZSp, nR] | σ up to `partial_time` |
+| `partial_time.bin` | `<f8` [] | the time of the last analysis step in the partial sums (a.u.) |
+| `last_time.bin` | `<f8` [] | the time of the last analysis step in the final sums (tEnd) |
+| `steps_summed.bin` | `<i4` [] | the analysis steps in the final sums (all segments of the run) |
+
+The manifest adds `sites` (per site `name`, `ix`, `iy`, `ixy` = iy + nY·ix and `specular_to_scattering` as
+[real, imaginary]), `collision_ev`, `total_hartree`, `analysis_time_step`, `segment_t_start`, `partial_fraction` (0.8),
+`grids` (`z_start`, `dz`, `nz`, `nz_specular`, `r_start`, `dr`, `nr`, `n_rot`) and `wave_packet` (`alpha`, `kz`, `z0`).
+A restart with the keys reads the final sums, `last_time.bin` and `steps_summed.bin` of RestartDir's
+`energy_resolved/` (a RestartDir without `energy_resolved/sums.bin` stops the run before the set-up) and continues
+them; the sites (names and grid points), energies and grids must be the same (checked before the set-up), the sums
+must end at tStart and hold as many analysis steps as the BK file read with them. The partial sums belong to
+their segment: a run split by a restart has the same final sums as the unsplit run (bitwise), but its partial sums are those of its last segment, taken at that segment's first analysis step at or after 0.8 tEnd (its first step when the segment starts later); a segment without analysis steps writes its sums as both. The sums live
+in host memory during the run (a memory-estimate item); the files hold two copies.
 
 ### `potential/` (`writePotential`)
 
