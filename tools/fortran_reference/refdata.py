@@ -313,7 +313,18 @@ EXPECTED_INSTALL = re.compile(r"# install: (\S+)")
 # The closed list of classes of the expected-differences file (README "Comparing two reference
 # trees"). The text classes nest: labels allows what volatile allows, and abs, printed_units and
 # signs_only allow what labels allows.
-CLASSES = ("identical", "volatile", "labels", "abs", "bk_scaled", "printed_units", "signs_only", "unread", "removed")
+CLASSES = (
+    "identical",
+    "volatile",
+    "labels",
+    "abs",
+    "bk_scaled",
+    "printed_units",
+    "signs_only",
+    "unread",
+    "removed",
+    "added",
+)
 TEXT_CLASSES = ("volatile", "labels", "abs", "printed_units", "signs_only")
 LIMIT_CLASSES = ("abs", "bk_scaled", "printed_units")  # their limit is a positive number
 
@@ -726,7 +737,7 @@ def file_differences(path, old, new, rule):
             diff = Differences(kind="binary", violation="binary files may only be identical")
     except FormatError as error:
         diff = Differences(kind="binary", violation=f"BK records: {error}")
-    if rule.allowed in ("identical", "removed"):
+    if rule.allowed in ("identical", "removed", "added"):
         diff.forbid("no difference is allowed")
     if rule.allowed == "unread":
         diff.violation = ""
@@ -742,7 +753,7 @@ def classify(old_root, new_root, path, rule):
             return True, "removed"
         return False, "missing in NEW; not allowed: only class removed lets a file go"
     if not old.exists():
-        return False, "added in NEW; not allowed: no class lets a file appear"
+        return added(new_root, path, rule)
     old_bytes, new_bytes = old.read_bytes(), new.read_bytes()
     if old_bytes == new_bytes:
         return True, ""
@@ -751,6 +762,33 @@ def classify(old_root, new_root, path, rule):
     resized = diff.kind != "text" and len(old_bytes) != len(new_bytes)
     sizes = f" ({len(old_bytes)} bytes became {len(new_bytes)})" if resized else ""
     return not diff.violation, diff.summary() + sizes
+
+
+def added(new_root, path, rule):
+    """(allowed, text) for a file that only NEW has: allowed under a row of class added when it is a committed
+    input of its case (is_input: inputs have no MANIFEST line) or its case's MANIFEST.tsv in NEW lists it."""
+    if rule.allowed != "added":
+        return False, "added in NEW; not allowed: only class added lets a file appear"
+    located = case_and_relative_path(path)
+    if located is None:
+        return False, "added in NEW outside a case directory; not allowed: add it to a case"
+    case_dir, relative = located
+    if is_input(relative):
+        return True, "added (input)"
+    manifest = Path(new_root) / case_dir / MANIFEST_NAME
+    if not manifest.is_file() or not any(row["path"] == relative for row in read_tsv(manifest, MANIFEST_COLUMNS)):
+        return False, "added in NEW without a line in its case's MANIFEST.tsv; generate it with its run_*.sh script"
+    return True, "added"
+
+
+def case_and_relative_path(path):
+    """(case directory, path inside it) of a path of a reference tree (relative to the repository), or None
+    when the path lies in no case directory."""
+    for tree in REFERENCE_TREES:
+        if path.startswith(tree + "/"):
+            case, _, relative = path[len(tree) + 1 :].partition("/")
+            return (f"{tree}/{case}", relative) if relative else None
+    return None
 
 
 def compare_trees(old_root, new_root, rules):

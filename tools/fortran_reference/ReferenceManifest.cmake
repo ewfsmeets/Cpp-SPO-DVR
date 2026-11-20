@@ -158,7 +158,8 @@ set(changed fortran_setup_stdout.txt)
 set(deleted debug_asyp.dat)
 file(REMOVE_RECURSE "${WORK}")
 file(COPY "${ROOT}/${case}/" DESTINATION "${WORK}/${case}")
-expect_check("${WORK}" pass "1 cases, 3 files in 1 MANIFESTs match")
+# The case's MANIFEST lists its 3 setup files and its 2 write2DPES cuts (gate 1c).
+expect_check("${WORK}" pass "1 cases, 5 files in 1 MANIFESTs match")
 
 # The first byte replaced by another one: same size, so only the hash can tell.
 file(READ "${WORK}/${case}/${changed}" first LIMIT 1)

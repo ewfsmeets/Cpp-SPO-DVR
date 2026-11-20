@@ -3,4 +3,6 @@
 path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
 debug_asyp.dat	e06cefcd38685e44daad4f97fd59619c334a2c00b31b130b394da04c848d455c	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:d5ac2064a09b,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
 fortran_setup_stdout.txt	39c7ade3590af931aeb2fc7ea7f3053f01b4007a73f9fcd0d824687995e72740	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:d5ac2064a09b,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+pes_cut_1.dat	d79664ac970d0382777674258bec3bc5f81251cd10860927cdc8ec606ec3d047	run_pes_cut_reference.sh	14351dd	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:90c74c87f408,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-19
+pes_cut_2.dat	102db89f7cbcd0ce463b120c0944444066c8bb4dc36923110bca763f08fe4a41	run_pes_cut_reference.sh	14351dd	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:1006e6ec98fb,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-19
 pes_reference.txt	d04c39a7f61e930c5c5cb7fdb899c37051cb5642816ec0d41a2aa3ed7e6edef2	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:d5ac2064a09b,dataset:5fabbf81a214	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12

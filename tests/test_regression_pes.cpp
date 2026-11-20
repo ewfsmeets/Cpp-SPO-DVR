@@ -18,9 +18,12 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,6 +31,7 @@
 #include <nlohmann/json.hpp>
 
 #include "comparison.hpp"
+#include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
@@ -37,6 +41,7 @@
 #include "input/process.hpp"
 #include "linalg/symmetric_eigensolver.hpp"
 #include "pes_gate.hpp"
+#include "potential/pes_cut.hpp"
 #include "potential/potential.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
@@ -241,6 +246,237 @@ INSTANTIATE_TEST_SUITE_P(CrpSymmetric, RegressionPes,
 // and without; gate 1b at scm_potential_tolerance.
 INSTANTIATE_TEST_SUITE_P(Scm, RegressionPes,
                          ::testing::Values("scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"));
+
+// --- Gate 1c: the write2DPES cut of the PES against the Fortran's 2dpes.dat ------------------------------
+// tools/fortran_reference/run_pes_cut_reference.sh writes pes_cut_<k>.dat for each cut k of the case's
+// pes_cuts.json, whose keys it adds to DVR.inp; here the same keys go into input.json and through the
+// program's input reader and checks. V is the PES itself in eV (no switching, no VMin/VMax), printed by the
+// Fortran as e15.8: a value passes within half a printed unit plus potential_tolerance_of(case) x
+// max(|V|, 1 eV) (a value on a rounding boundary can print either way). r and Z pass within half a printed
+// unit plus 1e-14 bohr: the Fortran's grid points are rounded from quad precision (its Z = 0 is 4.4e-16 in
+// the C++'s plain double, docs/fortran_deviations.md).
+
+namespace {
+
+constexpr double cut_grid_floor = 1e-14;  // bohr
+
+// One Fortran cut: r, Z (bohr) and V (eV) per point, in the file's order (r outer, Z inner).
+struct FortranPesCut {
+  std::vector<double> r, z, v_ev;
+};
+
+FortranPesCut read_fortran_pes_cut(const fs::path& path) {
+  std::ifstream file(path);
+  FortranPesCut cut;
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.empty() || line.starts_with("#")) continue;
+    std::istringstream fields(line);
+    double r = 0.0, z = 0.0, v = 0.0;
+    if (!(fields >> r >> z >> v)) throw std::runtime_error(path.string() + ": not 'r Z V': " + line);
+    cut.r.push_back(r);
+    cut.z.push_back(z);
+    cut.v_ev.push_back(v);
+  }
+  return cut;
+}
+
+// The cuts of a case: the objects of its pes_cuts.json.
+nlohmann::json pes_cuts(const std::string& name) {
+  std::ifstream file(case_dir(name) / "pes_cuts.json");
+  return nlohmann::json::parse(file).at("cuts");
+}
+
+// The input of cut k (from 1) of a case: its input.json with write2DPES and the cut's keys, read and checked
+// by the program's input code.
+Config cut_config(const std::string& name, int k) {
+  std::ifstream file(case_dir(name) / "input.json");
+  nlohmann::json json = nlohmann::json::parse(file);
+  json["write2DPES"] = true;
+  const nlohmann::json cut = pes_cuts(name).at(k - 1);  // a copy: the range below must not refer into a temporary
+  for (const auto& [key, value] : cut.items()) json[key] = value;
+  InputParameters input = parse_input(json);
+  resolve_repository_paths(input);
+  return build_config(input);
+}
+
+// How a C++ cut compares with a Fortran one: the largest deviation of V and of r, Z in units of its
+// tolerance (NaN if a value is NaN) and the number of points beyond the tolerance.
+struct CutComparison {
+  double worst_v = 0.0;
+  double worst_grid = 0.0;
+  int failing = 0;
+};
+
+CutComparison compare_cut(const PesCut& cpp, const FortranPesCut& fortran, double tolerance) {
+  CutComparison result;
+  const int nz = static_cast<int>(cpp.z.size());
+  for (std::size_t i = 0; i < fortran.v_ev.size(); ++i) {
+    const int ir = static_cast<int>(i) / nz;
+    const int iz = static_cast<int>(i) % nz;
+    const double v = cpp.v(ir, iz);
+    const double v_tolerance =
+        printed_half_unit(fortran.v_ev[i]) + tolerance * std::max(std::abs(fortran.v_ev[i]), 1.0);
+    const double v_ratio = std::abs(v - fortran.v_ev[i]) / v_tolerance;
+    const double r_ratio = std::abs(cpp.r[ir] - fortran.r[i]) / (printed_half_unit(fortran.r[i]) + cut_grid_floor);
+    const double z_ratio = std::abs(cpp.z[iz] - fortran.z[i]) / (printed_half_unit(fortran.z[i]) + cut_grid_floor);
+    const double grid_ratio = nan_aware_max(r_ratio, z_ratio);
+    result.worst_v = nan_aware_max(result.worst_v, v_ratio);
+    result.worst_grid = nan_aware_max(result.worst_grid, grid_ratio);
+    result.failing += (v_ratio <= 1.0 && grid_ratio <= 1.0) ? 0 : 1;
+  }
+  return result;
+}
+
+// Cut k of a case, computed by the C++ from the case's PES and grids, and read from the Fortran file.
+struct CutPair {
+  PesCut cpp;
+  FortranPesCut fortran;
+};
+
+CutPair cut_pair(const std::string& name, int k) {
+  const Calculation& c = calculation(name);
+  const Config config = cut_config(name, k);
+  return {compute_pes_cut(*c.pes, config.input, c.grids),
+          read_fortran_pes_cut(case_dir(name) / ("pes_cut_" + std::to_string(k) + ".dat"))};
+}
+
+}  // namespace
+
+class RegressionPesCut : public ::testing::TestWithParam<std::string> {};
+
+// Gate 1c: every cut of the case (the Fortran defaults x = y = 0, theta = 90, phi = 0; and an off-symmetry
+// point and orientation), every point within its tolerance. The references are required.
+TEST_P(RegressionPesCut, Gate1cPotentialCut) {
+  const std::string name = GetParam();
+  const int n_cuts = static_cast<int>(pes_cuts(name).size());
+  ASSERT_GE(n_cuts, 2);
+  for (int k = 1; k <= n_cuts; ++k) {
+    const fs::path file = case_dir(name) / ("pes_cut_" + std::to_string(k) + ".dat");
+    ASSERT_TRUE(fs::exists(file)) << file << " missing; run tools/fortran_reference/run_pes_cut_reference.sh " << name;
+    const CutPair pair = cut_pair(name, k);
+    ASSERT_EQ(pair.fortran.v_ev.size(), pair.cpp.v_ev.size()) << "cut " << k;
+    const CutComparison result = compare_cut(pair.cpp, pair.fortran, potential_tolerance_of(name));
+    EXPECT_EQ(result.failing, 0) << "cut " << k;
+    EXPECT_LE(result.worst_v, 1.0) << "cut " << k;
+    EXPECT_LE(result.worst_grid, 1.0) << "cut " << k;
+    std::cout << "  " << name << " cut " << k << ": " << pair.cpp.v_ev.size() << " points, worst V " << result.worst_v
+              << ", worst r/Z " << result.worst_grid << " of the tolerance\n";
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(Cases, RegressionPesCut,
+                         ::testing::Values("hardwall_small", "cu111_dailight_small", "cu111_persson_small",
+                                           "crp_cu111_srp48_small", "scm_cu111_srp48_small"));
+
+namespace {
+
+// Whether V (hartree) is the VMin or VMax clamp of a case.
+bool clamped(const Config& config, double v_hartree) {
+  return (config.input.impose_v_min && v_hartree <= config.derived.v_min) ||
+         (config.input.impose_v_max && v_hartree >= config.derived.v_max);
+}
+
+// A cut (eV) against the potential grid at (itp, ixy) (hartree), at the points of Z <= ZminSwitch (not
+// switched) where the cut is not clamped: the number of points compared and of those beyond
+// tolerance x max(|V|, 1 eV).
+struct GridComparison {
+  int compared = 0;
+  int failing = 0;
+};
+
+GridComparison compare_cut_with_grid(const Calculation& c, const PesCut& cut, std::size_t itp, int ixy,
+                                     double tolerance) {
+  const double ev2au = units::legacy.ev_to_hartree(1.0);  // as compute_potential_grid converts
+  const int nr = c.grids.r.size();
+  GridComparison result;
+  for (int iz = 0; iz < c.grids.nz_potential; ++iz) {
+    if (!fortran_compare::rle(c.grids.z_scattering[iz], c.config.input.z_min_switch)) continue;
+    for (int ir = 0; ir < nr; ++ir) {
+      const double v_hartree = cut.v(ir, iz) * ev2au;
+      if (clamped(c.config, v_hartree)) continue;
+      const double grid = c.potential(itp, static_cast<std::size_t>(ixy), static_cast<std::size_t>(ir + nr * iz));
+      const double allowed = tolerance * std::max(std::abs(cut.v(ir, iz)), 1.0) * ev2au;
+      ++result.compared;
+      result.failing += (std::abs(v_hartree - grid) <= allowed) ? 0 : 1;
+    }
+  }
+  return result;
+}
+
+}  // namespace
+
+// Negative tests of gate 1c on the Dai-Light cut 2: one Fortran value moved by one printed unit away from the
+// C++ value fails at exactly that point; a NaN in the C++ cut fails at exactly that point and makes the worst
+// deviation NaN.
+TEST(RegressionPesCutChecks, OnePrintedUnitOrNaNFails) {
+  const std::string name = "cu111_dailight_small";
+  CutPair pair = cut_pair(name, 2);
+  ASSERT_EQ(compare_cut(pair.cpp, pair.fortran, potential_tolerance_of(name)).failing, 0);
+  const std::size_t i = pair.fortran.v_ev.size() / 2;
+  const double unit = 2.0 * printed_half_unit(pair.fortran.v_ev[i]) / 1.01;
+  const int nz = static_cast<int>(pair.cpp.z.size());
+  const double cpp_value = pair.cpp.v(static_cast<int>(i) / nz, static_cast<int>(i) % nz);
+  FortranPesCut moved = pair.fortran;
+  moved.v_ev[i] += (cpp_value >= moved.v_ev[i] ? -1.0 : 1.0) * unit;
+  EXPECT_EQ(compare_cut(pair.cpp, moved, potential_tolerance_of(name)).failing, 1);
+  pair.cpp.v_ev[i] = std::numeric_limits<double>::quiet_NaN();
+  const CutComparison with_nan = compare_cut(pair.cpp, pair.fortran, potential_tolerance_of(name));
+  EXPECT_EQ(with_nan.failing, 1);
+  EXPECT_TRUE(std::isnan(with_nan.worst_v));
+}
+
+// The cut against the potential the propagation uses (C++ only, not part of the Fortran gate): on the
+// Dai-Light case, a cut at a grid point (x, y) and a DVR node (theta, phi), given in degrees, equals the
+// PotentialGrid there at every point that is neither switched (Z > ZminSwitch) nor clamped, to
+// potential_tolerance x max(|V|, 1 eV). Negative test: x and y swapped (the grid is 8 x 8) fails at exactly
+// the points where the grid's V at (iy, ix) differs from V at (ix, iy) by more than the tolerance.
+TEST(RegressionPesCutChecks, CutAtANodeEqualsThePotentialGrid) {
+  const std::string name = "cu111_dailight_small";
+  const Calculation& c = calculation(name);
+  const int ix = 1, iy = 2, itheta = 1, iphi = 3;
+  const int ny = c.grids.y.size();
+  ASSERT_EQ(c.grids.x.size(), ny);
+  const std::size_t itp = iphi + c.angular.n_phi() * itheta;
+  const int ixy = iy + ny * ix;
+  const double tolerance = potential_tolerance_of(name);
+  Config config = cut_config(name, 1);
+  config.input.theta_2d_pes = rad_to_deg(c.angular.thetas()[itheta]);
+  config.input.phi_2d_pes = rad_to_deg(c.angular.phis()[iphi]);
+  config.input.x_2d_pes = c.grids.x[ix];
+  config.input.y_2d_pes = c.grids.y[iy];
+  const GridComparison at_node =
+      compare_cut_with_grid(c, compute_pes_cut(*c.pes, config.input, c.grids), itp, ixy, tolerance);
+  EXPECT_GT(at_node.compared, 1000);
+  EXPECT_EQ(at_node.failing, 0);
+
+  // The slip: the cut at (x, y) = (y[iy], x[ix]), i.e. the grid's (iy, ix), compared with the grid at (ix, iy).
+  config.input.x_2d_pes = c.grids.y[iy];
+  config.input.y_2d_pes = c.grids.x[ix];
+  const PesCut swapped_cut = compute_pes_cut(*c.pes, config.input, c.grids);
+  const GridComparison swapped = compare_cut_with_grid(c, swapped_cut, itp, ixy, tolerance);
+  // The expected failures: the points where the grid itself differs between (iy, ix) and (ix, iy).
+  const GridComparison grid_swap = compare_cut_with_grid(c, swapped_cut, itp, ix + ny * iy, tolerance);
+  EXPECT_EQ(grid_swap.failing, 0);  // the swapped cut is the grid at (iy, ix)
+  int differing = 0;
+  const double ev2au = units::legacy.ev_to_hartree(1.0);
+  const int nr = c.grids.r.size();
+  for (int iz = 0; iz < c.grids.nz_potential; ++iz) {
+    if (!fortran_compare::rle(c.grids.z_scattering[iz], c.config.input.z_min_switch)) continue;
+    for (int ir = 0; ir < nr; ++ir) {
+      const std::size_t izr = static_cast<std::size_t>(ir + nr * iz);
+      if (clamped(c.config, swapped_cut.v(ir, iz) * ev2au)) continue;
+      const double here = c.potential(itp, static_cast<std::size_t>(ixy), izr);
+      const double there = c.potential(itp, static_cast<std::size_t>(ix + ny * iy), izr);
+      const double allowed = tolerance * std::max(std::abs(swapped_cut.v(ir, iz)), 1.0) * ev2au;
+      differing += (std::abs(there - here) <= allowed) ? 0 : 1;
+    }
+  }
+  EXPECT_GT(differing, 0);
+  EXPECT_EQ(swapped.failing, differing);
+  std::cout << "  cut at a node vs the potential grid: " << at_node.compared << " points, " << at_node.failing
+            << " failing; x and y swapped: " << swapped.failing << " failing\n";
+}
 
 // --- The SCM cases: the worst point of gate 1b at 1e-12, and that the gate still fails on small errors -
 // The two terms are checked separately where both programs evaluate them at the same points (the

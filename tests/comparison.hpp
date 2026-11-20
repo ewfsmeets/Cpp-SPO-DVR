@@ -15,4 +15,13 @@ inline double nan_aware_max(double a, double b) {
   return std::max(a, b);
 }
 
+// Half a unit in the last printed digit of a value the Fortran prints as E15.8 (a mantissa
+// 0.dddddddd): a C++ value agrees to all printed digits when |c - f| <= this. The 1% margin covers
+// the decimal conversion of the printed value.
+inline double printed_half_unit(double fortran_value) {
+  if (fortran_value == 0.0) return 0.5e-8 * 1e-99;
+  const double exponent = std::floor(std::log10(std::abs(fortran_value))) + 1.0;
+  return 1.01 * 0.5 * std::pow(10.0, exponent - 8.0);
+}
+
 }  // namespace spodvr::testing

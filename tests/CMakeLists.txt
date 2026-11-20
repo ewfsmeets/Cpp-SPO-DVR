@@ -191,6 +191,8 @@ add_pytest_test(NAME FortranReference.CompareNumberCountChangeFails TOOL tools/f
                 SELECT test_refdata.py::test_number_count)
 add_pytest_test(NAME FortranReference.CompareProvenanceFaultsFail TOOL tools/fortran_reference
                 SELECT test_refdata.py::test_provenance)
+add_pytest_test(NAME FortranReference.CompareAddedFileWithoutManifestFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_added_file)
 add_pytest_test(NAME FortranReference.CompareOtherInstallFails TOOL tools/fortran_reference
                 SELECT test_refdata.py::test_install_mismatch)
 add_pytest_test(NAME FortranReference.CompareFineLineWithoutBkInputFails TOOL tools/fortran_reference

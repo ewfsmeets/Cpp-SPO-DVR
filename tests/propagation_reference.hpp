@@ -35,15 +35,6 @@
 
 namespace spodvr::testing {
 
-// The Fortran prints these values as E15.8, i.e. a mantissa 0.dddddddd: the C++ value must
-// agree to all printed digits, |c - f| <= half a unit in the 8th mantissa digit (the 1% margin
-// covers the decimal conversion of the printed value).
-inline double printed_half_unit(double fortran_value) {
-  if (fortran_value == 0.0) return 0.5e-8 * 1e-99;
-  const double exponent = std::floor(std::log10(std::abs(fortran_value))) + 1.0;
-  return 1.01 * 0.5 * std::pow(10.0, exponent - 8.0);
-}
-
 #define EXPECT_PRINTED_EQ(cpp_value, fortran_value) \
   EXPECT_LE(std::abs((cpp_value) - (fortran_value)), printed_half_unit(fortran_value))
 

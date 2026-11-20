@@ -80,7 +80,10 @@ derived from exactly the same parameters.
    ROVIBRATIONAL ASYMPTOTIC POTENTIAL"). Gate 1b: the 6D potential (hartree, before the −dt
    premultiplication) against the Fortran's `.pes` file (`pes_reference.txt`: V(Z, r) for the hard
    wall, which depends on nothing else; a subsample of the 6D grid for the other cases), and the
-   angular grid.
+   angular grid. Gate 1c (`RegressionPesCut`, in `tests/test_regression_pes.cpp`): the write2DPES cut,
+   V(r, Z) of the PES itself (eV, no switching, no VMin/VMax) at a fixed x, y, θ, φ over every r and
+   scattering-grid Z point, against the Fortran's 2dpes.dat (`pes_cut_<k>.dat`,
+   `run_pes_cut_reference.sh`), for each cut of the case's `pes_cuts.json`.
    - Hard wall: V(r) at Z = zasymp = 7.0 (r = 0.8 … 9.05, 56 points) reproduced to ~1e-14 relative
      (full 6D potential ~1e-13, see the quad-precision sites in fortran_deviations.md). Sanity:
      V(r = 1.4) = 0 exactly. With GCC 15 and plain `-ffast-math` the fast-math builds
@@ -117,6 +120,17 @@ derived from exactly the same parameters.
      quad-rounded) moves by −1.42e-12 eV (unscaled: 7.5e-13, −7.50e-13 eV). Small errors fail
      (`RegressionPesScmNegative`): P17/P18 read as Å at 35244 points, θ, φ swapped once at 39499,
      1.01× the tolerance at the largest |V| there only; 0.99× at the worst point passes.
+   - Gate 1c on hardwall_small, cu111_dailight_small, cu111_persson_small, crp_cu111_srp48_small and
+     scm_cu111_srp48_small, two cuts each (the Fortran defaults x = y = 0, θ = 90°, φ = 0; and
+     x ≈ 0.3 alat, y ≈ 0.1 blat, θ = 37°, φ = 113°), 5280–9856 points per cut: every V within half a
+     printed unit of the e15.8 value plus `potential_tolerance_of(case)` × max(|V|, 1 eV) (the printed
+     half unit binds: the worst points are at 0.989–0.990 of the tolerance, i.e. the C++ agrees with all
+     8 printed digits); r and Z within half a printed unit plus 1e-14 bohr (the Fortran's Z = 0 is
+     4.4e-16 in the C++). Measured 2026-11-20. Negative tests (`RegressionPesCutChecks`): one Fortran
+     value moved by one printed unit away from the C++ value fails at exactly that point, a NaN at exactly
+     that point. A C++-only cross-check: a cut at a grid point and a DVR node (in degrees) equals the
+     potential grid of cu111_dailight_small at its 5656 points with Z ≤ ZminSwitch within 1e-13 of
+     max(|V|, 1 eV), and x and y swapped fails at exactly the points where the grid differs.
 2. **Gas-phase rovibrational states** (same tests; Fortran `GasPhase.f90` / `FourierGridHamiltonian.f90`): the
    energy and wave function of every (v, j) level against the Fortran's full-precision dump
    `debug_asyp.dat` (`run_setup_reference.sh` sets `DoDump`): the analysed levels to 1e-12 relative

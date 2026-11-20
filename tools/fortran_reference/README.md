@@ -242,7 +242,7 @@ python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected FILE
 main checkout), `NEW` with regenerated ones (e.g. a worktree after `regenerate_all.sh`). It
 classifies each file by the row of the expected-differences file whose glob matches its path (a file
 that two rows match is refused); a file that no row matches must be byte-identical, and a file added
-in `NEW` always fails. It prints one line per file that is not identical (`ok` or `FAIL`, the class,
+in `NEW` fails unless a row of class `added` matches it (and, for a generated file, NEW's MANIFEST lists it). It prints one line per file that is not identical (`ok` or `FAIL`, the class,
 what differs: lines, numbers, the largest absolute difference and printed units, a changed line
 count, or for BK files the fraction of the gate-4 scale), a note for each row that matches no file,
 and a summary. Exit status 0 only if every difference is allowed; it takes 4–7 s on the full trees
@@ -272,6 +272,7 @@ list:
 | `bk_scaled` | BK coefficients (`fortran_fort21.bin`): identical header records, every coefficient within `limit` times the gate-4 scale of `OLD` (its largest coefficient modulus, at least 1e-4) | fraction of the scale |
 | `unread` | Any change of content (no test reads the file; the line still reports what changed, e.g. the line count of an emptied file); it must exist in both trees | `-` |
 | `removed` | The file may be missing from `NEW` (if present, it must be identical) | `-` |
+| `added` | The file may be missing from `OLD` when it is a committed input of its case (`DVR.inp`, `input.json`, `pes_cuts.json`, …: inputs have no MANIFEST line) or its case's `MANIFEST.tsv` in `NEW` lists it (if present in both, it must be identical): the data of a new gate. The MANIFEST line is required even with `--no-provenance` | `-` |
 
 Text files are compared line by line, after the volatile lines are dropped and (for every class
 but `volatile`) the whitelisted label lines are put in one form. A number may move inside its

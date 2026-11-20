@@ -9,8 +9,11 @@ program and checks its exit status and the FAIL line it prints:
                              switch)
   test_allowed               every class of r1713.tsv at work (labels, a sign change of Im S and of
                              the phase with the one-digit rounding, BK coefficients within the
-                             limit, tiny stdout probabilities, unread, removed), with complete
+                             limit, tiny stdout probabilities, unread, removed, added), with complete
                              MANIFESTs: passes
+  test_added_file            a file of class added without its MANIFEST line, a new file no added
+                             row matches (even with a MANIFEST line), a file of class added present
+                             in both trees but changed: fails (each)
   test_edited_number         one number of a stdout of class labels edited: fails
   test_deleted_file          a reference file missing from NEW: fails
   test_unknown_label         a stdout label changed that is not on the whitelist: fails
@@ -106,6 +109,8 @@ STDOUT_524 = """\
  CPU TIMES
  Total computation                         151.6756 (a)
 """
+# A write2DPES cut (pes_cut_<k>.dat, gate 1c): new in NEW, class added.
+PES_CUT = "#u=         0.0000000000  v=         0.0000000000 theta=         1.5707963268 phi=         0.0000000000\n"
 # A fine-analysis fort.25 before and after the r1713 fix: Im S (number 4) and the phase (6) change
 # sign, and the second phase also rounds differently in its last digit (as measured on 5.24).
 FORT25_519 = """\
@@ -170,6 +175,8 @@ def new_files():
             f"{DAILIGHT_SHORT}/fortran_stdout.txt": STDOUT_524.format(probability="0.11000000E-20"),
             f"{DAILIGHT_SMALL}/fortran_fort21.bin": changed_bk_file(1, 0.1, -0.2 + 1e-13),
             f"{DAILIGHT_SMALL}/fine_full/fort.25": FORT25_524,
+            f"{HARDWALL}/pes_cut_1.dat": PES_CUT,
+            f"{HARDWALL}/pes_cuts.json": '{"cuts": [{}]}\n',
         }
     )
     del files[f"{KERNELS}/VERSIONS"]
@@ -215,7 +222,7 @@ def record_manifests(work, new, install_id, fine_input=True):
     fort22 = work / "fort.22"
     shutil.copy(new / DAILIGHT_SMALL / "fortran_fort21.bin", fort22)
     calls = [
-        (HARDWALL, ["fortran_stdout.txt", "fortran_averages.out", "fortran_fort25.txt"], []),
+        (HARDWALL, ["fortran_stdout.txt", "fortran_averages.out", "fortran_fort25.txt", "pes_cut_1.dat"], []),
         (DAILIGHT_SHORT, ["fortran_stdout.txt"], []),
         (DAILIGHT_SMALL, ["fortran_fort21.bin"], []),
         (DAILIGHT_SMALL, ["fine_full/fort.25"], ["--input", fort22] if fine_input else []),
@@ -441,9 +448,28 @@ def test_allowed(work):
     old, new = make_trees(work, INSTALL_ID)
     status, output = compare(old, new)
     expect_pass(status, output)
-    for allowed in ("labels", "abs", "signs_only", "bk_scaled", "unread", "removed"):
+    for allowed in ("labels", "abs", "signs_only", "bk_scaled", "unread", "removed", "added"):
         if not re.search(rf"^  ok    {allowed} ", output, re.MULTILINE):
             pytest.fail(f"no file of class {allowed} was compared:\n{output}")
+
+
+def test_added_file(work):
+    """A file of class added (a pes_cut file) without its MANIFEST line fails; a new file that no added row
+    matches fails even with its MANIFEST line; a file of class added in both trees fails when it changed."""
+    old, new = make_trees(work, INSTALL_ID)
+    manifest = new / HARDWALL / "MANIFEST.tsv"
+    lines = manifest.read_text(encoding="utf-8").splitlines(keepends=True)
+    manifest.write_text("".join(line for line in lines if not line.startswith("pes_cut_1.dat\t")), encoding="utf-8")
+    expect_failure(
+        *compare(old, new, "--no-provenance"), r"added .*hardwall_small/pes_cut_1.dat: added in NEW without a line"
+    )
+    old, new = make_trees(work, INSTALL_ID)
+    (new / HARDWALL / "pes_cut_1.dat").rename(new / HARDWALL / "pes_slice_1.dat")
+    edit(new, f"{HARDWALL}/MANIFEST.tsv", "pes_cut_1.dat\t", "pes_slice_1.dat\t")
+    expect_failure(*compare(old, new, "--no-provenance"), r"pes_slice_1.dat: added in NEW; not allowed")
+    old, new = make_trees(work, INSTALL_ID)
+    write_tree(old, {f"{HARDWALL}/pes_cut_1.dat": PES_CUT.replace("1.5707963268", "1.5707963267")})
+    expect_failure(*compare(old, new, "--no-provenance"), r"added .*hardwall_small/pes_cut_1.dat")
 
 
 def test_install_mismatch(work):
