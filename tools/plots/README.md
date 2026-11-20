@@ -32,10 +32,11 @@ maps: the nearest grid point; default the lowest barrier's).
   Segments that do not join (one does not start where another ended) are refused; a segment whose
   RestartDir names another directory gives a `warning:`. The last segment alone also works: its
   bk_coefficients.bin holds the whole run, its averages.dat only that segment.
-- Each figure is written as `DIR/<name>.png` (no metadata: reproducible bytes) and `DIR/<name>.pdf`, a movie
-  as `DIR/<name>.gif` (GitHub plays it inline) and a PNG of its last frame. The report
-  opens with the verdict, then shows every figure whose files the run has, each with its title and what good
-  looks like (`explanations.py`), and lists the figures it could not draw and why.
+- Each figure is written as `DIR/<stem>.png` (no metadata: reproducible bytes) and `DIR/<stem>.pdf`, a movie
+  as `DIR/<stem>.gif` (GitHub plays it inline) and a PNG of its still (the last frame unless the movie names
+  another); a stem starts with its entry's name (`frame_movie_site1`: one movie per site). The report opens
+  with the verdict, then shows every figure whose files the run has, each with its title and what good looks
+  like (`explanations.py`), and lists the figures it could not draw and why.
 - `plot` and `report` write only into `--out`, and there replace only files the tool wrote before (listed in
   `DIR/written_by_spodvr_plot.json`): any other file of the same name stops them before they write anything.
 - Runs made before spodvr wrote `run_info.json` are refused.
@@ -61,6 +62,10 @@ is a bug of the tool.
 | `potential_maps` | over the unit cell: the minimax barrier of each (x, y) point; V_min (V minimised over the DVR nodes) at the lowest barrier's (Z, r) or `--z`, `--r`; V_min at that Z and the gas-phase bond length; the sites and the lowest barrier's point marked | potential/ (`writePotential`), asymptotic_potential.dat |
 | `elbows` | V_min(Z, r) at the first four sites (or the lowest barrier's point) with the minimax barrier at the run's nodes and a path to it (or "no saddle"); V at the barrier's node with its own barrier | potential/, asymptotic_potential.dat |
 | `orientation` | V at every DVR node (θ, φ), as a map, at the barrier point of the site with the lowest barrier | potential/ with `PlotSites`, asymptotic_potential.dat |
+| `frame_movie` | a movie per site (or the cell's origin): ρ(Z, r) of the whole packet ψ_full at that (x, y) point, with V_min's contours when potential/ exists; its PNG is the frame when most of the packet is below zasymp | frames/ (`dtFrames`) |
+| `xy_maps` | the probability over the unit cell below zasymp when most of the packet is there, and inside the r absorber (below zasymp, r ≥ r_c) when the most is there | frames/ |
+| `rotational_states` | P(J, mJ; Z) when most of the packet is below zasymp, and the J populations against time (χ beyond the scattering grid in the initial J) | frames/ |
+| `basis_edges` | left the probability at the top J and the top \|mJ\| (when below the top J); right how much the first and last r points (both grids) and the first Z points gain above the first frame, against the verdict's limit | frames/ |
 | `pes_cut` | V(Z, r) of the PES itself (no switching, no VMin/VMax) at the fixed x, y, θ, φ of a `write2DPES` run, with its minimax barrier | pes_cut_2d.dat, asymptotic_potential.dat |
 | `bk` | \|c(t)\|² of the strongest channels; how far P_scattered(E) is from its final value if the time sums stopped at t | bk_coefficients.bin (one record at least) |
 
@@ -82,6 +87,8 @@ judgement); `verdict.py` reads the run's files for them.
 | P_scattered still moving | warning | P_scattered changed by more than max(1e-3 P_s, 1e-4) over the last 10 % of the run at some energy: the check per energy |
 | unitarity error | warning | P_reaction below −1e-4 |
 | flux at the edge of the basis | warning | more than 1e-3 of P_scattered in j′ = JMax, or in the outermost analysed diffraction channels (s_matrix.tsv) |
+| packet at the edge of the basis: a grid edge | warning | in some frame (frames/), more than 1e-6 of the initial norm beyond the first frame's at the first or last 2 r points (both grids) or the first 2 Z points (the FFT wraps the packet around) |
+| packet at the edge of the basis: top J or \|mJ\| | information | in some frame, more than 1e-6 of the initial norm in the top J, or in the top \|mJ\| when it is below the top J: normal while the packet is at the surface; the j′ check of the S matrix decides whether the basis is large enough |
 | gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat) |
 | slowest converged energy | warning above 1e-3, else information | E_n,min of inputs/README.md section 8 (Z_turn 2 bohr), and the probability already in the channels that leave with a normal energy below it |
 | norm left | information, always | the norm at tEnd: it includes flux already analysed but not yet absorbed, and bounds only the error averaged over the packet's spectrum |
@@ -114,6 +121,7 @@ flowchart LR
 | `readers/fine_analysis.py` | fine_analysis/grid.json (its tables are read by `readers/tables.py`) | `src/report/fine_analysis_report.cpp` |
 | `readers/arrays.py` | series directories (densities/): the manifest, the complete records (memory-mapped), the first non-finite record; array directories written once (potential/) | `src/io/series_writer.cpp` |
 | `readers/potential.py` | potential/: V_min and its orientation, V at the sites, the grids, nodes and limits; the datasets' axes and shapes checked | `src/report/potential_files.cpp` |
+| `readers/frames.py` | frames/: the joined records, the grids, the rotational states and the sites | `src/report/frame_files.cpp` |
 | `readers/pes_cut.py` | pes_cut_2d.dat (`write2DPES`): V(Z, r) of the cut, its grids, position and orientation; whole r blocks checked | `src/report/pes_cut_file.cpp` |
 | `readers/sites.py` | the sites of PlotSites as the plot data record them (fractions, grid point, the ixy check) | `src/input/validate_outputs.cpp` |
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
@@ -126,6 +134,7 @@ flowchart LR
 | `compute/time_series.py` | BK coefficients per channel, P_scattered when the time sums stop at t, time delays | — |
 | `compute/gas_phase.py` | the levels and which are bound | — |
 | `compute/potential.py` | energies relative to the gas-phase minimum, the minimax barrier on V(Z, r) (at one and at every (x, y) point), the points the figures show, the DVR nodes' cells | — |
+| `compute/frames.py` | from frames/ (read through `usable_frames`, which drops the records from the first NaN or inf on): ρ(Z, r) at a grid point and V_min's contours there, the probability over the cell in a (Z, r) window, J populations, the shares at the basis edges and the grid edges' rises | — |
 | `compute/series.py` | any series: the records before a NaN or inf (with a note), records evenly spaced for a movie | — |
 | `compute/densities.py` | from densities/: both waves summed, Z and r profiles, the norm per region and inside each absorber, the specular line, the marks of a map | — |
 | `compute/diagnostics.py` | the verdict's findings and their thresholds | — |
@@ -156,6 +165,8 @@ To change… edit:
   dimensionless); unit factors from `RunInfo`, never module constants.
 - Readers, `copies/` and `compute/` never print or draw; panels never compute; figures are
   `matplotlib.figure.Figure` objects (no pyplot). These are kept by review.
+- Dataclasses are `@dataclass(frozen=True, kw_only=True)`: immutable (a changed copy through
+  `dataclasses.replace`) and built with keywords; older ones follow when a change touches them.
 - `tests/test_structure.py` checks: the layers; numpy only in layers 0–2 and matplotlib from layer 3 up (no
   other third-party package); functions of at most 40 code lines (except in `copies/`); a docstring on nested
   functions too; decorators only `@dataclass`, `@pytest.fixture` and `@pytest.mark.parametrize`; no classes
@@ -197,11 +208,12 @@ def figure_averages(runs: list[Path], info: RunInfo, options: argparse.Namespace
 
 and in `PLOTS`: `("averages", figure_averages, ["averages.dat"])`, the files it needs in the run directory.
 
-A movie returns `Movie(fig, update, n_frames)` (`style.py`) instead of a figure. `update(k)`, a function nested
+A movie returns `Movie(fig=fig, update=update, n_frames=n)` (`style.py`) instead of a figure. `update(k)`, a function nested
 in the figure function, clears the axes, calls the same `draw_<panel>` for frame k and sets the time in the
 info box; the colour scale is fixed for all frames before the first, and `update` must not change what the
 layout depends on (axes, colour bars), because `save_movie` fixes the layout after the first frame.
-`figure_density_movie` is the example; the report saves a movie as a GIF and a PNG of its last frame.
+`figure_density_movie` is the example; the report saves a movie as a GIF and a PNG of its still, the last frame
+unless `still=k` names another (`figure_frame_movie`: the frame when most of the packet is below zasymp).
 
 ## Tests
 
@@ -229,7 +241,11 @@ segments must join to the unsplit run bitwise (`tests/test_runs_densities.py`). 
 the minimum of each site's values over the nodes and the stored node's value (bitwise), and the hard wall's V equal
 to its formula, computed in numpy, within 1e-15 of d + V_z (`tests/test_runs_potential.py`). The write2DPES cut,
 taken at a site and a DVR node, must equal that site's V in potential/ where neither switching nor a clamp changed
-it (`tests/test_runs_pes_cut.py`).
+it (`tests/test_runs_pes_cut.py`). frames/ must sum to the norm, give the densities' (Z, r) cells summed over (x, y)
+and the cells' sums per Z summed over the rotational states (1e-13), equal ψ_full rebuilt in numpy from
+`checkpoint.bin` with s2s from its Cartesian formula (1e-12, at the end and mid-run; with conj(s2s) it fails where
+the cross terms matter), and a split run's frames must join to the unsplit run's bitwise
+(`tests/test_runs_frames.py`).
 
 ## Limits
 
@@ -241,8 +257,9 @@ it (`tests/test_runs_pes_cut.py`).
   PES's own barrier can be lower when the best orientation lies between nodes. The barrier search is plain
   Python: on a 16 x 16 (x, y) grid of 160 x 64 (Z, r) points the barrier map takes up to about 5 s (measured with
   every point explored).
-- Only what the run's files hold: the wave packet is seen through its (Z, r) density (`writeDensities`); its
-  structure in x, y and the angles is not plotted yet.
+- Only what the run's files hold: the wave packet is seen through its (Z, r) density (`writeDensities`) and its
+  frames (`dtFrames`: over (x, y) and the rotational states); its angular distribution, diffraction orders and
+  vibrational states are not plotted yet.
 - The fine analysis is compared with the on-the-fly results of the same run; an `onlyAnalysis` run (its
   results only in `fine_analysis/`) is not plotted yet.
 - Time delays are in atomic units of time, like every time axis of the tool (1 a.u. = 0.0242 fs).

@@ -8,6 +8,7 @@ import numpy as np
 
 from compute.frames import (
     EDGE_POINTS,
+    MAX_FRAME_SITES,
     EdgeSeries,
     edge_shares,
     grid_edge_rises,
@@ -19,8 +20,10 @@ from compute.frames import (
     xy_probability,
     zr_probability_at,
 )
+from figures import FramePoint, frame_points
 from readers.arrays import Series
 from readers.frames import Frames
+from readers.sites import Site
 
 
 def synthetic_frames() -> Frames:
@@ -49,6 +52,17 @@ def synthetic_frames() -> Frames:
         sites=[],
         starts_au=[0.0],
     )
+
+
+def test_frame_points_are_the_sites_or_the_origin() -> None:
+    """The frame movies show the first MAX_FRAME_SITES sites, their stems numbered (a name may hold any character),
+    or, without sites, the cell's origin."""
+    frames = synthetic_frames()
+    assert frame_points(frames) == [FramePoint(stem="frame_movie_origin", name="the cell's origin", ix=0, iy=0)]
+    sites = [Site(f"site/{k}", 0.0, 0.0, k % 2, 0) for k in range(MAX_FRAME_SITES + 1)]
+    points = frame_points(replace(frames, sites=sites))
+    assert [point.stem for point in points] == [f"frame_movie_site{k + 1}" for k in range(MAX_FRAME_SITES)]
+    assert points[1] == FramePoint(stem="frame_movie_site2", name="site/1", ix=1, iy=0)
 
 
 def test_windows_and_points() -> None:

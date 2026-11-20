@@ -2,7 +2,9 @@
 title (the report's heading) and the explanation the report prints under the figure. tests/test_runs_figures.py
 checks that every PLOTS entry has both and that every text has an entry."""
 
-from compute.potential import CONTOUR_LINE_EVERY, CONTOUR_STEP_EV, ENERGY_CAP_EV, MAX_ELBOW_SITES
+from compute.diagnostics import EDGE_LIMIT, FRAME_EDGE_LIMIT
+from compute.frames import EDGE_POINTS, MAX_FRAME_SITES
+from compute.potential import CONTOUR_LINE_EVERY, CONTOUR_STEP_EV, ENERGY_CAP_EV, FRAME_CONTOUR_STEP_EV, MAX_ELBOW_SITES
 
 TITLES = {
     "verdict": "Verdict",
@@ -20,6 +22,10 @@ TITLES = {
     "elbows": "Elbow plots and the minimax barrier",
     "orientation": "The potential against the orientation",
     "pes_cut": "A 2D cut of the PES (write2DPES)",
+    "frame_movie": "The packet over (Z, r) above a site",
+    "xy_maps": "The packet over the unit cell",
+    "rotational_states": "Rotational states over Z and in time",
+    "basis_edges": "The packet at the edges of the basis",
     "bk": "Balint-Kurti coefficients and convergence in time",
 }
 
@@ -154,5 +160,41 @@ FIGURES = {
         "UseSwitching is ZmaxSwitch); the raw PES far out need not reach it, which offsets every height and can "
         f"turn a small barrier into none. Filled contours every {CONTOUR_STEP_EV:g} eV, hatched: more than "
         f"{ENERGY_CAP_EV:g} eV above it."
+    ),
+    "frame_movie": (
+        f"A movie per site of PlotSites (the first {MAX_FRAME_SITES}; without sites, the cell's origin): rho(Z, r) at "
+        "that (x, y) grid point (bohr^-4) of the whole wave packet psi_full = psi_scat + s2s chi (chi: the incoming "
+        "and specularly reflected initial channel) summed over the rotational states, from frames/ (dtFrames), on one "
+        f"log colour scale for all frames. With potential/ (writePotential), V_min's contours at that point every "
+        f"{FRAME_CONTOUR_STEP_EV:g} eV relative to min V_asy (the 0 eV line labelled; they end at zasymp, marked): "
+        "where the packet goes against the potential it meets. The still image is the frame when most of the packet "
+        "is below zasymp. It shows the scattering grid only (Z up to its end); the specular wave beyond it is in the "
+        "densities movie."
+    ),
+    "xy_maps": (
+        "The probability over the unit cell per area (bohr^-2; the first lattice vector along X): left, below zasymp "
+        "at the frame when most of the packet is there (where it meets the surface); right, below zasymp and inside "
+        "the r absorber (r >= r_c = ROptStart) at the frame when the most probability is there, with that "
+        "probability in the title: where over the cell the molecule stretches into the absorber. It is a density at "
+        "that time, not a reaction probability (the absorber removes the flux it receives; the S matrix gives "
+        "P_reaction). Values below 1e-08 of the left map's largest (the colour maps' floor) are not drawn."
+    ),
+    "rotational_states": (
+        "Left: the probability of each rotational state (J, mJ) of the basis over Z (per Z grid point) at the frame "
+        "when most of the packet is below zasymp, the states sorted by J, then mJ; right: the probability of each J "
+        "on the grids against time (summed over mJ and Z, chi beyond the scattering grid included in the initial J; "
+        "what the absorbers took is gone). Below zasymp J is a label of the basis states in which the packet is "
+        "expanded; only beyond zasymp are these the rotational-state probabilities of the free molecule."
+    ),
+    "basis_edges": (
+        "Does the basis hold the wave? Against time, relative to the initial norm. Left, the edges of the rotational "
+        "basis: the top J and, when it is below the top J, the top |mJ|. Populated while the molecule is at the "
+        "surface, where J only labels the basis states, they are normal (the verdict notes them as information); "
+        f"whether the basis is large enough is decided by the S matrix's edge check (more than {EDGE_LIMIT:g} of "
+        f"P_scattered in the top j'). Right, the grid edges: how much the first and last {EDGE_POINTS} r points (both "
+        f"grids) and the first {EDGE_POINTS} Z points gain above their share in the first frame (the initial state's "
+        "own tail there). A packet that reaches an edge leaves through one end of the grid and comes back at the "
+        f"other (the FFT wraps it around); the verdict warns above {FRAME_EDGE_LIMIT:g} (heuristic), and the title "
+        "answers as the verdict does."
     ),
 }

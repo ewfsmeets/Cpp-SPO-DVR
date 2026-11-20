@@ -10,7 +10,7 @@ import pytest
 
 from readers.segments import joined_info, ordered_segments
 from readers.tables import read_averages
-from verdict import run_verdict
+from verdict import frames_at_edges, run_verdict
 
 EXPECTED = {
     "hardwall_tiny": [
@@ -29,6 +29,7 @@ EXPECTED = {
         "flux at the edge of the basis: outermost diffraction channels",
         "gas-phase states reach the ends of the r grid",
         "slowest converged energy",
+        "packet at the edge of the basis: top J",  # frames/, information (JMax 2: J = 2 holds up to half the norm)
         "norm left",
         "norm by region at the end",
     ],
@@ -94,3 +95,19 @@ def test_norm_by_region_lists_the_rest_norm(fixture_runs: Path) -> None:
     listed = float(finding.value.rsplit(": ", 1)[1])
     rest_norm = read_averages(fixture_runs / "dailight_oblique" / "averages.dat").rest_norm[-1]
     assert abs(listed - rest_norm) <= 0.05 * rest_norm  # printed with 2 digits
+
+
+def test_unreadable_frames_are_not_checked(fixture_runs: Path, tmp_path: Path) -> None:
+    """A run whose frames/manifest.json is not JSON: the basis edges of frames/ are "not checked" (with the reader's
+    reason), not an exception; the intact run gives findings or none, never that."""
+    fixture = fixture_runs / "dailight_oblique"
+    run = tmp_path / "broken_frames"
+    run.mkdir()
+    for path in fixture.iterdir():
+        if path.name != "frames":
+            (run / path.name).symlink_to(path.resolve())
+    (run / "frames").mkdir()
+    (run / "frames" / "manifest.json").write_text("{", encoding="utf-8")
+    (finding,) = frames_at_edges([run])
+    assert finding.name == "not checked: the basis edges of frames/" and "not JSON" in finding.value
+    assert all(f is None or not f.name.startswith("not checked") for f in frames_at_edges([fixture]))

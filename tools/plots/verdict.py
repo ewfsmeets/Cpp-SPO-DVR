@@ -13,6 +13,7 @@ from compute.densities import combined_probability, region_norms, specular_insid
 from compute.diagnostics import (
     Finding,
     diverged,
+    grid_edge,
     lowest_converged_normal_energy_ev,
     moving_window_start,
     norm_by_region,
@@ -21,6 +22,7 @@ from compute.diagnostics import (
     not_checked,
     outer_diffraction_channels,
     r_grid_ends,
+    rotational_edge,
     scattering_density_per_zr,
     slow_probability,
     slowest_converged,
@@ -31,12 +33,14 @@ from compute.diagnostics import (
     unanalysed_flux,
     unitarity,
 )
+from compute.frames import edge_shares, grid_edge_rises, rotational_edges, usable_frames
 from compute.results import Results, results
 from compute.series import usable_records
 from compute.time_series import p_scattered_stopped_at
 from readers.binary import BkCoefficients, read_bk_coefficients, read_checkpoint
 from readers.densities import DIRECTORY, read_densities
 from readers.errors import ReadError
+from readers.frames import DIRECTORY as FRAMES
 from readers.run_info import RunInfo
 from readers.segments import read_joined_averages
 from readers.tables import Averages, Table, read_gas_phase_states, read_s_matrix, read_scattering_summary
@@ -68,6 +72,7 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
         moving(info, bk, run_results),
         unitarity(run_results.unitarity_error, worst_unitarity_energy(run_results)),
         *basis_edges(last, info),
+        *frames_at_edges(runs),
         norm_left(averages.norm[-1]),
         regions_at_end(runs, info),
     ]
@@ -88,6 +93,21 @@ def regions_at_end(runs: list[Path], info: RunInfo) -> Finding | None:
     regions = region_norms(last, info, grids, combined_probability(last))
     at_end = {label: float(values[0]) for label, values in regions.regions.items()}
     return norm_by_region(float(last.times_au[0]), at_end, float(specular_inside_line(last, info)[0]))
+
+
+def frames_at_edges(runs: list[Path]) -> list[Finding | None]:
+    """The basis edges in the frames (frames/, dtFrames) before any NaN or inf: information for the rotational
+    edges, a warning for a grid edge that rises above its first frame's share (compute.diagnostics rotational_edge,
+    grid_edge); nothing without frames/, a "not checked" when it cannot be read or holds no finite record."""
+    if not (runs[-1] / FRAMES / "manifest.json").is_file():
+        return []
+    try:
+        frames, _ = usable_frames(runs)
+    except ReadError as error:
+        return [not_checked("the basis edges of frames/", str(error))]
+    edges = edge_shares(frames)
+    rotational = [rotational_edge(s.label, s.values, edges.times_au) for s in rotational_edges(edges)]
+    return rotational + [grid_edge(s.label, s.values, edges.times_au) for s in grid_edge_rises(edges)]
 
 
 def worst_unitarity_energy(run_results: Results) -> float:

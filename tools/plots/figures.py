@@ -5,6 +5,7 @@ pairs.
 PLOTS is the only list of entries: `list`, `plot`, `report` and the tests all go through it."""
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -21,10 +22,30 @@ from compute.densities import (
     specular_line_bohr,
     z_profile_per_bohr,
 )
+from compute.diagnostics import FRAME_EDGE_LIMIT
 from compute.diffraction import diffraction, out_of_plane_fraction, p_per_order, scattering_angles
+from compute.frames import (
+    EDGE_POINTS,
+    MAX_FRAME_SITES,
+    FrameContours,
+    contours_at,
+    edge_shares,
+    grid_edge_rises,
+    j_populations,
+    largest_edge,
+    most_at_surface,
+    rotational_edges,
+    state_populations_z,
+    usable_frames,
+    window_probability,
+    worst_record,
+    xy_probability,
+    zr_probability_at,
+)
 from compute.gas_phase import levels
 from compute.grids import (
     cell_geometry,
+    cell_volume_bohr4,
     density_per_volume,
     incident_parallel_momentum,
     periodic,
@@ -35,6 +56,7 @@ from compute.potential import (
     CONTOUR_LINE_EVERY,
     CONTOUR_STEP_EV,
     ENERGY_CAP_EV,
+    FRAME_CONTOUR_STEP_EV,
     MAX_ELBOW_SITES,
     RAW_PES,
     PointOfInterest,
@@ -74,6 +96,14 @@ from panels.densities import (
 )
 from panels.diagnostics import VERDICT_LINE_IN, draw_verdict, wrapped_verdict
 from panels.diffraction import draw_orders, draw_out_of_plane, draw_scattering_angles, draw_spot_map
+from panels.frames import (
+    add_cell_density_colorbar,
+    draw_cell_density,
+    draw_edge_series,
+    draw_j_populations,
+    draw_point_density,
+    draw_state_populations,
+)
 from panels.gas_phase import draw_potential_and_levels, draw_wave_functions
 from panels.potential import (
     add_potential_colorbar,
@@ -105,12 +135,14 @@ from readers.binary import read_bk_coefficients, read_checkpoint
 from readers.densities import read_densities
 from readers.errors import ReadError
 from readers.fine_analysis import read_fine_grid
+from readers.frames import Frames
 from readers.pes_cut import read_pes_cut
+from readers.potential import DIRECTORY as POTENTIAL
 from readers.potential import PotentialData, read_potential
 from readers.run_info import RunInfo, lattice_of
 from readers.segments import read_joined_averages
 from readers.tables import read_asymptotic_potential, read_gas_phase_states, read_s_matrix, read_scattering_summary
-from style import Movie, add_info_box, density_color_scale, info_lines, new_figure
+from style import DENSITY_FLOOR, Movie, add_info_box, density_color_scale, info_lines, linear_color_scale, new_figure
 from verdict import run_verdict
 
 Figures = list[tuple[str, Figure | Movie]]
@@ -335,7 +367,7 @@ def figure_density_movie(runs: list[Path], info: RunInfo, options: argparse.Name
         box.set_text("\n".join(info_lines(info, sources, time_au=times_au[k], notes=notes)))
 
     update(len(records) - 1)  # complete as a figure (the last frame); save_movie redraws every frame
-    return [("density_movie", Movie(fig, update, len(records)))]
+    return [("density_movie", Movie(fig=fig, update=update, n_frames=len(records)))]
 
 
 MIN_OVER_ORIENTATIONS = "V_min = the lower envelope of V over the DVR nodes at fixed (x, y); V relative to min V_asy"
@@ -478,8 +510,197 @@ def figure_orientation(runs: list[Path], info: RunInfo, options: argparse.Namesp
     return [("orientation", fig)]
 
 
-# name, figure function, the files it needs in the last segment's directory
+FRAME_DENSITY_NOTE = "psi_full = psi_scat + s2s chi at one (x, y) grid point, summed over the rotational states"
+EDGE_SHARE_LABEL = "Probability / initial norm"
+EDGE_RISE_LABEL = "Rise above the first frame / initial norm"
+
+
+@dataclass(frozen=True, kw_only=True)
+class FramePoint:
+    """An (x, y) grid point a frame movie shows, and the movie's file stem (numbered: a site's name may hold any
+    character)."""
+
+    stem: str
+    name: str
+    ix: int
+    iy: int
+
+
+def frame_points(frames: Frames) -> list[FramePoint]:
+    """The points the frame movies show: the first MAX_FRAME_SITES sites, else the cell's origin."""
+    if not frames.sites:
+        return [FramePoint(stem="frame_movie_origin", name="the cell's origin", ix=0, iy=0)]
+    sites = frames.sites[:MAX_FRAME_SITES]
+    return [
+        FramePoint(stem=f"frame_movie_site{k + 1}", name=site.name, ix=site.ix, iy=site.iy)
+        for k, site in enumerate(sites)
+    ]
+
+
+def potential_with_reference(runs: list[Path]) -> tuple[PotentialData, float] | None:
+    """potential/ of the last segment and min V_asy (hartree, the energy reference of its contours), or None
+    without potential/."""
+    if not (runs[-1] / POTENTIAL / "manifest.json").is_file():
+        return None
+    asymptotic = read_asymptotic_potential(runs[-1] / "asymptotic_potential.dat")
+    return read_potential(runs[-1]), gas_phase_minimum_hartree(asymptotic)
+
+
+def figure_frame_movie(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The density over (Z, r) above each site (or the cell's origin) against time, as movies, with V_min's contours."""
+    frames, notes = usable_frames(runs)
+    records = evenly_spaced_records(len(frames.series.times_au), MOVIE_FRAMES)
+    k_surface = most_at_surface(frames, int(info.data["grids"]["nz_potential"]))
+    still_frame = int(np.argmin(np.abs(records - k_surface)))  # the shown frame nearest k_surface
+    volume_bohr4 = cell_volume_bohr4(info.data["grids"])
+    source = potential_with_reference(runs)
+    movies = []
+    for point in frame_points(frames):
+        contours = None
+        if source is not None:
+            potential, reference_hartree = source
+            contours = contours_at(
+                potential, reference_hartree, info.hartree_to_ev, point.ix, point.iy, info.data["z_asymptotic"]
+            )
+        movie = point_movie(
+            info,
+            times_au=frames.series.times_au[records],
+            z_bohr=frames.z_bohr[: frames.nz_scattering],
+            r_bohr=frames.r_bohr,
+            density=density_per_volume(zr_probability_at(frames, point.ix, point.iy)[records], volume_bohr4),
+            name=point.name,
+            contours=contours,
+            notes=notes,
+            still_frame=still_frame,
+        )
+        movies.append((point.stem, movie))
+    return movies
+
+
+def point_movie(
+    info: RunInfo,
+    times_au: np.ndarray,
+    z_bohr: np.ndarray,
+    r_bohr: np.ndarray,
+    density: np.ndarray,
+    name: str,
+    contours: FrameContours | None,
+    notes: tuple[str, ...],
+    still_frame: int,
+) -> Movie:
+    """A movie of rho(Z, r) (density (frames, nz, nr), bohr^-4) at the (x, y) point `name`, with V_min's contours
+    when given; one colour scale for all frames; its still (saved as the PNG) is frame still_frame."""
+    color_scale = density_color_scale(density)
+    sources = ["frames/", "run_info.json"] + (["potential/"] if contours is not None else [])
+    lines = (*notes, FRAME_DENSITY_NOTE)
+    if contours is not None:
+        lines += (f"V_min's contours every {FRAME_CONTOUR_STEP_EV:g} eV relative to min V_asy, to zasymp",)
+    fig = new_figure(n_notes=len(lines))
+    ax = fig.add_subplot()
+    add_density_colorbar(fig, ax, color_scale, "rho(Z, r) at (x, y) (bohr^-4)")
+    box = add_info_box(fig, info, sources, time_au=times_au[still_frame], notes=lines)
+
+    def update(k: int) -> None:
+        """Redraws the map and the info box's time for frame k."""
+        ax.clear()
+        title = f"rho(Z, r) above {name} at t = {times_au[k]:g} a.u."
+        draw_point_density(ax, z_bohr, r_bohr, density[k], color_scale, contours, title)
+        box.set_text("\n".join(info_lines(info, sources, time_au=times_au[k], notes=lines)))
+
+    update(still_frame)
+    return Movie(fig=fig, update=update, n_frames=len(times_au), still=still_frame)
+
+
+def figure_xy_maps(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """Where over the unit cell the packet is: below zasymp when most of it is there, and inside the r absorber."""
+    frames, notes = usable_frames(runs)
+    nz_surface = int(info.data["grids"]["nz_potential"])  # the points below zasymp
+    ir_c = r_absorber_first_index(info, len(frames.r_bohr))
+    in_absorber = window_probability(frames, slice(0, nz_surface), slice(ir_c, None))
+    k_near, k_absorber = most_at_surface(frames, nz_surface), int(np.argmax(in_absorber))
+    area_bohr2 = float(info.data["grids"]["xy_volume_element"])
+    surface = density_per_volume(xy_probability(frames, k_near, slice(0, nz_surface), slice(None)), area_bohr2)
+    absorber = density_per_volume(
+        xy_probability(frames, k_absorber, slice(0, nz_surface), slice(ir_c, None)), area_bohr2
+    )
+    lattice = lattice_of(info)
+    cell = cell_geometry(frames.nx, frames.ny, lattice)
+    marks = [(p.name, x, y) for p, x, y in positions_bohr(frames.sites, lattice)]
+    times_au = frames.series.times_au
+    titles = [
+        f"Over the cell below zasymp at t = {times_au[k_near]:g} a.u.\n(most of the packet there)",
+        absorber_title(ir_c < len(frames.r_bohr), float(in_absorber[k_absorber]), times_au[k_absorber]),
+    ]
+    fig = new_figure(n_notes=len(notes) + 1, width_in=9.0)
+    axes = fig.subplots(1, 2)
+    floor_per_bohr2 = DENSITY_FLOOR * float(np.max(surface))  # both maps: noise below this is not drawn
+    for ax, values, title in zip(axes, (surface, absorber), titles, strict=True):
+        scale = linear_color_scale(values)
+        draw_cell_density(ax, cell, periodic(values), scale, marks, floor_per_bohr2, title)
+        if np.max(values) > floor_per_bohr2:  # a map of noise gets no colour bar
+            add_cell_density_colorbar(fig, ax, scale)
+    note = "summed over Z, r and the rotational states in the window, divided by dx dy sin(gamma)"
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, note))
+    return [("xy_maps", fig)]
+
+
+def absorber_title(has_absorber: bool, probability: float, t_au: float) -> str:
+    """The title of the map inside the r absorber (Z < zasymp, r >= r_c = ROptStart): the frame with the most
+    probability there and how much that is, or why there is none."""
+    if not has_absorber:
+        return f"No r absorber: no window r >= r_c\n(t = {t_au:g} a.u.)"
+    return (
+        f"Inside the r absorber (Z < zasymp, r >= r_c)\nat t = {t_au:g} a.u.: P in the window {probability:.1e}\n"
+        "(a density at this time, not P_reaction)"
+    )
+
+
+def figure_rotational_states(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """The rotational states over Z when most of the packet is below zasymp, and the J populations against time."""
+    frames, notes = usable_frames(runs)
+    k = most_at_surface(frames, int(info.data["grids"]["nz_potential"]))
+    j_values, per_j = j_populations(frames)
+    populations = state_populations_z(frames, k)
+    color_scale = density_color_scale(populations)
+    fig = new_figure(n_notes=len(notes), width_in=9.0)
+    left, right = fig.subplots(1, 2)
+    z = frames.z_bohr[: frames.nz_scattering]
+    title = f"P(J, mJ; Z) at t = {frames.series.times_au[k]:g} a.u.,\nwhen most of the packet is below zasymp"
+    draw_state_populations(left, z, populations, frames.states, color_scale, title)
+    add_density_colorbar(fig, left, color_scale, "probability per Z point and state")
+    draw_j_populations(right, frames.series.times_au, j_values, per_j, frames.starts_au)
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=notes)
+    return [("rotational_states", fig)]
+
+
+def figure_basis_edges(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
+    """Does the basis hold the wave? The rotational edges (top J and |mJ|) and how much the grid edges (first and last
+    r, first Z points) gain during the run, against the verdict's limit."""
+    frames, notes = usable_frames(runs)
+    edges = edge_shares(frames)
+    rotational, rises = rotational_edges(edges), grid_edge_rises(edges)
+    largest = largest_edge(rises)
+    rise = float(largest.values[worst_record(largest)])
+    answer = "Yes" if rise <= FRAME_EDGE_LIMIT else "No"  # the verdict's grid_edge test (NaN: No)
+    fig = new_figure(n_notes=len(notes) + 2, width_in=9.0)
+    left, right = fig.subplots(1, 2)
+    title = f"Does the grid hold the wave? {answer}:\nlargest rise {rise:.1e} ({largest.label})"
+    draw_edge_series(right, edges.times_au, rises, FRAME_EDGE_LIMIT, frames.starts_au, EDGE_RISE_LABEL, title)
+    if rotational:
+        top = largest_edge(rotational)
+        title = f"Rotational edges: {top.label} up to {top.values[worst_record(top)]:.1e}\n(normal while it passes)"
+        draw_edge_series(left, edges.times_au, rotational, None, frames.starts_au, EDGE_SHARE_LABEL, title)
+    else:
+        left.axis("off")  # one J and every |mJ| of it: no rotational edge
+    lines = (f"relative to the initial norm ({edges.reference:.3g}); the first and last {EDGE_POINTS} grid points",)
+    lines += ("grid edges: their share minus the first frame's; a rise <= 0 is not drawn on a log axis",)
+    add_info_box(fig, info, ["frames/", "run_info.json"], notes=(*notes, *lines))
+    return [("basis_edges", fig)]
+
+
 FINE_ANALYSIS_FILES = ["fine_analysis/scattering_summary.tsv", "fine_analysis/spectrum/scattering_summary.tsv"]
+
+# name, figure function, the files it needs in the last segment's directory
 PLOTS = [
     ("verdict", figure_verdict, []),
     ("results", figure_results, ["scattering_summary.tsv"]),
@@ -501,6 +722,10 @@ PLOTS = [
     ("elbows", figure_elbows, ["potential/manifest.json", "asymptotic_potential.dat"]),
     ("orientation", figure_orientation, ["potential/v_sites.bin", "asymptotic_potential.dat"]),
     ("pes_cut", figure_pes_cut, ["pes_cut_2d.dat", "asymptotic_potential.dat"]),
+    ("frame_movie", figure_frame_movie, ["frames/manifest.json"]),
+    ("xy_maps", figure_xy_maps, ["frames/manifest.json"]),
+    ("rotational_states", figure_rotational_states, ["frames/manifest.json"]),
+    ("basis_edges", figure_basis_edges, ["frames/manifest.json"]),
 ]
 
 

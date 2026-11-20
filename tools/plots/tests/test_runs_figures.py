@@ -8,10 +8,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.contour import ContourSet
 from matplotlib.figure import Figure
 
 from compute.analysis import analysis_energies
 from compute.diffraction import diffraction
+from compute.frames import most_at_surface, usable_frames, window_probability
 from compute.grids import cell_geometry, r_absorber_first_index
 from compute.potential import RAW_PES, barrier_on, gas_phase_minimum_hartree, relative_ev
 from compute.series import evenly_spaced_records
@@ -24,6 +26,7 @@ from figures import (
     figure_densities,
     figure_density_movie,
     figure_elbows,
+    figure_frame_movie,
     figure_potential_maps,
     has_files,
 )
@@ -59,6 +62,7 @@ EXPECTED = {  # the PLOTS entries each kind of run allows
     "pes cut": {"verdict", "pes_cut"},
 }
 PIXEL_SLACK = 1  # bounding boxes are rounded to whole pixels
+XY_MAPS_COLORBARS = 2  # the oblique run: both maps hold more than the floor
 
 
 def run_of(kind: str, fixture_runs: Path, stopped_run: Path) -> tuple[list[Path], RunInfo]:
@@ -98,7 +102,7 @@ def test_every_figure_each_kind_of_run_allows(fixture_runs: Path, stopped_run: P
             for stem, fig in figures:
                 check_layout(fig.fig if isinstance(fig, Movie) else fig)
                 if isinstance(fig, Movie):  # two frames: the frame loop is test_a_movie_draws_its_frames_into_a_gif's
-                    fig = Movie(fig.fig, fig.update, min(fig.n_frames, 2))
+                    fig = Movie(fig=fig.fig, update=fig.update, n_frames=min(fig.n_frames, 2))
                 assert all(p.stat().st_size > 0 for p in save(fig, tmp_path / stem))
 
 
@@ -289,7 +293,7 @@ def test_a_movie_draws_its_frames_into_a_gif(fixture_runs: Path, stopped_run: Pa
         ax = movie.fig.axes[0]
         frames.append((ax.get_title(), ax.collections[0].norm.vmin, ax.collections[0].norm.vmax))
 
-    gif, png = save_movie(Movie(movie.fig, recorded, 3), tmp_path / "movie")
+    gif, png = save_movie(Movie(fig=movie.fig, update=recorded, n_frames=3), tmp_path / "movie")
     assert gif.stat().st_size > 0 and png.stat().st_size > 0
     assert len(frames) == 3
     for k, (title, vmin, vmax) in enumerate(frames):
@@ -367,3 +371,62 @@ def test_pes_cut_figure_content(fixture_runs: Path, stopped_run: Path) -> None:
     assert len(panel.get_lines()) == (2 if barrier.saddle else 1)
     assert len([ax for ax in fig.axes if ax.get_label() == "<colorbar>"]) == 1
     assert "the PES itself" in fig.texts[0].get_text()
+
+
+def test_frame_movies_content(fixture_runs: Path, stopped_run: Path) -> None:
+    """The oblique run's frame movies: one per site, numbered in PlotSites order (site1 top, site2 bridge: a name may
+    hold any character), each titled with its site; V_min's contours (a ContourSet) and the zasymp mark over the
+    map; the still (the figure as saved) is the shown frame nearest the one with the most probability below zasymp,
+    not the last."""
+    runs, info = run_of("oblique", fixture_runs, stopped_run)
+    movies = figure_frame_movie(runs, info, default_options())
+    assert [stem for stem, _ in movies] == ["frame_movie_site1", "frame_movie_site2"]
+    ax = movies[0][1].fig.axes[0]
+    assert any(isinstance(c, ContourSet) for c in ax.collections) and "zasymp" in annotations(ax)
+    frames, _ = usable_frames(runs)
+    records = evenly_spaced_records(len(frames.series.times_au), MOVIE_FRAMES)
+    still_frame = int(np.argmin(np.abs(records - most_at_surface(frames, info.data["grids"]["nz_potential"]))))
+    assert movies[0][1].still == still_frame != len(records) - 1  # save_movie saves this frame as the PNG
+    assert ax.get_title() == f"rho(Z, r) above top at t = {frames.series.times_au[records[still_frame]]:g} a.u."
+    assert movies[1][1].fig.axes[0].get_title().startswith("rho(Z, r) above bridge at t = ")
+
+
+def test_xy_maps_content(fixture_runs: Path, stopped_run: Path) -> None:
+    """The oblique run's maps over the cell, both sites marked: the left at the frame with the most probability below
+    zasymp, the right inside the r absorber (Z < zasymp, r >= r_c) at the frame with the most there, its title giving
+    that time and probability (the map a density, not P_reaction)."""
+    runs, info = run_of("oblique", fixture_runs, stopped_run)
+    maps = drawn("xy_maps", "oblique", fixture_runs, stopped_run)
+    panels = [ax for ax in maps.axes if ax.get_label() != "<colorbar>"]
+    frames, _ = usable_frames(runs)
+    nz_surface = info.data["grids"]["nz_potential"]
+    k = most_at_surface(frames, nz_surface)
+    window = window_probability(
+        frames, slice(0, nz_surface), slice(r_absorber_first_index(info, len(frames.r_bohr)), None)
+    )
+    k_absorber = int(np.argmax(window))
+    assert len(panels) == 2 and len(maps.axes) == XY_MAPS_COLORBARS + 2
+    assert panels[0].get_title().startswith(f"Over the cell below zasymp at t = {frames.series.times_au[k]:g} a.u.")
+    assert panels[1].get_title() == (
+        f"Inside the r absorber (Z < zasymp, r >= r_c)\nat t = {frames.series.times_au[k_absorber]:g} a.u.: "
+        f"P in the window {window[k_absorber]:.1e}\n(a density at this time, not P_reaction)"
+    )
+    assert all({"top", "bridge"} <= set(annotations(ax)) for ax in panels)
+
+
+def test_rotational_states_and_edges_content(fixture_runs: Path, stopped_run: Path) -> None:
+    """The oblique run's state map with every state labelled (sorted by J) and one line per J; the edges: left the
+    top J alone (no |mJ| edge, since MJMax = JMax), its title giving how high it gets; right the rises of the first
+    and last r and the first Z points with the limit line, the title answering the question as the verdict does (yes:
+    no grid edge gains more than the limit)."""
+    states = drawn("rotational_states", "oblique", fixture_runs, stopped_run)
+    labels = [t.get_text() for t in states.axes[0].get_yticklabels()]
+    assert labels[:2] == ["J 0, mJ 0", "J 2, mJ -2"] and len(labels) == 6  # sorted by J, then mJ; every state
+    assert len(states.axes[1].get_lines()) == len({label.split(",")[0] for label in labels})  # one line per J
+    edges = drawn("basis_edges", "oblique", fixture_runs, stopped_run)
+    rotational, grid = edges.axes[0], edges.axes[1]
+    assert rotational.get_title().startswith("Rotational edges: top J up to ")
+    assert [t.get_text() for t in rotational.get_legend().get_texts()] == ["top J"]
+    assert grid.get_title().startswith("Does the grid hold the wave? Yes:")
+    legend = [t.get_text() for t in grid.get_legend().get_texts()]
+    assert legend == ["first r points", "last r points", "first Z points", "limit 1e-06 (heuristic)"]

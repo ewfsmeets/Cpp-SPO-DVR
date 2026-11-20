@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from explanations import FIGURES, TITLES
+
 TOOL = Path(__file__).resolve().parent.parent / "spodvr_plot.py"
 
 
@@ -29,8 +31,9 @@ def listing(directory: Path) -> dict[str, int]:
 
 def test_report_writes_only_into_out(fixture_runs: Path, tmp_path: Path) -> None:
     """`report` writes exactly report.md, its manifest and the files the manifest lists into --out (a movie as
-    GIF and PNG, the GIF shown), nothing into the run directory; a second report replaces its own files. On the
-    smaller hard-wall run, since the report is made twice."""
+    GIF and PNG, the GIF shown; the frame movies of the two sites under one heading with the explanation once),
+    nothing into the run directory; a second report replaces its own files. On the smaller hard-wall run, since the
+    report is made twice."""
     run_dir, out = fixture_runs / "hardwall_tiny", tmp_path / "report"
     before = listing(run_dir)
     assert run("report", run_dir, "--out", out).returncode == 0
@@ -40,6 +43,9 @@ def test_report_writes_only_into_out(fixture_runs: Path, tmp_path: Path) -> None
     assert {"density_movie.gif", "density_movie.png"} <= set(manifest) and "density_movie.pdf" not in manifest
     report = (out / "report.md").read_text(encoding="utf-8")
     assert "## Verdict" in report and "(density_movie.gif)" in report
+    frame_section = report.split(f"## {TITLES['frame_movie']}\n")[1].split("\n## ")[0]
+    assert report.count(f"## {TITLES['frame_movie']}\n") == 1 and frame_section.count(FIGURES["frame_movie"]) == 1
+    assert "(frame_movie_site1.gif)" in frame_section and "(frame_movie_site2.gif)" in frame_section
     assert run("report", run_dir, "--out", out).returncode == 0
     assert listing(run_dir) == before
 

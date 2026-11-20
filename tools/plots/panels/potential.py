@@ -85,11 +85,17 @@ def draw_cell_map(
         norm=color_scale,
         rasterized=True,
     )
+    hatch_not_drawn(ax)
+    draw_cell_outline(ax, cell, marks, title)
+
+
+def draw_cell_outline(ax: Axes, cell: CellGeometry, marks: list[tuple[str, float, float]], title: str) -> None:
+    """What every map over the unit cell has around its values: the cell's outline, the marked points (label, X, Y)
+    labelled on a light box (readable on any colour), equal axes in Cartesian bohr (x: X, y: Y) and the title."""
     ax.plot(cell.outline_x_bohr, cell.outline_y_bohr, color=INK, linewidth=0.8)
     for k, (label, x, y) in enumerate(marks):
         ax.plot(x, y, marker=MARKERS[k % len(MARKERS)], color=INK, markersize=5, linestyle="none")
         ax.annotate(label, (x, y), xytext=(4, 4), textcoords="offset points", fontsize=6, bbox=LABEL_BOX)
-    hatch_not_drawn(ax)
     ax.set_aspect("equal")
     ax.grid(False)
     ax.set_xlabel(axis_label("X", "bohr"))

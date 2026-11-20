@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 import style
+from explanations import FIGURES
 
 TOOL_DIR = Path(__file__).resolve().parent.parent
 DESIGNER_PLOTS = TOOL_DIR.parent / "wave_packet_designer" / "plots.py"
@@ -66,8 +67,32 @@ def test_colours_equal_the_designers() -> None:
         assert getattr(style, name) == theirs[name], name
 
 
+def test_a_movie_saves_its_still(tmp_path: Path) -> None:
+    """save_movie draws every frame into the GIF, then the still for the PNG: frames 0, 1, 2, then 1; without a
+    still the PNG is the last frame drawn (no extra call)."""
+    calls: list[int] = []
+
+    def update(k: int) -> None:
+        """Records the frame drawn."""
+        calls.append(k)
+
+    fig = style.new_figure(n_notes=0)
+    fig.add_subplot()
+    style.save_movie(style.Movie(fig=fig, update=update, n_frames=3, still=1), tmp_path / "still")
+    assert calls == [0, 1, 2, 1]
+    calls.clear()
+    style.save_movie(style.Movie(fig=fig, update=update, n_frames=3), tmp_path / "last")
+    assert calls == [0, 1, 2]
+
+
 def test_file_names_of_figures_and_movies() -> None:
-    """A figure is saved as PNG and PDF, a movie as GIF and the PNG of its last frame; the first is shown."""
+    """A figure is saved as PNG and PDF, a movie as GIF and the PNG of its still; the first is shown."""
     fig = style.new_figure()
     assert style.file_names("x", fig) == ["x.png", "x.pdf"]
-    assert style.file_names("m", style.Movie(fig, lambda k: None, 2)) == ["m.gif", "m.png"]
+    assert style.file_names("m", style.Movie(fig=fig, update=lambda k: None, n_frames=2)) == ["m.gif", "m.png"]
+
+
+def test_the_map_explanation_states_the_density_floor() -> None:
+    """explanations.py cannot import style (the same layer), so the xy maps' text states DENSITY_FLOOR's value
+    itself: it must be the constant's."""
+    assert f"Values below {style.DENSITY_FLOOR:g} of the left map's largest" in FIGURES["xy_maps"]

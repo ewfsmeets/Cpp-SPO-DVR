@@ -18,6 +18,7 @@ UNITARITY_LIMIT = 1e-4  # heuristic: a P_reaction below -1e-4 is a unitarity err
 SLOW_CHANNELS_LIMIT = 1e-3  # heuristic: probability already seen in channels too slow to have all arrived
 EDGE_LIMIT = 1e-3  # heuristic: a basis edge (top j', outermost diffraction channels) holding more of P_scattered
 R_EDGE_LIMIT = 1e-3  # heuristic: |psi_v,j| at an end of the r grid above this fraction of its maximum
+FRAME_EDGE_LIMIT = 1e-6  # heuristic: probability at a basis edge in a frame, relative to the initial norm
 
 SECTION_TIME = "8. Total time and energy grid"
 SECTION_STEPS = "4. dZ: the grid must hold the momenta"  # also the time step dtStep
@@ -251,6 +252,37 @@ def basis_edge(what: str, largest_fraction: float, energy_ev: float, meaning: st
         meaning,
         SECTION_VERIFY,
     )
+
+
+def frame_edge(severity: str, what: str, shares: np.ndarray, times_au: np.ndarray, meaning: str) -> Finding | None:
+    """A finding of the given severity when, in some frame, a basis edge holds more than FRAME_EDGE_LIMIT of the
+    initial norm (shares: per frame; NaN counts as above)."""
+    worst = int(np.argmax(np.nan_to_num(shares, nan=np.inf)))
+    if shares[worst] <= FRAME_EDGE_LIMIT:
+        return None
+    value = f"up to {shares[worst]:.2e} of the initial norm (t = {times_au[worst]:g} a.u.)"
+    return Finding(
+        severity, f"packet at the edge of the basis: {what}", value, f"<= {FRAME_EDGE_LIMIT:g}", meaning, SECTION_VERIFY
+    )
+
+
+def rotational_edge(what: str, shares: np.ndarray, times_au: np.ndarray) -> Finding | None:
+    """Information when an edge of the rotational basis (the top J or |mJ|) holds more than FRAME_EDGE_LIMIT of the
+    initial norm in some frame: while the molecule is at the surface J is a basis label and such a passing
+    population is normal; the S matrix's edge check (EDGE_LIMIT) decides whether the basis is large enough."""
+    meaning = (
+        f"populated while the packet passes: not an error by itself; the check of j' in the S matrix (above "
+        f"{EDGE_LIMIT:g} of P_scattered) tells whether the basis is large enough"
+    )
+    return frame_edge("information", what, shares, times_au, meaning)
+
+
+def grid_edge(what: str, rises: np.ndarray, times_au: np.ndarray) -> Finding | None:
+    """Warning when a grid edge (the first or last r points, the first Z points) rises by more than FRAME_EDGE_LIMIT
+    of the initial norm above its first frame's share (rises: compute.frames.grid_edge_rises): the packet reaches the
+    edge, where the FFT wraps it around to the other end."""
+    meaning = "the packet reaches the edge of the grid, where the FFT wraps it around to the other end"
+    return frame_edge("warning", f"{what} (above the first frame's)", rises, times_au, meaning)
 
 
 def top_rotational_level(fraction: np.ndarray, energies_ev: np.ndarray, j_top: int) -> Finding | None:

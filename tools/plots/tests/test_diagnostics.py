@@ -130,3 +130,27 @@ def test_norm_by_region_names_its_time_and_regions() -> None:
         "specular wave inside its analysis line: 3.0e-05"
     )
     assert "rest norm" in finding.meaning and "not yet analysed" in finding.meaning
+
+
+def test_frame_edge() -> None:
+    """A basis edge in the frames: none at or below FRAME_EDGE_LIMIT; a finding of the given severity above it
+    naming its worst time; one for NaN."""
+    times = np.array([0.0, 100.0, 200.0])
+    assert d.frame_edge("warning", "top J", np.array([0.0, 1e-7, d.FRAME_EDGE_LIMIT]), times, "m") is None
+    finding = d.frame_edge("warning", "top J", np.array([0.0, 3e-6, 1e-6]), times, "m")
+    assert finding.severity == "warning" and finding.value == "up to 3.00e-06 of the initial norm (t = 100 a.u.)"
+    assert d.frame_edge("warning", "top J", np.array([0.0, np.nan, 0.0]), times, "m") is not None
+
+
+def test_rotational_and_grid_edges() -> None:
+    """A rotational edge is information (a passing population is normal; the S matrix's j' check decides); a grid
+    edge is a warning on its rise above the first frame (compute.frames.grid_edge_rises): no rise raises nothing, a
+    rise of 3e-6 warns with that value and time, NaN warns."""
+    times = np.array([0.0, 100.0, 200.0])
+    rotational = d.rotational_edge("top J", np.array([0.0, 3e-6, 0.0]), times)
+    assert rotational.severity == "information" and "S matrix" in rotational.meaning
+    assert d.grid_edge("first r points", np.array([0.0, 0.0, -1e-6]), times) is None
+    grid = d.grid_edge("first r points", np.array([0.0, 3e-6, 0.0]), times)
+    assert grid.severity == "warning" and "above the first frame's" in grid.name
+    assert grid.value == "up to 3.00e-06 of the initial norm (t = 100 a.u.)"
+    assert d.grid_edge("first r points", np.array([0.0, np.nan, 0.0]), times) is not None

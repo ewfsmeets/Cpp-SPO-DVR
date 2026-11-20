@@ -59,7 +59,7 @@ def figure_files(figures: list[tuple[str, Figure | Movie]]) -> list[str]:
 
 
 def save(fig: Figure | Movie, stem: Path) -> list[Path]:
-    """A figure as PNG and PDF, a movie as GIF and PNG (its last frame)."""
+    """A figure as PNG and PDF, a movie as GIF and PNG (its still)."""
     return save_movie(fig, stem) if isinstance(fig, Movie) else save_figure(fig, stem)
 
 
@@ -113,6 +113,18 @@ def make_figures(
     return made, not_drawn, problems
 
 
+def figure_sections(made: list[tuple[str, str, Figure | Movie]]) -> list[str]:
+    """The report's lines of the figures made ((name, stem, figure) in PLOTS order): per entry its title, its images
+    (one per stem, the stem in the alt text: a movie entry makes one per site) and its explanation once."""
+    lines: list[str] = []
+    names = list(dict.fromkeys(name for name, _, _ in made))  # in order, each once
+    for name in names:
+        images = [(stem, file_names(stem, fig)[0]) for entry, stem, fig in made if entry == name]
+        lines += [f"## {TITLES[name]}", ""] + [f"![{TITLES[name]}: {stem}]({image})" for stem, image in images]
+        lines += ["", FIGURES[name], ""]
+    return lines
+
+
 def write_report(runs: list[Path], info: RunInfo, out: Path, options: argparse.Namespace) -> list[str]:
     """report.md, the figures and the manifest in `out`; returns the problems (exit status 1). Raises ReadError
     before writing anything when `out` holds a file of the same name that the tool did not write."""
@@ -122,10 +134,7 @@ def write_report(runs: list[Path], info: RunInfo, out: Path, options: argparse.N
     claim(out, ["report.md", *figure_files(figures)])
     for stem, fig in figures:
         save(fig, out / stem)
-    lines = [f"# {info.data['title']}", "", *verdict]
-    for name, stem, fig in made:
-        image = file_names(stem, fig)[0]
-        lines += [f"## {TITLES[name]}", "", f"![{TITLES[name]}]({image})", "", FIGURES[name], ""]
+    lines = [f"# {info.data['title']}", "", *verdict, *figure_sections(made)]
     lines += ["## Not drawn", "", *not_drawn, ""] if not_drawn else []
     (out / "report.md").write_text("\n".join(lines), encoding="utf-8")
     return problems + figure_problems

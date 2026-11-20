@@ -1,6 +1,6 @@
 """The one look of every figure (layer 3): colours and their meanings, rcParams, axis labels, the scale rule,
 the info box at the bottom of a figure, the density colour scale, and saving (a figure as PNG + PDF, a movie as
-GIF + a PNG of its last frame).
+GIF + a PNG of its still).
 
 Colours: the wave-packet designer's (tools/wave_packet_designer/plots.py; tests/test_style.py checks that they
 stay equal) with the same meanings in grid and absorber panels: the scattering grid blue, the specular grid
@@ -17,7 +17,7 @@ import matplotlib
 import numpy as np
 from matplotlib.animation import PillowWriter
 from matplotlib.axes import Axes
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, Normalize
 from matplotlib.figure import Figure
 from matplotlib.text import Text
 
@@ -129,6 +129,12 @@ def density_color_scale(values: np.ndarray) -> LogNorm:
     return LogNorm(DENSITY_FLOOR * top, top)
 
 
+def linear_color_scale(values: np.ndarray) -> Normalize:
+    """A linear colour scale from zero to the largest value (to 1 when nothing is positive)."""
+    top = float(np.max(values)) if np.size(values) else 0.0
+    return Normalize(0.0, top if top > 0.0 else 1.0)
+
+
 def hatch_not_drawn(ax: Axes) -> None:
     """A hatched background for a map whose values beyond its colour scale are not drawn, so that a gap cannot be
     taken for a value at the middle of a diverging scale."""
@@ -198,7 +204,7 @@ def add_info_box(
 MOVIE_FPS = 5  # frames per second of the GIF movies
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class Movie:
     """A figure that changes with time: update(k) redraws it for frame k (0 <= k < n_frames).
 
@@ -208,16 +214,17 @@ class Movie:
     fig: Figure
     update: Callable[[int], None]
     n_frames: int
+    still: int | None = None  # the frame saved as the PNG (the movie's picture in the report); None: the last
 
 
 def file_names(stem: str, fig: Figure | Movie) -> list[str]:
-    """The files a figure is saved as: stem.png and stem.pdf; a movie: stem.gif and stem.png (its last frame).
+    """The files a figure is saved as: stem.png and stem.pdf; a movie: stem.gif and stem.png (its still: Movie.still).
     The first is the one a report shows."""
     return [f"{stem}.gif", f"{stem}.png"] if isinstance(fig, Movie) else [f"{stem}.png", f"{stem}.pdf"]
 
 
 def save_movie(movie: Movie, stem: Path) -> list[Path]:
-    """The movie's files (file_names: all frames as a GIF, which GitHub plays inline, and the last as a PNG);
+    """The movie's files (file_names: all frames as a GIF, which GitHub plays inline, and its still as a PNG);
     returns their paths. The layout is computed for the first frame and then fixed (the figure's layout engine
     stays "none" afterwards), so the axes stay put while the frames change."""
     gif, png = (stem.parent / name for name in file_names(stem.name, movie))
@@ -229,6 +236,8 @@ def save_movie(movie: Movie, stem: Path) -> list[Path]:
                 movie.fig.draw_without_rendering()  # the constrained layout of the first frame ...
                 movie.fig.set_layout_engine("none")  # ... kept for the others
             writer.grab_frame()
+    if movie.still is not None:
+        movie.update(movie.still)
     movie.fig.savefig(png, metadata={"Software": None})
     return [gif, png]
 
