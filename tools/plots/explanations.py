@@ -262,3 +262,38 @@ FIGURES = {
         f"verdict warns above {FRAME_EDGE_LIMIT:g} of the initial norm (heuristic); good is far below it."
     ),
 }
+
+# The viewer (viewer.py): what each panel and control shows, for its help box and its Explain button. The keys of
+# CONTROLS are the sliders' names and the buttons' labels.
+PANELS = {
+    "cell_map": (
+        "The probability per area over the unit cell (bohr^-2; x along the first lattice vector, the cell drawn "
+        "skewed as it is, each grid point's cell around it, the edge cells repeated periodically), summed over the Z "
+        "and r points of the window the two range sliders set, at the time of the time slider; the title gives the "
+        "window and the probability P in it. The sites of PlotSites and the picked point are marked; click a cell to "
+        "pick its grid point. The colour scale is this frame's (Scale: per frame) or one over all frames of the "
+        "window (Scale: all frames, to compare times); a window holding less than 1e-8 of the initial norm is left "
+        "empty. The map is a density at that time, not a reaction probability."
+    ),
+    "point_density": (
+        "rho(Z, r) above the picked (x, y) grid point (bohr^-4: probability per Z r x y cell over its volume, summed "
+        "over the rotational states; the whole wave packet, the specular wave added back in its channel), on one log "
+        "colour scale over every frame (white: below 1e-8 of the largest), with V_min's contours (V minimised over "
+        "the DVR orientations at that point, relative to the gas-phase minimum; potential/; they end at zasymp), "
+        "zasymp, Zana, the end of the scattering grid and where each absorber starts."
+    ),
+}
+CONTROLS = {
+    "time": "The time shown (frames/ holds a record every dtFrames); drag it, or press Play.",
+    "z_window": (
+        "The Z range (bohr, on the scattering grid's points, both ends included) summed in the cell map; it opens on "
+        "the points below zasymp, where the surface acts."
+    ),
+    "r_window": "The r range (bohr, both ends included) summed in the cell map; r beyond ROptStart is the dissociating "
+    "side.",
+    "Play": "Steps through the frames, about three a second, from the shown one on (after the last, the first "
+    "again); press again to pause.",
+    "Explain": "Lays each panel's explanation over it; press again to hide them. The key s saves the window as a PNG.",
+    "Scale": "The cell map's colour scale: this frame's maximum, or the maximum over all frames of the window (then "
+    "the colours compare across time).",
+}

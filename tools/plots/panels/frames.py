@@ -35,10 +35,12 @@ def draw_point_density(
     color_scale: LogNorm,
     contours: FrameContours | None,
     title: str,
+    mark_zasymp: bool = True,
 ) -> None:
     """rho(Z, r) at one (x, y) point and time (density (nz, nr), bohr^-4; x: Z, y: r) on the log colour scale,
     values below its lower end not drawn; with contours, V_min's lines over the map (every level of
-    FrameContours, the 0 eV line labelled) and zasymp, where they end, marked."""
+    FrameContours, the 0 eV line labelled) and, unless mark_zasymp is false (the caller marks it), zasymp, where
+    they end."""
     shown = masked(density, color_scale.vmin)
     ax.pcolormesh(z_bohr, r_bohr, shown.T, shading="nearest", cmap=SEQUENTIAL, norm=color_scale, rasterized=True)
     if contours is not None:
@@ -46,6 +48,7 @@ def draw_point_density(
             contours.z_bohr, contours.r_bohr, contours.v_ev.T, levels=contours.levels_ev, colors=MUTED, linewidths=0.6
         )
         ax.clabel(lines, levels=[0.0], fmt="0 eV", fontsize=6)
+    if contours is not None and mark_zasymp:
         ax.axvline(contours.z_asymptotic_bohr, color=MUTED, linewidth=0.8, linestyle=":")
         ax.annotate(
             " zasymp", (contours.z_asymptotic_bohr, 1.0), xycoords=("data", "axes fraction"), va="top", fontsize=6
@@ -56,6 +59,11 @@ def draw_point_density(
     ax.set_title(title)
 
 
+def add_point_density_colorbar(fig: Figure, color_scale: LogNorm, cax: Axes) -> None:
+    """The colour bar of rho(Z, r) at a point, in its own axes."""
+    fig.colorbar(ScalarMappable(norm=color_scale, cmap=SEQUENTIAL), cax=cax, label="rho (bohr^-4)")
+
+
 def draw_cell_density(
     ax: Axes,
     cell: CellGeometry,
@@ -64,18 +72,25 @@ def draw_cell_density(
     marks: list[tuple[str, float, float]],
     floor: float,
     title: str,
+    images: list[list[tuple[float, float]]] | None = None,
 ) -> None:
     """A density over the unit cell (bohr^-2): density (nx + 1, ny + 1) at the grid points with the first row and
     column repeated (periodic), each drawn as the parallelogram around it, on a linear colour scale from zero;
-    values below `floor` (bohr^-2) not drawn (noise); the cell's outline and the marked points."""
+    values below `floor` (bohr^-2) not drawn (noise); the cell's outline, the marked points and their symmetry
+    images (draw_cell_outline)."""
     shown = masked(density, floor)
     ax.pcolormesh(cell.corners_x_bohr, cell.corners_y_bohr, shown, cmap=SEQUENTIAL, norm=color_scale, rasterized=True)
-    draw_cell_outline(ax, cell, marks, title)
+    draw_cell_outline(ax, cell, marks, title, images)
 
 
-def add_cell_density_colorbar(fig: Figure, ax: Axes, color_scale: Normalize) -> None:
-    """The colour bar of a density over the unit cell."""
-    fig.colorbar(ScalarMappable(norm=color_scale, cmap=SEQUENTIAL), ax=ax, label="density per area (bohr^-2)")
+def add_cell_density_colorbar(fig: Figure, ax: Axes, color_scale: Normalize, cax: Axes | None = None) -> None:
+    """The colour bar of a density over the unit cell (beside ax, or in cax when given: the viewer's fixed place)."""
+    mappable = ScalarMappable(norm=color_scale, cmap=SEQUENTIAL)
+    label = "probability per area (bohr^-2)"
+    if cax is None:
+        fig.colorbar(mappable, ax=ax, label=label)
+    else:
+        fig.colorbar(mappable, cax=cax, label=label)
 
 
 def draw_state_populations(

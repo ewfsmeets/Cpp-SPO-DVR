@@ -14,7 +14,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from readers.run_info import Lattice, RunInfo
+from copies.point_group import GENERATORS, apply_to_cartesian, group_closure
+from readers.run_info import Lattice, RunInfo, lattice_of
 
 
 def parallel_momentum_cartesian(
@@ -89,6 +90,57 @@ def cartesian_bohr(fx: np.ndarray, fy: np.ndarray, lattice: Lattice) -> tuple[np
     x = np.asarray(fx) * lattice.a_bohr
     y = np.asarray(fy) * lattice.b_bohr
     return x + y * np.cos(lattice.skew_angle_rad), y * np.sin(lattice.skew_angle_rad)
+
+
+def grid_point_of_cell_at(x_bohr: float, y_bohr: float, nx: int, ny: int, lattice: Lattice) -> tuple[int, int]:
+    """The (x, y) grid point (ix, iy) whose cell (cell_geometry's parallelogram around it) holds the Cartesian
+    point (X, Y) in bohr, periodically: the inverse of cartesian_bohr (fy = Y / (b sin(gamma)), fx = (X - fy b
+    cos(gamma)) / a), rounded to the grid and wrapped into the cell. On a skewed cell this is not always the
+    Cartesian-nearest grid point; it is the cell drawn under the point."""
+    fx, fy = fractions_of(x_bohr, y_bohr, lattice)
+    return int(round(fx * nx)) % nx, int(round(fy * ny)) % ny
+
+
+def fractions_of(x_bohr: float, y_bohr: float, lattice: Lattice) -> tuple[float, float]:
+    """The fractional coordinates (fx, fy) along the lattice vectors of a Cartesian point: cartesian_bohr inverted."""
+    fy = y_bohr / (lattice.b_bohr * np.sin(lattice.skew_angle_rad))
+    fx = (x_bohr - fy * lattice.b_bohr * np.cos(lattice.skew_angle_rad)) / lattice.a_bohr
+    return float(fx), float(fy)
+
+
+IMAGE_DIGITS = 9  # fractions rounded to this many digits when images are compared and wrapped
+
+
+def site_images(fraction_x: float, fraction_y: float, lattice: Lattice, point_group: str) -> list[tuple[float, float]]:
+    """The Cartesian positions (bohr) in the unit cell, its outline included, of every point that the surface's
+    point group (copies.point_group, about the cell's origin) and the lattice's translations make equivalent to the
+    site at (fraction_x, fraction_y): e.g. on Cu(111) (C6v) all four corners for top, the three bridges (and their
+    copies on the far edges) for a bridge. The site's own position comes first."""
+    x, y = cartesian_bohr(np.array(fraction_x), np.array(fraction_y), lattice)
+    fractions = []
+    for g in group_closure(GENERATORS[point_group]):
+        fx, fy = fractions_of(*apply_to_cartesian(g, float(x), float(y)), lattice)
+        fx, fy = round(fx % 1.0, IMAGE_DIGITS) % 1.0, round(fy % 1.0, IMAGE_DIGITS) % 1.0
+        for sx in (0.0, 1.0) if fx == 0.0 else (0.0,):  # a point on an edge appears on the opposite edge too
+            for sy in (0.0, 1.0) if fy == 0.0 else (0.0,):
+                if (fx + sx, fy + sy) not in fractions:
+                    fractions.append((fx + sx, fy + sy))
+    own = (round(fraction_x, IMAGE_DIGITS), round(fraction_y, IMAGE_DIGITS))
+    fractions.sort(key=lambda f: f != own)  # the site's own position first
+    return [tuple(float(v) for v in cartesian_bohr(np.array(fx), np.array(fy), lattice)) for fx, fy in fractions]
+
+
+def other_images(fractions: list[tuple[float, float]], info: RunInfo) -> list[list[tuple[float, float]]]:
+    """For each point (fraction_x, fraction_y): its site_images under the run's point group (run_info.json lattice)
+    but its own position, for the open markers of the cell maps."""
+    lattice, group = lattice_of(info), info.data["lattice"]["point_group"]
+    return [site_images(fx, fy, lattice, group)[1:] for fx, fy in fractions]
+
+
+def grid_point_bohr(ix: int, iy: int, nx: int, ny: int, lattice: Lattice) -> tuple[float, float]:
+    """The Cartesian position (X, Y) in bohr of grid point (ix, iy) (cartesian_bohr of one point)."""
+    x, y = cartesian_bohr(np.array(ix / nx), np.array(iy / ny), lattice)
+    return float(x), float(y)
 
 
 @dataclass

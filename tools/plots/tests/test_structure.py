@@ -21,7 +21,9 @@ LAYERS = {
     "figures": 5,
     "verdict": 3,
     "report": 6,
+    "viewer": 6,
     "spodvr_plot": 7,
+    "view": 7,
     "tests": 8,
 }
 NUMPY = {"numpy"}
@@ -133,7 +135,10 @@ def test_citation_check_finds_a_renamed_function() -> None:
 
 MAX_FUNCTION_LINES = 40  # code lines (docstring not counted); copies/ follow the C++ and are exempt
 ALLOWED_DECORATORS = {"dataclass", "pytest.fixture", "pytest.mark.parametrize"}
-ALLOWED_CLASSES = {"ReadError"}  # besides @dataclass classes (README, "Conventions")
+ALLOWED_CLASSES = {
+    "ReadError",
+    "FrameViewer",
+}  # besides @dataclass classes; the viewer's window (README, "Conventions")
 
 
 def functions(tree: ast.AST) -> list[ast.FunctionDef]:

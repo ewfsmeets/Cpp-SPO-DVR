@@ -61,6 +61,7 @@ from compute.grids import (
     cell_volume_bohr4,
     density_per_volume,
     incident_parallel_momentum,
+    other_images,
     periodic,
     r_absorber,
     r_absorber_first_index,
@@ -420,19 +421,20 @@ def figure_potential_maps(runs: list[Path], info: RunInfo, options: argparse.Nam
     cell = cell_geometry(potential.nx, potential.ny, lattice)
     marks = [(site.name, x, y) for site, x, y in positions_bohr(potential.sites, lattice)]
     marks += [(point_label(p), x, y) for p, x, y in positions_bohr([lowest], lattice)]
+    images = other_images([(s.fraction_x, s.fraction_y) for s in potential.sites], info)  # the sites' only
     scale = potential_color_scale(ENERGY_CAP_EV)
     notes = (MIN_OVER_ORIENTATIONS, *not_finite_notes(potential.v_min_hartree, "V_min"))
     fig = new_figure(n_notes=len(notes), width_in=10.0)
     axes = fig.subplots(1, 3)
     z, r, r_bond = potential.z_bohr[iz], potential.r_bohr[ir], potential.r_bohr[ir_bond]
     default = " (lowest barrier)" if options.z_bohr is None and options.r_bohr is None else ""
-    draw_cell_map(
-        axes[0], cell, periodic(heights), scale, marks, "Barrier on V_min(Z, r) of each\n(x, y) point (hatched: none)"
+    titles = (
+        "Barrier on V_min(Z, r) of each\n(x, y) point (hatched: none)",
+        f"V_min at Z = {z:.2f},\nr = {r:.2f} bohr{default}",
+        f"V_min at Z = {z:.2f},\nr = {r_bond:.2f} bohr (bond)",
     )
-    draw_cell_map(axes[1], cell, periodic(v[iz, ir]), scale, marks, f"V_min at Z = {z:.2f},\nr = {r:.2f} bohr{default}")
-    draw_cell_map(
-        axes[2], cell, periodic(v[iz, ir_bond]), scale, marks, f"V_min at Z = {z:.2f},\nr = {r_bond:.2f} bohr (bond)"
-    )
+    for ax, values, title in zip(axes, (heights, v[iz, ir], v[iz, ir_bond]), titles, strict=True):
+        draw_cell_map(ax, cell, periodic(values), scale, marks, title, images)
     add_potential_colorbar(fig, list(axes), scale)
     add_info_box(fig, info, ["potential/", "asymptotic_potential.dat", "run_info.json"], notes=notes)
     return [("potential_maps", fig)]
@@ -657,6 +659,7 @@ def figure_xy_maps(runs: list[Path], info: RunInfo, options: argparse.Namespace)
     lattice = lattice_of(info)
     cell = cell_geometry(frames.nx, frames.ny, lattice)
     marks = [(p.name, x, y) for p, x, y in positions_bohr(frames.sites, lattice)]
+    images = other_images([(s.fraction_x, s.fraction_y) for s in frames.sites], info)
     times_au = frames.series.times_au
     titles = [
         f"Over the cell below zasymp at t = {times_au[k_near]:g} a.u.\n(most of the packet there)",
@@ -667,7 +670,7 @@ def figure_xy_maps(runs: list[Path], info: RunInfo, options: argparse.Namespace)
     floor_per_bohr2 = DENSITY_FLOOR * float(np.max(surface))  # both maps: noise below this is not drawn
     for ax, values, title in zip(axes, (surface, absorber), titles, strict=True):
         scale = linear_color_scale(values)
-        draw_cell_density(ax, cell, periodic(values), scale, marks, floor_per_bohr2, title)
+        draw_cell_density(ax, cell, periodic(values), scale, marks, floor_per_bohr2, title, images)
         if np.max(values) > floor_per_bohr2:  # a map of noise gets no colour bar
             add_cell_density_colorbar(fig, ax, scale)
     note = "summed over Z, r and the rotational states in the window, divided by dx dy sin(gamma)"

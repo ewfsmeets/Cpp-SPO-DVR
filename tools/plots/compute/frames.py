@@ -40,9 +40,27 @@ def xy_probability(frames: Frames, record: int, z_slice: slice, r_slice: slice) 
     return np.asarray(frames.series.arrays["prob_zrxy"][record, z_slice, r_slice]).sum(axis=(0, 1))
 
 
+def xy_probability_records(frames: Frames, z_slice: slice, r_slice: slice) -> np.ndarray:
+    """(records, nx, ny): xy_probability of every record (a full pass over the window's cells)."""
+    return np.asarray(frames.series.arrays["prob_zrxy"][:, z_slice, r_slice]).sum(axis=(1, 2))
+
+
+def index_window(points_bohr: np.ndarray, low_bohr: float, high_bohr: float) -> slice:
+    """The index slice of the grid points from the one nearest low_bohr to the one nearest high_bohr, both
+    included, at least one point (a window whose ends meet holds that point)."""
+    low = int(np.argmin(np.abs(points_bohr - low_bohr)))
+    high = int(np.argmin(np.abs(points_bohr - high_bohr)))
+    return slice(min(low, high), max(low, high) + 1)
+
+
 def window_probability(frames: Frames, z_slice: slice, r_slice: slice) -> np.ndarray:
     """(records,): the probability in a (Z, r) window of the scattering grid, summed over (x, y), per record."""
     return np.asarray(frames.series.arrays["prob_zrxy"][:, z_slice, r_slice]).sum(axis=(1, 2, 3, 4))
+
+
+def nearest_frame(times_au: np.ndarray, t_au: float) -> int:
+    """The record whose time is nearest t_au (the first of two equally near)."""
+    return int(np.argmin(np.abs(np.asarray(times_au) - t_au)))
 
 
 def most_at_surface(frames: Frames, nz_surface: int) -> int:

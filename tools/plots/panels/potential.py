@@ -72,11 +72,12 @@ def draw_cell_map(
     color_scale: Normalize,
     marks: list[tuple[str, float, float]],
     title: str,
+    images: list[list[tuple[float, float]]] | None = None,
 ) -> None:
     """A quantity of the (x, y) grid over the unit cell in Cartesian bohr (x: X, y: Y): values_ev (nx + 1, ny + 1)
     are the grid points with the first row and column repeated (periodic), each drawn as the parallelogram around
     it, so the drawn region covers the outlined unit cell; values above the scale's top not drawn; the marked points
-    (label, X, Y) labelled."""
+    (label, X, Y) labelled, and their symmetry images (draw_cell_outline)."""
     ax.pcolormesh(
         cell.corners_x_bohr,
         cell.corners_y_bohr,
@@ -86,15 +87,26 @@ def draw_cell_map(
         rasterized=True,
     )
     hatch_not_drawn(ax)
-    draw_cell_outline(ax, cell, marks, title)
+    draw_cell_outline(ax, cell, marks, title, images)
 
 
-def draw_cell_outline(ax: Axes, cell: CellGeometry, marks: list[tuple[str, float, float]], title: str) -> None:
+def draw_cell_outline(
+    ax: Axes,
+    cell: CellGeometry,
+    marks: list[tuple[str, float, float]],
+    title: str,
+    images: list[list[tuple[float, float]]] | None = None,
+) -> None:
     """What every map over the unit cell has around its values: the cell's outline, the marked points (label, X, Y)
-    labelled on a light box (readable on any colour), equal axes in Cartesian bohr (x: X, y: Y) and the title."""
+    labelled on a light box (readable on any colour), equal axes in Cartesian bohr (x: X, y: Y) and the title. With
+    images (one list of (X, Y) per mark: compute.grids.site_images), each mark's symmetry-equivalent points get its
+    marker, open and unlabelled."""
     ax.plot(cell.outline_x_bohr, cell.outline_y_bohr, color=INK, linewidth=0.8)
     for k, (label, x, y) in enumerate(marks):
-        ax.plot(x, y, marker=MARKERS[k % len(MARKERS)], color=INK, markersize=5, linestyle="none")
+        marker = MARKERS[k % len(MARKERS)]
+        for x_image, y_image in images[k] if images and k < len(images) else []:
+            ax.plot(x_image, y_image, marker=marker, color=INK, markerfacecolor="none", markersize=5, linestyle="none")
+        ax.plot(x, y, marker=marker, color=INK, markersize=5, linestyle="none")
         ax.annotate(label, (x, y), xytext=(4, 4), textcoords="offset points", fontsize=6, bbox=LABEL_BOX)
     ax.set_aspect("equal")
     ax.grid(False)
