@@ -294,13 +294,19 @@ extensions ([reproducibility](docs/performance.md#reproducibility)).
 ### Testing
 
 ```bash
-OMP_NUM_THREADS=8 ctest --test-dir build --output-on-failure                                      # everything (~13 min)
-OMP_NUM_THREADS=8 ctest --test-dir build -E 'RegressionPropagation|PlotRuns' --output-on-failure  # quick tier (~3 min)
-OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure                         # GPU tests (~1.5 min)
+export OMP_NUM_THREADS=8
+# everything (~15 min): the Python tests side by side, then the rest serially
+ctest --test-dir build -L python -j 8 --output-on-failure && ctest --test-dir build -LE python --output-on-failure
+# quick tier (~4 min)
+ctest --test-dir build -L python -E PlotRuns -j 8 --output-on-failure &&
+  ctest --test-dir build -LE python -E RegressionPropagation --output-on-failure
+ctest --test-dir build-cuda -R Cuda --output-on-failure                         # GPU tests (~1.5 min)
 ```
 
-- Run ctest serially (no `-j`): many tests already use all OpenMP threads. Set `OMP_NUM_THREADS` to
-  the number of physical cores.
+- Run the C++ tests serially (no `-j`): many use all OpenMP threads. Set `OMP_NUM_THREADS` to the
+  number of physical cores. The Python tests (`-L python`: pytest, one thread each) may run side by side
+  with `-j` up to that number; the plot fixtures' writer among them reserves 6 of the slots.
+  A plain serial `ctest --test-dir build` runs everything too, about 3.5 min slower.
 - The quick tier leaves out the propagation gates (gates 3 and 4 against the Fortran) and the plot
   tool's runs (`PlotRuns.*`). Use it while
   working on a change; run everything before committing a change to the code

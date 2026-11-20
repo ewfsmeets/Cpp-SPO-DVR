@@ -64,10 +64,15 @@ pre-commit run clang-tidy --hook-stage manual --all-files
 ## Testing
 
 The commands for the whole suite, the quick tier and the GPU tests, with their run times and test
-counts (measured on 2026-11-19, with the plot tool's tests), are in the [README](../README.md#testing). Run ctest serially (no
-`-j`), with `OMP_NUM_THREADS` set to the number of physical cores.
+counts (measured on 2026-11-19, with the plot tool's tests), are in the [README](../README.md#testing). Run the C++ tests
+serially (no `-j`), with `OMP_NUM_THREADS` set to the number of physical cores; the Python tests (`-L python`) may run
+side by side (`-j 8`): each runs with one thread (`OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS` and `MKL_NUM_THREADS` set
+to 1 by `add_pytest_test`, so numpy's BLAS does not start 8 threads in each) and its own matplotlib cache, and the
+plot fixtures' writer (`PlotRuns.Fixtures`, 8 threads, labelled `python` too) reserves 6 slots (`PROCESSORS 6`).
+Measured 2026-11-20: the 79 Python tests 350 s with `-j 8`, about 554 s serially.
 
-- **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` runs everything but
+- **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` (or in two parts:
+  `-L python -E PlotRuns -j 8`, then `-LE python -E RegressionPropagation`) runs everything but
   the propagation gates (gates 3 and 4 against the Fortran, 23–86 s each; the regular expression
   also leaves out their GPU twins `CudaRegressionPropagation.*`) and the plot tool's runs and the tests
   that read them (`PlotRuns.*`, about 280 s for the runs). Run it while working on a change;

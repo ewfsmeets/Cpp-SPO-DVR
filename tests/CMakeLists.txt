@@ -54,7 +54,10 @@ add_one_process_test(RegressionPesScmNegative test_regression_pes "RegressionPes
 set(plot_fixtures_dir ${CMAKE_CURRENT_BINARY_DIR}/plot_fixtures)
 target_compile_definitions(test_plot_fixtures PRIVATE SPODVR_PLOT_FIXTURES_DIR="${plot_fixtures_dir}")
 add_one_process_test(PlotRuns.Fixtures test_plot_fixtures "PlotRuns.*")
-set_tests_properties(PlotRuns.Fixtures PROPERTIES FIXTURES_SETUP plot_fixtures)
+# Labelled python: it exists for the Python tests and runs with them (`ctest -L python -j 8`, docs/CONTRIBUTING.md
+# "Testing"). PROCESSORS 6: its runs use 8 threads; under -j 8 at most two single-threaded tests run beside it (more
+# slow it down, and the tests that read its runs wait for it).
+set_tests_properties(PlotRuns.Fixtures PROPERTIES FIXTURES_SETUP plot_fixtures LABELS python PROCESSORS 6)
 
 # The CRP library's own tests (they link only spodvr_crplib, with its spodvr_fortran_text), and
 # those of the Fortran text reader (they link only spodvr_fortran_text).
@@ -139,6 +142,7 @@ set(pytest_selections ${CMAKE_BINARY_DIR}/pytest_selections.txt)
 file(WRITE ${pytest_selections} "# tool<TAB>selection<TAB>built|not-built, written by tests/CMakeLists.txt\n")
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/pytest)
 # add_pytest_test(NAME <ctest name> TOOL <tool directory> SELECT <module or module::test> [ARGS …])
+set(python_test_threads "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;MKL_NUM_THREADS=1")
 function(add_pytest_test)
   cmake_parse_arguments(PARSE_ARGV 0 arg "" "NAME;TOOL;SELECT" "ARGS")
   set(tool ${PROJECT_SOURCE_DIR}/${arg_TOOL})
@@ -146,9 +150,11 @@ function(add_pytest_test)
            COMMAND ${Python3_EXECUTABLE} -I -B -m pytest -c ${tool}/pytest.ini --rootdir=${tool}
                    -p no:cacheprovider -q --basetemp=${CMAKE_CURRENT_BINARY_DIR}/pytest/${arg_NAME}
                    ${tool}/${arg_SELECT} ${arg_ARGS})
+  # Each test its own matplotlib cache and one BLAS thread (numpy's work here is small; with OMP_NUM_THREADS=8 each
+  # process would start 8), so that `ctest -L python -j 8` runs them side by side without a race or oversubscription.
   set_tests_properties(${arg_NAME} PROPERTIES
                        LABELS python
-                       ENVIRONMENT "MPLBACKEND=Agg;MPLCONFIGDIR=${CMAKE_CURRENT_BINARY_DIR}/pytest/matplotlib")
+                       ENVIRONMENT "MPLBACKEND=Agg;MPLCONFIGDIR=${CMAKE_CURRENT_BINARY_DIR}/pytest/matplotlib/${arg_NAME};${python_test_threads}")
   file(APPEND ${pytest_selections} "${arg_TOOL}\t${arg_SELECT}\tbuilt\n")
 endfunction()
 # A selection whose ctest exists only in some configurations, listed when it is not registered.
@@ -291,9 +297,11 @@ add_test(NAME Python.EveryTestRegistered
 add_test(NAME Python.UnregisteredTestFails
          COMMAND ${Python3_EXECUTABLE} -I -B ${check_python_tests} ${pytest_selections} --root ${PROJECT_SOURCE_DIR}
                  --plant-faults)
-set_tests_properties(Python.EveryTestRegistered Python.UnregisteredTestFails PROPERTIES
-                     LABELS python
-                     ENVIRONMENT "MPLBACKEND=Agg;MPLCONFIGDIR=${CMAKE_CURRENT_BINARY_DIR}/pytest/matplotlib")
+foreach(name Python.EveryTestRegistered Python.UnregisteredTestFails)
+  set_tests_properties(${name} PROPERTIES
+                       LABELS python
+                       ENVIRONMENT "MPLBACKEND=Agg;MPLCONFIGDIR=${CMAKE_CURRENT_BINARY_DIR}/pytest/matplotlib/${name};${python_test_threads}")
+endforeach()
 
 # Every Fortran reference file listed in a MANIFEST.tsv exists with its recorded sha256, so a
 # missing or edited reference fails instead of skipping its gate (tools/fortran_reference/README.md).
