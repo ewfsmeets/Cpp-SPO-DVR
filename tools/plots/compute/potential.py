@@ -217,6 +217,40 @@ def node_edges_deg(theta_rad: np.ndarray, phi_rad: np.ndarray, homonuclear: bool
     return theta_edges, np.concatenate([phi - step / 2, [phi[-1] + step / 2]])
 
 
+@dataclass(frozen=True, kw_only=True)
+class CellPotential:
+    """V_min over the (x, y) grid at one (Z, r) grid point, eV relative to min V_asy: the corrugation there."""
+
+    v_ev: np.ndarray  # (nx, ny)
+    z_bohr: float
+    r_bohr: float
+
+
+def cell_potential(
+    potential: PotentialData, reference_hartree: float, hartree_to_ev: float, iz: int, ir: int
+) -> CellPotential | None:
+    """V_min(x, y) at the (Z, r) grid point (iz, ir); None at or beyond zasymp, where potential/ ends (there V is
+    V_asy(r), the same over the whole cell)."""
+    if iz >= len(potential.z_bohr):
+        return None
+    v_ev = relative_ev(potential.v_min_hartree[iz, ir], reference_hartree, hartree_to_ev)
+    return CellPotential(v_ev=v_ev, z_bohr=float(potential.z_bohr[iz]), r_bohr=float(potential.r_bohr[ir]))
+
+
+FLAT_MEV = 1.0  # heuristic: V varying less than this over the cell counts as flat (no contours)
+
+
+def corrugation_mev(v_ev: np.ndarray, cap_ev: float) -> np.ndarray | None:
+    """V over the cell relative to its lowest value (meV), values more than cap_ev above it NaN (walls); None when
+    it varies by less than FLAT_MEV or holds no finite value."""
+    if not np.isfinite(v_ev).any():
+        return None
+    above_mev = 1000.0 * (v_ev - np.nanmin(v_ev))
+    if not np.nanmax(above_mev) >= FLAT_MEV:
+        return None
+    return np.where(above_mev <= 1000.0 * cap_ev, above_mev, np.nan)
+
+
 def count_not_finite(values: np.ndarray) -> int:
     """How many values are NaN or inf (drawn hatched, like the walls above the cap)."""
     return int(np.count_nonzero(~np.isfinite(np.asarray(values))))

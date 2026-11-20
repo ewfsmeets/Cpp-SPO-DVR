@@ -291,6 +291,13 @@ PANELS = {
         "the DVR orientations at that point, relative to the gas-phase minimum; potential/; they end at zasymp), "
         "zasymp, Zana, the end of the scattering grid and where each absorber starts."
     ),
+    "time_trace": (
+        "The probability in the (Z, r) window of the sliders above the picked grid point against time (solid), and "
+        "the window's probability over the whole cell divided by the number of grid points (dashed): where the solid "
+        "line runs above the dashed one, the packet gathers above this point; the vertical line is the frame shown. "
+        "Both are probabilities per grid point, summed over the rotational states; the scale turns log when they "
+        "span more than three decades."
+    ),
 }
 CONTROLS = {
     "time": "The time shown (frames/ holds a record every dtFrames); drag it, or press Play.",
@@ -305,4 +312,11 @@ CONTROLS = {
     "Explain": "Lays each panel's explanation over it; press again to hide them. The key s saves the window as a PNG.",
     "Scale": "The cell map's colour scale: this frame's maximum, or the maximum over all frames of the window (then "
     "the colours compare across time).",
+    "Map": "The cell map's colour scale linear from zero, or log over eight decades below its top (the faint parts "
+    "of the packet show).",
+    "V_min": "Lays V_min(x, y) over the cell map as labelled contours (potential/): the lowest potential over the "
+    "run's orientations at each grid point, at the (Z, r) of the window that holds the most probability in the frame "
+    "shown, so the contours follow the packet; in meV above its lowest value over the cell (the title gives that "
+    "value, relative to the gas-phase minimum: vs min V_asy), so they show the corrugation the packet meets. Above zasymp the "
+    "potential no longer depends on (x, y): no contours.",
 }

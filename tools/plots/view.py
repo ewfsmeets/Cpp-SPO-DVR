@@ -12,9 +12,9 @@ Usage (uv installs numpy, matplotlib and PyQt6 once, from the header above):
 A run split into restart segments: give every segment's directory (any order). Without a window (no display, or
 MPLBACKEND set to a backend without one, e.g. Agg) it says so and writes the frame movies of the sites
 (spodvr_plot.py's frame_movie) into --out instead (default: the working directory). --self-test opens the window,
-drives it (as opened, the middle frame, a click on the second site, one Play step), saves a PNG after each of the
-four into DIR and closes it.
-Exit status: 0 done; 1 the self-test did not write its four PNGs; 2 bad arguments, a run without frames/ or not
+drives it (as opened, the middle frame, a click on the second site, one Play step, V_min's contours at the
+surface), saves a PNG after each of the five into DIR and closes it.
+Exit status: 0 done; 1 the self-test did not write its five PNGs; 2 bad arguments, a run without frames/ or not
 readable, an --out holding a file of the same name the tool did not write, or --self-test without a window.
 Environment: DISPLAY or WAYLAND_DISPLAY (the window; WSLg sets both); MPLBACKEND (Agg: no window, the movies).
 Needs: the PEP 723 header's packages. Docs: tools/plots/README.md ("The viewer")
@@ -53,7 +53,7 @@ def write_movies(runs: list[Path], info: RunInfo, out: Path) -> int:
 
 
 def self_test(runs: list[Path], info: RunInfo, out: Path) -> int:
-    """The window driven and closed; 1 unless all four PNGs were written."""
+    """The window driven and closed; 1 unless all its PNGs were written."""
     saved = run_self_test(runs, info, out)
     for path in saved:
         print(path)

@@ -112,22 +112,31 @@ An interactive window on a run's frames/ (`dtFrames`), with potential/ for the c
 
 ```sh
 uv run tools/plots/view.py <run directory>...                    # the window (uv installs PyQt6 once)
-uv run tools/plots/view.py <run directory>... --self-test DIR    # drives it, saves 4 PNGs into DIR, closes it
+uv run tools/plots/view.py <run directory>... --self-test DIR    # drives it, saves 5 PNGs into DIR, closes it
 ```
 
-![The viewer on the oblique Dai-Light fixture: the probability over the unit cell below zasymp, and rho(Z, r)
-above the bridge site, at t = 7000 a.u.](images/viewer.png)
+![The viewer on the oblique Dai-Light fixture at t = 2700 a.u. (65.3 fs), the packet at the surface: the
+probability over the unit cell below zasymp with V_min's corrugation as contours, rho(Z, r) above the bridge site,
+and the probability above it against time](images/viewer.png)
 
 - Left: the probability per area over the unit cell (drawn skewed as it is), summed over a window of Z and r (the
   two range sliders, in bohr; it opens on the points below zasymp), with the probability in the window in the
   title; a window holding less than 1e-8 of the initial norm is left empty. The sites are marked where PlotSites
   puts them (filled, labelled) and at their symmetry-equivalent points (open: the run's point group and the
-  lattice; also in `xy_maps` and `potential_maps`). A click picks the grid point whose drawn cell holds it. Its colour scale is the frame's own, or (the Scale button) one over all frames.
+  lattice; also in `xy_maps` and `potential_maps`). A click picks the grid point whose drawn cell holds it. Its
+  colour scale is the frame's own, or (the Scale button) one over all frames; linear, or log over eight decades
+  (the Map button). The V_min button lays V_min(x, y) over it as contours in meV above its lowest value over the
+  cell, at the (Z, r) of the window that holds the most probability in the frame (the corrugation the packet meets
+  there; none beyond zasymp, where V no longer depends on x and y).
 - Right: ρ(Z, r) above the picked point (the first site of PlotSites at the start), one log colour scale over all
-  frames, with V_min's contours, Zana, the end of the scattering grid and where the absorbers start.
-- The time slider (a.u.) picks the frame, Play steps through them; hovering shows what a panel or control shows,
+  frames, with V_min's contours, Zana, the end of the scattering grid and where the absorbers start. Below it the
+  probability in the (Z, r) window above the point against time, beside the window's mean per grid point (above
+  it: the packet gathers over this point), the shown frame marked.
+- The time slider (a.u.; the titles give fs beside it) picks the frame, Play steps through them; hovering shows what a panel or control shows,
   Explain lays the panels' explanations over them, the key s saves the window as a PNG in the working directory.
-- The screenshot is the self-test's third PNG on the `dailight_oblique` fixture (`ctest -R '^PlotRuns\.'` writes it
+- The rotational state at the picked point is not available: frames/ holds the populations of the rotational
+  states per Z summed over x and y (`pop_jmj_z`, the `rotational_states` figure), not per grid point.
+- The screenshot is the self-test's fifth PNG on the `dailight_oblique` fixture (`ctest -R '^PlotRuns\.'` writes it
   into `build/tests/plot_fixtures`).
 - Without a window (no display, or no GUI backend) it says so and writes the frame movies of the sites into
   `--out` (spodvr_plot.py's `frame_movie`). On WSL2 the window opens through WSLg.

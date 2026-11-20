@@ -1,8 +1,10 @@
 """The interactive viewer of frames/ (layer 6; view.py opens it): left, the probability over the unit cell summed over
-a window of (Z, r); a click picks the grid point whose drawn cell holds it; right, rho(Z, r) above that point with
-V_min's contours (potential/), Zana, the end of the scattering grid and the absorbers. A time slider and Play step
-through the frames, two range sliders set the (Z, r) window in bohr; hovering shows the explanation of a panel or
-control (explanations.PANELS, CONTROLS), Explain lays them over the panels, the key s saves the window as a PNG.
+a window of (Z, r), on a linear or log scale, optionally with V_min(x, y)'s contours at the window's densest (Z, r);
+a click picks the grid point whose drawn cell holds it; right, rho(Z, r) above that point with V_min's contours
+(potential/), Zana, the end of the scattering grid and the absorbers, and below it the probability in the window
+above the point against time. A time slider and Play step through the frames, two range sliders set the (Z, r)
+window in bohr; hovering shows the explanation of a panel or control (explanations.PANELS, CONTROLS), Explain lays
+them over the panels, the key s saves the window as a PNG. Times in a.u. with fs beside them.
 
 The window holds the state and wires the widgets to the panels of panels/frames.py; the numbers come from compute/
 (the window picks frames, points, windows and scales). The only module of the tool that uses pyplot.
@@ -27,10 +29,13 @@ from compute.densities import Marks, density_marks
 from compute.frames import (
     FrameContours,
     contours_at,
+    densest_zr,
     index_window,
+    most_at_surface,
     nearest_frame,
     usable_frames,
     window_probability,
+    window_probability_at,
     xy_probability,
     xy_probability_records,
     zr_probability_at,
@@ -44,14 +49,28 @@ from compute.grids import (
     other_images,
     periodic,
 )
-from compute.potential import FRAME_CONTOUR_STEP_EV, positions_bohr
+from compute.potential import (
+    ENERGY_CAP_EV,
+    FLAT_MEV,
+    FRAME_CONTOUR_STEP_EV,
+    cell_potential,
+    corrugation_mev,
+    positions_bohr,
+)
 from explanations import CONTROLS, PANELS
 from figures import potential_with_reference
 from panels.densities import draw_marks
-from panels.frames import add_cell_density_colorbar, add_point_density_colorbar, draw_cell_density, draw_point_density
+from panels.frames import (
+    add_cell_density_colorbar,
+    add_point_density_colorbar,
+    draw_cell_density,
+    draw_point_density,
+    draw_window_trace,
+)
+from panels.potential import draw_cell_contours
 from readers.densities import DensityGrids
 from readers.run_info import RunInfo, lattice_of
-from style import DENSITY_FLOOR, INK, INK_2, MUTED, SURFACE, apply_style, density_color_scale, info_lines
+from style import DENSITY_FLOOR, INK, INK_2, MUTED, SURFACE, apply_style, density_color_scale, info_lines, time_text
 
 PLAY_INTERVAL_MS = 300  # between two frames while playing (explanations.CONTROLS["Play"] says "about three a second")
 HELP_WIDTH = 60  # characters per line in the help box
@@ -85,14 +104,16 @@ def has_window_backend() -> bool:
 
 
 class FrameViewer:
-    """The two panels, the sliders, the buttons and the help box on one figure.
+    """The three panels, the sliders, the buttons and the help box on one figure.
 
     Fixed once: frames (frames/ of the run), info, lattice, cell (the cell map's geometry), site_positions
-    ((name, X, Y) of PlotSites) and site_images (their symmetry-equivalent points), potential (potential/ and min V_asy, or None), line_marks (the rho(Z, r) panel's
-    lines), initial_norm. The state update() draws: point (the picked grid point) with point_density and
-    point_scale (rho at it over all frames and their log scale, set on each pick), the frame of time_slider, the
-    windows of z_slider and r_slider, fixed_scale (one colour scale over all frames for the cell map) and
-    explaining; playing tells whether Play runs."""
+    ((name, X, Y) of PlotSites) and site_images (their symmetry-equivalent points), potential (potential/ and min
+    V_asy, or None), line_marks (the rho(Z, r) panel's lines), initial_norm. The state update() draws: point (the
+    picked grid point) with point_probability, point_density and point_scale (the probability and rho at it over
+    all frames and rho's log scale, set on each pick), the frame of time_slider, the windows of z_slider and
+    r_slider, fixed_scale (one colour scale over all frames for the cell map), log_map (its log scale),
+    v_min_contours (V_min's contours over it) and explaining; playing tells whether Play runs. window_totals caches
+    the probability in each (Z, r) window over all frames (one pass over frames/ per window, not per redraw)."""
 
     def __init__(self, figure: Figure, runs: list[Path], info: RunInfo) -> None:
         """Reads frames/ (and potential/ for the contours) of the run's segments, lays out the panels and the
@@ -110,10 +131,13 @@ class FrameViewer:
         self.map_colorbar_ax = figure.add_axes((0.42, 0.42, 0.012, 0.50))
         self.point_ax = figure.add_axes((0.55, 0.42, 0.36, 0.50))
         self.point_colorbar_ax = figure.add_axes((0.92, 0.42, 0.012, 0.50))
+        self.trace_ax = figure.add_axes((0.64, 0.17, 0.27, 0.15))
         self.add_sliders()
         self.add_buttons()
-        self.fixed_scale, self.explaining, self.playing = False, False, False
-        self.help = figure.text(0.62, 0.32, self.wrapped(HELP_PROMPT), color=INK, fontsize=8, va="top")
+        self.fixed_scale, self.log_map, self.v_min_contours = False, False, False
+        self.explaining, self.playing = False, False
+        self.window_cache: dict[tuple[int, int, int, int], np.ndarray] = {}
+        self.help = figure.text(0.62, 0.115, self.wrapped(HELP_PROMPT), color=INK, fontsize=8, va="top")
         self.info_box = figure.text(0.01, 0.01, "", ha="left", va="bottom", fontsize=7, color=INK_2, parse_math=False)
         self.timer = figure.canvas.new_timer(interval=PLAY_INTERVAL_MS)
         self.timer.add_callback(self.step)
@@ -137,7 +161,7 @@ class FrameViewer:
         times = self.frames.series.times_au
         z = self.frames.z_bohr[: self.frames.nz_scattering]
         r = self.frames.r_bohr
-        z_below = z[max(int(self.info.data["grids"]["nz_potential"]) - 1, 0)]
+        z_below = z[max(self.potential_points() - 1, 0)]
         time_ax = self.figure.add_axes((0.12, 0.29, 0.40, 0.03))
         self.time_slider = Slider(time_ax, "t (a.u.)", times[0], times[-1], valinit=times[0], valstep=times)
         z_ax = self.figure.add_axes((0.12, 0.23, 0.40, 0.03))
@@ -148,19 +172,27 @@ class FrameViewer:
             widget.on_changed(self.update)
 
     def add_buttons(self) -> None:
-        """Play, Explain and the cell map's scale (per frame, or one over all frames)."""
+        """Play, Explain, the cell map's scale (per frame, or one over all frames), linear or log, and V_min's
+        contours on it (only with potential/)."""
+        v_min_label = "V_min: off" if self.potential is not None else "V_min: no potential/"
         buttons = (
-            ("Play", "Play", 0.08, self.toggle_play),
-            ("Explain", "Explain", 0.08, self.toggle_explanations),
-            ("Scale", "Scale: per frame", 0.14, self.toggle_scale),
+            ("Play", "Play", 0.06, self.toggle_play),
+            ("Explain", "Explain", 0.07, self.toggle_explanations),
+            ("Scale", "Scale: per frame", 0.12, self.toggle_scale),
+            ("Map", "Map: linear", 0.09, self.toggle_log),
+            ("V_min", v_min_label, 0.12, self.toggle_v_min),
         )
         self.buttons = {}  # kept: a widget without a reference stops responding
-        left = 0.12
+        left = 0.05
         for name, label, width, action in buttons:
             button = Button(self.figure.add_axes((left, 0.09, width, 0.04)), label)
             button.on_clicked(action)
             self.buttons[name] = button
-            left += width + 0.02
+            left += width + 0.01
+
+    def potential_points(self) -> int:
+        """The number of Z points below zasymp (nz_potential), where the surface acts."""
+        return int(self.info.data["grids"]["nz_potential"])
 
     def first_point(self) -> Point:
         """The first site of PlotSites, else the cell's origin."""
@@ -179,7 +211,8 @@ class FrameViewer:
         redraws."""
         self.point = point
         volume_bohr4 = cell_volume_bohr4(self.info.data["grids"])
-        self.point_density = density_per_volume(zr_probability_at(self.frames, point.ix, point.iy), volume_bohr4)
+        self.point_probability = zr_probability_at(self.frames, point.ix, point.iy)
+        self.point_density = density_per_volume(self.point_probability, volume_bohr4)
         self.point_scale = density_color_scale(self.point_density)
         self.update()
 
@@ -194,10 +227,18 @@ class FrameViewer:
         z = index_window(self.frames.z_bohr[: self.frames.nz_scattering], z_low, z_high)
         return z, index_window(self.frames.r_bohr, r_low, r_high)
 
+    def window_totals(self, z_slice: slice, r_slice: slice) -> np.ndarray:
+        """(records,): the probability in the (Z, r) window over all frames, read once per window."""
+        key = (z_slice.start, z_slice.stop, r_slice.start, r_slice.stop)
+        if key not in self.window_cache:
+            self.window_cache[key] = window_probability(self.frames, z_slice, r_slice)
+        return self.window_cache[key]
+
     def update(self, _value: object = None) -> None:
-        """Redraws both panels, the info box and (when on) the explanations for the current state."""
+        """Redraws the three panels, the info box and (when on) the explanations for the current state."""
         self.draw_map()
         self.draw_point()
+        self.draw_trace()
         if self.explaining:
             self.draw_explanations()
         t_au = float(self.frames.series.times_au[self.record()])
@@ -206,11 +247,15 @@ class FrameViewer:
         self.figure.canvas.draw_idle()
 
     def map_scale(self, values: np.ndarray, area_bohr2: float, z_slice: slice, r_slice: slice) -> Normalize:
-        """The cell map's linear scale: this frame's maximum, or with fixed_scale the maximum over all frames of
-        the same window (its colours then compare across time)."""
+        """The cell map's scale up to this frame's maximum, or with fixed_scale the maximum over all frames of the
+        same window (its colours then compare across time): linear from zero, or with log_map log over
+        DENSITY_FLOOR of it (linear when nothing is positive)."""
         if self.fixed_scale:
             values = density_per_volume(xy_probability_records(self.frames, z_slice, r_slice), area_bohr2)
-        return Normalize(0.0, max(float(np.max(values)), np.finfo(float).tiny))
+        top = float(np.max(values))
+        if self.log_map and top > 0.0:
+            return density_color_scale(values)
+        return Normalize(0.0, max(top, np.finfo(float).tiny))
 
     def draw_map(self) -> None:
         """The probability over the cell in the (Z, r) window at the current frame, the picked point marked; a
@@ -218,7 +263,7 @@ class FrameViewer:
         z_slice, r_slice = self.windows()
         area_bohr2 = float(self.info.data["grids"]["xy_volume_element"])
         values = density_per_volume(xy_probability(self.frames, self.record(), z_slice, r_slice), area_bohr2)
-        in_window = float(window_probability(self.frames, z_slice, r_slice)[self.record()])
+        in_window = float(self.window_totals(z_slice, r_slice)[self.record()])
         empty = in_window < EMPTY_WINDOW * self.initial_norm
         scale = self.map_scale(values, area_bohr2, z_slice, r_slice)
         self.map_ax.clear()
@@ -228,6 +273,37 @@ class FrameViewer:
         labels = self.map_labels()
         draw_cell_density(self.map_ax, self.cell, periodic(values), scale, labels, floor, title, self.site_images)
         add_cell_density_colorbar(self.figure, self.map_ax, scale, cax=self.map_colorbar_ax)
+        if self.v_min_contours and self.potential is not None:
+            self.draw_v_min_contours(z_slice, r_slice, empty)
+
+    def draw_v_min_contours(self, z_slice: slice, r_slice: slice, empty: bool) -> None:
+        """V_min(x, y)'s contours over the map at the (Z, r) of the window holding the most probability in this
+        frame (the corrugation the packet meets there), named in a title line; none for an empty window, beyond
+        zasymp (V is flat there), or where V_min is flat or not finite."""
+        if empty:
+            self.add_map_title_line("V_min contours: no packet in the window")
+            return
+        potential, reference_hartree = self.potential
+        iz, ir = densest_zr(self.frames, self.record(), z_slice, r_slice)
+        cell_v = cell_potential(potential, reference_hartree, self.info.hartree_to_ev, iz, ir)
+        if cell_v is None:
+            z, r = self.frames.z_bohr[iz], self.frames.r_bohr[ir]
+            self.add_map_title_line(f"V at (Z, r) = ({z:.2f}, {r:.2f}): beyond zasymp, flat over the cell")
+            return
+        where = f"V_min at (Z, r) = ({cell_v.z_bohr:.2f}, {cell_v.r_bohr:.2f})"
+        # the contours span at most the maps' energy cap above the cell's lowest V_min (the walls left out)
+        corrugation = corrugation_mev(cell_v.v_ev, ENERGY_CAP_EV)
+        if corrugation is None:
+            finite = np.isfinite(cell_v.v_ev).any()
+            self.add_map_title_line(f"{where}: " + (f"flat (within {FLAT_MEV:g} meV)" if finite else "not finite"))
+            return
+        draw_cell_contours(self.map_ax, self.cell, periodic(corrugation), "%g meV")
+        lowest_ev = float(np.nanmin(cell_v.v_ev))
+        self.add_map_title_line(f"{where}: meV above {lowest_ev:.3f} eV (vs min V_asy)")
+
+    def add_map_title_line(self, line: str) -> None:
+        """Adds a line to the cell map's title."""
+        self.map_ax.set_title(f"{self.map_ax.get_title()}\n{line}")
 
     def map_title(self, z_slice: slice, r_slice: slice, in_window: float, empty: bool) -> str:
         """The cell map's title: the time, the window in bohr and the probability in it."""
@@ -236,7 +312,8 @@ class FrameViewer:
         z_range = f"Z in [{z[z_slice.start]:.2f}, {z[z_slice.stop - 1]:.2f}]"
         r_range = f"r in [{r[r_slice.start]:.2f}, {r[r_slice.stop - 1]:.2f}] bohr"
         what = "nothing in the window" if empty else "probability over the cell"
-        return f"t = {t_au:g} a.u.: {what}\n{z_range}, {r_range}: P = {in_window:.2e}"
+        when = time_text(t_au, self.info.au_time_to_fs)
+        return f"t = {when}: {what}\n{z_range}, {r_range}: P = {in_window:.2e}"
 
     def map_labels(self) -> list[tuple[str, float, float]]:
         """The sites of the cell map, the picked one labelled so ("bridge (picked)"), or the picked point added."""
@@ -254,7 +331,8 @@ class FrameViewer:
         self.point_colorbar_ax.clear()
         x, y = grid_point_bohr(self.point.ix, self.point.iy, self.frames.nx, self.frames.ny, self.lattice)
         t_au = float(self.frames.series.times_au[self.record()])
-        title = f"rho(Z, r) above {self.point.name}, (X, Y) = ({x:.2f}, {y:.2f}) bohr, t = {t_au:g} a.u."
+        when = time_text(t_au, self.info.au_time_to_fs)
+        title = f"rho(Z, r) above {self.point.name}, (X, Y) = ({x:.2f}, {y:.2f}) bohr, t = {when}"
         if self.potential is not None:
             title += f"\ncontours: V_min - min V_asy every {FRAME_CONTOUR_STEP_EV:g} eV (0 eV labelled)"
         z = self.frames.z_bohr[: self.frames.nz_scattering]
@@ -264,6 +342,20 @@ class FrameViewer:
         )
         draw_marks(self.point_ax, self.line_marks)
         add_point_density_colorbar(self.figure, self.point_scale, self.point_colorbar_ax)
+
+    def draw_trace(self) -> None:
+        """The probability in the (Z, r) window above the picked point against time, the cell's mean per grid point
+        beside it, the shown frame marked."""
+        self.trace_ax.clear()
+        z_slice, r_slice = self.windows()
+        at_point = window_probability_at(self.point_probability, z_slice, r_slice)
+        cell_mean = self.window_totals(z_slice, r_slice) / (self.frames.nx * self.frames.ny)
+        times = self.frames.series.times_au
+        t_au = float(times[self.record()])
+        title = (
+            f"In the window above {self.point.name} against time (1000 a.u. = {1000 * self.info.au_time_to_fs:.3g} fs)"
+        )
+        draw_window_trace(self.trace_ax, times, (at_point, cell_mean), self.point.name, t_au, title)
 
     def contours(self) -> FrameContours | None:
         """V_min's contours at the picked point, or None without potential/."""
@@ -304,6 +396,20 @@ class FrameViewer:
         self.buttons["Scale"].label.set_text("Scale: all frames" if self.fixed_scale else "Scale: per frame")
         self.update()
 
+    def toggle_log(self, _event: object = None) -> None:
+        """Switches the cell map between a linear and a log colour scale."""
+        self.log_map = not self.log_map
+        self.buttons["Map"].label.set_text("Map: log" if self.log_map else "Map: linear")
+        self.update()
+
+    def toggle_v_min(self, _event: object = None) -> None:
+        """Shows or hides V_min's contours over the cell map (nothing without potential/)."""
+        if self.potential is None:
+            return
+        self.v_min_contours = not self.v_min_contours
+        self.buttons["V_min"].label.set_text("V_min: on" if self.v_min_contours else "V_min: off")
+        self.update()
+
     def toggle_explanations(self, _event: object = None) -> None:
         """Shows or hides the explanations over the panels."""
         self.explaining = not self.explaining
@@ -312,7 +418,7 @@ class FrameViewer:
     def draw_explanations(self) -> None:
         """Each panel's explanation over it, in a box (the panels are redrawn without it)."""
         box = {"facecolor": SURFACE, "alpha": 0.93, "edgecolor": MUTED, "pad": 4}
-        for ax, name in ((self.map_ax, "cell_map"), (self.point_ax, "point_density")):
+        for ax, name in ((self.map_ax, "cell_map"), (self.point_ax, "point_density"), (self.trace_ax, "time_trace")):
             text = textwrap.fill(PANELS[name], EXPLAIN_WIDTH)
             ax.text(0.01, 0.98, text, transform=ax.transAxes, va="top", fontsize=7.5, color=INK, zorder=10, bbox=box)
 
@@ -322,6 +428,8 @@ class FrameViewer:
             return PANELS["cell_map"]
         if ax is self.point_ax:
             return PANELS["point_density"]
+        if ax is self.trace_ax:
+            return PANELS["time_trace"]
         for name, widget in (("time", self.time_slider), ("z_window", self.z_slider), ("r_window", self.r_slider)):
             if ax is widget.ax:
                 return CONTROLS[name]
@@ -378,12 +486,19 @@ def click_on(window: FrameViewer, ix: int, iy: int) -> Click:
     return Click(inaxes=window.map_ax, xdata=x, ydata=y)
 
 
-SELF_TEST_PNGS = ("viewer_1_opened.png", "viewer_2_time.png", "viewer_3_clicked.png", "viewer_4_played.png")
+SELF_TEST_PNGS = (
+    "viewer_1_opened.png",
+    "viewer_2_time.png",
+    "viewer_3_clicked.png",
+    "viewer_4_played.png",
+    "viewer_5_v_min.png",
+)
 
 
 def self_test_steps(window: FrameViewer) -> list[Callable[[], None]]:
     """The self-test's steps, one per PNG: nothing (the window as opened), the time slider to the middle frame, a
-    click on the second site's grid point (else (1, 1)), one Play step."""
+    click on the second site's grid point (else (1, 1)), one Play step, V_min's contours over the cell map at the
+    frame with the packet at the surface."""
     times = window.frames.series.times_au
 
     def middle_frame() -> None:
@@ -397,13 +512,18 @@ def self_test_steps(window: FrameViewer) -> list[Callable[[], None]]:
     def as_opened() -> None:
         """Leaves the window as it opened."""
 
-    return [as_opened, middle_frame, click_second_point, window.step]
+    def v_min_at_the_surface() -> None:
+        """Moves to the frame with the most probability below zasymp and switches V_min's contours on."""
+        window.time_slider.set_val(times[most_at_surface(window.frames, window.potential_points())])
+        window.toggle_v_min()
+
+    return [as_opened, middle_frame, click_second_point, window.step, v_min_at_the_surface]
 
 
 def run_self_test(runs: list[Path], info: RunInfo, out: Path) -> list[Path]:
     """Opens the window, then (from a timer, once the GUI runs) drives it through the bound methods its widgets
     call (self_test_steps), saves a PNG of the window after each step into `out` (SELF_TEST_PNGS) and closes it,
-    also when a step fails. Returns the PNGs written: all four only when every step ran."""
+    also when a step fails. Returns the PNGs written: all of them only when every step ran."""
     figure, window = open_window(runs, info)
     out.mkdir(parents=True, exist_ok=True)
     saved: list[Path] = []

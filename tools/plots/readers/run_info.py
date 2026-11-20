@@ -9,6 +9,8 @@ from pathlib import Path
 
 from readers.errors import ReadError
 
+AU_TIME_FS = 2.4188843265864e-2  # the atomic unit of time in fs (CODATA 2022, hbar / E_h)
+
 
 @dataclass
 class RunInfo:
@@ -21,6 +23,7 @@ class RunInfo:
     hartree_to_ev: float  # the program's factor (the legacy 27.2114)
     t_start_au: float
     t_end_au: float
+    au_time_to_fs: float = AU_TIME_FS  # a constant, not read from run_info.json: the program converts no times
 
 
 FORMAT_VERSION = 1

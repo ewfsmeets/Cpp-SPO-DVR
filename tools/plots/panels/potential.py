@@ -11,6 +11,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colorbar import Colorbar
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
 
 from compute.grids import CellGeometry
 from compute.potential import AT_R_C, AT_START, UNREACHED, Barrier, PointOfInterest
@@ -142,6 +143,21 @@ def draw_cell_outline(
     ax.set_xlabel(axis_label("X", "bohr"))
     ax.set_ylabel(axis_label("Y", "bohr"))
     ax.set_title(title)
+
+
+CELL_CONTOUR_LEVELS = 5  # about this many contour lines over the cell (matplotlib's MaxNLocator)
+
+
+def draw_cell_contours(ax: Axes, cell: CellGeometry, values: np.ndarray, label_format: str) -> None:
+    """Contour lines of a quantity over the unit cell (values (nx + 1, ny + 1) at cell's periodic grid points; NaN
+    not drawn) at about CELL_CONTOUR_LEVELS round values within the data's range, labelled with label_format (e.g. "%g meV"), thin white
+    lines with a dark outline (readable over any colour of a density map)."""
+    low, high = float(np.nanmin(values)), float(np.nanmax(values))
+    levels = MaxNLocator(CELL_CONTOUR_LEVELS).tick_values(low, high)
+    levels = levels[(levels >= low) & (levels <= high)]  # the locator rounds past the data's ends
+    lines = ax.contour(cell.points_x_bohr, cell.points_y_bohr, values, levels=levels, colors=SURFACE, linewidths=0.7)
+    lines.set_path_effects([patheffects.withStroke(linewidth=1.8, foreground=INK)])
+    ax.clabel(lines, fmt=label_format, fontsize=6, colors=INK)
 
 
 def draw_elbow(

@@ -174,6 +174,11 @@ def new_figure(n_notes: int = 0, width_in: float = REPORT_WIDTH_IN, height_in: f
     return fig
 
 
+def time_text(t_au: float, au_time_to_fs: float) -> str:
+    """A time in atomic units with fs beside it, to 0.1 fs: "2700 a.u. (65.3 fs)"."""
+    return f"{t_au:g} a.u. ({t_au * au_time_to_fs:.1f} fs)"
+
+
 def info_lines(
     info: RunInfo,
     sources: list[str],
@@ -195,8 +200,8 @@ def info_lines(
     )
     lines = [
         f"{d['title']} | {d['system_id']} | (v, j, mJ) = ({s['v']}, {s['j']}, {s['mJ']})",
-        f"{energy_range}, {incidence} | t {info.t_start_au:g}-{info.t_end_au:g} a.u."
-        + (f" | frame t = {time_au:g} a.u." if time_au is not None else ""),
+        f"{energy_range}, {incidence} | t {info.t_start_au:g}-{time_text(info.t_end_au, info.au_time_to_fs)}"
+        + (f" | frame t = {time_text(time_au, info.au_time_to_fs)}" if time_au is not None else ""),
         f"grids nZ {g['nz']}/{g['nz_specular']} x nR {g['nr']} x {g['nx']} x {g['ny']}, JMax {g['j_max']}, "
         f"MJMax {g['mj_max']}",
         f"files: {', '.join(sources)} | spodvr {d['program']['version']} (git {d['program']['git']})",

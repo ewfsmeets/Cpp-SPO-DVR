@@ -3,14 +3,17 @@ grid with nx != ny, where an (ix, iy) swap shows, the nodes' cells), compute/gri
 periodic cells, and the potential colour bar."""
 
 import numpy as np
+import pytest
 
-from compute.grids import cartesian_bohr, cell_geometry, periodic
+from compute.grids import cartesian_bohr, cell_geometry, fractions_of, periodic
 from compute.potential import (
     AT_R_C,
     AT_START,
+    FLAT_MEV,
     SADDLE,
     barrier_on,
     barriers_on_grid,
+    corrugation_mev,
     lowest_barrier,
     map_point,
     minimax_path,
@@ -18,7 +21,7 @@ from compute.potential import (
     orientation_at,
     site_points,
 )
-from panels.potential import add_potential_colorbar, potential_color_scale, potential_colormap
+from panels.potential import add_potential_colorbar, draw_cell_contours, potential_color_scale, potential_colormap
 from readers.potential import PotentialData, PotentialLimits
 from readers.run_info import Lattice
 from readers.sites import Site
@@ -160,3 +163,35 @@ def test_colour_scale_is_sequential_unless_a_deep_well() -> None:
     fig = new_figure()
     assert add_potential_colorbar(fig, [fig.add_subplot()], scale).extend == "neither"
     assert add_potential_colorbar(fig, [fig.add_subplot()], well).extend == "min"
+
+
+def test_corrugation_relative_to_the_lowest_point() -> None:
+    """V over the cell in meV above its lowest value, walls more than the cap above it not drawn (NaN); a spread
+    of 0.5 meV (below FLAT_MEV = 1 meV): None; a NaN does not count as the lowest point; all NaN: None."""
+    v_ev = np.array([[0.180, 0.185], [0.200, 5.0]])
+    corrugation = corrugation_mev(v_ev, 3.0)
+    assert np.allclose(corrugation[~np.isnan(corrugation)], [0.0, 5.0, 20.0], rtol=0, atol=1e-9)
+    assert np.isnan(corrugation[1, 1])
+    assert corrugation_mev(np.array([[0.18, 0.1805]]), 3.0) is None
+    assert np.nanmax(corrugation_mev(np.array([[np.nan, 0.18, 0.19]]), 3.0)) == pytest.approx(10.0)
+    assert FLAT_MEV == 1.0 and corrugation_mev(np.full((2, 2), np.nan), 3.0) is None
+
+
+def test_cell_contours_follow_the_skewed_grid() -> None:
+    """On a 3 x 5 grid (nx != ny: an (ix, iy) swap fails) with a 60-degree skew, a quantity growing along the first
+    lattice vector only (10 per unit fraction) is drawn as contour lines of constant fractional x: every vertex of
+    each level's lines, mapped back to fractions (compute.grids.fractions_of), has 10 fx equal to the level."""
+    lattice = Lattice(3.0, 2.0, np.pi / 3)
+    cell = cell_geometry(3, 5, lattice)
+    fx = np.arange(4)[:, None] / 3 * np.ones((1, 6))
+    fig = new_figure()
+    ax = fig.add_subplot()
+    draw_cell_contours(ax, cell, 10.0 * fx, "%g")
+    (contours,) = ax.collections
+    checked = 0
+    for level, segments in zip(contours.levels, contours.allsegs, strict=True):
+        for segment in segments:
+            for x, y in segment:
+                assert 10.0 * fractions_of(x, y, lattice)[0] == pytest.approx(level, abs=1e-9)
+                checked += 1
+    assert checked > 10

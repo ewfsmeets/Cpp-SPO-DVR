@@ -58,6 +58,20 @@ def window_probability(frames: Frames, z_slice: slice, r_slice: slice) -> np.nda
     return np.asarray(frames.series.arrays["prob_zrxy"][:, z_slice, r_slice]).sum(axis=(1, 2, 3, 4))
 
 
+def window_probability_at(point_probability: np.ndarray, z_slice: slice, r_slice: slice) -> np.ndarray:
+    """(records,): the probability in a (Z, r) window above one (x, y) grid point (point_probability: (records, nz,
+    nr) of zr_probability_at)."""
+    return point_probability[:, z_slice, r_slice].sum(axis=(1, 2))
+
+
+def densest_zr(frames: Frames, record: int, z_slice: slice, r_slice: slice) -> tuple[int, int]:
+    """The (iz, ir) of the (Z, r) window's cell with the most probability (summed over x, y) in one record (the first
+    of equal ones)."""
+    window = np.asarray(frames.series.arrays["prob_zrxy"][record, z_slice, r_slice]).sum(axis=(2, 3))
+    iz, ir = np.unravel_index(int(np.argmax(window)), window.shape)
+    return z_slice.start + int(iz), r_slice.start + int(ir)
+
+
 def nearest_frame(times_au: np.ndarray, t_au: float) -> int:
     """The record whose time is nearest t_au (the first of two equally near)."""
     return int(np.argmin(np.abs(np.asarray(times_au) - t_au)))

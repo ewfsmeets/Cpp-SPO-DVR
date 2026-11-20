@@ -143,24 +143,35 @@ def grid_point_bohr(ix: int, iy: int, nx: int, ny: int, lattice: Lattice) -> tup
     return float(x), float(y)
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class CellGeometry:
-    """The (x, y) grid drawn in Cartesian bohr, periodically: the corners of the cells around the grid points
-    ix = 0 .. nx and iy = 0 .. ny (the last row and column repeat the first), and the unit cell's outline."""
+    """The (x, y) grid drawn in Cartesian bohr, periodically: the grid points ix = 0 .. nx and iy = 0 .. ny and the
+    corners of the cells around them (the last row and column repeat the first), and the unit cell's outline."""
 
     corners_x_bohr: np.ndarray  # (nx + 2, ny + 2): cell (ix, iy) spans fractions (ix -+ 1/2) / nx, (iy -+ 1/2) / ny
     corners_y_bohr: np.ndarray
+    points_x_bohr: np.ndarray  # (nx + 1, ny + 1): grid point (ix, iy) at fractions ix / nx, iy / ny
+    points_y_bohr: np.ndarray
     outline_x_bohr: np.ndarray  # (5,): the unit cell, closed
     outline_y_bohr: np.ndarray
 
 
 def cell_geometry(nx: int, ny: int, lattice: Lattice) -> CellGeometry:
-    """The periodic cells around the (x, y) grid points (half a step before and after each, one more row and column
+    """The periodic grid points, the cells around them (half a step before and after each, one more row and column
     so that they cover the unit cell) and the unit cell's outline."""
     fx, fy = np.meshgrid((np.arange(nx + 2) - 0.5) / nx, (np.arange(ny + 2) - 0.5) / ny, indexing="ij")
     corners_x, corners_y = cartesian_bohr(fx, fy, lattice)
+    fx, fy = np.meshgrid(np.arange(nx + 1) / nx, np.arange(ny + 1) / ny, indexing="ij")
+    points_x, points_y = cartesian_bohr(fx, fy, lattice)
     outline_x, outline_y = cartesian_bohr(np.array([0, 1, 1, 0, 0]), np.array([0, 0, 1, 1, 0]), lattice)
-    return CellGeometry(corners_x, corners_y, outline_x, outline_y)
+    return CellGeometry(
+        corners_x_bohr=corners_x,
+        corners_y_bohr=corners_y,
+        points_x_bohr=points_x,
+        points_y_bohr=points_y,
+        outline_x_bohr=outline_x,
+        outline_y_bohr=outline_y,
+    )
 
 
 def periodic(values: np.ndarray) -> np.ndarray:

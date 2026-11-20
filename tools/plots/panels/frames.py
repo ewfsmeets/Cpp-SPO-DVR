@@ -13,17 +13,43 @@ from compute.grids import CellGeometry
 from panels.potential import draw_cell_outline
 from panels.time_series import mark_segments
 from style import (
+    INK_2,
     LINE_STYLES,
     MARKERS,
     MUTED,
     SEQUENTIAL,
     apply_scale,
     axis_label,
+    legend_over_data,
     masked,
     scale_and_limits,
 )
 
 MAX_STATE_LABELS = 20  # the state map labels every state up to this many
+
+
+def draw_window_trace(
+    ax: Axes,
+    times_au: np.ndarray,
+    series: tuple[np.ndarray, np.ndarray],
+    point_name: str,
+    t_au: float,
+    title: str,
+) -> None:
+    """The probability in the (Z, r) window against time (x: t in a.u.; y: the scale rule, values below its lower
+    end not drawn): series = (above the picked point, the cell's mean per grid point, dashed: more above the point
+    than the mean means the packet gathers there); the shown frame's time as a vertical line."""
+    at_point, cell_mean = series
+    scale = scale_and_limits([at_point, cell_mean])
+    for values, style, label in ((at_point, "-", f"above {point_name}"), (cell_mean, "--", "mean per grid point")):
+        shown = masked(values, scale.lower) if scale.kind == "log" else values
+        ax.plot(times_au, shown, linestyle=style, label=label)
+    apply_scale(ax, scale)
+    ax.axvline(t_au, color=INK_2, linewidth=0.8)
+    legend_over_data(ax)
+    ax.set_xlabel(axis_label("t", "a.u."))
+    ax.set_ylabel("Probability")
+    ax.set_title(title, fontsize=9)
 
 
 def draw_point_density(
@@ -74,7 +100,7 @@ def draw_cell_density(
     images: list[list[tuple[float, float]]] | None = None,
 ) -> None:
     """A density over the unit cell (bohr^-2): density (nx + 1, ny + 1) at the grid points with the first row and
-    column repeated (periodic), each drawn as the parallelogram around it, on a linear colour scale from zero;
+    column repeated (periodic), each drawn as the parallelogram around it, on the given colour scale (linear or log);
     values below `floor` (bohr^-2) not drawn (noise); the cell's outline, the marked points and their symmetry
     images (draw_cell_outline)."""
     shown = masked(density, floor)
