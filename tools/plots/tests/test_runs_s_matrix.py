@@ -1,6 +1,6 @@
 """The S matrix rebuilt from bk_coefficients.bin (copies/s_matrix.py through compute/analysis.py, as the
 figures use it) equals the program's s_matrix.tsv on the fixture runs: the check that the BK reader, the
-time sums, the prefactor and the phases are right."""
+time sums, the prefactor and the phases (each channel's referred to the line where it is measured) are right."""
 
 from dataclasses import replace
 from pathlib import Path
@@ -9,8 +9,9 @@ import numpy as np
 import pytest
 
 from compute.analysis import analysis_energies, analysis_time_step_au, s_matrix_factors
+from compute.time_series import analysis_lines_bohr
 from copies.s_matrix import normal_momentum, time_sums
-from readers.binary import read_bk_coefficients
+from readers.binary import read_bk_coefficients, read_checkpoint
 from readers.run_info import read_run_info
 from readers.tables import read_s_matrix
 
@@ -20,7 +21,8 @@ TOLERANCE = 1e-12  # of the largest |S| at each energy: the sums run in another 
 def rebuilt_s_matrix(run: Path, slip: str = "") -> tuple[np.ndarray, np.ndarray]:
     """S (n_energies, n_v, n_states) of a run from its BK file, and the BK file's state labels. The slips of
     the negative tests: "collision energy" puts E_coll instead of E_tot into the time phase; "cartesian"
-    takes the skewed reciprocal-axis components kx, ky as Cartesian in k0."""
+    takes the skewed reciprocal-axis components kx, ky as Cartesian in k0; "zana" refers every phase to Zana
+    (the Fortran's convention: the initial state is measured at the specular line)."""
     info = read_run_info(run)
     bk = read_bk_coefficients(run / "bk_coefficients.bin")
     energies = analysis_energies(info)
@@ -42,7 +44,9 @@ def rebuilt_s_matrix(run: Path, slip: str = "") -> tuple[np.ndarray, np.ndarray]
     sums = time_sums(
         bk.times_au, bk.coefficients.reshape(n_times, n_v * n_states), phase_energy, analysis_time_step_au(info)
     )
-    s = sums * s_matrix_factors(info, energies, bk)
+    checkpoint = read_checkpoint(run / "checkpoint.bin")
+    lines = analysis_lines_bohr(info, bk, checkpoint.surface_index, checkpoint.surface_fixed and slip != "zana")
+    s = sums * s_matrix_factors(info, energies, bk, lines)
     return s.reshape(len(energies.collision_ev), n_v, n_states), bk.labels
 
 
@@ -72,9 +76,11 @@ def test_s_matrix_from_the_bk_file(fixture_runs: Path, run: str) -> None:
     assert np.max(relative) <= TOLERANCE, f"worst {np.max(relative):.3e} at energy index {np.argmax(relative)}"
 
 
-@pytest.mark.parametrize("slip", ["collision energy", "cartesian"])
+@pytest.mark.parametrize("slip", ["collision energy", "cartesian", "zana"])
 def test_a_porting_slip_fails_at_every_energy(fixture_runs: Path, slip: str) -> None:
-    """Negative tests, two realistic slips: E_coll instead of E_tot in exp(i E t); the skewed kx, ky taken as
-    Cartesian in k0 (the oblique fixture has kx 5.7 and ky 4.4 bohr^-1 on the 60 degree cell)."""
+    """Negative tests, three realistic slips: E_coll instead of E_tot in exp(i E t); the skewed kx, ky taken as
+    Cartesian in k0 (the oblique fixture has kx 5.7 and ky 4.4 bohr^-1 on the 60 degree cell); the initial state's
+    phase referred to Zana as in the Fortran (the fixture's specular line is fixed; measured: all 41 energies fail,
+    the smallest by 0.022 of the largest |S|)."""
     relative = worst_relative_difference(fixture_runs / "dailight_oblique", slip)
     assert np.sum(relative > TOLERANCE) == len(relative)

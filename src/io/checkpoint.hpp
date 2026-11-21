@@ -33,6 +33,10 @@ struct CheckpointInfo {
 // Reads a checkpoint into psi (whose shape must match the file).
 [[nodiscard]] CheckpointInfo read_checkpoint(const std::filesystem::path& path, const Config& config, WavePacket& psi);
 
+// The analysis surface saved in a checkpoint written for the same input (the header is checked; the
+// wave function is not read). For the fine analysis: where the run measured the initial state.
+[[nodiscard]] AnalysisSurfaceState read_checkpoint_surface(const std::filesystem::path& path, const Config& config);
+
 // The BK coefficient time series, one record (time, coefficients) per analysis step, appended
 // and flushed as the propagation runs.
 class BkFileWriter {

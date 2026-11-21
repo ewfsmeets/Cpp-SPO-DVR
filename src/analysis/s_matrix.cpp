@@ -60,14 +60,19 @@ void SMatrixAccumulator::add(const BkCoefficients& bk, double time) {
   }
 }
 
-ScatteringResults SMatrixAccumulator::results() const {
+ScatteringResults SMatrixAccumulator::results(std::optional<double> specular_line) const {
   ScatteringResults r;
-  for (int ien = 0; ien < energies_.size(); ++ien) r.energies.push_back(result_at(ien));
+  for (int ien = 0; ien < energies_.size(); ++ien) r.energies.push_back(result_at(ien, specular_line));
   return r;
 }
 
+double measurement_line(const Config& config, const AnalysisBasis& basis, int is, std::optional<double> specular_line) {
+  if (specular_line && is == basis.initial_state()) return *specular_line;
+  return config.input.z_analysis;
+}
+
 // Fortran: smatrix_calc (nread = 0, 1) followed by smatrix_combine, for one energy.
-EnergyResult SMatrixAccumulator::result_at(int ien) const {
+EnergyResult SMatrixAccumulator::result_at(int ien, std::optional<double> specular_line) const {
   const InputParameters& p = config_.input;
   const DerivedParameters& d = config_.derived;
   const auto& units = units::legacy;
@@ -103,7 +108,9 @@ EnergyResult SMatrixAccumulator::result_at(int ien) const {
       const double kz_sq = 2.0 * mass * (e.total_energy / chaev - a.channel_energy(is, v));  // skzsq
       if (!(kz_sq > 0.0)) continue;  // closed channel: S = 0
       const double kz = std::sqrt(kz_sq);
-      const double arg = -kz * p.z_analysis + (d.kz - k0) * p.z0 - pi;
+      // The free outgoing phase is removed at the line where the coefficients were taken (Fortran: ZAnalysis).
+      const double z_measured = measurement_line(config_, a, is, specular_line);
+      const double arg = -kz * z_measured + (d.kz - k0) * p.z0 - pi;
       e.s_matrix[k] = sums[k] * prefactor * std::exp(Constants::imaginary_unit * arg) * std::sqrt(kz * k0 / weight);
       e.open[k] = 1;
     }

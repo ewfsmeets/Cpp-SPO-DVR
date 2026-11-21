@@ -94,10 +94,11 @@ std::vector<RestartFile> restart_files(const Config& config) {
   const bool native = config.input.restart_format == "native";
   const RestartFile bk = native ? RestartFile{{bk_file}, "the BK coefficients"}
                                 : RestartFile{{fortran_bk_input, fortran_bk_file}, "the BK coefficients"};
-  if (config.derived.run_mode == 2) return {bk};
   const RestartFile wave_packet =
       native ? RestartFile{{checkpoint_file}, "the wave packet"}
              : RestartFile{{fortran_wave_function_input, fortran_wave_function_file}, "the wave packet"};
+  // The analysis-only run reads only the analysis surface of the checkpoint: the specular analysis line.
+  if (config.derived.run_mode == 2) return {bk, RestartFile{wave_packet.names, "the specular analysis line"}};
   if (!config.input.energy_resolved_sites.empty())
     return {wave_packet, bk, RestartFile{{energy_resolved_sums_file}, "the energy-resolved sums"}};
   return {wave_packet, bk};
@@ -414,11 +415,21 @@ void write_pes_cut_run(std::ostream& out, const Style& style, const Config& conf
   print_pes_cut(out, style, cut, dir / pes_cut_file_name);
 }
 
-// The BK file of the run to analyse (RestartDir, RestartFormat). Fortran: fort.22
+// The BK file and the checkpoint of the run to analyse (RestartDir, RestartFormat). Fortran: fort.22
 BkInput analysis_input(const Config& config) {
   const std::filesystem::path dir = config.input.restart_dir;
-  if (config.input.restart_format == "native") return {dir / bk_file, false};
-  return {first_existing(dir, fortran_bk_input, fortran_bk_file), true};
+  if (config.input.restart_format == "native")
+    return {dir / bk_file, false, CheckpointInput{dir / checkpoint_file, false}};
+  return {first_existing(dir, fortran_bk_input, fortran_bk_file), true,
+          CheckpointInput{first_existing(dir, fortran_wave_function_input, fortran_wave_function_file), true}};
+}
+
+// The BK file and the checkpoint that a propagation has just written into dir (alsoAnalysis).
+BkInput written_analysis_input(const Config& config, const std::filesystem::path& dir) {
+  const bool native = config.input.checkpoint_format != "fortran";  // as run_propagation's write_native
+  const CheckpointInput checkpoint =
+      native ? CheckpointInput{dir / checkpoint_file, false} : CheckpointInput{dir / fortran_wave_function_file, true};
+  return {dir / bk_file, false, checkpoint};
 }
 
 }  // namespace
@@ -545,7 +556,7 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)
       run_fine(out, style, config, angular, gas, fft, command_line.output_dir,
-               BkInput{command_line.output_dir / bk_file, false});
+               written_analysis_input(config, command_line.output_dir));
     out << '\n' << style.emphasis("Run finished.") << '\n';
     return 0;
   } catch (const InputError& e) {

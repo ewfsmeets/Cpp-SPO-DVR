@@ -142,7 +142,8 @@ differences are in [validation.md](validation.md).
   nstep)*dtlan` (Main.f90) and `ensctr = enrgi + dfloat(ien-1)*denrgy` (Analyzor.f90 SetupAnalysis).
 - Kept on purpose (`Analyzor.f90 BalintKurtiCoeffs`): with a fixed specular analysis surface the BK
   coefficient of the initial channel is *replaced* by the specular-grid projection (the
-  scattering-grid part of that channel is discarded). The phase of S is set to 0 when Re S = 0
+  scattering-grid part of that channel is discarded). Its S-matrix phase then refers to that line
+  (analysis D2). The phase of S is set to 0 when Re S = 0
   (`smatrix_combine`), even if Im S ≠ 0.
 - <a id="fortran-restart-bug"></a>Fortran restart bug, fixed: `anlyTol` and `oldValZanly` are neither saved in fort.9 nor
   recomputed on a restart (uninitialised while the dynamic specular surface is not yet fixed).
@@ -171,6 +172,17 @@ differences are in [validation.md](validation.md).
   it computes no S-matrix at all, with 1 `InputNew.f90 ProcessInput` divides by zero in
   `denrgy = (EMaxWP-EMinWP)/(nenrgy-1)`, and the run reports NaN energies and P_reaction = 1.
   Details and a demonstration: [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d1-nrofes--0-and-1-pass-the-check).
+- analysis D2<a id="analysis-d2"></a>: the phase of the initial state's S-matrix elements (the elastic element and
+  the vibrationally inelastic specular ones) is referred to the line where those coefficients are measured, the
+  specular analysis line Z_sp once it is fixed, not to Zana. The Fortran removes the free outgoing phase at
+  `ZAnalysis` for every channel (`Analyzor.f90 smatrix_calc`, `probaf`), so its elements of that state carry an
+  extra e^{ik(Z_sp − Zana)}: several radians in every reference case, and run-dependent with the dynamic line.
+  |S| and every probability are the same in both codes. The C++ fix: `measurement_line`
+  (`src/analysis/s_matrix.cpp`), used by the on-the-fly and the fine analysis; an analysis-only run reads Z_sp
+  from the checkpoint in RestartDir. Gate 5 analyses the Fortran's BK file without a checkpoint, i.e. with the
+  Fortran's convention, to compare with its fort.25. Tests: `ElasticPhase.HardWallElasticElementIsTheExactReflection`
+  (the hard-wall elastic element against the exact 1D reflection, with the Fortran phase as negative test),
+  `SMatrix.InitialStatePhaseRefersToTheSpecularLine`. Details: [fortran_elastic_phase_bug.md](fortran_elastic_phase_bug.md).
 - <a id="projop-1"></a>ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
   option); the input reader rejects it.
 - Kept on purpose (`Analyzor.f90 FindNewAnalysisPoint`): the clamp of `izanlySpecChan` to `nschmi`

@@ -2,6 +2,7 @@
 
 #include <complex>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "analysis/analysis_basis.hpp"
@@ -56,6 +57,14 @@ struct EnergyResult {
 // Fortran: Analyzor.f90 smatrix_combine (the same loops as the sums of probaf)
 void combine_s_matrix(EnergyResult& e, const AnalysisBasis& basis, const GasPhase& gas);
 
+// Z of the line where the BK coefficients of state `is` were taken, at which the S-matrix formula removes the
+// free outgoing phase exp(i kz Z): the specular analysis line for the initial state once that line was fixed
+// (specular_line: from then on its coefficients come from the specular grid there, balint_kurti.cpp), else Zana.
+// The Fortran uses Zana for every state, which puts a phase k (Z_sp - Zana) on the initial state's elements
+// (docs/fortran_elastic_phase_bug.md); nothing in specular_line gives that Fortran convention.
+[[nodiscard]] double measurement_line(const Config& config, const AnalysisBasis& basis, int is,
+                                      std::optional<double> specular_line);
+
 struct ScatteringResults {
   std::vector<EnergyResult> energies;
 };
@@ -73,10 +82,12 @@ class SMatrixAccumulator {
   // Adds the coefficients of the analysis step that ends at `time`.
   void add(const BkCoefficients& bk, double time);
 
-  [[nodiscard]] ScatteringResults results() const;
+  // specular_line: the Z of the fixed specular analysis line, nothing if it never became fixed (see
+  // measurement_line).
+  [[nodiscard]] ScatteringResults results(std::optional<double> specular_line) const;
 
  private:
-  [[nodiscard]] EnergyResult result_at(int ien) const;
+  [[nodiscard]] EnergyResult result_at(int ien, std::optional<double> specular_line) const;
 
   const Config& config_;
   const AnalysisBasis& basis_;

@@ -46,10 +46,17 @@ def analysis_time_step_au(info: RunInfo) -> float:
     return info.data["times"]["steps_per_analysis"] * info.data["times"]["dt_step"]
 
 
-def s_matrix_factors(info: RunInfo, energies: AnalysisEnergies, bk: BkCoefficients) -> np.ndarray:
+def s_matrix_factors(
+    info: RunInfo, energies: AnalysisEnergies, bk: BkCoefficients, lines_bohr: np.ndarray | None = None
+) -> np.ndarray:
     """prefactor * exp(i arg_f) * sqrt(k_f k0 / weight) of every analysis energy and channel (index
-    i_state + n_states v): S = time sums * these. Returns: (n_energies, n_channels) complex."""
+    i_state + n_states v): S = time sums * these. lines_bohr (n_channels,): the line where each channel is
+    measured (compute/time_series.py analysis_lines_bohr, as s_matrix.tsv); None: every channel at Zana, the
+    Fortran's phases, enough where only |S| is used. Returns: (n_energies, n_channels) complex."""
     packet = info.data["wave_packet"]
+    z_ana = float(info.data["analysis"]["z_ana"])  # the grid point; the C++ uses the input ZAna (within 1e-12)
+    n_channels = bk.channel_energy_hartree.size
+    lines = np.full(n_channels, z_ana) if lines_bohr is None else lines_bohr
     return channel_factors(
         energies.total_ev,
         bk.channel_energy_hartree.reshape(-1),
@@ -57,7 +64,7 @@ def s_matrix_factors(info: RunInfo, energies: AnalysisEnergies, bk: BkCoefficien
         kz_per_bohr=packet["kz"],
         alpha_per_bohr2=packet["alpha"],
         total_mass_me=info.data["molecule"]["total_mass"],
-        z_analysis_bohr=info.data["analysis"]["z_ana"],  # the grid point; the C++ uses the input ZAna (within 1e-12)
+        z_measured_bohr=lines,
         z0_bohr=packet["z0"],
         hartree_to_ev=info.hartree_to_ev,
     )

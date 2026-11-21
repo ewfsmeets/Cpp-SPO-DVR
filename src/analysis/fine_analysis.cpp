@@ -146,7 +146,8 @@ std::vector<cplx> half_fourier_transform(const BkSeries& series, const FineAnaly
 // Fortran: probaf (energies, channel momenta, open channels, prefactor), then the sums of
 // smatrix_combine (identical to those of probaf)
 ScatteringResults fine_spectrum(const Config& config, std::span<const double> z_energies, const AnalysisBasis& basis,
-                                const GasPhase& gas, std::span<const cplx> amplitudes) {
+                                const GasPhase& gas, std::span<const cplx> amplitudes,
+                                std::optional<double> specular_line) {
   const InputParameters& p = config.input;
   const DerivedParameters& d = config.derived;
   const double chaev = units::legacy.energy_factor();
@@ -178,7 +179,8 @@ ScatteringResults fine_spectrum(const Config& config, std::span<const double> z_
         const double kz_sq = 2.0 * mass * (e.z_energy / chaev - (basis.channel_energy(is, v) - initial_energy));
         if (!(kz_sq >= 0.0)) continue;
         const double kz = std::sqrt(kz_sq);
-        const double arg = -kz * p.z_analysis + (d.kz - k0) * p.z0 - pi;
+        const double z_measured = measurement_line(config, basis, is, specular_line);  // Fortran: ZAnalysis
+        const double arg = -kz * z_measured + (d.kz - k0) * p.z0 - pi;
         e.s_matrix[k] = amplitudes[k + static_cast<std::size_t>(n_states * n_v) * i] * prefactor *
                         std::exp(Constants::imaginary_unit * arg) * std::sqrt(kz * k0 / weight);
         e.open[k] = 1;

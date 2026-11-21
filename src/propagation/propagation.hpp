@@ -97,7 +97,7 @@ class WavePacketPropagation {
   [[nodiscard]] double energy_resolved_seconds() const { return energy_resolved_seconds_; }
 
   // S-matrix and probabilities from the analysis steps done so far.
-  [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(); }
+  [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(surface_.fixed_line()); }
 
  private:
   // The averages at `time` for the observer (and the densities they come from, when it asks for them), from

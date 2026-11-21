@@ -590,7 +590,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 | [docs/analysis_gallery.md](docs/analysis_gallery.md) | what one run shows: every figure and movie of the plot tool on the thesis grid, explained |
 | [docs/port_status.md](docs/port_status.md) | every Fortran feature and its status in the C++; the additions |
 | [docs/fortran_deviations.md](docs/fortran_deviations.md) | every known difference from the Fortran code |
-| [docs/fortran_input_bugs.md](docs/fortran_input_bugs.md), [docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md) | Fortran bugs found during the port |
+| [docs/fortran_input_bugs.md](docs/fortran_input_bugs.md), [docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md), [docs/fortran_elastic_phase_bug.md](docs/fortran_elastic_phase_bug.md) | Fortran bugs found during the port and later |
 | [docs/upstream_sync.md](docs/upstream_sync.md) | the upstream changes since 5.19 and their port status |
 | [docs/performance.md](docs/performance.md) | build options, threads and NUMA, memory, benchmarks |
 | [docs/cuda.md](docs/cuda.md) | the GPU backend: design, numerics, memory, performance |

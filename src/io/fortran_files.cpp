@@ -80,6 +80,29 @@ AnalysisSurfaceState read_fortran_wave_function(const std::filesystem::path& pat
   return state;
 }
 
+AnalysisSurfaceState read_fortran_analysis_surface(const std::filesystem::path& path, int n_r, int n_z_specular) {
+  FortranRecordReader file(path);
+  FortranRecordParser nproj = file.read("record 1 (nproj)");
+  check_value(nproj.read<int32>(), 2, "ProjOp", path);
+  nproj.expect_end();
+
+  std::vector<cplx> specular_wave(std::size_t(n_r) * n_z_specular);
+  FortranRecordParser specular = file.read("record 2 (SpecWave)");
+  specular.read_array(std::span<cplx>(specular_wave));
+  specular.expect_end();
+
+  FortranRecordParser analysis = file.read("record 3 (FixedZAnalysisSpec, izanlySpecChan)");
+  AnalysisSurfaceState state{};
+  state.fixed = analysis.read<int32>() != 0;
+  state.index = analysis.read<int32>() - 1;
+  state.previous_index = state.index;
+  analysis.expect_end();
+  if (state.index < 0 || state.index >= n_z_specular)
+    throw CheckpointError("'" + path.string() + "': izanlySpecChan " + std::to_string(state.index + 1) +
+                          " is outside the specular grid");
+  return state;
+}
+
 FortranBkFileWriter::FortranBkFileWriter(const std::filesystem::path& path, const Config& config,
                                          const RotationalBasis& rotations, const AnalysisBasis& basis,
                                          const GasPhase& gas, int n_records)

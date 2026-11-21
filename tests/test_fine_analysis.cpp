@@ -293,14 +293,16 @@ void compare_with_on_the_fly(const RunSetup& s) {
       for (cplx& c : bk.values) c = 0.5 * c;
     on_the_fly.add(bk, j * g.time_step);
   }
-  const ScatteringResults expected = on_the_fly.results();
+  // A specular line off Zana (the reference case's 8.64): both analyses refer the initial state's phase to it.
+  const double z_sp = s.config.input.z_analysis + 0.64;
+  const ScatteringResults expected = on_the_fly.results(z_sp);
 
   std::vector<double> z_energies;
   for (const double e : on_the_fly.energies().collision)
     z_energies.push_back(e - s.basis().diffraction_energy(0) * chaev);
   const BkSeries series = make_series(s, g, records);
   const ScatteringResults fine =
-      fine_spectrum(s.config, z_energies, s.basis(), s.gas, direct_amplitudes(series, g, z_energies));
+      fine_spectrum(s.config, z_energies, s.basis(), s.gas, direct_amplitudes(series, g, z_energies), z_sp);
 
   ASSERT_EQ(fine.energies.size(), expected.energies.size());
   int n_compared = 0;
@@ -381,7 +383,7 @@ TEST(FineAnalysis, SkippedEnergiesAndSmallGrids) {
   FineAnalysisGrid g = make_fine_analysis_grid(s.config, 1400);
   const BkSeries series = make_series(s, g, random_records(s, 1400, 4));
   const ScatteringResults spectrum =
-      fine_spectrum(s.config, g.z_energies(), s.basis(), s.gas, half_fourier_transform(series, g, s.fft));
+      fine_spectrum(s.config, g.z_energies(), s.basis(), s.gas, half_fourier_transform(series, g, s.fft), std::nullopt);
   const AnalysisEnergies energies = make_analysis_energies(s.config, s.gas);
   const FineAnalysisResults r = interpolate_to_analysis_energies(s.config, g, s.basis(), s.gas, energies, spectrum);
   // hardwall_small: energies 0.2 .. 0.6 eV; the grid covers 0.2035 .. 0.5983 eV.
@@ -442,7 +444,7 @@ TEST(FortranInterpolationBugs, OnlyPredictedPointsDifferAndFixIsAccurate) {
   std::vector<double> z_energies;
   for (const EnergyResult& e : r.interpolated.energies) z_energies.push_back(e.z_energy);
   const ScatteringResults exact =
-      fine_spectrum(s.config, z_energies, s.basis(), s.gas, direct_amplitudes(series, g, z_energies));
+      fine_spectrum(s.config, z_energies, s.basis(), s.gas, direct_amplitudes(series, g, z_energies), std::nullopt);
 
   double s_max = 0.0;
   for (const EnergyResult& e : r.spectrum.energies)

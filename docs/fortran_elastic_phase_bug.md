@@ -1,7 +1,9 @@
 # Bug: the phase of the specular S-matrix elements is referred to the wrong Z
 
-**Status:** open. The bug is in the Fortran (5.19, 5.24 and upstream master) and in the C++ port, which reproduces
-it. It was found in a code review on 2026-11-20 and verified on the hard-wall case against the exact answer.
+**Status:** fixed in the C++ on 2026-11-21 (a deviation from the Fortran: [fortran_deviations.md](fortran_deviations.md),
+analysis D2; see [The C++ fix](#the-c-fix)); open in the Fortran (5.19, 5.24 and upstream master). The C++ port
+reproduced the bug until then. It was found in a code review on 2026-11-20 and verified on the hard-wall case against
+the exact answer.
 
 **In one paragraph.** With two grids (`ProjOp = 2`), the S-matrix elements of every channel are extracted from
 Balint-Kurti (BK) coefficients taken at the analysis line `Zana`. The exception is the initial rotational-diffraction
@@ -25,7 +27,7 @@ Z_sp.
 - [Evidence](#evidence)
 - [History](#history)
 - [Proposed fix: Fortran](#proposed-fix-fortran)
-- [Proposed fix: C++](#proposed-fix-c)
+- [The C++ fix](#the-c-fix)
 - [Open points](#open-points)
 
 ## Background: how S is extracted
@@ -89,18 +91,18 @@ The coefficient is taken at Z_sp, but the phase is removed at `Zana`.
 
 - `probaf`, `Analyzor.f90` line 1446 [1397]: the fine analysis (`nread = 2`) does the same with `fskz(idat,is,iv)`.
 
-### C++
+### C++ (before the fix)
 
-On `main`, unchanged since the port:
+As ported (up to commit 99d011f):
 
-- `src/analysis/balint_kurti.cpp:74-82`: `if (surface.fixed())`, `bk(a.initial_state(), v)` = the projection of
-  `specular(ir, surface.index())`.
-- `src/analysis/s_matrix.cpp:106` (`SMatrixAccumulator::result_at`):
+- `src/analysis/balint_kurti.cpp` `BalintKurtiAnalyzer`: `if (surface.fixed())`, `bk(a.initial_state(), v)` = the
+  projection of `specular(ir, surface.index())`. Unchanged by the fix.
+- `src/analysis/s_matrix.cpp` `SMatrixAccumulator::result_at`:
   `const double arg = -kz * p.z_analysis + (d.kz - k0) * p.z0 - pi;` for every channel.
-- `src/analysis/fine_analysis.cpp:181` (`fine_spectrum`): the same line.
+- `src/analysis/fine_analysis.cpp` `fine_spectrum`: the same line.
 
 The CPU and GPU backends share this analysis code (the backend only supplies the specular wave and the `Zana`
-plane), so both are affected the same way.
+plane), so both were affected the same way, and the fix covers both.
 
 **The size of the error.** The extra factor is e^{+i k_f (Z_sp − Zana)}, where k_f = √(2M(E − ε_f)) is the
 channel's own final normal momentum. For the elastic channel this is `sk0`, not the packet's centre momentum `rkz`
@@ -111,8 +113,9 @@ and not the total momentum: the oblique-incidence run below tells these apart.
 - **Wrong:**
   - Re S, Im S and `phase` of every element of the initial rotational-diffraction state: the elastic element and the
     vibrationally inelastic specular elements (v ≠ v_in, same j, mJ and diffraction order).
-  - Where they are written: Fortran stdout and fort.25 (on-the-fly and fine analysis); C++ `s_matrix.tsv`,
-    `analysis.json` and the fine analysis's spectrum files.
+  - Where they are written: Fortran stdout and fort.25 (on-the-fly and fine analysis); before the fix also the C++
+    `s_matrix.tsv` (on-the-fly and `fine_analysis/`) and the elastic phase column of the printed fine-analysis
+    spectrum.
 - **Size:** k_f (Z_sp − Zana) radians.
 
   | Case (Fortran reference) | `Zana` (bohr) | Z_sp (bohr) | Offset per unit k_f | At 0.4 eV normal incidence (k ≈ 10.4 a.u.) |
@@ -139,9 +142,9 @@ and not the total momentum: the oblique-incidence run below tells these apart.
   - gates 1–4 (gate 4 compares probabilities and BK coefficients, no phases);
   - the plot tool's time delays (`tools/plots/compute/time_series.py` `time_delays`). They are computed from the BK
     coefficients with each channel's own line Z_f, so they are already right.
-- **Gate 5 compares phases.** It compares fort.25 Re S / Im S / phase with the C++, and both carry the same wrong
-  reference plane, so it passes. After a fix it must keep comparing with the Fortran's convention (see the C++ fix
-  below).
+- **Gate 5 compares phases.** It compares fort.25 Re S / Im S / phase with the C++. Before the fix both carried the
+  same wrong reference plane, so it passed and could not see the bug. Since the fix it analyses the Fortran's BK file
+  with the Fortran's convention (see the C++ fix below).
 
 ## Evidence
 
@@ -227,7 +230,7 @@ print(f"max |arg S - arg(-R e^(ik(Zsp - Zana)))| = {worst['shifted']:.4f} rad")
 
 </details>
 
-### 2. C++ runs of the hard wall
+### 2. C++ runs of the hard wall (before the fix)
 
 - Set-up: variants of `hardwall_small`'s input; s_matrix.tsv against the same exact R; 0.2–0.6 eV.
 - The residual after the predicted factor does not depend on where the line ends up, while the plain difference
@@ -309,70 +312,83 @@ rotational-diffraction state is `is == inchna` for every `iv`, as in `BalintKurt
 - Test: the script above, applied to the fort.25 of the fixed code, must give ≈ 0.01 rad in the plain column
   (max |arg S − arg(−R)|) instead of 1.86 rad.
 
-## Proposed fix: C++
+## The C++ fix
 
-The fix is a deliberate deviation from the Fortran. It changes only the phases of the initial state's elements.
+A deliberate deviation from the Fortran (analysis D2). It changes only the phases of the initial state's elements.
 
-1. **S matrix (on-the-fly analysis).** `SMatrixAccumulator::results` / `result_at` (`src/analysis/s_matrix.cpp`)
-   take the line where the specular coefficients were measured, `std::optional<double> z_specular_line`. The caller
-   (`src/app/run.cpp:360`, `propagation.scattering_results()`) passes `z_specular[surface.index()]` when
-   `surface.fixed()`, else `std::nullopt`. In the channel loop:
+1. **One rule for the reference line.** `measurement_line` (`src/analysis/s_matrix.hpp`) gives the Z where the BK
+   coefficients of state `is` were taken: the specular analysis line for the initial state once that line is fixed,
+   else `Zana`. Both S-matrix formulas use it in place of `Zana`:
 
    ```cpp
-   // The initial rot-dif state is measured on the specular grid at Z_sp once that line is fixed
-   // (balint_kurti.cpp); remove the free outgoing phase there. The Fortran uses Zana for every channel.
-   const bool on_specular_line = z_specular_line && is == a.initial_state();
-   const double z_measured = on_specular_line ? *z_specular_line : p.z_analysis;
+   // The free outgoing phase is removed at the line where the coefficients were taken (Fortran: ZAnalysis).
+   const double z_measured = measurement_line(config_, a, is, specular_line);
    const double arg = -kz * z_measured + (d.kz - k0) * p.z0 - pi;
    ```
 
-   A restart restores the surface state from the checkpoint (native, or the Fortran files), so a split run gets the
-   same Z_sp.
-2. **Fine analysis.** `fine_spectrum` (`src/analysis/fine_analysis.cpp:181`) gets the same parameter. An
-   analysis-only run must know Z_sp of the run that wrote the BK file:
-   - the native files: read the analysis surface (index, fixed) from the header of `checkpoint.bin` in `RestartDir`,
-     which the plot tool already reads for the specular line. Read only the header, not ψ (6 GiB on the DZ grid);
-   - the Fortran files: the surface record of fort.9 (`read_fortran_wave_function` already returns it);
-   - if neither is there, stop with an error naming the missing file (the input rules: never continue silently).
-     Alternatively, record Z_sp in `bk_coefficients.bin`, which changes the file format.
-3. **Gate 5 keeps comparing with the Fortran.** Its test calls `fine_spectrum` with `std::nullopt` (every channel
-   referred to `Zana`, the Fortran convention). That needs no production mode and no input key, and the gate's
-   tolerances stay as they are. The alternative, correcting the Fortran's printed Re/Im by the factor, would mix the
-   rounding of Re and Im and loosen the tolerance. No other gate compares phases.
-4. **Tests:**
-   - Unit (`tests/test_analysis.cpp`): synthetic BK sums with Z_sp ≠ `Zana`.
-     - The initial state's S is the `nullopt` result times exactly e^{−ik_f (Z_sp − Zana)}, for every v.
-     - Every other state is unchanged.
-     - |S| is unchanged to rounding.
-   - Physics (a new deviation needs a test): the hard-wall elastic phase from the existing `hardwall_small` gate run
-     against arg(−R) from a small Numerov solver in the test, tolerance ≈ 1.5e-2 rad. The fixed code measured 1.0e-2
-     on the Fortran's fort.25 and on C++ runs at the gate's time step, so the margin is small: set the tolerance from
-     the measured worst case.
-   - Negative test: the `nullopt` phase must fail. Assert the number of failing energies: all 41 except those where
-     k (Z_sp − Zana) lies within the tolerance of a multiple of 2π (near 0.37 eV on this case).
-5. **Docs:**
-   - [fortran_deviations.md](fortran_deviations.md): a new entry with the next free `analysis` ID, citing this file
-     and the test.
-   - [output_files.md](output_files.md): the `phase` column of `s_matrix.tsv` refers every element to the line where
-     it was measured.
-   - [validation.md](validation.md): gate 5 uses the Fortran convention.
-   - The docstring of `tools/plots/compute/time_series.py` `time_delays` ("s_matrix.tsv refers every phase to
-     Zana").
-6. **Checks:**
-   - Not a bitwise refactor. `tools/check_bitwise_refactor.sh` must show differences only in the S values and phases
-     of the initial state's rows (`s_matrix.tsv`, `analysis.json`, the fine-analysis spectrum files and the printed
-     tables). P may move in the last bits.
-   - The full suite, CPU and CUDA: the GPU shares the analysis code, so no CUDA change is needed.
+2. **On-the-fly analysis.** `SMatrixAccumulator::results(specular_line)` and `fine_spectrum(…, specular_line)`
+   take the line as `std::optional<double>`. `WavePacketPropagation::scattering_results` passes the analysis
+   surface's `fixed_line()`: Z_sp once fixed, else nothing (then the coefficients were taken at `Zana`). A restart
+   restores the surface from the checkpoint (native or Fortran files), so a split run gets the same Z_sp.
+3. **Fine analysis.** `BkInput` carries the checkpoint of the run that wrote the BK file, and `run_fine_analysis`
+   reads only its analysis surface, after the BK file's own checks:
+   - native: `read_checkpoint_surface` (`src/io/checkpoint.cpp`), the header (checked against the input) up to the
+     surface, not ψ;
+   - Fortran: `read_fortran_analysis_surface` (`src/io/fortran_files.cpp`), records 1–3 of fort.8/fort.9.
 
-Effort: small (two formula lines, one parameter, a header read for the fine analysis, tests and docs). Risk: low;
-phases only, and gate 5 keeps its Fortran comparison.
+   `onlyAnalysis` therefore needs the checkpoint next to the BK file in `RestartDir` (`checkpoint.bin`, or fort.8 /
+   fort.9 with `RestartFormat` `"fortran"`). A missing one is an input error before the set-up, like the other
+   restart files. `alsoAnalysis` reads the checkpoint the run has just written.
+4. **Gate 5 keeps comparing with the Fortran.** It runs `run_fine_analysis` on the Fortran's BK file without a
+   checkpoint, so every phase refers to `Zana` as in the Fortran's fort.25. No production mode, no input key, and
+   the tolerances are unchanged. No other gate compares phases.
+5. **The plot tool** follows: its copy of the S-matrix formula (`tools/plots/copies/s_matrix.py`
+   `channel_factors`) takes each channel's measurement line. `PlotRuns.test_runs_s_matrix` rebuilds `s_matrix.tsv`
+   with the lines from `checkpoint.bin`, and gains a negative case: every phase at `Zana` fails at all 41 energies
+   of the oblique Dai-Light fixture (the smallest error 0.022 of the largest |S|, against the tolerance 1e-12).
+6. **Tests:**
+   - `ElasticPhase.HardWallElasticElementIsTheExactReflection` (`tests/test_elastic_phase.cpp`, ≈ 13 s at 8
+     threads). A hard-wall run (`hardwall_small` with one rotational state and 2 × 2 (x, y) points; the same Z, r
+     dynamics, 7000 steps) against the exact 1D reflection amplitude (Numerov on V_Z of the program's own hard-wall
+     PES) at 0.25–0.55 eV.
+     - Phase within 1e-2 rad, measured 6.24e-3 rad; |S| within 4e-3, measured 1.85e-3. Z_sp = 8.64.
+     - Negative test: the Fortran's phase, S e^{ik(Z_sp − Zana)}, fails at all 31 energies (k (Z_sp − Zana) is
+       5.26 to 7.80 rad there, at least 0.027 rad from 2π).
+   - `SMatrix.InitialStatePhaseRefersToTheSpecularLine` (`tests/test_analysis.cpp`). On synthetic BK sums:
+     - the initial state's elements are the Fortran-convention ones times e^{−ik_f (Z_sp − Zana)}, for every v;
+     - every other element is bitwise unchanged;
+     - |S| and P_total are unchanged;
+     - a line at `Zana` gives the Fortran's result bit for bit.
+   - `FineAnalysis` (`tests/test_fine_analysis.cpp`): the on-the-fly and the fine analysis agree with a specular line
+     off `Zana`.
+   - `Restart.SplitRunIsBitwiseIdenticalToTheUnsplitRun`: an analysis-only run without the checkpoint is refused
+     (native and Fortran file names).
+7. **Verification** (2026-11-21, on top of commit 8b85aa8, CPU build):
+   - The full suite: 83 Python tests (`ctest -L python -j 8`, 708 s) and 842 C++ tests (`ctest -LE python`, 855 s),
+     all passed but the 6 documented skips (the 5 `Long` gates and `CrpLib…GasPhase/"c6v_pairwise_angstrom"`). One
+     test failed on the first run and was fixed: `ScmDiagnostics.ScmD3RaisedAtomStopsEveryRunMode` needed a
+     checkpoint next to its BK file. It passed on the re-run, together with the restart, fine-analysis and
+     S-matrix tests.
+   - CUDA build: `ctest --test-dir build-cuda -R Cuda`, 32 tests, all passed but the 2 `Long` gates (125 s).
+   - Repeated on top of commit acbc604, with the plot tool's negative case added: 83 Python tests (464 s) and 842
+     C++ tests (535 s), all passed but the same 6 skips.
+   - `tools/check_bitwise_refactor.sh --base-build <build of 8b85aa8> HEAD`: 13 case comparisons bitwise identical.
+     The line never becomes fixed in its short runs, so this shows that everything else, the analysis-only run with
+     its new checkpoint read included, is unchanged.
+   - End to end, old against new build, on the hard wall of the elastic test with `alsoAnalysis` (the line fixes
+     at 8.64 at t = 3960 a.u.):
+     - Re S, Im S and phase differ in exactly the initial state's rows (51 of 203 on the fly, 49 of 192 in
+       `fine_analysis/`; v = 0 and 1), by up to 6.08 rad in phase.
+     - Every other row is bitwise identical.
+     - P and the sums in `scattering_summary.tsv` move by at most one rounding unit (6.7e-16).
+     - An `onlyAnalysis` run of the new build on the Fortran-format files (fort.21 and fort.9) gives the same
+       `fine_analysis/` files, bit for bit.
 
 ## Open points
 
-- **Fix, or only document?** A fix is a deviation from the Fortran. Documenting alone (in output_files.md) leaves
-  run-dependent elastic phases in the output.
 - **Report it upstream?** The Fortran is affected in 5.19, 5.24 and master; the patch above is a few lines.
 - **The scattering-grid part before fixing.** Its being zero is inferred from the projection in every potential
-  step and not measured. If it were not, apply the factor per coefficient during the time accumulation, only to
-  coefficients taken after fixing (a separate sum for the initial state).
+  step and not measured. If it were not, the factor would have to be applied per coefficient during the time
+  accumulation, only to coefficients taken after fixing (a separate sum for the initial state). The hard-wall test
+  bounds the effect there (6.2e-3 rad in all).
 - **The thesis Table 4.8 reading** (Evidence point 4) is a hypothesis.

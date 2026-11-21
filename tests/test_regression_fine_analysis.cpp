@@ -79,6 +79,7 @@ struct FineRun {
 
   [[nodiscard]] FineAnalysisResults run() const {
     const fs::path bk_file = fs::path(config.input.restart_dir) / "fortran_fort21.bin";
+    // No checkpoint: every phase refers to Zana, as in the Fortran's fort.25 (docs/fortran_elastic_phase_bug.md).
     return run_fine_analysis(config, setup, gas, BkInput{bk_file, true}, fft);
   }
   // State index is of the labels (order, n, m, j, mJ); -1 if not in the basis.

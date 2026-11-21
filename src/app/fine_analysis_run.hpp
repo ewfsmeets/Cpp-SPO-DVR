@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <optional>
 
 #include "analysis/analysis_basis.hpp"
 #include "analysis/fine_analysis.hpp"
@@ -25,10 +26,20 @@ struct AnalysisSetup {
   AnalysisBasis basis;
 };
 
-// A BK coefficient file: native (bk_coefficients.bin) or Fortran (fort.21 / fort.22).
+// A checkpoint of the run that wrote a BK file: native (checkpoint.bin) or Fortran (fort.9 / fort.8).
+struct CheckpointInput {
+  std::filesystem::path path;
+  bool fortran_format = false;
+};
+
+// A BK coefficient file: native (bk_coefficients.bin) or Fortran (fort.21 / fort.22), and the checkpoint of
+// the same run. The checkpoint's analysis surface is where the run measured the initial state: the phases of
+// that state's S-matrix elements refer to that line (measurement_line in analysis/s_matrix.hpp). Without a
+// checkpoint every phase refers to Zana, as in the Fortran (gate 5 compares with the Fortran's fort.25 so).
 struct BkInput {
   std::filesystem::path path;
   bool fortran_format = false;
+  std::optional<CheckpointInput> checkpoint = std::nullopt;
 };
 
 // Memory of the large arrays of the fine analysis: the BK series, the transformed amplitudes,

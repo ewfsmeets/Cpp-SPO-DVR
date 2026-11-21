@@ -2,11 +2,12 @@
 prefactor and phase of each open channel.
 
 S_f(E) = sum_t c_f(t) exp(i E_tot t) dt_ana * (alpha / 2 pi)^(1/4) / M * exp(i arg_f) * sqrt(k_f k0 / weight)
-with arg_f = -k_f Zana + (kz - k0) Z0 - pi, weight = exp(-(kz - k0)^2 / (2 alpha)), k0 the normal momentum
-of the collision energy and k_f that of channel f. The initial packet is (2 alpha / pi)^(1/4)
+with arg_f = -k_f Z_f + (kz - k0) Z0 - pi, weight = exp(-(kz - k0)^2 / (2 alpha)), k0 the normal momentum
+of the collision energy and k_f that of channel f. Z_f is the line where channel f is measured: Zana, but the
+specular analysis line for every v of the initial state once that line is fixed (measurement_line). The initial packet is (2 alpha / pi)^(1/4)
 exp(-alpha (Z - Z0)^2 - i kz Z): alpha (bohr^-2) sets its width, kz (bohr^-1) its mean normal momentum.
 
-Shadows: src/analysis/s_matrix.cpp (SMatrixAccumulator::add, SMatrixAccumulator::result_at)
+Shadows: src/analysis/s_matrix.cpp (SMatrixAccumulator::add, SMatrixAccumulator::result_at, measurement_line)
 """
 
 import numpy as np
@@ -66,14 +67,15 @@ def channel_factors(
     kz_per_bohr: float,
     alpha_per_bohr2: float,
     total_mass_me: float,
-    z_analysis_bohr: float,
+    z_measured_bohr: np.ndarray,
     z0_bohr: float,
     hartree_to_ev: float,
 ) -> np.ndarray:
     """prefactor * exp(i arg_f) * sqrt(k_f k0 / weight) for every energy and channel, 0 for a closed channel
     (k_f^2 <= 0): S = time sums * these factors.
 
-    total_energy_ev, k0_per_bohr: (n_energies,); channel_energy_hartree: (n_channels,).
+    total_energy_ev, k0_per_bohr: (n_energies,); channel_energy_hartree, z_measured_bohr (the line Z_f where each
+    channel is measured): (n_channels,).
     Returns: (n_energies, n_channels) complex, in bohr^1/2 (the time sums are in bohr^-1/2).
     """
     k0 = k0_per_bohr[:, None]
@@ -81,6 +83,6 @@ def channel_factors(
     kf_sq = 2.0 * total_mass_me * (total_energy_ev[:, None] / hartree_to_ev - channel_energy_hartree[None, :])
     open_channel = kf_sq > 0.0
     kf = np.sqrt(np.where(open_channel, kf_sq, 1.0))  # 1.0: any positive value; closed channels are zeroed below
-    arg = -kf * z_analysis_bohr + (kz_per_bohr - k0) * z0_bohr - np.pi
+    arg = -kf * z_measured_bohr[None, :] + (kz_per_bohr - k0) * z0_bohr - np.pi
     factors = s_prefactor(alpha_per_bohr2, total_mass_me) * np.exp(1j * arg) * np.sqrt(kf * k0 / weight)
     return np.where(open_channel, factors, 0.0)

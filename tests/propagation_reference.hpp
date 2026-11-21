@@ -136,6 +136,9 @@ struct PropagationRun {
   std::vector<std::vector<std::complex<double>>> bk;  // BK coefficients per analysis step
   ScatteringResults scattering;
   std::vector<std::pair<int, int>> rotation_labels;   // (J, mJ) of the analysed rotational states
+  int initial_state = 0;                              // index is of the initial state in the analysis basis
+  int n_states = 0;                                   // analysed states (the s_matrix layout is + n_states * v)
+  std::optional<double> specular_line;                // Z of the fixed specular analysis line, if it became fixed
 };
 
 // The C++ run of a configuration with the PES pes in place of its own (a negative test's modified
@@ -155,7 +158,10 @@ inline PropagationRun run_cpp_propagation(const Config& config, const Potential&
   observer.on_analysis_step = [&](double, const BkCoefficients& bk) { run.bk.push_back(bk.values); };
   propagation.run(observer);
   run.scattering = propagation.scattering_results();
+  run.specular_line = propagation.analysis_surface().fixed_line();
   const AnalysisBasis& basis = propagation.analysis_basis();
+  run.initial_state = basis.initial_state();
+  run.n_states = basis.n_states();
   for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
     run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
                                      basis.mj(irotana * basis.n_diffraction()));

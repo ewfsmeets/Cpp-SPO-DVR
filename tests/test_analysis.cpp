@@ -309,7 +309,7 @@ TEST(SMatrix, ConstantSeriesGivesTheGeometricSumAndThePrefactor) {
   const int n_steps = 37;
   for (int k = 1; k <= n_steps; ++k) acc.add(bk, k * dT);
 
-  const ScatteringResults r = acc.results();
+  const ScatteringResults r = acc.results(std::nullopt);
   ASSERT_EQ(static_cast<int>(r.energies.size()), acc.energies().size());
   const double chaev = units::legacy.energy_factor();
   for (const int ien : {0, 20, 40}) {
@@ -345,6 +345,54 @@ TEST(SMatrix, ConstantSeriesGivesTheGeometricSumAndThePrefactor) {
   }
 }
 
+// The initial state's coefficients are taken at the specular analysis line Z_sp once it is fixed: its S-matrix
+// elements (every v) carry exp(-i kz (Z_sp - Zana)) relative to the Fortran's reference at Zana; every other
+// element, and every probability, is unchanged. A line at Zana is the Fortran's result bit for bit.
+TEST(SMatrix, InitialStatePhaseRefersToTheSpecularLine) {
+  const AnalysisSetup& s = reference_setup();
+  const AnalysisBasis& a = s.analysis;
+  const InputParameters& p = s.config.input;
+  const DerivedParameters& d = s.config.derived;
+  SMatrixAccumulator acc(s.config, a, s.gas);
+  BkCoefficients bk(a.n_states(), a.n_v());
+  for (int k = 0; k < static_cast<int>(bk.values.size()); ++k)
+    bk.values[k] = cplx(std::sin(1.0 + k), std::cos(2.0 * k));
+  acc.add(bk, 10.0);
+  acc.add(bk, 20.0);
+  // A line 0.25 bohr out: k (Z_sp - Zana) is 1.8 to 3.2 rad for the elastic channel at 0.2 to 0.6 eV, so the change
+  // is large there (|1 - e^{i phase}| > 1.5); near a vibrational threshold kz, and with it the change, goes to 0.
+  const double z_sp = p.z_analysis + 0.25;
+  const ScatteringResults fortran = acc.results(std::nullopt);
+  const ScatteringResults at_zana = acc.results(p.z_analysis);
+  const ScatteringResults fixed = acc.results(z_sp);
+  const double chaev = units::legacy.energy_factor();
+
+  int n_initial_open = 0;
+  for (std::size_t ien = 0; ien < fixed.energies.size(); ++ien) {
+    const EnergyResult& e0 = fortran.energies[ien];
+    const EnergyResult& e1 = fixed.energies[ien];
+    EXPECT_EQ(at_zana.energies[ien].s_matrix, e0.s_matrix);
+    EXPECT_EQ(e1.p_total, e0.p_total);
+    for (int v = 0; v < a.n_v(); ++v)
+      for (int is = 0; is < a.n_states(); ++is) {
+        const int k = is + a.n_states() * v;
+        if (is != a.initial_state() || !e0.open[k]) {
+          EXPECT_EQ(e1.s_matrix[k], e0.s_matrix[k]) << ien << ' ' << k;
+          continue;
+        }
+        n_initial_open = n_initial_open + 1;
+        const double kz = std::sqrt(2.0 * d.total_mass * (e0.total_energy / chaev - a.channel_energy(is, v)));
+        const cplx expected = e0.s_matrix[k] * std::exp(cplx(0.0, -kz * (z_sp - p.z_analysis)));
+        EXPECT_NEAR(std::abs(e1.s_matrix[k] - expected), 0.0, 1e-13 * std::abs(expected)) << ien << ' ' << v;
+        EXPECT_NEAR(e1.probability[k], e0.probability[k], 1e-14 * e0.probability[k]);
+        if (v == d.v_in_index - 1) {  // a real change
+          EXPECT_GT(std::abs(e1.s_matrix[k] - e0.s_matrix[k]), 1.5 * std::abs(expected)) << ien;
+        }
+      }
+  }
+  EXPECT_GE(n_initial_open, static_cast<int>(fixed.energies.size()));
+}
+
 // The summed probabilities are consistent with each other and with the state probabilities.
 TEST(SMatrix, SumsAndAveragesAreConsistent) {
   const AnalysisSetup& s = reference_setup();
@@ -355,7 +403,7 @@ TEST(SMatrix, SumsAndAveragesAreConsistent) {
     bk.values[k] = cplx(std::sin(1.0 + k), std::cos(2.0 * k));
   acc.add(bk, 10.0);
   acc.add(bk, 20.0);
-  const EnergyResult e = acc.results().energies[30];
+  const EnergyResult e = acc.results(std::nullopt).energies[30];
 
   double total = 0.0;
   double e_vib = 0.0;

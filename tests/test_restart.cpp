@@ -136,7 +136,7 @@ const FirstRun& first_run() {
 //   first/second  the same run split at 300 by a restart, alsoAnalysis in the second part
 //   only_native   onlyAnalysis of full/bk_coefficients.bin
 //   only_fortran  onlyAnalysis of full/fort.21
-//   in_place      onlyAnalysis with the output directory = RestartDir (a copy of full)
+//   in_place      onlyAnalysis with the output directory = RestartDir (a copy of full's BK file and checkpoint)
 struct FineAnalysisRuns {
   fs::path root = fs::temp_directory_path() / ("spodvr_fine_analysis_test_" + std::to_string(::getpid()));
   int code_full, code_first, code_second, code_native, code_fortran, code_in_place;
@@ -169,6 +169,7 @@ struct FineAnalysisRuns {
     code_fortran = run(only_analysis(root / "full", "fortran"), root / "only_fortran", err);
     fs::create_directories(root / "in_place");
     fs::copy_file(root / "full" / "bk_coefficients.bin", root / "in_place" / "bk_coefficients.bin");
+    fs::copy_file(root / "full" / "checkpoint.bin", root / "in_place" / "checkpoint.bin");
     code_in_place = run(only_analysis(root / "in_place", "native"), root / "in_place", err);
   }
   ~FineAnalysisRuns() { fs::remove_all(root); }
@@ -203,9 +204,10 @@ TEST(FineAnalysisRuns, AllRunModesGiveBitwiseIdenticalResults) {
     for (const std::string other : {"second", "only_native", "only_fortran", "in_place"})
       EXPECT_EQ(full, read_file(r.root / other / name)) << other << "/" << name;
   }
-  // The analysis-only run in RestartDir leaves the BK file alone and writes no propagation files.
+  // The analysis-only run in RestartDir leaves the BK file and the checkpoint alone and writes no propagation files.
   EXPECT_EQ(read_file(r.root / "full" / "bk_coefficients.bin"), read_file(r.root / "in_place" / "bk_coefficients.bin"));
-  EXPECT_FALSE(fs::exists(r.root / "in_place" / "checkpoint.bin"));
+  EXPECT_EQ(read_file(r.root / "full" / "checkpoint.bin"), read_file(r.root / "in_place" / "checkpoint.bin"));
+  EXPECT_FALSE(fs::exists(r.root / "in_place" / "fort.9"));
 }
 
 TEST(FineAnalysisRuns, Errors) {
@@ -379,7 +381,10 @@ TEST(RestartFiles, MissingFileStopsTheRunBeforeTheSetUp) {
                                    {"fortran", 1, {"fort.21"}, "neither fort.8 nor fort.9"},
                                    {"fortran", 1, {"fort.9"}, "neither fort.22 nor fort.21"},
                                    {"native", 2, {"checkpoint.bin", "fort.21"}, "no bk_coefficients.bin"},
-                                   {"fortran", 2, {"bk_coefficients.bin"}, "neither fort.22 nor fort.21"}};
+                                   {"fortran", 2, {"bk_coefficients.bin"}, "neither fort.22 nor fort.21"},
+                                   // The analysis-only run reads the specular analysis line from the checkpoint.
+                                   {"native", 2, {"bk_coefficients.bin", "fort.9"}, "no checkpoint.bin"},
+                                   {"fortran", 2, {"fort.21", "checkpoint.bin"}, "neither fort.8 nor fort.9"}};
   const test_support::TemporaryDirectory dir("restart_files");
   for (std::size_t k = 0; k < cases.size(); ++k) {
     const Case& c = cases[k];

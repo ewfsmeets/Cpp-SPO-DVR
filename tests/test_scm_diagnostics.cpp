@@ -566,6 +566,7 @@ TEST(ScmDiagnostics, ScmD3RaisedAtomStopsEveryRunMode) {
   json.update({{"onlyAnalysis", true}, {"RestartDir", (dir.path() / "earlier").string()}});
   fs::create_directories(dir.path() / "earlier");
   std::ofstream(dir.path() / "earlier" / "bk_coefficients.bin") << "not read";
+  std::ofstream(dir.path() / "earlier" / "checkpoint.bin") << "not read";  // the specular analysis line
   EXPECT_EQ(run(json, dir.path() / "analysis_only", out, err), 2);
   EXPECT_NE(err.find("ΔV changes the gas-phase potential V_asy"), std::string::npos) << err;
   EXPECT_NE(out.find("Analysis-only run: no 6D potential, so only the gas-phase points are checked."),

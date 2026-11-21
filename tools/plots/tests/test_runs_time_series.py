@@ -37,8 +37,8 @@ def shifted(info: RunInfo, energies: AnalysisEnergies, shift_hartree: float) -> 
 
 
 def s_phase_derivative(info: RunInfo, bk: BkCoefficients, step_hartree: float) -> np.ndarray:
-    """d arg S / dE by a central difference of the S-matrix copy (all channels referenced to Zana, as
-    s_matrix.tsv), (n_energies, n_channels) in a.u."""
+    """d arg S / dE by a central difference of the S-matrix copy (all channels referenced to Zana, as in the
+    Fortran), (n_energies, n_channels) in a.u."""
     energies = analysis_energies(info)
     n_times = len(bk.times_au)
     coefficients = bk.coefficients.reshape(n_times, -1)

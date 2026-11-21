@@ -233,6 +233,24 @@ CheckpointInfo read_checkpoint(const std::filesystem::path& path, const Config& 
   return info;
 }
 
+AnalysisSurfaceState read_checkpoint_surface(const std::filesystem::path& path, const Config& config) {
+  BinaryReader file(path);
+  read_header(file, checkpoint_magic, "checkpoint", config);
+  (void)file.read<double>();                                      // time
+  for (int k = 0; k < 3; ++k) (void)file.read<std::int32_t>();    // the scattering wave's shape
+  check_size(file, "nR", static_cast<std::int32_t>(config.input.nr));
+  check_size(file, "nZSpecular", static_cast<std::int32_t>(config.input.nz_specular));
+  AnalysisSurfaceState surface{};
+  surface.index = file.read<std::int32_t>();
+  surface.previous_index = file.read<std::int32_t>();
+  surface.fixed = file.read<std::uint8_t>() != 0;
+  surface.norm_tolerance = file.read<double>();
+  if (surface.index < 0 || surface.index >= config.input.nz_specular)
+    throw CheckpointError("checkpoint '" + path.string() + "' is corrupt (analysis surface index " +
+                          std::to_string(surface.index) + ")");
+  return surface;
+}
+
 BkFileWriter::BkFileWriter(const std::filesystem::path& path, const Config& config, const AnalysisBasis& basis)
     : file_(path) {
   write_header(file_, bk_magic, config);

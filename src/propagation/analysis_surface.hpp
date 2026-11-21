@@ -29,6 +29,11 @@ class AnalysisSurface {
   [[nodiscard]] int index() const { return index_; }   // Fortran: izanlySpecChan - 1
   [[nodiscard]] bool fixed() const { return fixed_; }  // Fortran: FixedZAnalysisSpec
   [[nodiscard]] double tolerance() const { return tolerance_; }  // Fortran: anlyTol * delz * delr
+  // Z of the surface once it is fixed (the line where the initial state's BK coefficients are taken from then
+  // on, balint_kurti.cpp), else nothing.
+  [[nodiscard]] std::optional<double> fixed_line() const {
+    return fixed_ ? std::optional<double>(z_[index_]) : std::nullopt;
+  }
 
   // Moves the surface for the current wave function (no-op once fixed). Returns the Z value
   // if the surface became fixed during this call. Fortran: FindNewAnalysisPoint

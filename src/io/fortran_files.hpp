@@ -29,6 +29,11 @@ void write_fortran_wave_function(const std::filesystem::path& path, const WavePa
 [[nodiscard]] AnalysisSurfaceState read_fortran_wave_function(const std::filesystem::path& path, WavePacket& psi,
                                                               const AnalysisSurfaceState& fresh);
 
+// The analysis surface (position, fixed) of a Fortran wave-function file with an n_r x n_z_specular
+// SpecWave; the scattering wave is not read. For the fine analysis: where the run measured the initial state.
+[[nodiscard]] AnalysisSurfaceState read_fortran_analysis_surface(const std::filesystem::path& path, int n_r,
+                                                                 int n_z_specular);
+
 // BK coefficient file (Fortran writes fort.21, reads fort.22): ten header records
 // (sizes; deltat, rkz, z0, alfwv, ZAnalysis, eviroi; enrgy, thtai, phii, jin, mjin, ichn;
 // the six label arrays of the rotation-diffraction basis; enymo), then one record balcf per

@@ -4,6 +4,7 @@
 
 #include <complex>
 
+#include "grids/spatial_grids.hpp"
 #include "io/checkpoint.hpp"
 #include "io/fortran_files.hpp"
 #include "propagation/propagation_tables.hpp"
@@ -47,6 +48,19 @@ int read_records(const Config& config, const AnalysisSetup& setup, const BkInput
   return n;
 }
 
+// The fixed specular analysis line of the run that wrote the BK file, from the analysis surface in its
+// checkpoint; nothing without a checkpoint or when the line never became fixed.
+std::optional<double> specular_line(const Config& config, const BkInput& input) {
+  if (!input.checkpoint) return std::nullopt;
+  const CheckpointInput& checkpoint = *input.checkpoint;
+  const AnalysisSurfaceState surface =
+      checkpoint.fortran_format
+          ? read_fortran_analysis_surface(checkpoint.path, config.input.nr, config.input.nz_specular)
+          : read_checkpoint_surface(checkpoint.path, config);
+  if (!surface.fixed) return std::nullopt;
+  return make_spatial_grids(config).z_specular[surface.index];
+}
+
 }  // namespace
 
 FineAnalysisResults run_fine_analysis(const Config& config, const AnalysisSetup& setup, const GasPhase& gas,
@@ -56,6 +70,8 @@ FineAnalysisResults run_fine_analysis(const Config& config, const AnalysisSetup&
   // First pass: the number of records (and all header checks). Fortran: ReadOrWriteAsympInfo
   const int n_records = read_records(config, setup, input, [](double, const BkCoefficients&) {});
   const FineAnalysisGrid grid = make_fine_analysis_grid(config, n_records);
+  // After the BK file's checks, so that a BK file of another input is reported as such.
+  const std::optional<double> line = specular_line(config, input);
   if (on_grid) on_grid(grid);
 
   // Second pass: the series. Fortran: getbkc (ev0jl = enymo(inchna, nvin))
@@ -65,7 +81,7 @@ FineAnalysisResults run_fine_analysis(const Config& config, const AnalysisSetup&
   series.check_complete();
 
   const std::vector<std::complex<double>> amplitudes = half_fourier_transform(series, grid, fft);
-  ScatteringResults spectrum = fine_spectrum(config, grid.z_energies(), basis, gas, amplitudes);
+  ScatteringResults spectrum = fine_spectrum(config, grid.z_energies(), basis, gas, amplitudes, line);
   return interpolate_to_analysis_energies(config, grid, basis, gas, make_analysis_energies(config, gas),
                                           std::move(spectrum));
 }

@@ -22,7 +22,7 @@ gnuplot: `set datafile separator "\t"; plot "scattering_summary.tsv" using "E_co
 | File | One row per | Columns |
 |---|---|---|
 | `scattering_summary.tsv` | analysis energy | `E_coll` collision energy, `E_total` = E_coll + E(vin, jin), `E_z` = E_coll − initial parallel energy, `P_scattered` (Σ\|S\|²), `P_reaction` (1 − P_scattered), `P_v0`, `P_v1`, … (summed over rotation and diffraction), `E_vib_mean` `E_rot_mean` `E_dif_mean` (average final energies of the scattered molecules) |
-| `s_matrix.tsv` | energy and **open** final channel | `E_coll`, `E_total`, `v`, `j`, `mJ`, `n`, `m` (diffraction channel n b₁ + m b₂), `order`, `Re_S`, `Im_S`, `P` = \|S\|², `phase` = arg S (rad; 0 when Re S = 0, as in Fortran) |
+| `s_matrix.tsv` | energy and **open** final channel | `E_coll`, `E_total`, `v`, `j`, `mJ`, `n`, `m` (diffraction channel n b₁ + m b₂), `order`, `Re_S`, `Im_S`, `P` = \|S\|², `phase` = arg S (rad; 0 when Re S = 0, as in Fortran), referred to the line where the channel is measured: Zana, but the specular analysis line for the initial (j, mJ, (0, 0)) state, every v, once that line is fixed (the Fortran refers every phase to Zana: fortran_deviations.md, analysis D2) |
 | `probabilities_rovib.tsv` | energy and (v, j, mJ) | `E_coll`, `v`, `j`, `mJ`, `P` (summed over diffraction). Written if `writeProbs` |
 | `probabilities_diffraction.tsv` | energy, (v, j, mJ) and diffraction order | `E_coll`, `v`, `j`, `mJ`, `order`, `P` (summed over the (n, m) of that order). Written if `writeRDProbs` |
 
@@ -309,7 +309,10 @@ Written to `fine_analysis/` in the output directory, in the same table formats a
 | `fine_analysis/grid.json` | records in the file / up to tEnd / used (ndused), transform length, time step, effective time, spectral resolution (eV), first and last grid index, number of points (nen95), skipped analysis energies with the reason, and the count of large phase steps |
 
 The interpolated S-matrix elements and phases differ from the Fortran fort.25 because two Fortran
-bugs are fixed; the probabilities are the same. See `docs/fortran_fine_analysis_bugs.md`.
+bugs are fixed; the probabilities are the same. See `docs/fortran_fine_analysis_bugs.md`. The phases
+of the initial state's elements refer to the specular analysis line of the analysed run (analysis D2),
+read from the analysis surface of its checkpoint (native `checkpoint.bin`, or the Fortran fort.8/fort.9),
+which must be next to the BK file.
 
 ## Checkpoint files (binary)
 

@@ -210,8 +210,15 @@ derived from exactly the same parameters.
    `hardwall_small/fine_<variant>/`). Compared to half a printed unit: AsympInfo numbers,
    probaf table, all of fil10 and unit 3 (spectrum), the interpolated per-energy blocks and
    fort.25 probabilities; fort.25 Re S / Im S / phase against an emulation of the reference's
-   interpolation, whose ATAN and sign bugs 5.24 keeps (see fortran_deviations.md). Status: all
+   interpolation, whose ATAN and sign bugs 5.24 keeps (see fortran_deviations.md). The gate analyses
+   the Fortran's BK file without a checkpoint, so every phase refers to Zana as in the Fortran
+   (fortran_deviations.md, analysis D2). Status: all
    pass (worst 0.990127 of half a printed unit, in `Gate5DaiLight`).
+   Independent of the Fortran: `ElasticPhase.HardWallElasticElementIsTheExactReflection` compares the
+   elastic element of a hard-wall run (hardwall_small with one rotational state and 2 × 2 (x, y)
+   points, 7000 steps, ≈ 13 s at 8 threads) with the exact 1D reflection amplitude (Numerov) at
+   0.25–0.55 eV: phase within 1e-2 rad, \|S\| within 4e-3 (measured 6.24e-3 rad and 1.85e-3: the time-step
+   error and the norm not yet across the line at tEnd); the Fortran's phase fails at all 31 energies.
    Note: the associated Gauss-Legendre quadrature for |mJ| > 0 is dead code in the Fortran
    (`setupdvr.f90` forces `SymmetryInPhi = .FALSE.`, so only mJ = 0 is used). The rotational
    basis uses `legendre.f90 AssociatedLegendre` instead (C++ `associated_legendre`), tested

@@ -3,6 +3,7 @@
 #include <complex>
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -88,10 +89,13 @@ class BkSeries {
 
 // S-matrix, probabilities, sums and averages at the energies z_energies (E_z in eV; one
 // EnergyResult each), from the transformed series A_k(E) at those energies (layout
-// k + nstata*nviba * i). Fortran: probaf (prefactors; the sums are those of smatrix_combine)
+// k + nstata*nviba * i). specular_line: the fixed specular analysis line of the run that wrote the BK
+// coefficients, or nothing (see measurement_line in s_matrix.hpp).
+// Fortran: probaf (prefactors; the sums are those of smatrix_combine)
 [[nodiscard]] ScatteringResults fine_spectrum(const Config& config, std::span<const double> z_energies,
                                               const AnalysisBasis& basis, const GasPhase& gas,
-                                              std::span<const std::complex<double>> amplitudes);
+                                              std::span<const std::complex<double>> amplitudes,
+                                              std::optional<double> specular_line);
 
 // S at E_z between two grid points (fraction f from point 1 to point 2): |S|^2 is interpolated
 // linearly (as Fortran) and the phase is that of the linearly interpolated S.
