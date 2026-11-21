@@ -437,6 +437,8 @@ shows the probability over the unit cell and ρ(Z, r) above a point picked by a 
 
 The figures, the verdict's findings and how to add a plot: [tools/plots/README.md](tools/plots/README.md).
 
+Every figure and movie on a production run, explained: [the analysis gallery](docs/analysis_gallery.md).
+
 ## Inputs
 
 Ready-to-run inputs, from small to production size:
@@ -447,6 +449,7 @@ Ready-to-run inputs, from small to production size:
 | `tests/reference/cu111_dailight_small/` | H₂/Cu(111) on the DZ PES, on a small grid and basis for quick tests (176 × 56 × 8 × 8, JMax 4: 15 rotational basis functions) | about 10 min, 8 threads (its long test: 607 s, 2026-11-15) |
 | `inputs/scm_example/` | a technical example of the SCM potential: one snapshot on a small grid, not physics | see its [README](inputs/scm_example/README.md) |
 | `inputs/thesis_fig5_3_dz/`, `inputs/thesis_fig5_3_er/` | H₂/Cu(111) on the DZ and the ER PES: the two curves of Fig. 5.3 of Somers' thesis, at the thesis grid sizes (with a finer Z grid), JMax 28 | DZ: 8.2 h on the CPU (fast-math build), 1.4 h on the GPU ([Performance](#performance)) |
+| `inputs/thesis_fig5_3_dz_plotting/` | the DZ input above with every plot key switched on: the run behind the [analysis gallery](docs/analysis_gallery.md) | 4.0 h on the GPU (fast build), 16 GB of disk |
 
 - The JSON keys mirror the Fortran `DVR.inp` field names. All keys, defaults, units and checks:
   [docs/input_schema.md](docs/input_schema.md). Unknown keys and inconsistent parameters are
@@ -584,6 +587,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 | [docs/output_files.md](docs/output_files.md) | every output file and column; the correspondence with the Fortran output |
 | [docs/validation.md](docs/validation.md) | the five gates: cases, tolerances, results, reference data |
 | [docs/validation_thesis_fig5_3_dz/](docs/validation_thesis_fig5_3_dz/README.md) | the production-grid validation: Fortran vs C++ CPU vs C++ GPU, with figures |
+| [docs/analysis_gallery.md](docs/analysis_gallery.md) | what one run shows: every figure and movie of the plot tool on the thesis grid, explained |
 | [docs/port_status.md](docs/port_status.md) | every Fortran feature and its status in the C++; the additions |
 | [docs/fortran_deviations.md](docs/fortran_deviations.md) | every known difference from the Fortran code |
 | [docs/fortran_input_bugs.md](docs/fortran_input_bugs.md), [docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md) | Fortran bugs found during the port |
