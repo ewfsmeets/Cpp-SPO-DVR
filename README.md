@@ -298,12 +298,12 @@ extensions ([reproducibility](docs/performance.md#reproducibility)).
 
 ```bash
 export OMP_NUM_THREADS=8
-# everything (~15 min): the Python tests side by side, then the rest serially
+# everything (~17 min): the Python tests side by side, then the rest serially
 ctest --test-dir build -L python -j 8 --output-on-failure && ctest --test-dir build -LE python --output-on-failure
-# quick tier (~4 min)
+# quick tier (~3.5 min)
 ctest --test-dir build -L python -E PlotRuns -j 8 --output-on-failure &&
   ctest --test-dir build -LE python -E RegressionPropagation --output-on-failure
-ctest --test-dir build-cuda -R Cuda --output-on-failure                         # GPU tests (~1.5 min)
+ctest --test-dir build-cuda -R Cuda --output-on-failure                         # GPU tests (~2 min)
 ```
 
 - Run the C++ tests serially (no `-j`): many use all OpenMP threads. Set `OMP_NUM_THREADS` to the
@@ -314,10 +314,11 @@ ctest --test-dir build-cuda -R Cuda --output-on-failure                         
   tool's runs (`PlotRuns.*`). Use it while
   working on a change; run everything before committing a change to the code
   ([when](docs/CONTRIBUTING.md#testing)).
-- On 2026-11-20 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 873 tests, 867 pass and 6 long or
-  reference-less tests skip, about 930 s (of which the propagation gates 365 s and the plot tool's
-  runs and tests 365 s); the quick tier 849 tests (2 skip), about 215 s; 30 GPU tests, 28 pass and the 2
-  long ones skip, about 105 s.
+- On 2026-11-22 (8 threads, AMD Ryzen 7 5800X and RTX 4070 Ti): 987 tests (83 Python, 904 C++), 981
+  pass and 6 long or reference-less tests skip, about 1000 s (the Python tests side by side 462 s,
+  the plot tool's runs among them; the C++ tests 536 s, of which the propagation gates 357 s); the
+  quick tier 959 tests (2 skip), about 205 s; 32 GPU tests, 30 pass and the 2 long ones skip, about
+  115 s.
 - The regression tests compare with Fortran output stored in the repository; they do not need the
   Fortran code. The Python tests (the tools' and the wave-packet designer's, `ctest -L python`) run
   with pytest in the repository's environment ([Dependencies](#dependencies)).
