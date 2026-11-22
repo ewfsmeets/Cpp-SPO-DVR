@@ -5,6 +5,7 @@
 #include <cmath>
 #include <complex>
 #include <fstream>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -262,7 +263,30 @@ TEST(Averages, NormAndMeanPositionsOfASimpleState) {
   EXPECT_NEAR(a.norm, 1.0, 1e-14);
   EXPECT_NEAR(a.z_mean, 0.25 * s.grids.z_specular[200] + 0.75 * s.grids.z_scattering[30], 1e-13);
   EXPECT_NEAR(a.r_mean, 0.25 * s.grids.r[4] + 0.75 * s.grids.r[7], 1e-13);
-  EXPECT_NEAR(a.rest_norm, 200 > s.grids.iz_analysis && 200 <= surface ? 0.25 : 0.0, 1e-14);
+  ASSERT_TRUE(200 > s.grids.iz_analysis && 200 <= surface);  // the specular point lies in the rest-norm range
+  EXPECT_NEAR(a.rest_norm, 0.25, 1e-14);
+}
+
+// The rest norm counts the specular grid after Zana up to and including the analysis surface
+// (Fortran: Averages.f90): both ends of that range, one point at a time.
+TEST(Averages, RestNormCountsFromAfterZanaToTheSurface) {
+  const OperatorSetup& s = reference_setup();
+  const double volume_spec = s.config.input.dz * s.config.input.dr;
+  const int analysis = s.grids.iz_analysis;
+  const int surface = 210;
+  ASSERT_LT(analysis + 1, surface);
+  ASSERT_LT(surface + 1, s.grids.z_specular.size());
+  for (const auto& [iz, expected] : std::vector<std::pair<int, double>>{
+           {analysis - 1, 0.0}, {analysis, 0.0}, {analysis + 1, 0.25}, {surface, 0.25}, {surface + 1, 0.0}}) {
+    SCOPED_TRACE(iz);
+    WavePacket psi{s.empty_wave(), SpecularWave(s.shape.nr, s.grids.z_specular.size())};
+    psi.specular(4, iz) = std::sqrt(0.25 / volume_spec);
+    const Averages a = compute_averages(1.0, psi, s.config, s.grids, surface);
+    if (expected == 0.0)
+      EXPECT_EQ(a.rest_norm, 0.0);
+    else
+      EXPECT_NEAR(a.rest_norm, expected, 1e-14);
+  }
 }
 
 TEST(PotentialOperator, PrecomputedAndOnTheFlyExponentialsAreBitwiseIdentical) {

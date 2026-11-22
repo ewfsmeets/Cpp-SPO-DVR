@@ -8,6 +8,7 @@
 #include <functional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -31,6 +32,18 @@ Json reference_json() {
   return Json::parse(file);
 }
 
+// The input of the reference case `name`; a CRP data-set path (relative to the repository root) is made
+// absolute.
+Json case_json(const std::string& name) {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/" + name + "/input.json");
+  Json json = Json::parse(file, nullptr, true, /*ignore_comments=*/true);
+  if (json.contains("CRPlibDataSet")) {
+    const std::filesystem::path root = std::filesystem::path(SPODVR_REFERENCE_DIR).parent_path().parent_path();
+    json["CRPlibDataSet"] = (root / json["CRPlibDataSet"].get<std::string>()).string();
+  }
+  return json;
+}
+
 Config build(const Json& json) { return build_config(parse_input(json)); }
 
 // A PlotSites list of (name, x, y) entries.
@@ -52,14 +65,18 @@ void energy_resolved(Json& j) {
   j["EnergyResolvedEnergies"] = {0.3};
 }
 
-// Expects an InputError naming `parameter` for the modified input; returns its message ("" if none).
-std::string expect_input_error(const Json& json, const std::string& parameter) {
+// Expects an InputError naming `parameter` whose message contains `message`, the fixed text of the
+// check that must fire: several checks share a parameter, so the message shows that the input reached
+// its own check and not an earlier one. Returns the message ("" if none).
+std::string expect_input_error(const Json& json, const std::string& parameter, const std::string& message) {
   try {
     const Config config = build(json);
     (void)make_spatial_grids(config);
     ADD_FAILURE() << "expected an InputError for " << parameter << " with input " << json.dump();
   } catch (const InputError& e) {
     EXPECT_EQ(e.parameter(), parameter) << e.what();
+    EXPECT_NE(std::string(e.what()).find(message), std::string::npos)
+        << "expected the check '" << message << "', got: " << e.what();
     return e.what();
   }
   return "";
@@ -81,7 +98,7 @@ TEST(Input, ReferenceInputIsValid) {
 TEST(Input, UnknownKeyIsAnError) {
   Json json = reference_json();
   json["NotAKey"] = 1;
-  expect_input_error(json, "NotAKey");
+  expect_input_error(json, "NotAKey", "unknown input key");
 }
 
 // A key given twice in one JSON object is an error (nlohmann alone keeps the last value; the
@@ -153,20 +170,20 @@ TEST(Input, MissingRequiredKeyIsAnError) {
   for (const std::string key : {"Title", "nZ", "TolSp", "writeRDProbs", "ZSpOptEnd"}) {
     Json json = reference_json();
     json.erase(key);
-    expect_input_error(json, key);
+    expect_input_error(json, key, "required input key is missing");
   }
 }
 
 TEST(Input, WrongTypesAreErrors) {
   Json json = reference_json();
   json["nZ"] = 176.0;
-  expect_input_error(json, "nZ");
+  expect_input_error(json, "nZ", "expected an integer");
   json = reference_json();
   json["NewCalc"] = 1;
-  expect_input_error(json, "NewCalc");
+  expect_input_error(json, "NewCalc", "expected true or false");
   json = reference_json();
   json["dZ"] = "0.08";
-  expect_input_error(json, "dZ");
+  expect_input_error(json, "dZ", "expected a real number");
 }
 
 TEST(Input, IntegerAcceptedForRealKey) {
@@ -200,10 +217,10 @@ TEST(Input, DtFramesNeedsAWholeNumberOfStepsPerAnalysis) {
   json["dtAve"] = 24.0;
   EXPECT_EQ(build(json).derived.steps_per_analysis, 2);
   json["dtFrames"] = 24.0;
-  EXPECT_NE(expect_input_error(json, "dtAna").find("truncates"), std::string::npos);
+  expect_input_error(json, "dtAna", "dtAna / dtStep is not a whole number with dtFrames (the program truncates it");
   json.erase("dtFrames");
   json["NormBudget"] = true;  // its records follow the analysis steps too
-  EXPECT_NE(expect_input_error(json, "dtAna").find("with NormBudget"), std::string::npos);
+  expect_input_error(json, "dtAna", "dtAna / dtStep is not a whole number with NormBudget");
 }
 
 // write2DPES and its coordinates (Fortran defaults false, 0, 0, 90, 0). The coordinates are checked only with
@@ -231,7 +248,7 @@ TEST(Input, Write2DPESKeys) {
   EXPECT_EQ(p.x_2d_pes, 6.239660 + 5e-13);
   EXPECT_EQ(p.theta_2d_pes, 360.0);
   json["x2DPES"] = 6.239660 + 2e-12;
-  expect_input_error(json, "x2DPES");
+  expect_input_error(json, "x2DPES", "x2DPES > alat.");
   json["x2DPES"] = "1.0";
   EXPECT_THROW((void)build(json), InputError);
 }
@@ -243,15 +260,15 @@ TEST(Input, Write2DPESKeys) {
 TEST(Input, CrpDataSetKey) {
   Json json = reference_json();  // hard wall
   json["CRPlibDataSet"] = "some/data/set";
-  expect_input_error(json, "CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet", "is only used with SystemID CRPlibrary or CRPDistrtSurface");
 
   json = reference_json();
   json["SystemID"] = "CRPlibrary";
-  expect_input_error(json, "CRPlibDataSet");  // missing
+  expect_input_error(json, "CRPlibDataSet", "SystemID CRPlibrary needs CRPlibDataSet");  // missing
   json["CRPlibDataSet"] = "";
-  expect_input_error(json, "CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet", "SystemID CRPlibrary needs CRPlibDataSet");
   json["CRPlibDataSet"] = "no/such/data/set";
-  expect_input_error(json, "CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet", "does not exist (no file CRPData)");
 
   const std::string root = std::filesystem::path(SPODVR_REFERENCE_DIR).parent_path().parent_path().string();
   std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/crp_c6v_synthetic_small/input.json");
@@ -341,24 +358,24 @@ TEST(Input, ScmD1KeysOnlyWithCrpDistrtSurface) {
     json["SystemID"] = "CRPlibrary";
     for (const std::string& other : scm_keys)
       if (other != key) json.erase(other);
-    expect_input_error(json, key);
+    expect_input_error(json, key, "is only used with SystemID CRPDistrtSurface");
     json.erase(key);
     EXPECT_EQ(build(json).derived.system.point_group, "C3v");  // the plain CRP input
   }
   json = reference_json();  // hard wall
   json["SCMCutoff"] = 16.0;
-  expect_input_error(json, "SCMCutoff");
+  expect_input_error(json, "SCMCutoff", "is only used with SystemID CRPDistrtSurface");
 }
 
 // CRPlibDataSet is required with CRPDistrtSurface: the CRP potential the correction is added to.
 TEST(Input, ScmCrpDataSetRequired) {
   Json json = scm_json();
   json.erase("CRPlibDataSet");
-  expect_input_error(json, "CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet", "SystemID CRPDistrtSurface needs CRPlibDataSet");
   json["CRPlibDataSet"] = "";
-  expect_input_error(json, "CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet", "SystemID CRPDistrtSurface needs CRPlibDataSet");
   json["CRPlibDataSet"] = "no/such/data/set";
-  expect_input_error(json, "CRPlibDataSet");
+  expect_input_error(json, "CRPlibDataSet", "does not exist (no file CRPData)");
 }
 
 // SCM D7: only DistortedPESMode 1 (SCM) exists, as in the Fortran.
@@ -366,7 +383,7 @@ TEST(Input, ScmD7OnlyMode1) {
   for (const int mode : {0, 2, -1}) {
     Json json = scm_json();
     json["DistortedPESMode"] = mode;
-    expect_input_error(json, "DistortedPESMode");
+    expect_input_error(json, "DistortedPESMode", "only mode 1 (SCM) exists");
   }
   Json json = scm_json();
   json["DistortedPESMode"] = 1;
@@ -380,11 +397,11 @@ TEST(Input, ScmD12PathsRequired) {
     SCOPED_TRACE(key);
     Json json = scm_json();
     json.erase(key);
-    expect_input_error(json, key);
+    expect_input_error(json, key, "SystemID CRPDistrtSurface needs " + key);
     json[key] = "";
-    expect_input_error(json, key);
+    expect_input_error(json, key, "SystemID CRPDistrtSurface needs " + key);
     json[key] = "no/such/file.dat";
-    expect_input_error(json, key);
+    expect_input_error(json, key, "no such file");
   }
   EXPECT_NO_THROW((void)build(scm_json()));
 }
@@ -394,7 +411,7 @@ TEST(Input, ScmD12PathsRequired) {
 TEST(Input, ScmD2UseSymmetryRejected) {
   Json json = scm_json();
   json["UseSymmetry"] = true;
-  expect_input_error(json, "UseSymmetry");
+  expect_input_error(json, "UseSymmetry", "UseSymmetry = true is not supported with SystemID CRPDistrtSurface");
   json["UseSymmetry"] = false;
   EXPECT_FALSE(build(json).input.use_symmetry);
 }
@@ -405,7 +422,7 @@ TEST(Input, ScmD13HomoNucFalseRejected) {
   Json json = scm_json();
   json["HomoNuc"] = false;
   json["Mass2"] = 2.0141;
-  expect_input_error(json, "HomoNuc");
+  expect_input_error(json, "HomoNuc", "HomoNuc = false is not supported with SystemID CRPDistrtSurface");
   json["HomoNuc"] = true;
   json["Mass2"] = json["Mass1"];
   EXPECT_TRUE(build(json).input.homonuclear);
@@ -417,7 +434,8 @@ TEST(Input, ScmD14HexagonalDataSet) {
   Json json = scm_json();
   json["CRPlibDataSet"] =
       (std::filesystem::path(SPODVR_REFERENCE_DIR).parent_path() / "crplib/reference/c4v_pairwise/dataset").string();
-  const std::string message = expect_input_error(json, "CRPlibDataSet");
+  const std::string message =
+      expect_input_error(json, "CRPlibDataSet", "the SCM slab (PosFilepath) is an FCC111 surface");
   EXPECT_NE(message.find("C3v or C6v"), std::string::npos) << message;
 }
 
@@ -427,12 +445,14 @@ TEST(Input, ScmSlabNumberAndCutoff) {
   for (const int configuration : {0, -1, 2}) {
     Json json = scm_json();
     json["PosFileSlabNum"] = configuration;
-    expect_input_error(json, "PosFileSlabNum");
+    expect_input_error(json, "PosFileSlabNum",
+                       configuration < 1 ? "the configuration number must be at least 1"
+                                         : "asked for, but the file has NumSlabConfigs");
   }
   for (const double cutoff : {0.0, -16.0}) {
     Json json = scm_json();
     json["SCMCutoff"] = cutoff;
-    expect_input_error(json, "SCMCutoff");
+    expect_input_error(json, "SCMCutoff", "the cut-off must be positive");
   }
   Json json = scm_json();
   json["SCMCutoff"] = 8.0;
@@ -448,7 +468,7 @@ TEST(Input, ScmD6SlabLatticeConstantPositiveWhenRescaling) {
     Json json = scm_json();
     json["PosFilepath"] = edited_example_slab(
         directory, [&](int number, const std::string& line) { return number == 3 ? lattice_constant : line; });
-    expect_input_error(json, "PosFilepath");
+    expect_input_error(json, "PosFilepath", "the lattice constant a_T on line 3 is");
     json["EnableSurfExpan"] = false;
     EXPECT_FALSE(build(json).input.scm.rescale);
   }
@@ -467,7 +487,7 @@ TEST(Input, ScmD9IdealAtomsOnTheCrpLattice) {
     fields >> xd >> yd >> zd >> xi >> yi >> zi >> layer;
     return std::format("{} {} {} {:.17g} {:.17g} {:.17g} {}", xd, yd, zd, xi + 0.01, yi, zi, layer);
   });
-  expect_input_error(json, "PosFilepath");
+  expect_input_error(json, "PosFilepath", "from its site of the CRP lattice");
   EXPECT_NO_THROW((void)build(scm_json()));
 }
 
@@ -494,9 +514,9 @@ TEST(Input, SurfaceSymmetryKeys) {
   json["SymmetryTolerance"] = 1e-3;
   EXPECT_EQ(build(json).input.symmetry_tolerance, 1e-3);
   json["SymmetryTolerance"] = 0.0;
-  expect_input_error(json, "SymmetryTolerance");
+  expect_input_error(json, "SymmetryTolerance", "SymmetryTolerance <= 0.");
   json["SymmetryTolerance"] = -1e-5;
-  expect_input_error(json, "SymmetryTolerance");
+  expect_input_error(json, "SymmetryTolerance", "SymmetryTolerance <= 0.");
 }
 
 TEST(Input, PhiMultipleOfTheHexagonalCase) {
@@ -529,14 +549,14 @@ TEST(Input, MjMaxRules) {
 TEST(Input, CapEnergyOrFactor) {
   Json json = reference_json();
   json.erase("ZOptEnergy");
-  expect_input_error(json, "ZOptEnergy");
+  expect_input_error(json, "ZOptEnergy", "ZOptFactor or ZOptEnergy should be present.");
   json["ZOptFactor"] = 0.01;
   EXPECT_EQ(build(json).derived.z_opt_factor, 0.01);
   json["ZOptEnergy"] = 0.3;
-  expect_input_error(json, "ZOptEnergy");  // both given
+  expect_input_error(json, "ZOptEnergy", "give either ZOptEnergy or ZOptFactor, not both");  // both given
   json.erase("ZOptFactor");
   json["ZOptEnergy"] = -0.1;
-  expect_input_error(json, "ZOptEnergy");
+  expect_input_error(json, "ZOptEnergy", "ZOptEnergy < 0.");
 }
 
 TEST(Input, SwitchingReplacesZAsymptotic) {
@@ -548,7 +568,7 @@ TEST(Input, SwitchingReplacesZAsymptotic) {
   EXPECT_EQ(config.derived.z_asymptotic, 6.0);
   EXPECT_EQ(config.derived.z_asymptotic_unswitched, 7.0);
   json["ZmaxSwitch"] = 5.0;
-  expect_input_error(json, "ZminSwitch");
+  expect_input_error(json, "ZminSwitch", "ZminSwitch >= ZmaxSwitch.");
 }
 
 // flux Q1: a flux energy range that ends at or below EMaxWP is valid (the Fortran check rejects
@@ -580,7 +600,7 @@ TEST(Input, AnalysisD1TwoEnergiesAndNen95AreValid) {
   EXPECT_EQ(config.input.n_energies, -95);
 
   json["NrOfEs"] = 1;
-  const std::string message = expect_input_error(json, "NrOfEs");
+  const std::string message = expect_input_error(json, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies");
   EXPECT_NE(message.find("NrOfEs = 1: the analysis needs at least 2 energies"), std::string::npos) << message;
 }
 
@@ -729,11 +749,13 @@ TEST(Input, EnergyResolvedSumsInAPropagatingRun) {
   EXPECT_EQ(build(json).input.energy_resolved_energies.size(), 3u);
 }
 
-// One violation per check of ValidateInput / ReadInput / Setup.f90.
+// One violation per check of ValidateInput / ReadInput / Setup.f90: the input change, the parameter the
+// error names, and the fixed text of the check that must fire.
 struct Violation {
   std::string name;
   std::function<void(Json&)> modify;
   std::string parameter;
+  std::string message;
 };
 
 void PrintTo(const Violation& v, std::ostream* os) { *os << v.name; }
@@ -743,74 +765,67 @@ class InputViolation : public ::testing::TestWithParam<Violation> {};
 TEST_P(InputViolation, IsRejected) {
   Json json = reference_json();
   GetParam().modify(json);
-  expect_input_error(json, GetParam().parameter);
+  expect_input_error(json, GetParam().parameter, GetParam().message);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     Checks, InputViolation,
     ::testing::Values(
-        Violation{"SystemID", [](Json& j) { j["SystemID"] = "H2Pt111"; }, "SystemID"},
-        Violation{"ZDoF", [](Json& j) { j["ZDoF"] = false; }, "ZDoF"},
-        Violation{"PhiDoF", [](Json& j) { j["PhiDoF"] = false; }, "PhiDoF"},
-        Violation{"Mass1", [](Json& j) { j["Mass1"] = 0.0; j["Mass2"] = 0.0; }, "Mass1"},
-        Violation{"HomoMasses", [](Json& j) { j["Mass2"] = 2.0; }, "HomoNuc"},
-        Violation{"HeteroMasses", [](Json& j) { j["HomoNuc"] = false; }, "HomoNuc"},
-        Violation{"nZFft", [](Json& j) { j["nZ"] = 177; }, "nZ"},
-        Violation{"nZ", [](Json& j) { j["nZ"] = 0; }, "nZ"},
-        Violation{"dZ", [](Json& j) { j["dZ"] = 0.0; }, "dZ"},
-        Violation{"nZSpecularFft", [](Json& j) { j["nZSpecular"] = 281; }, "nZSpecular"},
-        Violation{"nZSpecularSmall", [](Json& j) { j["nZSpecular"] = 160; j["ZSpOptStart"] = 8.0; j["ZSpOptEnd"] = 10.0; j["Z0"] = 7.5; }, "nZSpecular"},
-        Violation{"RStart", [](Json& j) { j["RStart"] = -0.1; }, "RStart"},
+        Violation{"SystemID", [](Json& j) { j["SystemID"] = "H2Pt111"; }, "SystemID", "unknown system ID"},
+        Violation{"ZDoF", [](Json& j) { j["ZDoF"] = false; }, "ZDoF", "Currently only 6D calculations are supported."},
+        Violation{"PhiDoF", [](Json& j) { j["PhiDoF"] = false; }, "PhiDoF", "Currently only 6D calculations are supported."},
+        Violation{"Mass1", [](Json& j) { j["Mass1"] = 0.0; j["Mass2"] = 0.0; }, "Mass1", "Mass of atom 1 <= 0."},
+        Violation{"HomoMasses", [](Json& j) { j["Mass2"] = 2.0; }, "HomoNuc", "masses are different, but molecule is homo-nuclear."},
+        Violation{"HeteroMasses", [](Json& j) { j["HomoNuc"] = false; }, "HomoNuc", "masses are the same, but molecule is hetero-nuclear."},
+        Violation{"nZFft", [](Json& j) { j["nZ"] = 177; }, "nZ", "nZ is not a valid FFT size."},
+        Violation{"nZ", [](Json& j) { j["nZ"] = 0; }, "nZ", "nZ < 1."},
+        Violation{"dZ", [](Json& j) { j["dZ"] = 0.0; }, "dZ", "dZ <= 0."},
+        Violation{"nZSpecularFft", [](Json& j) { j["nZSpecular"] = 281; }, "nZSpecular", "nZSpecular is not a valid FFT size."},
+        Violation{"nZSpecularSmall", [](Json& j) { j["nZSpecular"] = 160; j["ZSpOptStart"] = 8.0; j["ZSpOptEnd"] = 10.0; j["Z0"] = 7.5; }, "nZSpecular", "nZSpecular < nZ (the specular grid must contain the scattering grid)"},
+        Violation{"RStart", [](Json& j) { j["RStart"] = -0.1; }, "RStart", "RStart <= 0."},
         // RStart <= 0 within 1e-12; ROptEnd moves onto the shifted r grid, so only RStart is violated.
-        Violation{"RStartZero", [](Json& j) { j["RStart"] = 0.0; j["ROptEnd"] = 8.25; }, "RStart"},
-        Violation{"RStartWithinTolerance", [](Json& j) { j["RStart"] = 1.0e-13; j["ROptEnd"] = 8.25; }, "RStart"},
-        Violation{"nR", [](Json& j) { j["nR"] = 57; }, "nR"},
-        Violation{"dR", [](Json& j) { j["dR"] = -0.15; }, "dR"},
-        Violation{"nX", [](Json& j) { j["nX"] = 5; }, "nX"},
-        Violation{"nY", [](Json& j) { j["nY"] = 0; }, "nY"},
-        Violation{"JIn", [](Json& j) { j["JIn"] = -2; }, "JIn"},
-        Violation{"JMax", [](Json& j) { j["JMax"] = -1; j["MJMax"] = 0; }, "JMax"},
-        Violation{"MJMax", [](Json& j) { j["MJMax"] = 6; }, "MJMax"},
-        Violation{"MJIn", [](Json& j) { j["MJIn"] = 1; }, "MJIn"},
-        Violation{"JInGtJMax", [](Json& j) { j["JIn"] = 6; }, "JIn"},
-        Violation{"MJInGtMJMax", [](Json& j) { j["JIn"] = 2; j["MJIn"] = 2; j["MJMax"] = 0; }, "MJIn"},
-        Violation{"ParityJ", [](Json& j) { j["JMax"] = 5; j["MJMax"] = 5; }, "JMax"},
-        Violation{"ParityMJ", [](Json& j) { j["MJMax"] = 3; }, "MJMax"},
-        Violation{"ProjOp0", [](Json& j) { j["ProjOp"] = 0; }, "ProjOp"},
-        Violation{"ProjOp1", [](Json& j) { j["ProjOp"] = 1; }, "ProjOp"},
-        Violation{"ProjOp3", [](Json& j) { j["ProjOp"] = 3; }, "ProjOp"},
-        Violation{"tStartNew", [](Json& j) { j["tStart"] = 10.0; j["tEnd"] = 14010.0; }, "tStart"},
-        Violation{"tStartRestart", [](Json& j) { j["NewCalc"] = false; }, "tStart"},
-        Violation{"OnlyAnalysisNeedsRestartDir", [](Json& j) { j["onlyAnalysis"] = true; }, "RestartDir"},
+        Violation{"RStartZero", [](Json& j) { j["RStart"] = 0.0; j["ROptEnd"] = 8.25; }, "RStart", "RStart <= 0."},
+        Violation{"RStartWithinTolerance", [](Json& j) { j["RStart"] = 1.0e-13; j["ROptEnd"] = 8.25; }, "RStart", "RStart <= 0."},
+        Violation{"nR", [](Json& j) { j["nR"] = 57; }, "nR", "nR is not a valid FFT size."},
+        Violation{"dR", [](Json& j) { j["dR"] = -0.15; }, "dR", "dR <= 0."},
+        Violation{"nX", [](Json& j) { j["nX"] = 5; }, "nX", "nX is not a valid FFT size."},
+        Violation{"nY", [](Json& j) { j["nY"] = 0; }, "nY", "nY < 1."},
+        Violation{"JIn", [](Json& j) { j["JIn"] = -2; }, "JIn", "JIn < 0."},
+        Violation{"JMax", [](Json& j) { j["JMax"] = -1; j["MJMax"] = 0; }, "JMax", "JMax < 0."},
+        Violation{"MJMax", [](Json& j) { j["MJMax"] = 6; }, "MJMax", "|MJMax| > JMax."},
+        Violation{"MJIn", [](Json& j) { j["MJIn"] = 1; }, "MJIn", "|MJIn| > JIn."},
+        Violation{"JInGtJMax", [](Json& j) { j["JIn"] = 6; }, "JIn", "JIn > JMax."},
+        Violation{"MJInGtMJMax", [](Json& j) { j["JIn"] = 2; j["MJIn"] = 2; j["MJMax"] = 0; }, "MJIn", "|MJIn| > |MJMax|."},
+        Violation{"ParityJ", [](Json& j) { j["JMax"] = 5; j["MJMax"] = 5; }, "JMax", "the molecule is homo-nuclear but JMax is even and JIn is odd, or vice versa."},
+        Violation{"ParityMJ", [](Json& j) { j["MJMax"] = 3; }, "MJMax", "the molecule is homo-nuclear, but JMax is even and |MJMax| is odd, or vice versa."},
+        Violation{"ProjOp0", [](Json& j) { j["ProjOp"] = 0; }, "ProjOp", "ProjOp = 0 is not supported anymore."},
+        Violation{"ProjOp1", [](Json& j) { j["ProjOp"] = 1; }, "ProjOp", "ProjOp = 1 is a legacy option and not supported; use ProjOp = 2."},
+        Violation{"ProjOp3", [](Json& j) { j["ProjOp"] = 3; }, "ProjOp", "ProjOp must be 0, 1 or 2."},
+        Violation{"tStartNew", [](Json& j) { j["tStart"] = 10.0; j["tEnd"] = 14010.0; }, "tStart", "This is a new calculation but tStart /= 0."},
+        Violation{"tStartRestart", [](Json& j) { j["NewCalc"] = false; }, "tStart", "This is a restart but tStart = 0."},
+        Violation{"OnlyAnalysisNeedsRestartDir", [](Json& j) { j["onlyAnalysis"] = true; }, "RestartDir", "An analysis-only run (onlyAnalysis) needs RestartDir: the directory with the BK coefficient file."},
         // Plot data (validate_outputs.cpp): only a propagating run writes them.
-        Violation{"WriteDensitiesPotentialOnly", [](Json& j) { j["Potential"] = true; j["writeDensities"] = true; },
-                  "writeDensities"},
+        Violation{"WriteDensitiesPotentialOnly", [](Json& j) { j["Potential"] = true; j["writeDensities"] = true; }, "writeDensities", "only a propagating run (a new run or a restart) writes densities"},
         Violation{"WriteDensitiesAnalysisOnly",
-                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writeDensities"] = true; },
-                  "writeDensities"},
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writeDensities"] = true; }, "writeDensities", "only a propagating run (a new run or a restart) writes densities"},
         Violation{"WritePotentialAnalysisOnly",
-                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writePotential"] = true; },
-                  "writePotential"},
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["writePotential"] = true; }, "writePotential", "an analysis-only run (onlyAnalysis) computes no 6D potential to write"},
         // PlotSites: the list and its fields (json_input.cpp), then the values (validate_outputs.cpp).
-        Violation{"PlotSitesNotAList", [](Json& j) { j["writePotential"] = true; j["PlotSites"] = 3; }, "PlotSites"},
-        Violation{"PlotSitesNotObjects", [](Json& j) { j["writePotential"] = true; j["PlotSites"] = Json::array({1}); },
-                  "PlotSites"},
+        Violation{"PlotSitesNotAList", [](Json& j) { j["writePotential"] = true; j["PlotSites"] = 3; }, "PlotSites", "expected a list of sites"},
+        Violation{"PlotSitesNotObjects", [](Json& j) { j["writePotential"] = true; j["PlotSites"] = Json::array({1}); }, "PlotSites", "each site must be an object with a name, x and y"},
         Violation{"PlotSitesUnknownField",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["z"] = 1.0; },
-                  "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["z"] = 1.0; }, "PlotSites", "unknown site field 'z'"},
         Violation{"PlotSitesMissingField",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0].erase("y"); },
-                  "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0].erase("y"); }, "PlotSites", "a site without 'y'"},
         Violation{"PlotSitesWrongType",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["name"] = 1; },
-                  "PlotSites"},
-        Violation{"PlotSitesWithoutUser", [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); }, "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["PlotSites"][0]["name"] = 1; }, "PlotSites", "expected a string"},
+        Violation{"PlotSitesWithoutUser", [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); }, "PlotSites", "no plot key uses the sites: set writePotential, dtFrames or EnergyResolvedSites"},
         // dtFrames (frames/): propagating runs only, on whole multiples of dtAna (itself of dtStep), from a tStart
         // and to a tEnd on the frame grid.
-        Violation{"DtFramesNotPositive", [](Json& j) { j["dtFrames"] = 0.0; }, "dtFrames"},
-        Violation{"DtFramesBelowDtAna", [](Json& j) { j["dtFrames"] = 5.0; }, "dtFrames"},
-        Violation{"DtFramesNotAMultipleOfDtAna", [](Json& j) { j["dtFrames"] = 15.0; }, "dtFrames"},
-        Violation{"DtFramesTEndOffTheGrid", [](Json& j) { j["dtFrames"] = 300.0; }, "dtFrames"},
+        Violation{"DtFramesNotPositive", [](Json& j) { j["dtFrames"] = 0.0; }, "dtFrames", "dtFrames <= 0."},
+        Violation{"DtFramesBelowDtAna", [](Json& j) { j["dtFrames"] = 5.0; }, "dtFrames", "dtFrames < dtAna."},
+        Violation{"DtFramesNotAMultipleOfDtAna", [](Json& j) { j["dtFrames"] = 15.0; }, "dtFrames", "dtFrames must be a whole multiple of dtAna."},
+        Violation{"DtFramesTEndOffTheGrid", [](Json& j) { j["dtFrames"] = 300.0; }, "dtFrames", "tEnd must be a whole multiple of dtFrames."},
         Violation{"DtFramesTStartOffTheGrid",
                   [](Json& j) {
                     j["NewCalc"] = false;
@@ -818,53 +833,42 @@ INSTANTIATE_TEST_SUITE_P(
                     j["tStart"] = 150.0;
                     j["tEnd"] = 150.0 + j["nStep"].get<double>() * j["dtStep"].get<double>();
                     j["dtFrames"] = 100.0;  // tStart 150 is not on its grid (checked before tEnd)
-                  },
-                  "dtFrames"},
-        Violation{"DtFramesDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["dtFrames"] = 100.0; }, "dtAna"},
+                  }, "dtFrames", "tStart must be a whole multiple of dtFrames (the frames of a restart continue those of the run before)"},
+        Violation{"DtFramesDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["dtFrames"] = 100.0; }, "dtAna", "dtAna / dtStep is not a whole number with dtFrames (the program truncates it, so its records would come at other times than dtAna says)"},
         Violation{"DtFramesAnalysisOnly",
-                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["dtFrames"] = 100.0; },
-                  "dtFrames"},
-        Violation{"DtFramesPotentialOnly", [](Json& j) { j["Potential"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
-        Violation{"DtFramesWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["dtFrames"] = 100.0; }, "dtFrames"},
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["dtFrames"] = 100.0; }, "dtFrames", "only a propagating run (a new run or a restart) writes frames"},
+        Violation{"DtFramesPotentialOnly", [](Json& j) { j["Potential"] = true; j["dtFrames"] = 100.0; }, "dtFrames", "only a propagating run (a new run or a restart) writes frames"},
+        Violation{"DtFramesWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["dtFrames"] = 100.0; }, "dtFrames", "write2DPES stops the run after the cut of the PES, before the propagation"},
         // FrameExtras (frames/): only with dtFrames, known names, each once, a list of names.
-        Violation{"FrameExtrasWithoutFrames", [](Json& j) { j["FrameExtras"] = {"angular"}; }, "FrameExtras"},
+        Violation{"FrameExtrasWithoutFrames", [](Json& j) { j["FrameExtras"] = {"angular"}; }, "FrameExtras", "the extras are datasets of frames/: set dtFrames"},
         Violation{"FrameExtrasUnknownName",
-                  [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", "spin"}; }, "FrameExtras"},
+                  [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", "spin"}; }, "FrameExtras", "unknown extra 'spin': known are angular, diffraction, vibration, rotation_moments, momentum"},
         Violation{"FrameExtrasTwice",
-                  [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"momentum", "momentum"}; }, "FrameExtras"},
-        Violation{"FrameExtrasNotAList", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = "angular"; },
-                  "FrameExtras"},
-        Violation{"FrameExtrasNotNames", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", 3}; },
-                  "FrameExtras"},
+                  [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"momentum", "momentum"}; }, "FrameExtras", "'momentum' is listed twice"},
+        Violation{"FrameExtrasNotAList", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = "angular"; }, "FrameExtras", "expected a list of names"},
+        Violation{"FrameExtrasNotNames", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", 3}; }, "FrameExtras", "expected a string"},
         // NormBudget (norm_budget/): propagating runs only, one record per analysis step of whole time steps.
-        Violation{"NormBudgetDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["NormBudget"] = true; }, "dtAna"},
+        Violation{"NormBudgetDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["NormBudget"] = true; }, "dtAna", "dtAna / dtStep is not a whole number with NormBudget (the program truncates it, so its records would come at other times than dtAna says)"},
         Violation{"NormBudgetAnalysisOnly",
-                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["NormBudget"] = true; },
-                  "NormBudget"},
-        Violation{"NormBudgetPotentialOnly", [](Json& j) { j["Potential"] = true; j["NormBudget"] = true; }, "NormBudget"},
-        Violation{"NormBudgetWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["NormBudget"] = true; }, "NormBudget"},
+                  [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["NormBudget"] = true; }, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget"},
+        Violation{"NormBudgetPotentialOnly", [](Json& j) { j["Potential"] = true; j["NormBudget"] = true; }, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget"},
+        Violation{"NormBudgetWrite2DPES", [](Json& j) { j["write2DPES"] = true; j["NormBudget"] = true; }, "NormBudget", "write2DPES stops the run after the cut of the PES, before the propagation"},
         // EnergyResolvedSites / EnergyResolvedEnergies (energy_resolved/): both or neither, propagating runs only,
         // sites of PlotSites once each, energies in the packet's range, at most 256 pairs, lists of their type.
         Violation{"EnergyResolvedSitesWithoutEnergies",
-                  [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["EnergyResolvedSites"] = {"a"}; },
-                  "EnergyResolvedSites"},
-        Violation{"EnergyResolvedEnergiesWithoutSites", [](Json& j) { j["EnergyResolvedEnergies"] = {0.3}; },
-                  "EnergyResolvedEnergies"},
+                  [](Json& j) { j["PlotSites"] = site_list({{"a", 0.0, 0.0}}); j["EnergyResolvedSites"] = {"a"}; }, "EnergyResolvedSites", "set EnergyResolvedEnergies too (the sums need sites and energies)"},
+        Violation{"EnergyResolvedEnergiesWithoutSites", [](Json& j) { j["EnergyResolvedEnergies"] = {0.3}; }, "EnergyResolvedEnergies", "set EnergyResolvedSites too (the sums need sites and energies)"},
         Violation{"EnergyResolvedPotentialOnly",
-                  [](Json& j) { energy_resolved(j); j["Potential"] = true; }, "EnergyResolvedSites"},
+                  [](Json& j) { energy_resolved(j); j["Potential"] = true; }, "EnergyResolvedSites", "only a propagating run (a new run or a restart) sums the wave packet"},
         Violation{"EnergyResolvedAnalysisOnly",
-                  [](Json& j) { energy_resolved(j); j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; },
-                  "EnergyResolvedSites"},
-        Violation{"EnergyResolvedWrite2DPES", [](Json& j) { energy_resolved(j); j["write2DPES"] = true; },
-                  "EnergyResolvedSites"},
-        Violation{"EnergyResolvedUnknownSite", [](Json& j) { energy_resolved(j); j["EnergyResolvedSites"] = {"a", "c"}; },
-                  "EnergyResolvedSites"},
-        Violation{"EnergyResolvedSiteTwice", [](Json& j) { energy_resolved(j); j["EnergyResolvedSites"] = {"a", "a"}; },
-                  "EnergyResolvedSites"},
+                  [](Json& j) { energy_resolved(j); j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; }, "EnergyResolvedSites", "only a propagating run (a new run or a restart) sums the wave packet"},
+        Violation{"EnergyResolvedWrite2DPES", [](Json& j) { energy_resolved(j); j["write2DPES"] = true; }, "EnergyResolvedSites", "write2DPES stops the run after the cut of the PES, before the propagation"},
+        Violation{"EnergyResolvedUnknownSite", [](Json& j) { energy_resolved(j); j["EnergyResolvedSites"] = {"a", "c"}; }, "EnergyResolvedSites", "'c' is not a site of PlotSites"},
+        Violation{"EnergyResolvedSiteTwice", [](Json& j) { energy_resolved(j); j["EnergyResolvedSites"] = {"a", "a"}; }, "EnergyResolvedSites", "'a' is listed twice"},
         Violation{"EnergyResolvedEnergyBelowThePacket",
-                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.3, 0.19}; }, "EnergyResolvedEnergies"},
+                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.3, 0.19}; }, "EnergyResolvedEnergies", "lies outside the packet's collision energies"},
         Violation{"EnergyResolvedEnergyAboveThePacket",
-                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.61}; }, "EnergyResolvedEnergies"},
+                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.61}; }, "EnergyResolvedEnergies", "lies outside the packet's collision energies"},
         Violation{"EnergyResolvedTooManyPairs",
                   [](Json& j) {
                     energy_resolved(j);
@@ -876,110 +880,169 @@ INSTANTIATE_TEST_SUITE_P(
                     }
                     j["EnergyResolvedEnergies"] = Json::array();
                     for (int k = 0; k <= 16; ++k) j["EnergyResolvedEnergies"].push_back(0.2 + 0.02 * k);  // 16 x 17
-                  },
-                  "EnergyResolvedSites"},
-        Violation{"EnergyResolvedEnergiesNotAList", [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = 0.3; },
-                  "EnergyResolvedEnergies"},
+                  }, "EnergyResolvedSites", "(site, energy) pairs: at most 256"},
+        Violation{"EnergyResolvedEnergiesNotAList", [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = 0.3; }, "EnergyResolvedEnergies", "expected a list of numbers"},
         Violation{"EnergyResolvedEnergiesNotNumbers",
-                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.3, "0.4"}; }, "EnergyResolvedEnergies"},
+                  [](Json& j) { energy_resolved(j); j["EnergyResolvedEnergies"] = {0.3, "0.4"}; }, "EnergyResolvedEnergies", "expected a real number"},
         Violation{"PlotSitesOutsideTheCell",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 1.0, 0.0}}); }, "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 1.0, 0.0}}); }, "PlotSites", "is not in [0, 1) (a fraction of the lattice vector)"},
         Violation{"PlotSitesOffTheGrid",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.3}}); }, "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.3}}); }, "PlotSites", "is not on the grid"},
         Violation{"PlotSitesSameName",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}, {"a", 0.25, 0.0}}); },
-                  "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"a", 0.0, 0.0}, {"a", 0.25, 0.0}}); }, "PlotSites", "two sites are named 'a'"},
         Violation{"PlotSitesWithoutName",
-                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"", 0.0, 0.0}}); }, "PlotSites"},
+                  [](Json& j) { j["writePotential"] = true; j["PlotSites"] = site_list({{"", 0.0, 0.0}}); }, "PlotSites", "a site without a name"},
         Violation{"PlotSitesTooMany",
                   [](Json& j) {
                     j["writePotential"] = true;
                     j["PlotSites"] = Json::array();
                     for (int k = 0; k <= max_plot_sites; ++k) j["PlotSites"].push_back(site_list({{"s" + std::to_string(k), 0.0, 0.0}})[0]);
-                  },
-                  "PlotSites"},
-        Violation{"tEnd", [](Json& j) { j["tEnd"] = 14002.0; }, "tEnd"},
-        Violation{"dtStep", [](Json& j) { j["dtStep"] = 0.0; j["nStep"] = 0; j["tEnd"] = 0.0; }, "dtStep"},
-        Violation{"nStep", [](Json& j) { j["nStep"] = -1; j["tEnd"] = -2.0; }, "tEnd"},
-        Violation{"dtAna", [](Json& j) { j["dtAna"] = 1.0; }, "dtAna"},
-        Violation{"dtAnaInteger", [](Json& j) { j["dtAna"] = 30.0; j["dtAve"] = 90.0; j["dtStep"] = 2.0; j["nStep"] = 7001; j["tEnd"] = 14002.0; }, "dtAna"},
-        Violation{"dtAve", [](Json& j) { j["dtAve"] = 1.0; }, "dtAve"},
-        Violation{"dtAveLtAna", [](Json& j) { j["dtAve"] = 4.0; }, "dtAve"},
-        Violation{"dtAveInteger", [](Json& j) { j["dtAve"] = 25.0; }, "dtAve"},
-        Violation{"JAnaNeg", [](Json& j) { j["JAna"] = -1; }, "JAna"},
-        Violation{"VAnaNeg", [](Json& j) { j["VAna"] = -1; }, "VAna"},
-        Violation{"DifOrdNeg", [](Json& j) { j["DifOrdAna"] = -1; }, "DifOrdAna"},
-        Violation{"NrOfEs", [](Json& j) { j["NrOfEs"] = -1; }, "NrOfEs"},
-        Violation{"AnalysisD1NrOfEsZero", [](Json& j) { j["NrOfEs"] = 0; }, "NrOfEs"},
-        Violation{"AnalysisD1NrOfEsOne", [](Json& j) { j["NrOfEs"] = 1; }, "NrOfEs"},
-        Violation{"ZanaLtZasymp", [](Json& j) { j["Zana"] = 6.0; }, "Zana"},
-        Violation{"ZanaOffGrid", [](Json& j) { j["Zana"] = 8.01; }, "Zana"},
-        Violation{"ZanaGtZOptStart", [](Json& j) { j["Zana"] = 9.04; }, "Zana"},
-        Violation{"JAnaGtJMax", [](Json& j) { j["JAna"] = 6; }, "JAna"},
-        Violation{"VAnaGtNr", [](Json& j) { j["VAna"] = 56; }, "VAna"},
-        Violation{"DifOrdGt", [](Json& j) { j["DifOrdAna"] = 7; }, "DifOrdAna"},
-        Violation{"dtAnaFine", [](Json& j) { j["EMaxWP"] = 9.0; }, "dtAna"},
-        Violation{"FluxMissing", [](Json& j) { j["doFluxAnalysis"] = true; }, "rFluxAnalysis"},
-        Violation{"FluxOffGrid", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.01; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis"},
-        Violation{"FluxEMin", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.1; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna"},
+                  }, "PlotSites", "sites: at most 16"},
+        Violation{"tEnd", [](Json& j) { j["tEnd"] = 14002.0; }, "tEnd", "tEnd /= tStart + nStep*dtStep."},
+        Violation{"dtStep", [](Json& j) { j["dtStep"] = 0.0; j["nStep"] = 0; j["tEnd"] = 0.0; }, "dtStep", "dtStep <= 0."},
+        // nStep < 0 itself is reachable only within the 1e-12 tolerance band: tEnd < 0 comes first.
+        Violation{"nStep", [](Json& j) { j["nStep"] = -1; j["tEnd"] = -2.0; }, "tEnd", "tEnd < 0."},
+        Violation{"dtAna", [](Json& j) { j["dtAna"] = 1.0; }, "dtAna", "dtAna < dtStep."},
+        Violation{"dtAnaInteger", [](Json& j) { j["dtAna"] = 30.0; j["dtAve"] = 90.0; j["dtStep"] = 2.0; j["nStep"] = 7001; j["tEnd"] = 14002.0; }, "dtAna", "Propagation time must be an integer times dtAna."},
+        Violation{"dtAve", [](Json& j) { j["dtAve"] = 1.0; }, "dtAve", "dtAve < dtStep."},
+        Violation{"dtAveLtAna", [](Json& j) { j["dtAve"] = 4.0; }, "dtAve", "dtAve < dtAna."},
+        Violation{"dtAveInteger", [](Json& j) { j["dtAve"] = 25.0; }, "dtAve", "dtAve must be an integer times dtAna."},
+        Violation{"JAnaNeg", [](Json& j) { j["JAna"] = -1; }, "JAna", "JAna < 0."},
+        Violation{"VAnaNeg", [](Json& j) { j["VAna"] = -1; }, "VAna", "VAna < 0."},
+        Violation{"DifOrdNeg", [](Json& j) { j["DifOrdAna"] = -1; }, "DifOrdAna", "DifOrdAna < 0."},
+        Violation{"NrOfEs", [](Json& j) { j["NrOfEs"] = -1; }, "NrOfEs", "NrOfEs < 0."},
+        Violation{"AnalysisD1NrOfEsZero", [](Json& j) { j["NrOfEs"] = 0; }, "NrOfEs", "NrOfEs = 0: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart"},
+        Violation{"AnalysisD1NrOfEsOne", [](Json& j) { j["NrOfEs"] = 1; }, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart"},
+        Violation{"ZanaLtZasymp", [](Json& j) { j["Zana"] = 6.0; }, "Zana", "ZAna < ZAsymptotic."},
+        Violation{"ZanaOffGrid", [](Json& j) { j["Zana"] = 8.01; }, "Zana", "ZAna not on a grid point."},
+        Violation{"ZanaGtZOptStart", [](Json& j) { j["Zana"] = 9.04; }, "Zana", "ZAnalysis > ZOptStart."},
+        Violation{"JAnaGtJMax", [](Json& j) { j["JAna"] = 6; }, "JAna", "JAna > JMax."},
+        Violation{"VAnaGtNr", [](Json& j) { j["VAna"] = 56; }, "VAna", "VAna > nR-1."},
+        Violation{"DifOrdGt", [](Json& j) { j["DifOrdAna"] = 7; }, "DifOrdAna", "DifOrdAna > nX+nY-2 (the maximum diffraction order possible)."},
+        Violation{"dtAnaFine", [](Json& j) { j["EMaxWP"] = 9.0; }, "dtAna", "dtAna is too big for fine analysis."},
+        Violation{"FluxMissing", [](Json& j) { j["doFluxAnalysis"] = true; }, "rFluxAnalysis", "rFluxAnalysis must be present"},
+        Violation{"FluxOffGrid", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.01; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis", "rFluxAnalysis not on a grid point."},
+        Violation{"FluxEMin", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.1; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna < EMinWP"},
         // flux Q1: EMaxFluxAna above EMaxWP (0.6 eV) is rejected.
-        Violation{"FluxQ1EMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.7; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna"},
+        Violation{"FluxQ1EMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.7; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna", "EMaxFluxAna > EMaxWP"},
         // flux Q2: a zero or negative energy spacing is rejected (the Fortran accepts 0).
-        Violation{"FluxQ2DeltaZero", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.0; }, "DeltaEFluxAna"},
-        Violation{"FluxQ2DeltaNegative", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = -0.01; }, "DeltaEFluxAna"},
-        Violation{"FluxDelta", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.5; }, "DeltaEFluxAna"},
-        Violation{"FluxROpt", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 5.0; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis"},
-        Violation{"EMinWP", [](Json& j) { j["EMinWP"] = 0.0; }, "EMinWP"},
-        Violation{"EMinGeEMax", [](Json& j) { j["EMinWP"] = 0.6; }, "EMinWP"},
-        Violation{"Z0LtZasymp", [](Json& j) { j["Z0"] = 6.0; }, "Z0"},
-        Violation{"Z0GtZSpOpt", [](Json& j) { j["Z0"] = 17.0; }, "Z0"},
-        Violation{"VIn", [](Json& j) { j["VIn"] = -1; }, "VIn"},
-        Violation{"VInGtNr", [](Json& j) { j["VIn"] = 56; }, "VIn"},
-        Violation{"VInGtVAna", [](Json& j) { j["VIn"] = 2; j["VAna"] = 1; }, "VIn"},
-        Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn"},
-        Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin"},
-        Violation{"ZOptOrder", [](Json& j) { j["ZOptEnd"] = 8.5; }, "ZOptStart"},
-        Violation{"ZOptEnd", [](Json& j) { j["ZOptEnd"] = 13.0; }, "ZOptEnd"},
-        Violation{"ROptOrder", [](Json& j) { j["ROptEnd"] = 4.0; }, "ROptStart"},
-        Violation{"ROptEnd", [](Json& j) { j["ROptEnd"] = 9.2; }, "ROptEnd"},
-        Violation{"ZSpOptOrder", [](Json& j) { j["ZSpOptEnd"] = 16.0; }, "ZSpOptStart"},
-        Violation{"ZSpOptEnd", [](Json& j) { j["ZSpOptEnd"] = 21.0; }, "ZSpOptEnd"},
+        Violation{"FluxQ2DeltaZero", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.0; }, "DeltaEFluxAna", "DeltaEFluxAna <= 0"},
+        Violation{"FluxQ2DeltaNegative", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = -0.01; }, "DeltaEFluxAna", "DeltaEFluxAna <= 0"},
+        Violation{"FluxDelta", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.5; }, "DeltaEFluxAna", "DeltaEFluxAna > EMaxFluxAna-EMinFluxAna"},
+        Violation{"FluxROpt", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 5.0; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis", "rFluxAnalysis > ROptStart"},
+        Violation{"EMinWP", [](Json& j) { j["EMinWP"] = 0.0; }, "EMinWP", "EMinWP <= 0."},
+        Violation{"EMinGeEMax", [](Json& j) { j["EMinWP"] = 0.6; }, "EMinWP", "EMinWP >= EMaxWP."},
+        Violation{"Z0LtZasymp", [](Json& j) { j["Z0"] = 6.0; }, "Z0", "Z0 < ZAsymptotic."},
+        Violation{"Z0GtZSpOpt", [](Json& j) { j["Z0"] = 17.0; }, "Z0", "Z0 > ZSpOptStart."},
+        Violation{"VIn", [](Json& j) { j["VIn"] = -1; }, "VIn", "VIn < 0."},
+        Violation{"VInGtNr", [](Json& j) { j["VIn"] = 56; }, "VIn", "VIn > nR-1."},
+        Violation{"VInGtVAna", [](Json& j) { j["VIn"] = 2; j["VAna"] = 1; }, "VIn", "VIn > VAna."},
+        Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn", "JIn > JAna."},
+        Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin", "VMin > VMax."},
+        Violation{"ZOptOrder", [](Json& j) { j["ZOptEnd"] = 8.5; }, "ZOptStart", "ZOptStart > ZOptEnd."},
+        Violation{"ZOptEnd", [](Json& j) { j["ZOptEnd"] = 13.0; }, "ZOptEnd", "ZOptEnd is too big for the scattering grid in Z."},
+        Violation{"ROptOrder", [](Json& j) { j["ROptEnd"] = 4.0; }, "ROptStart", "ROptStart > ROptEnd."},
+        Violation{"ROptEnd", [](Json& j) { j["ROptEnd"] = 9.2; }, "ROptEnd", "ROptEnd is too big for the grid in r."},
+        Violation{"ZSpOptOrder", [](Json& j) { j["ZSpOptEnd"] = 16.0; }, "ZSpOptStart", "ZSpOptStart > ZSpOptEnd."},
+        Violation{"ZSpOptEnd", [](Json& j) { j["ZSpOptEnd"] = 21.0; }, "ZSpOptEnd", "ZSpOptEnd is too big for the specular grid in Z."},
         // ZSpOptStart < ZAsymptotic cannot be reached on its own: Z0 >= ZAsymptotic and
         // Z0 <= ZSpOptStart are checked first.
-        Violation{"ZSpOptStart", [](Json& j) { j["ZSpOptStart"] = 6.0; }, "Z0"},
-        Violation{"EParallel", [](Json& j) { j["EParallel"] = -0.1; }, "EParallel"},
-        Violation{"PhiParallelNeg", [](Json& j) { j["PhiParallel"] = -1.0; }, "PhiParallel"},
-        Violation{"PhiParallelBig", [](Json& j) { j["PhiParallel"] = 361.0; }, "PhiParallel"},
-        Violation{"X2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["x2DPES"] = -0.1; }, "x2DPES"},
-        Violation{"X2DPESBig", [](Json& j) { j["write2DPES"] = true; j["x2DPES"] = 6.3; }, "x2DPES"},
-        Violation{"Y2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["y2DPES"] = -0.1; }, "y2DPES"},
-        Violation{"Y2DPESBig", [](Json& j) { j["write2DPES"] = true; j["y2DPES"] = 5.3; }, "y2DPES"},
-        Violation{"Theta2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["theta2DPES"] = -1.0; }, "theta2DPES"},
-        Violation{"Theta2DPESBig", [](Json& j) { j["write2DPES"] = true; j["theta2DPES"] = 361.0; }, "theta2DPES"},
-        Violation{"Phi2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["phi2DPES"] = -1.0; }, "phi2DPES"},
-        Violation{"Phi2DPESBig", [](Json& j) { j["write2DPES"] = true; j["phi2DPES"] = 361.0; }, "phi2DPES"},
-        Violation{"ZAnaSpDynamic", [](Json& j) { j["ZAnaSp"] = 12.0; }, "ZAnaSp"},
-        Violation{"ZAnaSpGtOpt", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 17.0; }, "ZAnaSp"},
-        Violation{"ZAnaSpLtZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.0; }, "ZAnaSp"},
+        // ZSpOptStart < ZAsymptotic is reachable only within the 1e-12 tolerance band: Z0 > ZSpOptStart
+        // comes first.
+        Violation{"ZSpOptStart", [](Json& j) { j["ZSpOptStart"] = 6.0; }, "Z0", "Z0 > ZSpOptStart."},
+        Violation{"EParallel", [](Json& j) { j["EParallel"] = -0.1; }, "EParallel", "EParallel < 0."},
+        Violation{"PhiParallelNeg", [](Json& j) { j["PhiParallel"] = -1.0; }, "PhiParallel", "PhiParallel < 0."},
+        Violation{"PhiParallelBig", [](Json& j) { j["PhiParallel"] = 361.0; }, "PhiParallel", "PhiParallel > 360 degrees."},
+        Violation{"X2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["x2DPES"] = -0.1; }, "x2DPES", "x2DPES < 0."},
+        Violation{"X2DPESBig", [](Json& j) { j["write2DPES"] = true; j["x2DPES"] = 6.3; }, "x2DPES", "x2DPES > alat."},
+        Violation{"Y2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["y2DPES"] = -0.1; }, "y2DPES", "y2DPES < 0."},
+        Violation{"Y2DPESBig", [](Json& j) { j["write2DPES"] = true; j["y2DPES"] = 5.3; }, "y2DPES", "y2DPES > blat."},
+        Violation{"Theta2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["theta2DPES"] = -1.0; }, "theta2DPES", "theta2DPES < 0."},
+        Violation{"Theta2DPESBig", [](Json& j) { j["write2DPES"] = true; j["theta2DPES"] = 361.0; }, "theta2DPES", "theta2DPES > 360."},
+        Violation{"Phi2DPESNeg", [](Json& j) { j["write2DPES"] = true; j["phi2DPES"] = -1.0; }, "phi2DPES", "phi2DPES < 0."},
+        Violation{"Phi2DPESBig", [](Json& j) { j["write2DPES"] = true; j["phi2DPES"] = 361.0; }, "phi2DPES", "phi2DPES > 360."},
+        Violation{"ZAnaSpDynamic", [](Json& j) { j["ZAnaSp"] = 12.0; }, "ZAnaSp", "ZAnaSp can only be used with DynamZSpAna set to FALSE"},
+        Violation{"ZAnaSpGtOpt", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 17.0; }, "ZAnaSp", "ZAnaSp was set > ZSpOptStart"},
+        Violation{"ZAnaSpLtZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.0; }, "ZAnaSp", "ZAnaSp was set < Z0"},
         // Low-Z absorbers. low-Z D3: an incomplete set of keys (the Fortran ignores it).
-        Violation{"LowZD3OnlyStart", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd"},
-        Violation{"LowZD3OnlyEnd", [](Json& j) { j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
-        Violation{"LowZD3OnlyStrength", [](Json& j) { j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowStart"},
+        Violation{"LowZD3OnlyStart", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd", "ZOptLowEnd is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
+        Violation{"LowZD3OnlyEnd", [](Json& j) { j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "ZOptLowStart is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
+        Violation{"LowZD3OnlyStrength", [](Json& j) { j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowStart", "ZSpOptLowStart is missing: a low-Z absorber needs ZSpOptLowStart and ZSpOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
         // low-Z D1 (Start > End, ignored by the Fortran) and low-Z D2 (Start = End, NaN there).
-        Violation{"LowZD1StartAboveEnd", [](Json& j) { j["ZOptLowStart"] = 4.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
-        Violation{"LowZD1SpecularStartAboveEnd", [](Json& j) { j["ZSpOptLowStart"] = 4.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart"},
-        Violation{"LowZD2StartEqualsEnd", [](Json& j) { j["ZOptLowStart"] = 3.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
-        Violation{"LowZD2SpecularStartEqualsEnd", [](Json& j) { j["ZSpOptLowStart"] = 3.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart"},
+        Violation{"LowZD1StartAboveEnd", [](Json& j) { j["ZOptLowStart"] = 4.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "the absorber would be empty"},
+        Violation{"LowZD1SpecularStartAboveEnd", [](Json& j) { j["ZSpOptLowStart"] = 4.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart", "the absorber would be empty"},
+        Violation{"LowZD2StartEqualsEnd", [](Json& j) { j["ZOptLowStart"] = 3.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "the absorber needs a positive length"},
+        Violation{"LowZD2SpecularStartEqualsEnd", [](Json& j) { j["ZSpOptLowStart"] = 3.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart", "the absorber needs a positive length"},
         // The Fortran's plain < and >: 1e-13 beyond ZStart or Zana is rejected (.RLT. would accept it).
-        Violation{"LowZStartBelowZStart", [](Json& j) { j["ZOptLowStart"] = -2.0 - 1.0e-13; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart"},
-        Violation{"LowZEndAboveZana", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0 + 1.0e-13; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd"},
-        Violation{"LowZSpecularStartBelowZStart", [](Json& j) { j["ZSpOptLowStart"] = -2.0 - 1.0e-13; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart"},
-        Violation{"LowZSpecularEndAboveZana", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0 + 1.0e-13; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowEnd"},
-        Violation{"LowZNoEnergyOrFactor", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; }, "ZOptLowEnergy"},
-        Violation{"LowZEnergyAndFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowEnergy"},
-        Violation{"LowZEnergyNegative", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = -0.1; }, "ZOptLowEnergy"},
-        Violation{"LowZSpecularEnergyNegative", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -0.1; }, "ZSpOptLowEnergy"}),
+        Violation{"LowZStartBelowZStart", [](Json& j) { j["ZOptLowStart"] = -2.0 - 1.0e-13; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "ZOptLowStart was set smaller than ZStart"},
+        Violation{"LowZEndAboveZana", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0 + 1.0e-13; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd", "ZOptLowEnd was set higher than Zana"},
+        Violation{"LowZSpecularStartBelowZStart", [](Json& j) { j["ZSpOptLowStart"] = -2.0 - 1.0e-13; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart", "ZSpOptLowStart was set smaller than ZStart"},
+        Violation{"LowZSpecularEndAboveZana", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0 + 1.0e-13; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowEnd", "ZSpOptLowEnd was set higher than Zana"},
+        Violation{"LowZNoEnergyOrFactor", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; }, "ZOptLowEnergy", "ZOptLowFactor or ZOptLowEnergy should be present."},
+        Violation{"LowZEnergyAndFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowEnergy", "give either ZSpOptLowEnergy or ZSpOptLowFactor, not both"},
+        Violation{"LowZEnergyNegative", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = -0.1; }, "ZOptLowEnergy", "ZOptLowEnergy < 0"},
+        Violation{"LowZSpecularEnergyNegative", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -0.1; }, "ZSpOptLowEnergy", "ZSpOptLowEnergy < 0"},
+        // Checks whose only violation used to trip an earlier check of the same key (or none at all).
+        Violation{"RDoF", [](Json& j) { j["RDoF"] = false; }, "RDoF", "Currently only 6D calculations are supported."},
+        Violation{"XDoF", [](Json& j) { j["XDoF"] = false; }, "XDoF", "Currently only 6D calculations are supported."},
+        Violation{"YDoF", [](Json& j) { j["YDoF"] = false; }, "YDoF", "Currently only 6D calculations are supported."},
+        Violation{"ThetaDoF", [](Json& j) { j["ThetaDoF"] = false; }, "ThetaDoF", "Currently only 6D calculations are supported."},
+        Violation{"Mass2", [](Json& j) { j["Mass2"] = 0.0; }, "Mass2", "Mass of atom 2 <= 0."},
+        // rle: within 1e-12 of 0 is still "<= 0" (a plain <= would let 5e-13 through to the HomoNuc check).
+        Violation{"Mass2WithinTolerance", [](Json& j) { j["Mass2"] = 5.0e-13; }, "Mass2", "Mass of atom 2 <= 0."},
+        Violation{"nZSpecularZero", [](Json& j) { j["nZSpecular"] = 0; }, "nZSpecular", "nZSpecular < 1."},
+        Violation{"nRZero", [](Json& j) { j["nR"] = 0; }, "nR", "nR < 1."},
+        Violation{"nXZero", [](Json& j) { j["nX"] = 0; }, "nX", "nX < 1."},
+        Violation{"nYFft", [](Json& j) { j["nY"] = 5; }, "nY", "nY is not a valid FFT size."},
+        // nX = nY on the square and hexagonal cells (C4v, C6v, C3v); the hard wall (C2v) may differ.
+        Violation{"nXnYC6v", [](Json& j) { j = case_json("cu111_dailight_small"); j["nY"] = 4; }, "nY", "nX /= nY."},
+        Violation{"nXnYC3v", [](Json& j) { j = case_json("crp_c3v_synthetic_small"); j["nY"] = 8; }, "nY", "nX /= nY."},
+        Violation{"nXnYC4v", [](Json& j) { j = case_json("crp_c4v_synthetic_small"); j["nY"] = 6; }, "nY", "nX /= nY."},
+        Violation{"tStartNegative", [](Json& j) { j["tStart"] = -10.0; j["tEnd"] = 13990.0; }, "tStart", "tStart < 0."},
+        Violation{"tStartNegativeBeyondTolerance", [](Json& j) { j["tStart"] = -2.0e-12; }, "tStart", "tStart < 0."},
+        Violation{"tStartGtTEnd",
+                  [](Json& j) { j["NewCalc"] = false; j["RestartDir"] = "earlier"; j["tStart"] = 100.0; j["tEnd"] = 50.0; },
+                  "tStart", "tStart > tEnd."},
+        Violation{"RestartFormat", [](Json& j) { j["RestartFormat"] = "binary"; }, "RestartFormat",
+                  "RestartFormat must be \"native\" or \"fortran\"."},
+        Violation{"CheckpointFormat", [](Json& j) { j["CheckpointFormat"] = "binary"; }, "CheckpointFormat",
+                  "CheckpointFormat must be \"native\", \"fortran\" or \"both\"."},
+        Violation{"dtAnaZero", [](Json& j) { j["dtAna"] = 0.0; }, "dtAna", "dtAna <= 0."},
+        Violation{"dtAnaWithinTolerance", [](Json& j) { j["dtAna"] = 5.0e-13; }, "dtAna", "dtAna <= 0."},
+        Violation{"dtAveZero", [](Json& j) { j["dtAve"] = 0.0; }, "dtAve", "dtAve <= 0."},
+        Violation{"dtAveWithinTolerance", [](Json& j) { j["dtAve"] = 5.0e-13; }, "dtAve", "dtAve <= 0."},
+        // ZStart above Zana (Zana stays above ZAsymptotic and on the shifted grid).
+        Violation{"ZanaLtZStart", [](Json& j) { j["ZStart"] = 8.08; }, "Zana", "ZAna < ZStart."},
+        Violation{"ZanaBeyondTheGrid", [](Json& j) { j["Zana"] = 12.08; }, "Zana",
+                  "ZAnalysis is too big for the scattering grid in Z."},
+        Violation{"EMaxWPZero", [](Json& j) { j["EMaxWP"] = 0.0; }, "EMaxWP", "EMaxWP <= 0."},
+        Violation{"EMaxWPWithinTolerance", [](Json& j) { j["EMaxWP"] = 5.0e-13; }, "EMaxWP", "EMaxWP <= 0."},
+        Violation{"ROptStrengthMissing", [](Json& j) { j.erase("ROptEnergy"); }, "ROptEnergy",
+                  "ROptFactor or ROptEnergy should be present."},
+        Violation{"ROptEnergyNegative", [](Json& j) { j["ROptEnergy"] = -0.1; }, "ROptEnergy", "ROptEnergy < 0."},
+        Violation{"ROptEnergyBeyondTolerance", [](Json& j) { j["ROptEnergy"] = -2.0e-12; }, "ROptEnergy", "ROptEnergy < 0."},
+        Violation{"ZSpOptStrengthMissing", [](Json& j) { j.erase("ZSpOptEnergy"); }, "ZSpOptEnergy",
+                  "ZSpOptFactor or ZSpOptEnergy should be present."},
+        Violation{"ZSpOptEnergyNegative", [](Json& j) { j["ZSpOptEnergy"] = -0.1; }, "ZSpOptEnergy", "ZSpOptEnergy < 0."},
+        Violation{"ZSpOptEnergyBeyondTolerance", [](Json& j) { j["ZSpOptEnergy"] = -2.0e-12; }, "ZSpOptEnergy",
+                  "ZSpOptEnergy < 0."},
+        Violation{"LowZSpecularNoEnergyOrFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; },
+                  "ZSpOptLowEnergy", "ZSpOptLowFactor or ZSpOptLowEnergy should be present."}),
     [](const ::testing::TestParamInfo<Violation>& param_info) { return std::string(param_info.param.name); });
+
+// The valid side of the tolerant checks above: within 1e-12 of the bound an rlt check accepts (a plain <
+// would refuse), and the hard wall (C2v) may have nX /= nY.
+TEST(Input, TolerantChecksAcceptWithinTheirTolerance) {
+  for (const auto& [key, value] : std::vector<std::pair<std::string, double>>{
+           {"tStart", -5.0e-13}, {"ROptEnergy", -5.0e-13}, {"ZSpOptEnergy", -5.0e-13}}) {
+    Json json = reference_json();
+    json[key] = value;
+    EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << key;
+  }
+  Json json = reference_json();
+  json["nY"] = 8;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
+}
 
 TEST(Input, DerivedQuantities) {
   const Config config = build(reference_json());
