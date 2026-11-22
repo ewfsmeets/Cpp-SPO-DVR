@@ -21,12 +21,12 @@ using namespace spodvr;
 namespace {
 
 // Runs `step` once (warm-up), then `repetitions` times, and prints the mean time per call.
-void time_call(const char* name, int repetitions, const std::function<void()>& step) {
+void time_call(const std::string& name, int repetitions, const std::function<void()>& step) {
   step();
   const auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < repetitions; ++i) step();
   const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
-  std::printf("  %-28s %10.1f ms per call\n", name, elapsed.count() / repetitions * 1000.0);
+  std::printf("  %-28s %10.1f ms per call\n", name.c_str(), elapsed.count() / repetitions * 1000.0);
 }
 
 }  // namespace

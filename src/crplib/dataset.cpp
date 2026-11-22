@@ -15,7 +15,7 @@ namespace crplib {
 using fortran_text::ListDirectedReader;
 using fortran_text::ListStatement;
 
-const char* symmetry_name(Symmetry symmetry) {
+std::string_view symmetry_name(Symmetry symmetry) {
   switch (symmetry) {
     case Symmetry::c3v: return "C3v";
     case Symmetry::c4v: return "C4v";
@@ -231,7 +231,7 @@ void check_spline_grid(const std::vector<double>& x, const std::string& what) {
 }  // namespace
 
 void validate_data_set(const DataSet& d) {
-  const char* name = symmetry_name(d.symmetry);
+  const std::string_view name = symmetry_name(d.symmetry);
   if (!(d.lattice_constant > 0.0)) throw DataError("CRPData: the lattice constant must be positive");
   if (d.symmetry == Symmetry::c3v && d.num_layers() < 4) {
     throw DataError("CRPData: C3v needs at least 4 layers (MURII sums over 4 layers; Fortran: 'not enough layers')");

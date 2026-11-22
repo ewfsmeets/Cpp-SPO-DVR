@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
         return std::bit_cast<std::uint64_t>(a) == std::bit_cast<std::uint64_t>(b);
       });
       std::printf("%s %-8s %zu evaluations, %.3f us per evaluation (best of %d)%s\n",
-                  crplib::symmetry_name(data.symmetry), name, points.size(),
+                  std::string(crplib::symmetry_name(data.symmetry)).c_str(), name, points.size(),
                   1e6 * best / static_cast<double>(points.size()), repetitions, same ? "" : "  V DIFFERS FROM plain");
       if (!same) return 2;
     }

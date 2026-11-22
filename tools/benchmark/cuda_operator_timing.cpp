@@ -79,14 +79,14 @@ int main(int argc, char** argv) {
   const AngularTransform transform(angular, basis, fft);
   DevicePotentialOperator potential_op(shape, grids.nz_potential, basis.initial_index(), tables, transform,
                                        potential.values, potential.symmetry, fft_work_limit);
-  const std::vector<DeviceFftPlan*> kinetic_plans = kinetic.fft_plans();  // (Z, r) pair, then (x, y) pair if any
-  std::vector<DeviceFftPlan*> plans = kinetic_plans;
-  for (DeviceFftPlan* q : specular.fft_plans()) plans.push_back(q);
-  for (DeviceFftPlan* q : potential_op.fft_plans()) plans.push_back(q);
+  const DeviceFftPlans kinetic_plans = kinetic.fft_plans();  // (Z, r) pair, then (x, y) pair if any
+  DeviceFftPlans plans = kinetic_plans;
+  for (DeviceFftPlan& q : specular.fft_plans()) plans.emplace_back(q);
+  for (DeviceFftPlan& q : potential_op.fft_plans()) plans.emplace_back(q);
   std::size_t work_bytes = 1;
-  for (const DeviceFftPlan* q : plans) work_bytes = std::max(work_bytes, q->work_size());
+  for (const DeviceFftPlan& q : plans) work_bytes = std::max(work_bytes, q.work_size());
   DeviceBuffer<std::byte> work(work_bytes);
-  for (DeviceFftPlan* q : plans) q->set_work_area(work.data());
+  for (DeviceFftPlan& q : plans) q.set_work_area(work.data());
 
   std::printf(
       "%d rotational states, nx = %d, ny = %d, nr = %d, nz = %d (%.2f GB wave function); %lld (Z, r) "
@@ -99,13 +99,13 @@ int main(int argc, char** argv) {
   step_ms += time_call("specular grid", repetitions, [&] { specular.apply(psi, TimeStep::Full, false); });
   step_ms += time_call("T (Z, r, x, y; one stage)", repetitions, [&] { kinetic.apply(psi, TimeStep::Full); });
   time_call("  of which the two (Z, r) cuFFTs", repetitions, [&] {
-    kinetic_plans[0]->execute(psi.scattering.data());
-    kinetic_plans[1]->execute(psi.scattering.data());
+    kinetic_plans[0].get().execute(psi.scattering.data());
+    kinetic_plans[1].get().execute(psi.scattering.data());
   });
   if (kinetic_plans.size() == 4)
     time_call("  of which the two (x, y) cuFFTs", repetitions, [&] {
-      kinetic_plans[2]->execute(psi.scattering.data());
-      kinetic_plans[3]->execute(psi.scattering.data());
+      kinetic_plans[2].get().execute(psi.scattering.data());
+      kinetic_plans[3].get().execute(psi.scattering.data());
     });
   step_ms += time_call("potential (all kernels)", repetitions, [&] { potential_op.apply(psi); });
   std::printf("  %-44s %10.2f ms\n", "sum = one time step", step_ms);
@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
   std::printf("Potential stage, kernel by kernel (summed over the slabs):\n");
   const PotentialArgs base = potential_op.kernel_args();
   Complex* dvr = potential_op.scratch();
-  const std::vector<DeviceFftPlan*> phi = potential_op.fft_plans();
+  const DeviceFftPlans phi = potential_op.fft_plans();
   auto over_slabs = [&](const std::function<void(const PotentialArgs&)>& kernel) {
     return [&, kernel] {
       PotentialArgs slab = base;
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
               absorb_and_transform_to_dvr(a, psi.scattering.data(), psi.specular.data(), dvr);
             }));
   if (!phi.empty())
-    time_call("phi cuFFT (to DVR)", repetitions, over_slabs([&](const PotentialArgs&) { phi[0]->execute(dvr); }));
+    time_call("phi cuFFT (to DVR)", repetitions, over_slabs([&](const PotentialArgs&) { phi[0].get().execute(dvr); }));
   // With the FFT callback, exp(i A) is applied inside the inverse phi FFT; the kernel is timed for
   // comparison only (the callback reads the last slab's izr_first here: the timing is the same).
   const bool in_callback = potential_op.exp_potential_in_fft_callback();
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
             over_slabs([&](const PotentialArgs& a) { multiply_by_exp_potential(a, dvr); }));
   if (!phi.empty())
     time_call(in_callback ? "phi cuFFT (to FBR) with exp(iA) callback" : "phi cuFFT (to FBR)", repetitions,
-              over_slabs([&](const PotentialArgs&) { phi[1]->execute(dvr); }));
+              over_slabs([&](const PotentialArgs&) { phi[1].get().execute(dvr); }));
   time_call("transform_to_fbr_and_rotate", repetitions,
             over_slabs([&](const PotentialArgs& a) { transform_to_fbr_and_rotate(a, dvr, psi.scattering.data()); }));
   time_call("project_onto_specular", repetitions, over_slabs([&](const PotentialArgs& a) {

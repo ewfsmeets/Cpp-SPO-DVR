@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -66,6 +67,9 @@ class DeviceFftPlan {
   std::unique_ptr<Plan> rest_;     // the last batch % slab_ transforms (if any)
   std::size_t work_size_ = 0;
 };
+
+// Non-owning references to plans owned by an operator, e.g. to share one work area between them.
+using DeviceFftPlans = std::vector<std::reference_wrapper<DeviceFftPlan>>;
 
 // The cuFFT version as text (e.g. "cuFFT 11.0.1").
 [[nodiscard]] std::string cufft_version();

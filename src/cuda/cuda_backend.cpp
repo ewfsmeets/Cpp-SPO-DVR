@@ -106,13 +106,13 @@ CudaBackend::CudaBackend(const BackendInput& in, PotentialGrid potential, Specul
 }
 
 void CudaBackend::share_fft_work_area() {
-  std::vector<DeviceFftPlan*> plans = kinetic_.fft_plans();
-  for (DeviceFftPlan* p : specular_.fft_plans()) plans.push_back(p);
-  for (DeviceFftPlan* p : potential_.fft_plans()) plans.push_back(p);
+  DeviceFftPlans plans = kinetic_.fft_plans();
+  for (DeviceFftPlan& p : specular_.fft_plans()) plans.emplace_back(p);
+  for (DeviceFftPlan& p : potential_.fft_plans()) plans.emplace_back(p);
   std::size_t bytes = 1;
-  for (const DeviceFftPlan* p : plans) bytes = std::max(bytes, p->work_size());
+  for (const DeviceFftPlan& p : plans) bytes = std::max(bytes, p.work_size());
   fft_work_ = DeviceBuffer<std::byte>(bytes);
-  for (DeviceFftPlan* p : plans) p->set_work_area(fft_work_.data());
+  for (DeviceFftPlan& p : plans) p.set_work_area(fft_work_.data());
 }
 
 // Host layout (irot, ixy, izr) -> device layout, chunk by chunk of (Z, r) points through a

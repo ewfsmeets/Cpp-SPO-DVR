@@ -15,6 +15,7 @@ endif()
 option(SPODVR_USE_MKL "Use Intel oneMKL (BLAS/LAPACK, FFTs) when it is found" ON)
 set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "FFT library: AUTO (oneMKL if found, else FFTW), MKL or FFTW")
 set(SPODVR_ARCH "x86-64-v3" CACHE STRING "-march value: x86-64-v3 (AVX2), x86-64-v4 (AVX-512), native, or empty")
+option(SPODVR_LTO "Link-time optimisation (-flto) in Release builds; OFF for quick or sanitizer builds" ON)
 option(SPODVR_FAST_MATH "Experimental: -ffast-math (NaN/inf kept; FMA in the CUDA kernels); changes rounding" OFF)
 set(SPODVR_PGO "OFF" CACHE STRING "Profile-guided optimisation: OFF, GENERATE or USE (docs/performance.md)")
 set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of the PGO profile data")
@@ -121,11 +122,13 @@ target_link_options(spodvr_fp INTERFACE ${pgo_link_flags})
 add_library(spodvr_strict_fp INTERFACE)
 target_compile_options(spodvr_strict_fp INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${strict_fp_flags}>")
 
-# Link-time optimisation in Release builds.
-include(CheckIPOSupported)
-check_ipo_supported(RESULT ipo_supported)
-if(ipo_supported)
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+# Link-time optimisation in Release builds (SPODVR_LTO; checked before CUDA is enabled, so for C++ only).
+if(SPODVR_LTO)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT ipo_supported)
+  if(ipo_supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+  endif()
 endif()
 
 # =============================================================================================
@@ -355,7 +358,7 @@ if(SPODVR_USE_CUDA)
     src/cuda/wave_function_kernels.cu
   )
   # Only kernels and their launchers are .cu files; all host code of the backend is .cpp. In a
-  # Release build the .cpp files get GCC's LTO (-flto=auto) like every target
+  # Release build the .cpp files get GCC's LTO (-flto=auto) like every target, unless SPODVR_LTO is OFF
   # (CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE, above); CMake passes no LTO flags to nvcc for the
   # .cu files.
   set_target_properties(spodvr_cuda PROPERTIES CUDA_STANDARD 20 CUDA_STANDARD_REQUIRED ON)

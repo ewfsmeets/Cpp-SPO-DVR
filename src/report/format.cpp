@@ -16,9 +16,15 @@ std::string wrap(bool color, std::string_view code, std::string_view text) {
   return std::string("\033[") + std::string(code) + "m" + std::string(text) + "\033[0m";
 }
 
-std::string format(const char* fmt, int decimals, double x) {
+// printf's %.*e and %.*f with `decimals` digits after the point.
+std::string exponent_form(int decimals, double x) {
   char buffer[64];
-  std::snprintf(buffer, sizeof buffer, fmt, decimals, x);
+  std::snprintf(buffer, sizeof buffer, "%.*e", decimals, x);
+  return buffer;
+}
+std::string fixed_point_form(int decimals, double x) {
+  char buffer[64];
+  std::snprintf(buffer, sizeof buffer, "%.*f", decimals, x);
   return buffer;
 }
 
@@ -30,8 +36,8 @@ std::string Style::warning(std::string_view text) const { return wrap(color, "1;
 std::string Style::accent(std::string_view text) const { return wrap(color, "36", text); }
 std::string Style::dim(std::string_view text) const { return wrap(color, "2", text); }
 
-std::string full_precision(double x) { return format("%.*e", 16, x); }
-std::string fixed(double x, int decimals) { return format("%.*f", decimals, x); }
+std::string full_precision(double x) { return exponent_form(16, x); }
+std::string fixed(double x, int decimals) { return fixed_point_form(decimals, x); }
 
 std::string format_duration(double seconds) {
   const long long total = std::llround(std::max(seconds, 0.0));
@@ -58,7 +64,7 @@ std::string format_bytes(std::size_t bytes) {
   }
   return fixed(size, 1) + " " + units[unit];
 }
-std::string scientific(double x, int decimals) { return format("%.*e", decimals, x); }
+std::string scientific(double x, int decimals) { return exponent_form(decimals, x); }
 
 void print_section(std::ostream& out, const Style& style, std::string_view title) {
   const std::string rule(80, '=');

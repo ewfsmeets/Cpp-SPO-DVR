@@ -30,7 +30,8 @@ QdWrapper::QdWrapper(const DataSet& data, EvaluationOptions options)
 }
 
 QdParameters QdWrapper::parameters() const {
-  return {surface_.lattice_constant(), surface_.z_asymptotic(), skewing_angle_, symmetry_name(surface_.symmetry())};
+  return {surface_.lattice_constant(), surface_.z_asymptotic(), skewing_angle_,
+          std::string(symmetry_name(surface_.symmetry()))};
 }
 
 double QdWrapper::clamped_r(double r) const {

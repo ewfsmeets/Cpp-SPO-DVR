@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "crplib/units.hpp"
@@ -18,7 +19,7 @@ namespace crplib {
 enum class Symmetry { c3v, c4v, c6v };
 
 // "C3v", "C4v", "C6v"
-const char* symmetry_name(Symmetry symmetry);
+std::string_view symmetry_name(Symmetry symmetry);
 
 // The number of cuts the interpolation uses: atom-surface sites (exact for C3v/C6v) and molecular
 // configurations (the minimum; further cuts are read but unused).

@@ -54,9 +54,12 @@ DeviceKineticOperator::DeviceKineticOperator(const ScatteringShape& s, const Pro
   }
 }
 
-std::vector<DeviceFftPlan*> DeviceKineticOperator::fft_plans() {
-  std::vector<DeviceFftPlan*> plans{zr_to_momentum_.get(), zr_to_coordinate_.get()};
-  if (xy_to_momentum_) plans.insert(plans.end(), {xy_to_momentum_.get(), xy_to_coordinate_.get()});
+DeviceFftPlans DeviceKineticOperator::fft_plans() {
+  DeviceFftPlans plans{*zr_to_momentum_, *zr_to_coordinate_};
+  if (xy_to_momentum_) {
+    plans.emplace_back(*xy_to_momentum_);
+    plans.emplace_back(*xy_to_coordinate_);
+  }
   return plans;
 }
 
@@ -102,7 +105,7 @@ DeviceSpecularOperator::DeviceSpecularOperator(int nr, int nz_specular, int nz_p
   to_coordinate_ = std::make_unique<DeviceFftPlan>(layout, FftSign::Plus, max_fft_work);
 }
 
-std::vector<DeviceFftPlan*> DeviceSpecularOperator::fft_plans() { return {to_momentum_.get(), to_coordinate_.get()}; }
+DeviceFftPlans DeviceSpecularOperator::fft_plans() { return {*to_momentum_, *to_coordinate_}; }
 
 // Fortran: SplitOperator.f90 SpecularChannelOps (kinetic_only on the last half step)
 void DeviceSpecularOperator::apply(DeviceWavePacket& psi, TimeStep step, bool kinetic_only) const {

@@ -30,7 +30,7 @@ class DeviceKineticOperator {
   void apply(DeviceWavePacket& psi, TimeStep step) const;
 
   // The cuFFT plans (to share one work area).
-  [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();
+  [[nodiscard]] DeviceFftPlans fft_plans();
 
  private:
   ScatteringShape shape_;
@@ -52,7 +52,7 @@ class DeviceSpecularOperator {
                          const PropagationTables& tables, std::size_t max_fft_work);
 
   void apply(DeviceWavePacket& psi, TimeStep step, bool kinetic_only) const;
-  [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();
+  [[nodiscard]] DeviceFftPlans fft_plans();
 
  private:
   int nr_;

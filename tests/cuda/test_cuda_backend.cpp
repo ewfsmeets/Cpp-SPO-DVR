@@ -113,9 +113,9 @@ void expect_same_kinetic_stage(const BackendSetup& s, double tolerance) {
   const ScatteringKineticOperator cpu(shape, s.tables, s.fft);
   cuda::DeviceKineticOperator gpu(shape, s.tables, std::size_t(512) << 20);
   std::size_t work_bytes = 1;
-  for (const cuda::DeviceFftPlan* plan : gpu.fft_plans()) work_bytes = std::max(work_bytes, plan->work_size());
+  for (const cuda::DeviceFftPlan& plan : gpu.fft_plans()) work_bytes = std::max(work_bytes, plan.work_size());
   cuda::DeviceBuffer<std::byte> work(work_bytes);
-  for (cuda::DeviceFftPlan* plan : gpu.fft_plans()) plan->set_work_area(work.data());
+  for (cuda::DeviceFftPlan& plan : gpu.fft_plans()) plan.set_work_area(work.data());
   const cuda::DeviceLayout layout{n_zr, shape.n_rot, n_xy};
   cuda::DeviceWavePacket device(layout, p.nr, static_cast<int>(s.grids.z_specular.size()));
 
@@ -178,12 +178,12 @@ TEST(CudaBackend, ExpPotentialCallbackMatchesTheKernel) {
   ASSERT_FALSE(with_kernel.exp_potential_in_fft_callback());
   ASSERT_LT(with_callback.slab_points(), std::int64_t(s.grids.nz_potential) * p.nr);  // more than one slab
 
-  std::vector<cuda::DeviceFftPlan*> plans = with_callback.fft_plans();
-  for (cuda::DeviceFftPlan* plan : with_kernel.fft_plans()) plans.push_back(plan);
+  cuda::DeviceFftPlans plans = with_callback.fft_plans();
+  for (cuda::DeviceFftPlan& plan : with_kernel.fft_plans()) plans.emplace_back(plan);
   std::size_t work_bytes = 1;
-  for (const cuda::DeviceFftPlan* plan : plans) work_bytes = std::max(work_bytes, plan->work_size());
+  for (const cuda::DeviceFftPlan& plan : plans) work_bytes = std::max(work_bytes, plan.work_size());
   cuda::DeviceBuffer<std::byte> work(work_bytes);
-  for (cuda::DeviceFftPlan* plan : plans) plan->set_work_area(work.data());
+  for (cuda::DeviceFftPlan& plan : plans) plan.set_work_area(work.data());
 
   const cuda::DeviceLayout layout{n_zr, shape.n_rot, n_xy};
   const int nz_specular = static_cast<int>(s.grids.z_specular.size());
@@ -381,9 +381,9 @@ std::vector<cplx> gpu_specular_step(const BackendSetup& s, const std::vector<cpl
   cuda::DeviceSpecularOperator op(nr, nz, s.grids.nz_potential, s.basis.initial_index(), s.grids.r_optical, s.tables,
                                   std::size_t(512) << 20);
   std::size_t work_bytes = 1;
-  for (const cuda::DeviceFftPlan* plan : op.fft_plans()) work_bytes = std::max(work_bytes, plan->work_size());
+  for (const cuda::DeviceFftPlan& plan : op.fft_plans()) work_bytes = std::max(work_bytes, plan.work_size());
   cuda::DeviceBuffer<std::byte> work(work_bytes);
-  for (cuda::DeviceFftPlan* plan : op.fft_plans()) plan->set_work_area(work.data());
+  for (cuda::DeviceFftPlan& plan : op.fft_plans()) plan.set_work_area(work.data());
   cuda::DeviceWavePacket psi(cuda::DeviceLayout{1, 1, 1}, nr, nz);
   psi.specular.upload(cuda::as_device_complex(std::span<const cplx>(initial)));
   op.apply(psi, TimeStep::Full, false);

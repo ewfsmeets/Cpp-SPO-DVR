@@ -163,9 +163,9 @@ DevicePotentialOperator::DevicePotentialOperator(const ScatteringShape& s, int n
   args_.exp_potential = exp_table;
 }
 
-std::vector<DeviceFftPlan*> DevicePotentialOperator::fft_plans() {
+DeviceFftPlans DevicePotentialOperator::fft_plans() {
   if (!to_dvr_fft_) return {};
-  return {to_dvr_fft_.get(), to_fbr_fft_.get()};
+  return {*to_dvr_fft_, *to_fbr_fft_};
 }
 
 // Fortran: Potential.f90 PerformEXPPotentialOp for every (Z, r) point

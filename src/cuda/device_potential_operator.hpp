@@ -48,7 +48,7 @@ class DevicePotentialOperator {
                           ExpPotentialMode mode = ExpPotentialMode::FftCallback);
 
   void apply(DeviceWavePacket& psi) const;
-  [[nodiscard]] std::vector<DeviceFftPlan*> fft_plans();
+  [[nodiscard]] DeviceFftPlans fft_plans();
   // (Z, r) points per slab.
   [[nodiscard]] std::int64_t slab_points() const { return args_.n_slab; }
   // The kernels' arguments and the DVR scratch (for the timing tool, which runs the kernels of
