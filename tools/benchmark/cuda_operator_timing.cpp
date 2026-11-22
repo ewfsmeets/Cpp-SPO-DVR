@@ -7,12 +7,9 @@
 
 #include <chrono>
 #include <cstdio>
-#include <fstream>
 #include <functional>
 #include <string>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "cuda/cuda_backend.hpp"
 #include "cuda/device_kinetic_operator.hpp"
@@ -53,8 +50,7 @@ int main(int argc, char** argv) {
     return 1;
   }
   const int repetitions = argc > 2 ? std::stoi(argv[2]) : 3;
-  std::ifstream file(argv[1]);
-  const Config config = build_config(parse_input(nlohmann::json::parse(file)));
+  const Config config = build_config(read_input_file(argv[1]));
   const InputParameters& p = config.input;
   initialise_cuda();
   std::printf("%s\n", cuda_device_summary().c_str());

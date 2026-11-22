@@ -25,7 +25,8 @@ class InputFile:
 
 
 def load_input_file(path: Path) -> InputFile:
-    """Reads and parses an input file; refuses comments and NaN/Infinity, which json.loads would treat differently."""
+    """Reads and parses an input file; refuses comments, NaN/Infinity and repeated keys, which json.loads would treat
+    differently."""
     try:
         text = path.read_text()
     except OSError as error:
@@ -39,8 +40,16 @@ def parse_json_object(text: str, name: str) -> dict:
     def refuse_constant(constant: str) -> None:
         raise InputFileError(f"{name}: {constant} is not valid JSON (spodvr refuses it too)")
 
+    def refuse_repeated_keys(pairs: list[tuple[str, object]]) -> dict:
+        values = {}
+        for key, value in pairs:
+            if key in values:
+                raise InputFileError(f"{name}: key {key!r} is given twice in one object (spodvr refuses it too)")
+            values[key] = value
+        return values
+
     try:
-        values = json.loads(text, parse_constant=refuse_constant)
+        values = json.loads(text, parse_constant=refuse_constant, object_pairs_hook=refuse_repeated_keys)
     except json.JSONDecodeError as error:
         hint = (
             " (comments, which spodvr accepts, are not supported by the designer)"

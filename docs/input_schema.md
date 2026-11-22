@@ -1,7 +1,8 @@
 # Input file (JSON)
 
 `spodvr <input.json>` reads one JSON object. Keys are the Fortran `DVR.inp` field names
-(`InputNew.f90`), **case-sensitive**, without renames. Unknown keys are an error. Integer keys
+(`InputNew.f90`), **case-sensitive**, without renames. Unknown keys are an error, and so is a key
+given twice in one object (the Fortran reader stops on a repeated field too). Integer keys
 reject non-integer numbers; real keys accept any JSON number. Units are those of the Fortran
 input: bohr, eV, amu, atomic units of time, degrees. `//` and `/* */` comments are accepted.
 Example: `tests/reference/hardwall_small/input.json`.

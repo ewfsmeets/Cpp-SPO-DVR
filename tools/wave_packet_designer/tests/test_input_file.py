@@ -61,3 +61,23 @@ def test_comments_and_nan_are_refused() -> None:
             check(expected in str(error), f"message for {expected}: {error}")
             continue
         check(False, f"{expected} was accepted")
+
+
+def test_repeated_key_is_refused() -> None:
+    """A key given twice in one object is an error, also inside a list entry (spodvr and the Fortran refuse it too);
+    the same key in two different objects is not."""
+    repeated = (
+        '{"nZ": 176, "dZ": 0.08, "nZ": 192}',
+        '{"a": 1, "b": {}, "a": 2}',
+        '{"PlotSites": [{"name": "a", "x": 0, "x": 1}]}',
+        '{"a": [[{"b": 1, "b": 2}]]}',
+    )
+    for text in repeated:
+        try:
+            parse_json_object(text, "test.json")
+        except InputFileError as error:
+            check("given twice" in str(error) and "test.json" in str(error), f"message for {text}: {error}")
+            continue
+        check(False, f"a repeated key was accepted: {text}")
+    check_equal(parse_json_object('{"a": {"c": 1}, "c": 2}', "t"), {"a": {"c": 1}, "c": 2}, "same key, two objects")
+    check_equal(parse_json_object('{"a": [{"b": 1}, {"b": 2}]}', "t"), {"a": [{"b": 1}, {"b": 2}]}, "two entries")

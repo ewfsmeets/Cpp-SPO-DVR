@@ -10,6 +10,7 @@ of the code). Units: legacy factors of the code (1 amu = 1822.89 me, 1 Ha = 27.2
 
 import argparse
 import json
+import sys
 from math import erfc, sqrt
 
 import numpy as np
@@ -98,12 +99,22 @@ def absorber_table(name, start, end, target, mass, grid_end):
     print("  T        " + " ".join(f"{t:8.0e}" for _, t in rt))
 
 
+def refuse_repeated_keys(pairs):
+    """A JSON object from its (key, value) pairs; a key given twice is an error, as in spodvr."""
+    values = {}
+    for key, value in pairs:
+        if key in values:
+            sys.exit(f"key {key!r} is given twice in one object (spodvr refuses it too)")
+        values[key] = value
+    return values
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("input")
     parser.add_argument("--zasymp", type=float, required=True, help="Z_asymptotic of the PES (bohr)")
     args = parser.parse_args()
-    p = json.load(open(args.input))
+    p = json.load(open(args.input), object_pairs_hook=refuse_repeated_keys)
 
     mass = (p["Mass1"] + p["Mass2"]) * AMU
     reduced = p["Mass1"] * p["Mass2"] / (p["Mass1"] + p["Mass2"]) * AMU

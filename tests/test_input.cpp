@@ -84,6 +84,71 @@ TEST(Input, UnknownKeyIsAnError) {
   expect_input_error(json, "NotAKey");
 }
 
+// A key given twice in one JSON object is an error (nlohmann alone keeps the last value; the
+// Fortran reader stops on a repeated field too). Inline texts: a tracked .json file with a repeated
+// key would be refused by the check-json hook.
+namespace {
+
+Json parse_text(const std::string& text) {
+  std::istringstream in(text);
+  return parse_input_text(in, "test.json");
+}
+
+// Expects parse_input_text to refuse `text` with an InputError naming `parameter`; returns its message.
+std::string expect_repeated_key_error(const std::string& text, const std::string& parameter) {
+  try {
+    (void)parse_text(text);
+    ADD_FAILURE() << "expected an InputError for " << text;
+  } catch (const InputError& e) {
+    EXPECT_EQ(e.parameter(), parameter) << e.what();
+    return e.what();
+  }
+  return "";
+}
+
+}  // namespace
+
+TEST(Input, DuplicateKeyIsAnError) {
+  const std::string message = expect_repeated_key_error(R"({"nZ": 176, "dZ": 0.08, "nZ": 192})", "nZ");
+  EXPECT_NE(message.find("given twice"), std::string::npos) << message;
+  EXPECT_NE(message.find("test.json"), std::string::npos) << message;
+  // The keys of the top-level object are kept while a nested object is read.
+  expect_repeated_key_error(R"({"a": 1, "b": {}, "a": 2})", "a");
+}
+
+TEST(Input, DuplicateKeyInsideAnEntryNamesTheTopLevelKey) {
+  const std::string message =
+      expect_repeated_key_error(R"({"PlotSites": [{"name": "a", "x": 0.0, "x": 0.5, "y": 0.0}]})", "PlotSites");
+  EXPECT_NE(message.find("'x'"), std::string::npos) << message;
+  expect_repeated_key_error(R"({"a": {"b": 1, "b": 2}})", "a");
+  expect_repeated_key_error(R"({"a": [[{"b": 1, "b": 2}]]})", "a");
+}
+
+TEST(Input, SameKeyInDifferentObjectsIsValid) {
+  EXPECT_EQ(parse_text(R"({"a": {"c": 1}, "c": 2})")["c"], 2);
+  EXPECT_EQ(parse_text(R"({"a": [{"b": 1}, {"b": 2}]})")["a"][1]["b"], 2);
+}
+
+TEST(Input, DuplicateKeyCheckSkipsComments) {
+  // A commented-out line is not a key; a real repeat in a file with comments still is.
+  EXPECT_EQ(parse_text("{\n  // \"nZ\": 128,\n  \"nZ\": 176\n}")["nZ"], 176);
+  expect_repeated_key_error("{\n  // the grid\n  \"nZ\": 176,\n  /* again */ \"nZ\": 192\n}", "nZ");
+}
+
+TEST(Input, ReadInputFileRefusesADuplicateKey) {
+  const test_support::TemporaryDirectory directory("repeated_key");
+  std::string text = reference_json().dump(2);
+  text.insert(text.find('{') + 1, "\n  \"nZ\": 192,");
+  const std::filesystem::path file = directory.write("input.json", text);
+  try {
+    (void)read_input_file(file);
+    ADD_FAILURE() << "a repeated nZ was accepted";
+  } catch (const InputError& e) {
+    EXPECT_EQ(e.parameter(), "nZ") << e.what();
+    EXPECT_NE(std::string(e.what()).find(file.string()), std::string::npos) << e.what();
+  }
+}
+
 TEST(Input, MissingRequiredKeyIsAnError) {
   for (const std::string key : {"Title", "nZ", "TolSp", "writeRDProbs", "ZSpOptEnd"}) {
     Json json = reference_json();

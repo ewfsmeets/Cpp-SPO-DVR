@@ -7,6 +7,8 @@
 #include <limits>
 #include <set>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "core/error.hpp"
 #include "core/real_compare.hpp"
@@ -19,6 +21,35 @@ namespace {
 using Json = nlohmann::json;
 
 enum class Presence { Required, Optional };
+
+// Refuses a key given twice in one JSON object: nlohmann keeps the last value without a word, so a
+// copy-and-edit slip would change a run silently. Used as the parser callback: one set of keys per
+// open object; a repeat inside a nested object (e.g. a PlotSites entry) is reported under the
+// top-level key that holds it.
+class DuplicateKeyCheck {
+ public:
+  explicit DuplicateKeyCheck(std::string source) : source_(std::move(source)) {}
+
+  bool operator()(int /*depth*/, Json::parse_event_t event, Json& parsed) {
+    if (event == Json::parse_event_t::object_start) open_objects_.emplace_back();
+    if (event == Json::parse_event_t::object_end) open_objects_.pop_back();
+    if (event == Json::parse_event_t::key) check_key(parsed.get<std::string>());
+    return true;  // keep every value: the reader checks the content
+  }
+
+ private:
+  void check_key(const std::string& key) {
+    const bool top_level = open_objects_.size() == 1;
+    if (top_level) top_level_key_ = key;
+    if (open_objects_.back().insert(key).second) return;
+    if (top_level) throw InputError(key, "given twice in '" + source_ + "'");
+    throw InputError(top_level_key_, "key '" + key + "' given twice in one entry, in '" + source_ + "'");
+  }
+
+  std::string source_;
+  std::vector<std::set<std::string>> open_objects_;
+  std::string top_level_key_;
+};
 
 // Reads typed values from the JSON object and remembers which keys were used, so that unknown
 // keys can be reported afterwards. An optional key that is absent leaves the target unchanged
@@ -424,16 +455,18 @@ InputParameters parse_input(const Json& json) {
   return p;
 }
 
+Json parse_input_text(std::istream& text, const std::string& source) {
+  try {
+    return Json::parse(text, DuplicateKeyCheck(source), true, /*ignore_comments=*/true);
+  } catch (const Json::parse_error& e) {
+    throw InputError("", "invalid JSON in '" + source + "': " + e.what());
+  }
+}
+
 InputParameters read_input_file(const std::filesystem::path& path) {
   std::ifstream file(path);
   if (!file) throw InputError("", "cannot open input file '" + path.string() + "'");
-  Json json;
-  try {
-    json = Json::parse(file, nullptr, true, /*ignore_comments=*/true);
-  } catch (const Json::parse_error& e) {
-    throw InputError("", "invalid JSON in '" + path.string() + "': " + e.what());
-  }
-  return parse_input(json);
+  return parse_input(parse_input_text(file, path.string()));
 }
 
 }  // namespace spodvr
