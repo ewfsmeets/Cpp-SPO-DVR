@@ -590,6 +590,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 | Document | Contents |
 |---|---|
 | [inputs/README.md](inputs/README.md) | how to choose the grids, wave packet, analysis lines and absorbers; how to check a run |
+| [docs/method.md](docs/method.md) | the method as the code implements it: grids, the two grids, one analysis step in code order, FFT conventions, the S matrix |
 | [docs/input_schema.md](docs/input_schema.md) | every input key: type, default, unit, checks |
 | [docs/output_files.md](docs/output_files.md) | every output file and column; the correspondence with the Fortran output |
 | [docs/validation.md](docs/validation.md) | the five gates: cases, tolerances, results, reference data |
@@ -607,6 +608,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 | [tools/wave_packet_designer/README.md](tools/wave_packet_designer/README.md) | the wave-packet designer |
 | [tools/plots/README.md](tools/plots/README.md) | the plots and the report of a run |
 | [tools/fortran_reference/README.md](tools/fortran_reference/README.md) | building the Fortran reference and regenerating the reference data |
+| [docs/developer_guide.md](docs/developer_guide.md) | for changes to the code: the module map, the propagation in one page, the coding rules, checklists (a new PES, input key, large array, output file, a Fortran routine) |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | build variants, the test suite in detail, formatting and linting, the repository layout |
 
 ## Contributing

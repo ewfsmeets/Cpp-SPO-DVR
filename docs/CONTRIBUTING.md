@@ -2,6 +2,8 @@
 
 How to work on the code: the build variants, formatting and linting, the test suite in detail and
 the repository layout. Installing, building and running the program: the [README](../README.md).
+The code itself (module map, coding rules, checklists for common changes): the
+[developer guide](developer_guide.md); the method as implemented: [method.md](method.md).
 
 Bug reports and questions: [GitHub Issues](https://github.com/ewfsmeets/Cpp-SPO-DVR/issues).
 
