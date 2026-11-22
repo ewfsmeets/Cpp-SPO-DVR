@@ -2,9 +2,11 @@
 #include <gtest/gtest.h>
 #include <omp.h>
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <fstream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -21,6 +23,8 @@
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
 #include "propagation/propagation.hpp"
+#include "propagation/split_operator.hpp"
+#include "propagation/split_operator_schedule.hpp"
 
 using namespace spodvr;
 using spodvr::testing::nan_aware_max;
@@ -339,6 +343,62 @@ TEST(SplitOperator, FusedPerPointStageEqualsStageByStage) {
 
   EXPECT_EQ(fused.scattering.values, staged.scattering.values);
   EXPECT_EQ(fused.specular.values, staged.specular.values);
+}
+
+// The propagator with three time steps per analysis step, T/2 V (T V) (T V) T/2, against the
+// stages applied one after the other by hand: it follows the shared schedule, bit for bit.
+TEST(SplitOperator, ThreeTimeStepsAreHalfFullFullHalf) {
+  const OperatorSetup& s = reference_setup();
+  AlignedVector<double> potential = s.potential.values;
+  premultiply_with_time_step(potential, s.config.input.time_step);
+  const int ichn = s.basis.initial_index();
+  const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);
+  const PotentialOperator potential_op(s.shape, s.grids.nz_potential, ichn, s.tables, s.transform, potential);
+  const SpecularOperator specular(s.shape.nr, s.grids.z_specular.size(), s.grids.nz_potential, ichn, s.grids.r_optical,
+                                  s.tables, s.fft);
+  const SplitOperatorPropagator propagator(3, kinetic, potential_op, specular);
+
+  WavePacket fused{s.empty_wave(), SpecularWave(s.shape.nr, s.grids.z_specular.size())};
+  fill_pseudo_random(fused.scattering.values);
+  fill_pseudo_random(fused.specular.values);
+  WavePacket staged = fused;
+
+  propagator.propagate_analysis_step(fused);
+
+  const std::vector<std::pair<TimeStep, bool>> blocks = {
+      {TimeStep::Half, false}, {TimeStep::Full, false}, {TimeStep::Full, false}, {TimeStep::Half, true}};
+  for (const auto& [step, kinetic_only] : blocks) {
+    specular.apply(staged.specular, step, kinetic_only);
+    kinetic.apply_zr(staged.scattering, step);
+    kinetic.apply_xy(staged.scattering, step);
+    if (!kinetic_only) potential_op.apply(staged);
+  }
+
+  EXPECT_EQ(fused.scattering.values, staged.scattering.values);
+  EXPECT_EQ(fused.specular.values, staged.specular.values);
+}
+
+// The T blocks of one analysis step, shared by the CPU and GPU backends: T/2 V, (T V) n - 1 times,
+// T/2 without V; n <= 1 gives the two half steps (n = 0 comes from dtAna just below dtStep).
+TEST(SplitOperatorSchedule, BlocksOfOneAnalysisStep) {
+  const auto describe = [](const std::vector<SplitOperatorSubStep>& schedule) {
+    std::string text;
+    for (const SplitOperatorSubStep& block : schedule)
+      text += std::string(block.step == TimeStep::Half ? "T/2" : "T") + (block.kinetic_only ? " " : " V ");
+    return text;
+  };
+  EXPECT_EQ(describe(analysis_step_schedule(0)), "T/2 V T/2 ");
+  EXPECT_EQ(describe(analysis_step_schedule(1)), "T/2 V T/2 ");
+  EXPECT_EQ(describe(analysis_step_schedule(2)), "T/2 V T V T/2 ");
+  EXPECT_EQ(describe(analysis_step_schedule(5)), "T/2 V T V T V T V T V T/2 ");
+  for (int n = 0; n <= 7; ++n) {
+    SCOPED_TRACE(n);
+    const std::vector<SplitOperatorSubStep> schedule = analysis_step_schedule(n);
+    double time_steps = 0.0;
+    for (const SplitOperatorSubStep& block : schedule) time_steps += block.step == TimeStep::Half ? 0.5 : 1.0;
+    EXPECT_EQ(time_steps, std::max(n, 1));
+    for (std::size_t k = 0; k < schedule.size(); ++k) EXPECT_EQ(schedule[k].kinetic_only, k + 1 == schedule.size());
+  }
 }
 
 // After its kinetic part, the specular step multiplies each point (ir, iz) by the gas-phase

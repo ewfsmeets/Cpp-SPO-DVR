@@ -222,6 +222,7 @@ add_library(spodvr_core
   src/propagation/potential_operator.cpp
   src/propagation/specular_operator.cpp
   src/propagation/split_operator.cpp
+  src/propagation/split_operator_schedule.cpp
   src/propagation/propagation_backend.cpp
   src/propagation/cpu_backend.cpp
   src/propagation/averages.cpp

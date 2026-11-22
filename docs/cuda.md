@@ -130,7 +130,9 @@ The tables are the CPU's. `potential_step_factors`, `specular_gas_phase_factors`
 
 The CPU and the GPU backend implement the same method:
 
-- the same operator sequence `T/2 V (T V)^(n-1) T/2`;
+- the same operator sequence `T/2 V (T V)^(n-1) T/2`, which exists once: both backends loop over
+  `analysis_step_schedule` (`src/propagation/split_operator_schedule.hpp`; its test
+  `SplitOperatorSchedule.BlocksOfOneAnalysisStep` runs without a GPU);
 - the same stages within T and V (table above);
 - the same tables;
 - the same order of operations per element.

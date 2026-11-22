@@ -84,7 +84,8 @@ The specular wave is a plain (Z, r) array, `spec[izr]`, the same on host and GPU
 ## 3. One time step: everything that runs, in order
 
 The host calls `propagate_analysis_step()` once per analysis step: n time steps as
-`T(dt/2) V (T V)^(n−1) T(dt/2)`.
+`T(dt/2) V (T V)^(n−1) T(dt/2)`, the list `analysis_step_schedule` that the CPU backend runs too
+(`src/propagation/split_operator_schedule.hpp`).
 
 ```mermaid
 flowchart LR

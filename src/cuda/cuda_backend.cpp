@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include "cuda/cuda_error.hpp"
 #include "cuda/cuda_fft.hpp"
@@ -18,6 +19,7 @@
 #include "cuda/device_wave_packet.hpp"
 #include "cuda/kernels.hpp"
 #include "propagation/angular_transform.hpp"
+#include "propagation/split_operator_schedule.hpp"
 
 namespace spodvr::cuda {
 
@@ -65,7 +67,7 @@ class CudaBackend final : public PropagationBackend {
   void share_fft_work_area();
 
   ScatteringShape shape_;
-  int steps_per_analysis_;  // Fortran: nanspo
+  std::vector<SplitOperatorSubStep> schedule_;  // from steps_per_analysis (Fortran: nanspo)
   DeviceWavePacket psi_;
   DeviceKineticOperator kinetic_;
   DeviceSpecularOperator specular_;
@@ -89,7 +91,7 @@ DevicePotentialOperator make_potential_operator(const BackendInput& in, Potentia
 
 CudaBackend::CudaBackend(const BackendInput& in, PotentialGrid potential, SpecularWave initial)
     : shape_(scattering_shape(in.config, in.basis.size())),
-      steps_per_analysis_(in.config.derived.steps_per_analysis),
+      schedule_(analysis_step_schedule(in.config.derived.steps_per_analysis)),
       psi_(device_layout(shape_), in.config.input.nr, in.grids.z_specular.size()),
       kinetic_(shape_, in.tables, fft_work_limit),
       specular_(in.config.input.nr, in.grids.z_specular.size(), in.grids.nz_potential, in.basis.initial_index(),
@@ -168,11 +170,10 @@ void CudaBackend::kinetic_and_potential_step(TimeStep step, bool kinetic_only) {
   if (!kinetic_only) potential_.apply(psi_);
 }
 
-// T(dt/2) V (T V)^(n-1) T(dt/2), as SplitOperatorPropagator::propagate_analysis_step.
+// T(dt/2) V (T V)^(n-1) T(dt/2): the schedule the CPU backend runs too (analysis_step_schedule).
 void CudaBackend::propagate_analysis_step() {
-  kinetic_and_potential_step(TimeStep::Half, false);
-  for (int step = 1; step < steps_per_analysis_; ++step) kinetic_and_potential_step(TimeStep::Full, false);
-  kinetic_and_potential_step(TimeStep::Half, true);
+  for (const SplitOperatorSubStep& sub_step : schedule_)
+    kinetic_and_potential_step(sub_step.step, sub_step.kinetic_only);
   // The analysis surface and the BK coefficients need the specular wave on the host.
   psi_.specular.download(as_device_complex(std::span<cplx>(host_specular_.values)));
 }

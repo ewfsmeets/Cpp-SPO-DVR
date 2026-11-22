@@ -7,24 +7,17 @@
 
 namespace spodvr {
 
+// T/2 V, (T V) n - 1 times, T/2 (analysis_step_schedule).
 void SplitOperatorPropagator::propagate_analysis_step(WavePacket& psi) const {
-  // First half step of T, then V. Fortran: SpecularChannelOps, KineticOpAlongZrOnScatGrid,
-  // KineticAndPotentialOp (HALF_TIME_STEP)
-  specular_.apply(psi.specular, TimeStep::Half, false);
-  kinetic_.apply_zr(psi.scattering, TimeStep::Half);
-  apply_xy_and_potential(psi, TimeStep::Half, false);
+  for (const SplitOperatorSubStep& sub_step : schedule_)
+    kinetic_and_potential_step(psi, sub_step.step, sub_step.kinetic_only);
+}
 
-  // Merged half steps: full T, then V.
-  for (int step = 1; step < steps_per_analysis_; ++step) {
-    specular_.apply(psi.specular, TimeStep::Full, false);
-    kinetic_.apply_zr(psi.scattering, TimeStep::Full);
-    apply_xy_and_potential(psi, TimeStep::Full, false);
-  }
-
-  // Final half step of T only (Fortran: lastStep = .TRUE.).
-  specular_.apply(psi.specular, TimeStep::Half, true);
-  kinetic_.apply_zr(psi.scattering, TimeStep::Half);
-  apply_xy_and_potential(psi, TimeStep::Half, true);
+// Fortran: SpecularChannelOps, KineticOpAlongZrOnScatGrid, KineticAndPotentialOp
+void SplitOperatorPropagator::kinetic_and_potential_step(WavePacket& psi, TimeStep step, bool kinetic_only) const {
+  specular_.apply(psi.specular, step, kinetic_only);
+  kinetic_.apply_zr(psi.scattering, step);
+  apply_xy_and_potential(psi, step, kinetic_only);
 }
 
 // Fortran: SplitOperator.f90 KineticAndPotentialOp. Processed in groups of consecutive (Z, r)

@@ -23,6 +23,7 @@
 #include "potential/potential_factory.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "propagation/angular_transform.hpp"
+#include "propagation/split_operator_schedule.hpp"
 
 using namespace spodvr;
 using namespace spodvr::cuda;
@@ -111,8 +112,9 @@ int main(int argc, char** argv) {
   std::printf("  %-44s %10.2f ms\n", "sum = one time step", step_ms);
 
   // One analysis step as the program runs it: T/2 V (T V)^(n-1) T/2, i.e. one kinetic stage more
-  // than n time steps. Same order as CudaBackend::propagate_analysis_step (cuda_backend.cpp).
+  // than n time steps (analysis_step_schedule, as both backends).
   const int n_per_analysis = config.derived.steps_per_analysis;
+  const std::vector<SplitOperatorSubStep> schedule = analysis_step_schedule(n_per_analysis);
   auto kinetic_and_potential = [&](TimeStep step, bool kinetic_only) {
     specular.apply(psi, step, kinetic_only);
     kinetic.apply(psi, step);
@@ -120,9 +122,8 @@ int main(int argc, char** argv) {
   };
   const double analysis_ms =
       time_call("one analysis step (" + std::to_string(n_per_analysis) + " time steps)", repetitions, [&] {
-        kinetic_and_potential(TimeStep::Half, false);
-        for (int s = 1; s < n_per_analysis; ++s) kinetic_and_potential(TimeStep::Full, false);
-        kinetic_and_potential(TimeStep::Half, true);
+        for (const SplitOperatorSubStep& sub_step : schedule)
+          kinetic_and_potential(sub_step.step, sub_step.kinetic_only);
       });
   std::printf("  %-44s %10.2f ms\n", "  per time step", analysis_ms / n_per_analysis);
 
