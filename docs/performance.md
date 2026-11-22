@@ -353,7 +353,7 @@ checked bitwise against the plain path):
 | First-touch parallel initialisation | bitwise identical |
 | T_Z + T_r as one 2D (r, Z) FFT on gathered contiguous units (Fortran: 1D FFTs in Z, then r) | ≤ 1e-14 |
 | T_xy as one 2D (x, y) FFT per group of points, gathered with a single batch dimension | ≤ 1e-14 |
-| Angular transform: the (x, y) columns of a point in passes of `AngularTransform::columns_per_pass` (58 KiB of DVR blocks; DZ: 4 of 144 columns), each with one batched φ FFT | bitwise identical to one pass over all columns (2026-11-22: DZ and ER runs, oneMKL, FFTW and no-MKL builds) |
+| Angular transform: the (x, y) columns of a point in passes of `AngularTransform::columns_per_pass` (58 KiB of DVR blocks; DZ: 4 of 144 columns), each with one batched φ FFT | bitwise identical to one pass over all columns (2026-11-22: DZ and ER runs, all output files, oneMKL build; the DZ final ψ also in the FFTW and no-MKL builds; the unit tests compare exactly in all three) |
 | θ sums of the angular transform column by column, five θ rows at a time (each sum keeps its order of terms) | bitwise identical |
 | T_xy on the block itself when a group holds one (Z, r) point and there is no momentum shift (DZ, ER) | bitwise identical |
 | Merged scalar factors (optical × rotation × gas phase) | ≤ 1e-14 |

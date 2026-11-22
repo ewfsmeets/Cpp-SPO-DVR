@@ -58,8 +58,8 @@ packet covers a whole range of collision energies.
 **The method.** Split-operator propagation; FFT grids in Z, r, x and y; a Gauss–Legendre/FFT DVR
 (discrete variable representation) in θ and φ; a long (Z, r) "specular" grid that carries the
 incoming packet in its initial channel; the asymptotic analysis of Balint-Kurti (BK) at a fixed Z
-(the initial rotational and diffraction state, every v, at its own line on the specular grid), during
-the run and as a fine analysis afterwards.
+(the initial rotational and diffraction state, every v, at its own line on the specular grid once that
+line is fixed), during the run and as a fine analysis afterwards.
 
 **The potentials** (input key `SystemID`):
 

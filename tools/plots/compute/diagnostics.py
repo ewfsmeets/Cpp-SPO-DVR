@@ -198,7 +198,8 @@ def norm_left(norm: float) -> Finding:
         "",
         "it includes flux already analysed but not yet absorbed; the norm N not yet analysed (the 'norm by "
         "region' bands below Zana plus the rest norm) bounds only the loss averaged over the packet's spectrum: "
-        "at a single energy the error of P is up to about 2 sqrt(N), and absorber reflection (up to about "
+        "at a single energy the error of P is about 2 sqrt(N) where P ~ 1, larger at the ends of the range, and "
+        "absorber reflection (up to about "
         "2 sqrt(R) P) shows in no norm",
         SECTION_TIME,
     )

@@ -693,8 +693,9 @@ time step, grid spacing or basis that is too coarse without showing at an edge n
 with that parameter changed. How to choose and verify each parameter:
 [inputs/README.md](../inputs/README.md), sections 2–10. The limits in the table are rules of thumb,
 not derived bounds. Nor does a norm bound the error at one energy: that error is first order in the
-amplitude, up to about 2√N for a norm N not yet analysed, and absorber reflection adds up to about
-2√R of P, which no norm shows (inputs/README.md, section 8).
+amplitude, about 2√N for a norm N not yet analysed where P ≈ 1 and larger at the ends of the packet's
+energy range, and absorber reflection adds up to about 2√R of P, which no norm shows
+(inputs/README.md, section 8).
 
 ### Norms and mean positions
 

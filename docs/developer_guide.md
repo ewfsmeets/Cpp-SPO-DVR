@@ -9,7 +9,7 @@ The GPU backend has its own guide: [src/cuda/README.md](../src/cuda/README.md); 
 ## Module map
 
 One line per directory of `src/`, with the Fortran files it replaces. Every `.cpp` file starts with a
-comment naming its responsibility and its Fortran origin.
+comment naming its responsibility and, where there is one, its Fortran origin.
 
 | Directory | What it holds | Fortran |
 |---|---|---|
@@ -24,7 +24,7 @@ comment naming its responsibility and its Fortran origin.
 | `gasphase/` | the Fourier grid Hamiltonian of the vibration and the rovibrational states | `FourierGridHamiltonian.f90`, `GasPhase.f90` |
 | `propagation/` | the operator stages (kinetic, potential, specular, angular transform), their tables, the split-operator schedule, the CPU backend, the time loop, averages, the analysis surface, the initial packet, the memory estimate | `SplitOperator.f90`, `KineticOp.f90`, `Potential.f90`, `Absorption.f90`, `TwoGrids.f90`, `transform.f90`, `WaveFunction.f90`, `Averages.f90` |
 | `cuda/` | the GPU backend (optional) | — |
-| `analysis/` | the analysis basis, Balint-Kurti coefficients, the S matrix, the fine analysis, the norm budget, the energy-resolved sums | `RotDifBasis.f90`, `Analyzor.f90`, `AsympInfo.f90` |
+| `analysis/` | the analysis basis, Balint-Kurti coefficients, the S matrix, the fine analysis, the norm budget (what each absorber removes per analysis window), the energy-resolved sums | `RotDifBasis.f90`, `Analyzor.f90`, `AsympInfo.f90` |
 | `frames/` | the reductions of ψ for `dtFrames` and `FrameExtras` | — |
 | `io/` | native checkpoint and BK files, the Fortran restart files, gfortran unformatted records, series directories | `WaveFunction.f90`, `AsympInfo.f90` |
 | `fft/` | the FFT interface and its FFTW3-API implementation (oneMKL or FFTW), valid FFT sizes | `ffts.f90`, `fftw_2_scs.f90` |
@@ -34,8 +34,9 @@ comment naming its responsibility and its Fortran origin.
 ## The propagation in one page
 
 - `WavePacketPropagation` (`propagation/propagation.cpp`) runs the time loop: per analysis step one
-  call of the backend, then the analysis (BK coefficients, S-matrix sums), the averages, the plot data
-  and the checkpoint. Observers (`PropagationObserver`) receive the analysis steps.
+  call of the backend, then the analysis (BK coefficients, S-matrix sums), the averages (every dtAve)
+  and the plot data. Observers (`PropagationObserver`) receive the analysis steps; `app/run.cpp`
+  writes the checkpoint after the loop.
 - `PropagationBackend` (`propagation/propagation_backend.hpp`) is the seam between the time loop and
   the stages: one virtual call per analysis step. `CpuBackend` holds ψ in host memory; `CudaBackend`
   in GPU memory.
@@ -53,8 +54,8 @@ comment naming its responsibility and its Fortran origin.
 - The stored potential is −V·dt, and only for Z below z_asymptotic (`nz_potential` points).
 - The CPU's angular transform runs over the (x, y) columns of a (Z, r) point in passes of
   `AngularTransform::columns_per_pass` columns (a constant byte limit, so the bits never depend on the
-  machine), and T_xy runs on the block itself when a group holds one point and there is no momentum
-  shift (`ScatteringKineticOperator::transforms_in_place`).
+  machine), and T_xy runs on the block itself when a group holds one point, there is no momentum
+  shift and the block is a multiple of 64 bytes (`ScatteringKineticOperator::transforms_in_place`).
 - Results never depend on the thread count: every point is independent, every reduction has a fixed
   order, and work units have a fixed shape.
 
@@ -104,38 +105,50 @@ Each step names the test or check that notices when it is forgotten.
    conventions stated there (skewed x, y; θ from the surface normal, φ from the first lattice vector),
    `system_parameters()`, `name()`. Copy an existing PES as a template.
 2. Its `SystemID` in `make_potential` and `potential_is_implemented` (`potential/potential_factory.cpp`)
-   — `Cu111Potentials.SystemParametersAndFactory`-style tests; an unknown ID is an input error
-   (`Checks/InputViolation.IsRejected/SystemID`).
-3. Its data files, if any, in `potentials/` (tracked: the root `.gitignore` lets `potentials/` in although it
-   ignores `*.dat` elsewhere).
-4. A Fortran reference case in `tests/reference/` (`tools/fortran_reference/`, a `MANIFEST.tsv`) —
-   gates 1 and 2 (`RegressionPes`), and `ReferenceManifest.FilesMatch` fails on a case without its
-   manifest.
-5. With a point group: the PES self-check (`SymmetryTolerance`) runs at set-up; test it like the
-   existing PESs (`tests/test_potential.cpp`).
-6. Docs: `SystemID` in [input_schema.md](input_schema.md), the row in [port_status.md](port_status.md),
-   the README list — `Docs.Consistency` checks the input keys.
+   — if it is missing there, any input with it fails with "unknown system ID".
+3. Its data files, if any, in `potentials/` (tracked: the root `.gitignore` lets `potentials/` in although
+   it ignores `*.dat` elsewhere).
+4. A Fortran reference case in `tests/reference/` (`tools/fortran_reference/`, with a `MANIFEST.tsv`;
+   for gate 1c also a `pes_cuts.json`) — `ReferenceManifest.FilesMatch` fails on a case without its
+   manifest. Then list the case in the `INSTANTIATE_TEST_SUITE_P` lists of
+   `tests/test_regression_pes.cpp` (`RegressionPes`, and `RegressionPesCut` for the cuts) and in
+   `tools/fortran_reference/regenerate_all.sh`: nothing notices a case missing there, and a missing
+   reference file makes a regression test skip (green) unless the case is in
+   `required_reference_cases`. Name it in [validation.md](validation.md) (`Docs.Consistency` checks the
+   gate cases). A PES without a Fortran counterpart has no gate 1: say what replaces it.
+5. With `UseSymmetry` the PES self-check (`SymmetryTolerance`) runs at set-up; test the symmetry like
+   the existing PESs (`tests/test_potential_symmetry.cpp`).
+6. The wave-packet designer's system parameters per SystemID
+   (`tools/wave_packet_designer/program/potential_systems.py`): nothing notices it missing.
+7. Docs: `SystemID` in [input_schema.md](input_schema.md), the row in [port_status.md](port_status.md),
+   the README table — nothing checks the SystemID list; check it by hand.
 
 ### A new input key
 
-1. Read it in `input/json_input.cpp` (with its Fortran default) and check it where the Fortran does
-   (`while reading` or `input/validate.cpp`) — a violating row with the check's message in the
+1. Add the field, with its Fortran default (`globaldata.f90`), to `InputParameters` (`input/config.hpp`);
+   derived quantities go into `build_config` (`input/process.cpp`).
+2. Read it in `input/json_input.cpp` (optional keys keep existing inputs valid) and check it where the
+   Fortran does (while reading, or in `input/validate.cpp`) — a violating row with the check's message in the
    `Checks/InputViolation` table of `tests/test_input.cpp`; an unknown key is an error, so a key
    that is never read fails every input that uses it.
-2. Document it in [input_schema.md](input_schema.md) — `Docs.Consistency` fails on an undocumented key.
-3. If a restart must not change it: add it to `restart_parameters` (`io/checkpoint.cpp`) —
+3. Document it in [input_schema.md](input_schema.md) — `Docs.Consistency` fails on an undocumented key.
+4. If a restart must not change it: add it to `restart_parameters` (`io/checkpoint.cpp`) —
    `Restart.MismatchingInputIsAnError` shows the pattern.
-4. If the wave-packet designer reads it: its copy in `tools/wave_packet_designer/program/` (the
-   `Shadows:` lines name the C++ files) — the designer's tests (`ctest -R WavePacketDesigner`).
-5. If it switches an addition to the time loop: free when off — `TimeLoopCalls.*` count the backend
+5. Add it to the wave-packet designer's key table (`tools/wave_packet_designer/program/json_input.py`)
+   — `WavePacketDesigner.InputReading` fails otherwise — and port its checks there if the designer
+   uses it (the `Shadows:` lines name the C++ files).
+6. If it switches an addition to the time loop: free when off — `TimeLoopCalls.*` count the backend
    calls (CONTRIBUTING, "Additions to the time loop").
 
 ### A new large array
 
 1. Allocate it as `AlignedVector`, first written in parallel with the schedule of the loops that use
    it.
-2. Add it to the memory estimate (`propagation/memory_estimate.cpp`, and `estimate_gpu_memory` for
-   the GPU) — `MemoryEstimate.MatchesAllocations` compares the estimate with the allocations.
+2. Add it to the memory estimate (`propagation/memory_estimate.cpp`, and `estimate_gpu_memory` in
+   `cuda/cuda_backend.cpp` for the GPU) — `MemoryEstimate.MatchesAllocations` and
+   `CudaBackend.MemoryEstimateMatchesTheAllocations` compare the estimates with the allocations; run
+   the tests of the `build-poison` variant (`SPODVR_POISON_UNINITIALISED`): a read before the first
+   write shows up as NaN.
 3. Follow in the designer's copy (`tools/wave_packet_designer/program/memory_estimate.py`) and
    regenerate `expected_cases.json` — `MemoryEstimate.MatchesTheWavePacketDesignerCases` (and its
    `CudaBackend` twin) fail until it does.
