@@ -57,8 +57,9 @@ packet covers a whole range of collision energies.
 
 **The method.** Split-operator propagation; FFT grids in Z, r, x and y; a Gauss–Legendre/FFT DVR
 (discrete variable representation) in θ and φ; a long (Z, r) "specular" grid that carries the
-incoming packet in its initial channel; the asymptotic analysis of Balint-Kurti (BK) at a fixed Z,
-during the run and as a fine analysis afterwards.
+incoming packet in its initial channel; the asymptotic analysis of Balint-Kurti (BK) at a fixed Z
+(the initial state at its own line on the specular grid), during the run and as a fine analysis
+afterwards.
 
 **The potentials** (input key `SystemID`):
 
@@ -72,7 +73,8 @@ during the run and as a fine analysis afterwards.
 
 **Also:** oblique incidence; surface symmetry (C2v, C3v, C4v, C6v) to compute and store the
 potential only at symmetry-unique points; absorbing potentials at both ends of the Z grids and at
-large r; restarts; analysis-only and potential-only runs; results as TSV and JSON files; a
+large r; restarts; analysis-only and potential-only runs; 2D cuts of the potential (`write2DPES`,
+written to `pes_cut_2d.dat`); results as TSV and JSON files; a
 [wave-packet designer](#designing-an-input-the-wave-packet-designer) for new inputs.
 
 **Not available** (the full list, feature by feature: [docs/port_status.md](docs/port_status.md)):
@@ -80,7 +82,7 @@ large r; restarts; analysis-only and potential-only runs; results as TSV and JSO
 - the flux analysis (`doFluxAnalysis`): a propagating run refuses it
   ([why](docs/flux_analysis_findings.md));
 - 23 of the Fortran code's 28 potentials (their data files are in `potentials/`): input errors;
-- the `.pes` potential cache (the potential is always computed) and the 2D potential cuts (refused);
+- the `.pes` potential cache (the potential is always computed);
 - PES morphing: a `pesmorphparameters.dat` file is ignored without a warning;
 - the single-grid options (`ProjOp` 0 and 1) and MPI.
 
@@ -571,6 +573,9 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
     ([docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md));
   - a restart carries over the whole state of the specular analysis line; the Fortran does not save
     one part of it, `anlyTol` ([restart bug](docs/fortran_deviations.md#fortran-restart-bug));
+  - the phase of the initial state's S-matrix elements refers to the specular analysis line where
+    they are measured; the Fortran refers it to `ZAnalysis`, several radians off (the probabilities
+    are the same) ([analysis D2](docs/fortran_deviations.md#analysis-d2));
   - the surface symmetry is also used for C2v and C4v.
 - **Flux analysis:** not ported. With `ProjOp` 2 the Fortran's flux leaves out the initial channel
   on the specular grid ([findings](docs/flux_analysis_findings.md)).

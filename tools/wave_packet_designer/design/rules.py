@@ -254,7 +254,7 @@ def lowest_converged_energy(c: DesignInput) -> DesignCheck:
     needed = t_end_for(c.p.z0, c.grids.z_analysis, mass, k_min, c.e_n_min, c.z_turn)
     advice = (
         f"slower outgoing flux is counted as reaction; tEnd >= {needed:.0f} a.u. converges E_n >= "
-        f"{c.e_n_min:g} eV; check the norm left at tEnd"
+        f"{c.e_n_min:g} eV; check the norm not yet analysed at tEnd and compare a second tEnd"
     )
     return checked(
         "lowest outgoing normal energy converged by tEnd",

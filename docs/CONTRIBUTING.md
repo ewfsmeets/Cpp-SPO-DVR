@@ -253,7 +253,7 @@ scripts, not by ctest.
 
 | Path | Content |
 |---|---|
-| `src/` | the program: `input/`, `grids/`, `potential/`, `symmetry/`, `gasphase/`, `propagation/`, `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend), `crplib/` (the CRP library port), `fortran_text/` (the Fortran list-directed reader shared by `crplib/` and the SCM code) |
+| `src/` | the program: `input/`, `grids/`, `potential/` (with `scm/`, the SCM correction), `symmetry/`, `gasphase/`, `propagation/`, `frames/` (the reductions of ψ for `dtFrames` and `FrameExtras`), `analysis/`, `io/`, `fft/`, `linalg/`, `core/`, `report/`, `app/`, `cuda/` (optional GPU backend), `crplib/` (the CRP library port), `fortran_text/` (the Fortran list-directed reader shared by `crplib/` and the SCM code) |
 | `tests/` | unit tests (one file per module) and regression tests against Fortran reference output (`tests/reference/`, `tests/crplib/reference/`, `tests/scm/reference/`) |
 | `tools/` | Fortran reference scripts, benchmark and comparison tools, the docs consistency checker, the wave-packet designer (`wave_packet_designer/`, Python), the plots of a run (`plots/`, Python) |
 | `docs/` | the documentation (the [README's table](../README.md#documentation)), including the production-grid validation record (`validation_thesis_fig5_3_dz/`) |

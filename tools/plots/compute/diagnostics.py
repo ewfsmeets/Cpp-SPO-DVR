@@ -129,8 +129,8 @@ def unanalysed_flux(norm_inside: float) -> Finding | None:
         f"{norm_inside:.2e}",
         f"<= {UNANALYSED_LIMIT:g}",
         "the norm still inside the analysis lines at tEnd: an upper bound on the flux not yet analysed, summed "
-        "over all energies; at a single energy the error of P can be much larger (P_scattered still moving is "
-        "the check per energy)",
+        "over all energies; at a single energy the error of P is first order in the amplitude, about "
+        "2 sqrt(norm) (P_scattered still moving is the check per energy)",
         SECTION_TIME,
     )
 
@@ -196,8 +196,9 @@ def norm_left(norm: float) -> Finding:
         "norm left",
         f"{norm:.2e}",
         "",
-        "it includes flux already analysed but not yet absorbed, and bounds only the error of 1 - sum R averaged "
-        "over the packet's spectrum: at a single energy the error can be much larger",
+        "it includes flux already analysed but not yet absorbed; the norm not yet analysed bounds only the loss "
+        "averaged over the packet's spectrum: at a single energy the error of P is about 2 sqrt(N), and "
+        "absorber reflection (about 2 sqrt(R) P) shows in no norm",
         SECTION_TIME,
     )
 

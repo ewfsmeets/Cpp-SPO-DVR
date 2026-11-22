@@ -26,7 +26,7 @@ PANELS = {
     "draw_absorber_response": (
         "Absorbers: each absorber removes waves that reach the end of its grid, but never perfectly: a "
         "fraction R is reflected back into the grid and a fraction T passes through to the grid's end and "
-        "re-enters at the other side. Both end up as errors in the probabilities. Solid: R; dotted: T; per "
+        "re-enters at the other side. Both end up as errors in the probabilities, of about 2 sqrt(R) of P for the reflection, which no norm shows. Solid: R; dotted: T; per "
         "absorber over the energies it must handle (specular: the packet's; scattering: 0.05 eV up to the "
         "available energy; r: up to the r kinetic energy the r grid holds). Lower is better; dashed: the "
         "levels of the README's H2 examples. R rising at low energy: the absorber is too short for slow waves "

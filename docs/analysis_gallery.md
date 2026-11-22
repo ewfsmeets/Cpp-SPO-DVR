@@ -692,7 +692,9 @@ The report opens with a verdict, worst finding first. For this run (condensed):
 time step, grid spacing or basis that is too coarse without showing at an edge needs a second run
 with that parameter changed. How to choose and verify each parameter:
 [inputs/README.md](../inputs/README.md), sections 2–10. The limits in the table are rules of thumb,
-not derived bounds.
+not derived bounds. Nor does any norm show the error at one energy: it is an amplitude, about 2√N
+for a norm N not yet analysed, and absorber reflection adds about 2√R of P (inputs/README.md,
+section 8).
 
 ### Norms and mean positions
 

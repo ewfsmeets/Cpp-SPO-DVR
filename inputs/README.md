@@ -180,7 +180,7 @@ waves, a high one reflects slow ones.
 - **End on the last grid point**: whatever passes the end wraps around to Z = 0.
 - **Scattering absorber**: sees all channels, down to their thresholds: target ~0.2 eV, L ≥ ~4 bohr
   (H₂: R + T ≤ 4e-5 for 0.05–1.0 eV, 8e-5 at 1.5 eV). Below ~0.03 eV it reflects whatever the choice
-  (section 8 for why that limit is set by T anyway).
+  (section 8 for why that limit is set by T anyway; error in P: section 8).
 - **Specular absorber**: sees only the initial channel, reflected elastically at the packet
   energies: target ≈ `EMinWP`, length up to L/λ ≈ 15 (R + T ≤ 4e-9 for 0.2–1.0 eV in the examples).
   Extra specular points cost nothing.
@@ -225,12 +225,25 @@ converged:
 
 with Z_turn the classical turning point (~2 bohr). Diffraction channels open every few meV
 (Cu(111): |G|²/2M ≈ 8 meV for H₂), so slow outgoing waves are always present. DZ example: 16·354 +
-13·1290 ≈ 22 000 < 25 000 a.u. for E_n ≥ 0.03 eV. Check the norm left at `tEnd` (averages table):
-it bounds the error in 1 − Σ R.
+13·1290 ≈ 22 000 < 25 000 a.u. for E_n ≥ 0.03 eV.
+
+Check the norm N not yet across the analysis lines at `tEnd`: for the initial state the rest norm
+of the averages table, for the other channels the norm inside `Zana` (the plot tool's "norm by
+region at the end"). N bounds only the loss averaged over the packet's energies. At one energy the
+error is an amplitude: ΔP ≈ 2√N, larger where the packet carries little weight (the ends of its
+energy range), and it oscillates in energy with a period of about 2π/(`tEnd` − arrival time). On
+the hard wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and 3.6e-3 gave 0.12. Converge
+by comparing two `tEnd`.
 
 - **Energy resolution** ≈ 2π/T (6.8 meV at 25 000 a.u.). A finer `NrOfEs` spacing interpolates.
 - **`dtAna`**: 2π/`dtAna` must exceed the span of total energies (incl. internal energy) in the
   analysis (8.5 eV at 20 a.u.).
+- **Errors no norm shows**: an absorber reflects √R of a channel's outgoing amplitude back across
+  the analysis line, so ΔP/P ≈ 2√R at the channel's outgoing normal energy (hard wall, R = 5e-7:
+  |S| off by 8.7e-4 against √R = 7e-4). For the specular absorber targets of section 7 that is
+  ≈ 1.3e-4; for the scattering absorber's (R ≤ 4e-5) up to ≈ 1e-2 (an estimate, not measured).
+  With `DynamZSpAna`, the incoming tail left beyond the specular line when it is fixed adds an
+  error of order 2√`TolSp` to the initial state's elements.
 
 ## 9. Grid sizes and memory
 
@@ -253,7 +266,7 @@ it bounds the error in 1 − Σ R.
    runs the program's input checks.
 2. Run to t ≈ 500 a.u.: the total norm drops by ≲ 1e-7 (DZ: 1 − 4.7e-8; with dZ 0.15 it was
    1 − 3.3e-6), and no "fixed at" message appears before the packet reaches `Zana`.
-3. At the end: the norm left on the grids (section 8).
+3. At the end: the norm not yet analysed, and a second run with a longer `tEnd` (section 8).
 
 ## 11. CRP data sets (`SystemID` `CRPlibrary`)
 
