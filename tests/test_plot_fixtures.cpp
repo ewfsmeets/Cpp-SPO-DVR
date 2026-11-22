@@ -158,9 +158,9 @@ double time_of_minimum_z(const fs::path& averages) {
 // The files every run with alsoAnalysis writes. (A run that stopped early has only run_info.json, the
 // gas-phase files and part of bk_coefficients.bin: the plot tool's tests make such a copy themselves.)
 void expect_run_files(const fs::path& dir) {
-  for (const char* name : {"run_info.json", "averages.dat", "bk_coefficients.bin", "checkpoint.bin",
-                           "scattering_summary.tsv", "s_matrix.tsv", "gas_phase_states.dat", "asymptotic_potential.dat",
-                           "densities/times.bin", "potential/v_sites.bin"})
+  for (const std::string name : {"run_info.json", "averages.dat", "bk_coefficients.bin", "checkpoint.bin",
+                                 "scattering_summary.tsv", "s_matrix.tsv", "gas_phase_states.dat",
+                                 "asymptotic_potential.dat", "densities/times.bin", "potential/v_sites.bin"})
     EXPECT_TRUE(fs::exists(dir / name)) << dir / name;
   EXPECT_TRUE(fs::exists(dir / "fine_analysis")) << dir;
 }

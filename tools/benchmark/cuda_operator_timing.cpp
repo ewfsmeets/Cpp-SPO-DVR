@@ -5,9 +5,11 @@
 // Usage: spodvr_cuda_operator_timing <input.json> [repetitions]
 #include <cuda_runtime_api.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -51,15 +53,16 @@ int main(int argc, char** argv) {
     return 1;
   }
   const int repetitions = argc > 2 ? std::stoi(argv[2]) : 3;
-  const Config config = build_config(read_input_file(argv[1]));
+  const InputParameters input = read_input_file(argv[1]);
+  const std::unique_ptr<Potential> pes = make_potential(input);  // built once, as in run_program
+  const Config config = build_config(input, *pes);
   const InputParameters& p = config.input;
   initialise_cuda();
   std::printf("%s\n", cuda_device_summary().c_str());
 
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
-  PotentialGrid potential =
-      compute_potential_grid(*make_potential(p), config, grids, angular, make_grid_symmetry(config, angular));
+  PotentialGrid potential = compute_potential_grid(*pes, config, grids, angular, make_grid_symmetry(config, angular));
   const FftwFft fft;
   const RotationalBasis basis(angular, p.j_in, p.mj_in);
   const PropagationTables tables = make_propagation_tables(config, grids, basis, potential.asymptotic);
@@ -115,6 +118,7 @@ int main(int argc, char** argv) {
   // than n time steps (analysis_step_schedule, as both backends).
   const int n_per_analysis = config.derived.steps_per_analysis;
   const std::vector<SplitOperatorSubStep> schedule = analysis_step_schedule(n_per_analysis);
+  // The body of CudaBackend::kinetic_and_potential_step (the tool has no CudaBackend): keep the two alike.
   auto kinetic_and_potential = [&](TimeStep step, bool kinetic_only) {
     specular.apply(psi, step, kinetic_only);
     kinetic.apply(psi, step);
@@ -125,7 +129,7 @@ int main(int argc, char** argv) {
         for (const SplitOperatorSubStep& sub_step : schedule)
           kinetic_and_potential(sub_step.step, sub_step.kinetic_only);
       });
-  std::printf("  %-44s %10.2f ms\n", "  per time step", analysis_ms / n_per_analysis);
+  std::printf("  %-44s %10.2f ms\n", "  per time step", analysis_ms / std::max(n_per_analysis, 1));  // n = 0: 1 step
 
   // The potential stage kernel by kernel, summed over the slabs.
   std::printf("Potential stage, kernel by kernel (summed over the slabs):\n");

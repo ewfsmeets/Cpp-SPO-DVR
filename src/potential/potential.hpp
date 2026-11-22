@@ -40,6 +40,10 @@ class Potential {
   //   unswitched zasymp), called with iz = nz_potential (potential_grid.cpp gas_phase_potential).
   // - It is also called off the grid (the symmetry self-check, write2DPES) and from several OpenMP
   //   threads at once.
+  // - iz and ir are hints for grid-based PESs only: off the grid callers pass 0, 0, and the gas phase
+  //   passes iz = nz_potential, one past the potential's Z grid.
+  // - For a heteronuclear PES: which atom sits at +r/2 along (theta, phi) is the PES's choice (Persson
+  //   and the CRP adapter: the second; Dai-Light: the first; for H2 it does not matter).
   [[nodiscard]] virtual double value(double x, double y, double z, double r, double theta, double phi, int iz,
                                      int ir) const = 0;
 
@@ -49,7 +53,8 @@ class Potential {
   [[nodiscard]] virtual std::string name() const = 0;
 
   // The CRP data set this PES evaluates (CRPlibrary; for CRPDistrtSurface its CRP part), for the
-  // set-up report; empty for every other PES.
+  // set-up report; empty for every other PES. For CRPDistrtSurface this is not the PES the run
+  // evaluates: it has neither the correction nor the rescaled lattice.
   [[nodiscard]] virtual std::optional<std::reference_wrapper<const CrpPotential>> crp_potential() const {
     return std::nullopt;
   }

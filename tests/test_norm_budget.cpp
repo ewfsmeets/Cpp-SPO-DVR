@@ -225,7 +225,7 @@ TEST(NormBudgetFiles, AveragesUnchangedAndOneAndEightThreadsWriteTheSameBytes) {
   run(json, dir.path() / "one", 1);
   run(json, dir.path() / "eight", 8);
   EXPECT_EQ(file_bytes(dir.path() / "plain" / "averages.dat"), file_bytes(dir.path() / "one" / "averages.dat"));
-  for (const char* name :
+  for (const std::string name :
        {"manifest.json", "times.bin", "loss.bin", "loss_error.bin", "norm_start.bin", "norm_end.bin"}) {
     const std::string one = file_bytes(dir.path() / "one" / "norm_budget" / name);
     EXPECT_FALSE(one.empty()) << name;
@@ -244,7 +244,7 @@ TEST(NormBudgetFiles, ProjectedSizeAndMemoryItem) {
   const std::optional<PlotDataSize> size = norm_budget_data_size(s.config);
   ASSERT_TRUE(size.has_value());
   std::uintmax_t written = 0;
-  for (const char* name : {"times.bin", "loss.bin", "loss_error.bin", "norm_start.bin", "norm_end.bin"})
+  for (const std::string name : {"times.bin", "loss.bin", "loss_error.bin", "norm_start.bin", "norm_end.bin"})
     written += fs::file_size(dir.path() / "norm_budget" / name);
   EXPECT_EQ(size->bytes, written);
   EXPECT_EQ(written, std::uintmax_t(small_hardwall_analysis_steps) * (4 + 4 + 1 + 1 + 1) * sizeof(double));

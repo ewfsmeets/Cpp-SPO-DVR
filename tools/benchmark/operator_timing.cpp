@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "fft/fftw_fft.hpp"
@@ -38,12 +39,14 @@ int main(int argc, char** argv) {
     return 1;
   }
   const int repetitions = argc > 2 ? std::stoi(argv[2]) : 3;
-  const Config config = build_config(read_input_file(argv[1]));
+  const InputParameters input = read_input_file(argv[1]);
+  const std::unique_ptr<Potential> pes = make_potential(input);  // built once, as in run_program
+  const Config config = build_config(input, *pes);
   const InputParameters& p = config.input;
 
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
-  PotentialGrid potential = compute_potential_grid(*make_potential(p), config, grids, angular);
+  PotentialGrid potential = compute_potential_grid(*pes, config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
 

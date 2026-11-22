@@ -242,7 +242,7 @@ TEST(FrameExtras, EachExtraSumsToTheFramesProbability) {
   const std::vector<double> specular = doubles(dir.path() / "densities" / "prob_spec_zr.bin");
   const std::size_t nzsp = grids.z_specular.size();
   EXPECT_LE(worst_row_difference(doubles(frames / "prob_kz_spec.bin"), nzsp, specular, nzsp * nr, records), 1e-13);
-  for (const char* name : {"p2_numerator_z.bin", "rot_numerator_z.bin"}) {
+  for (const std::string name : {"p2_numerator_z.bin", "rot_numerator_z.bin"}) {
     const std::vector<double> moments = doubles(frames / name);
     ASSERT_EQ(moments.size(), records * nz) << name;
     for (const double v : moments) EXPECT_LE(std::abs(v), 1e-14) << name;  // J = 0 throughout

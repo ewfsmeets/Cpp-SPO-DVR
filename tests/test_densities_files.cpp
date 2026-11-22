@@ -56,7 +56,7 @@ TEST(DensitiesFiles, OneAndEightThreadsWriteTheSameBytes) {
   TemporaryDirectory dir("densities_threads");
   run_with_densities(dir.path() / "one", 1);
   run_with_densities(dir.path() / "eight", 8);
-  for (const char* name :
+  for (const std::string name :
        {"manifest.json", "times.bin", "prob_scat_zr.bin", "prob_spec_zr.bin", "surface_index.bin", "norm.bin"}) {
     const std::string one = file_bytes(dir.path() / "one" / "densities" / name);
     EXPECT_FALSE(one.empty()) << name;

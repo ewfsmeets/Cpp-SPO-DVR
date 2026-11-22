@@ -8,6 +8,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -75,10 +76,12 @@ void dump_final_wave_packet(const Arguments& arguments) {
   const std::string device_summary = prepare_device(arguments.device);
   if (!device_summary.empty()) std::cout << device_summary << '\n';
 
-  const Config config = build_config(read_input_file(arguments.input));
+  const InputParameters input = read_input_file(arguments.input);
+  const std::unique_ptr<Potential> pes = make_potential(input);  // built once, as in run_program
+  const Config config = build_config(input, *pes);
   const SpatialGrids grids = make_spatial_grids(config);
   const AngularGrid angular = make_angular_grid(config);
-  PotentialGrid potential = compute_potential_grid(*make_potential(config.input), config, grids, angular);
+  PotentialGrid potential = compute_potential_grid(*pes, config, grids, angular);
   const FftwFft fft;
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
 

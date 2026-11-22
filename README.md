@@ -269,7 +269,7 @@ architectures.
 | `-DSPODVR_ARCH=native` | `x86-64-v3` | `-march` value (`x86-64-v3` = AVX2; `x86-64-v4` = AVX-512) |
 | `-DSPODVR_PGO=GENERATE/USE` | `OFF` | profile-guided optimisation: two builds and a training run ([performance](docs/performance.md#profile-guided-optimisation-1116--less-time-on-the-medium-grid-2026-10-26)) |
 | `-DSPODVR_FAST_MATH=ON` | `OFF` | experimental: `-ffast-math` with NaN and inf kept (with CUDA also FMA in the GPU kernels); changes results at the 1e-12 to 1e-11 level ([details and known test failures](docs/performance.md#the-fast-math-build-spodvr_fast_math)) |
-| `-DSPODVR_LTO=OFF` | `ON` | no link-time optimisation in Release builds (quicker links, sanitizer builds); the results stay the same |
+| `-DSPODVR_LTO=OFF` | `ON` | no link-time optimisation in Release builds (quicker links, sanitizer builds); bitwise identical output on the hard-wall test case (2026-11-22) |
 | `-DSPODVR_USE_CUDA=ON` | `OFF` | build the GPU backend (`--device cuda`; [docs/cuda.md](docs/cuda.md)) |
 | `-DSPODVR_BUILD_TESTS=OFF` | `ON` | skip the tests |
 

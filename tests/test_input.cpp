@@ -1110,13 +1110,17 @@ TEST(Input, ReaderErrors) {
 
 // run_program builds the PES once and passes it to build_config; the one-argument form builds it itself.
 // Both give the same system parameters; derived.scm is set only for the SCM PES.
-TEST(Input, BuildConfigWithThePotentialBuiltOnce) {
+TEST(Input, BuildConfigWithAGivenPotentialEqualsTheOneArgumentForm) {
   for (const Json& json : {reference_json(), scm_json()}) {
     const InputParameters input = parse_input(json);
     const Config one = build_config(input);
     const Config two = build_config(input, *make_potential(input));
     EXPECT_EQ(two.derived.system.point_group, one.derived.system.point_group);
     EXPECT_EQ(two.derived.system.lattice_constant_x, one.derived.system.lattice_constant_x);
+    EXPECT_EQ(two.derived.system.lattice_constant_y, one.derived.system.lattice_constant_y);
+    EXPECT_EQ(two.derived.system.z_asymptotic, one.derived.system.z_asymptotic);
+    EXPECT_EQ(two.derived.system.skewing_angle, one.derived.system.skewing_angle);
+    EXPECT_EQ(two.derived.z_asymptotic_unswitched, one.derived.z_asymptotic_unswitched);
     EXPECT_EQ(two.derived.z_asymptotic, one.derived.z_asymptotic);
     ASSERT_EQ(two.derived.scm.has_value(), one.derived.scm.has_value());
     if (two.derived.scm) {
@@ -1229,7 +1233,7 @@ TEST(Input, AbsorberOutsideTheStrengthTableIsRecorded) {
   json["ZOptEnergy"] = 0.3;
   json["ROptEnergy"] = 0.0;  // absorber D1: no strength computed, so nothing to warn about
   json["ZSpOptEnergy"] = 0.3;
-  for (const char* key :
+  for (const std::string key :
        {"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy", "ZSpOptLowStart", "ZSpOptLowEnd", "ZSpOptLowEnergy"})
     json.erase(key);
   EXPECT_TRUE(build(json).derived.absorber_table_warnings.empty());

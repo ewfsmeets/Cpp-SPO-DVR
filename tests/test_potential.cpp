@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -188,7 +189,7 @@ double relative(double a, double b) { return std::abs(a - b) / std::max({std::ab
 }  // namespace
 
 // Only the CRP and SCM PESs have the parts the set-up report and the restart files ask for.
-TEST(Cu111Potentials, NoCrpOrScmParts) {
+TEST(Potentials, OnlyCrpAndScmHaveTheirParts) {
   for (const std::string id : {"HardWallPES", "H2Cu111DaiLight", "H2Cu111Persson"}) {
     const auto pes = make_potential(input_with_id(id));
     EXPECT_FALSE(pes->crp_potential()) << id;
@@ -222,10 +223,10 @@ TEST(Cu111Potentials, SystemParametersAndFactory) {
 TEST(Cu111Potentials, HomonuclearExchange) {
   const DaiLightCu111Potential dai;
   const PerssonCu111Potential persson;
-  for (const Potential* v : {static_cast<const Potential*>(&dai), static_cast<const Potential*>(&persson)})
+  for (const std::reference_wrapper<const Potential> v : {std::cref<Potential>(dai), std::cref<Potential>(persson)})
     for (const Configuration& q : sample_configurations()) {
       const Configuration swapped{q.x, q.y, q.z, q.r, pi - q.theta, q.phi + pi};
-      EXPECT_LE(relative(value_at(*v, q), value_at(*v, swapped)), 1e-12) << v->name();
+      EXPECT_LE(relative(value_at(v.get(), q), value_at(v.get(), swapped)), 1e-12) << v.get().name();
     }
 }
 
@@ -235,15 +236,15 @@ TEST(Cu111Potentials, HomonuclearExchange) {
 TEST(Cu111Potentials, C6vSymmetryAboutTheTopSite) {
   const DaiLightCu111Potential dai;
   const PerssonCu111Potential persson;
-  for (const Potential* v : {static_cast<const Potential*>(&dai), static_cast<const Potential*>(&persson)})
+  for (const std::reference_wrapper<const Potential> v : {std::cref<Potential>(dai), std::cref<Potential>(persson)})
     for (const Configuration& q : sample_configurations()) {
-      const double v0 = value_at(*v, q);
+      const double v0 = value_at(v.get(), q);
       const Configuration rotated{-q.y, q.x + q.y, q.z, q.r, q.theta, q.phi + pi / 3.0};
       const Configuration mirror_x{-q.x - q.y, q.y, q.z, q.r, q.theta, pi - q.phi};
       const Configuration mirror_y{q.x + q.y, -q.y, q.z, q.r, q.theta, -q.phi};
-      EXPECT_LE(relative(v0, value_at(*v, rotated)), 1e-12) << v->name();
-      EXPECT_LE(relative(v0, value_at(*v, mirror_x)), 1e-12) << v->name();
-      EXPECT_LE(relative(v0, value_at(*v, mirror_y)), 1e-12) << v->name();
+      EXPECT_LE(relative(v0, value_at(v.get(), rotated)), 1e-12) << v.get().name();
+      EXPECT_LE(relative(v0, value_at(v.get(), mirror_x)), 1e-12) << v.get().name();
+      EXPECT_LE(relative(v0, value_at(v.get(), mirror_y)), 1e-12) << v.get().name();
     }
 }
 

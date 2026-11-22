@@ -16,12 +16,13 @@ std::string wrap(bool color, std::string_view code, std::string_view text) {
   return std::string("\033[") + std::string(code) + "m" + std::string(text) + "\033[0m";
 }
 
-// printf's %.*e and %.*f with `decimals` digits after the point.
+// printf's %.*e with `decimals` digits after the point.
 std::string exponent_form(int decimals, double x) {
   char buffer[64];
   std::snprintf(buffer, sizeof buffer, "%.*e", decimals, x);
   return buffer;
 }
+// printf's %.*f with `decimals` digits after the point.
 std::string fixed_point_form(int decimals, double x) {
   char buffer[64];
   std::snprintf(buffer, sizeof buffer, "%.*f", decimals, x);

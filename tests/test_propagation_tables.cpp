@@ -69,9 +69,10 @@ TEST(PropagationTables, SizesOfTheReferenceCase) {
 
 TEST(PropagationTables, KineticFactorsAreUnitaryAndHalfStepsSquareToFullSteps) {
   const TablesSetup s(reference_json());
-  for (const StepFactors* f :
-       {&s.tables.z_kinetic, &s.tables.r_kinetic, &s.tables.xy_kinetic, &s.tables.specular_kinetic, &s.tables.rotation})
-    expect_consistent_steps(*f);
+  for (const std::reference_wrapper<const StepFactors> f :
+       {std::cref(s.tables.z_kinetic), std::cref(s.tables.r_kinetic), std::cref(s.tables.xy_kinetic),
+        std::cref(s.tables.specular_kinetic), std::cref(s.tables.rotation)})
+    expect_consistent_steps(f.get());
 }
 
 TEST(PropagationTables, KineticFactorsUseTheGridEnergies) {

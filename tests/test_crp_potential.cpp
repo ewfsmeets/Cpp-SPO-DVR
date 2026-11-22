@@ -245,8 +245,6 @@ TEST(CrpPotential, Summary) {
   EXPECT_EQ(CrpPotential(angstrom).summary().file_units, "angstrom, eV");
 }
 
-// The C6v gate case: r = 0.8 + 0.25 k has 10 points in [Rmin, Rmax] = [0.6, 3.2] (22 clamped);
-// Z = -2 + 0.125 k below Zmin = 0.5 (+1e-12) for k <= 20 (21 clamped of the 80 6D points).
 // report_potential prints the data set of a plain CRP PES, and nothing of the SCM.
 TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
@@ -258,6 +256,8 @@ TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
   EXPECT_EQ(out.str().find("SCM"), std::string::npos) << out.str();
 }
 
+// The C6v gate case: r = 0.8 + 0.25 k has 10 points in [Rmin, Rmax] = [0.6, 3.2] (22 clamped);
+// Z = -2 + 0.125 k below Zmin = 0.5 (+1e-12) for k <= 20 (21 clamped of the 80 6D points).
 TEST(CrpPotential, RangeReportAndSetupReport) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
   const CrpPotential pes(s.config.input.crp_dataset);
