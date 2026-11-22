@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: >-
   If you use this software, please cite it as below, together with the original
-  Fortran SPO-DVR code it was ported from (M. F. Somers' thesis and the Kroes–Somers paper
-  under references).
+  Fortran SPO-DVR code it was ported from (E. Pijper's and M. F. Somers' theses and the
+  Kroes–Somers paper under references).
 type: software
 title: "Cpp-SPO-DVR"
 abstract: >-
@@ -69,6 +69,18 @@ references:
     year: 2002
     month: 3
     doi: 10.1063/1.1446852
+  - type: thesis
+    authors:
+      - family-names: Pijper
+        given-names: Ernesto
+    title: "Quantum dynamics of diffraction and reaction: scattering of H₂ from LiF(001) and Pt(111)"
+    thesis-type: PhD thesis
+    institution:
+      name: Leiden University
+      city: Leiden
+      country: NL
+    year: 2002
+    url: "https://search.worldcat.org/title/66180975"
   - type: thesis
     authors:
       - family-names: Smeets

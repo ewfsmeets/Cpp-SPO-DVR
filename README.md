@@ -616,6 +616,9 @@ surface you used:
 - **This program:** GitHub's "Cite this repository" button (from [CITATION.cff](CITATION.cff)),
   with the version and commit (`spodvr --version`, also in `run_info.json`).
 - **The original Fortran code:**
+  - E. Pijper, *Quantum dynamics of diffraction and reaction: scattering of H₂ from LiF(001) and
+    Pt(111)*, PhD thesis, Leiden University (2002),
+    [WorldCat 66180975](https://search.worldcat.org/title/66180975);
   - M. F. Somers, *Six-Dimensional Quantum Dynamics of Dissociative Chemisorption of Hydrogen on
     Metal Surfaces*, PhD thesis, Leiden University (2004),
     [hdl.handle.net/1887/3250648](https://hdl.handle.net/1887/3250648);
