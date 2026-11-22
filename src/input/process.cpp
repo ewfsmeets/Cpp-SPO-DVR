@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "core/constants.hpp"
-#include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "input/validate.hpp"
 #include "input/validate_outputs.hpp"
@@ -149,16 +148,16 @@ void miscellaneous_setup(const InputParameters& p, DerivedParameters& d) {
 
 }  // namespace
 
-Config build_config(const InputParameters& input) {
+Config build_config(const InputParameters& input) { return build_config(input, *make_potential(input)); }
+
+Config build_config(const InputParameters& input, const Potential& potential) {
   Config config{input, {}};
   DerivedParameters& d = config.derived;
 
   // Fortran: InputNew.f90 SetupInput
-  const std::unique_ptr<Potential> potential = make_potential(input);
-  d.system = potential->system_parameters();
+  d.system = potential.system_parameters();
   // What identifies an SCM run in its restart files and analysis.json.
-  if (fortran_compare::seq(potential->name(), "CRPDistrtSurface"))
-    d.scm = dynamic_cast<const ScmCrpPotential&>(*potential).identity();
+  if (const auto scm = potential.scm_potential()) d.scm = scm->get().identity();
   d.z_asymptotic_unswitched = d.system.z_asymptotic;
   d.z_asymptotic = input.use_switching ? input.z_max_switch : d.system.z_asymptotic;
 

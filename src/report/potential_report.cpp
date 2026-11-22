@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "potential/crp_potential.hpp"
 #include "potential/scm/scm_crp_potential.hpp"
@@ -166,11 +165,11 @@ void print_scm_potential(std::ostream& out, const Style& style, const ScmInput& 
 
 void report_potential(std::ostream& out, const Style& style, const Potential& potential, const Config& config,
                       const SpatialGrids& grids, const AngularGrid& angular) {
-  if (fortran_compare::seq(potential.name(), "CRPlibrary"))
-    report_crp_data_set(out, style, dynamic_cast<const CrpPotential&>(potential), config, grids);
-  if (!fortran_compare::seq(potential.name(), "CRPDistrtSurface")) return;
-  const auto& scm = dynamic_cast<const ScmCrpPotential&>(potential);
-  report_crp_data_set(out, style, scm.crp(), config, grids);
+  // The CRP data set (CRPlibrary, or the CRP part of CRPDistrtSurface), then the SCM correction.
+  if (const auto crp = potential.crp_potential()) report_crp_data_set(out, style, crp->get(), config, grids);
+  const auto scm_potential = potential.scm_potential();
+  if (!scm_potential) return;
+  const ScmCrpPotential& scm = scm_potential->get();
   const ScmDiagnostics diagnostics = diagnose_scm_potential(scm, config, grids, angular);
   print_scm_potential(out, style, config.input.scm, scm.slab(), diagnostics);
   require_unchanged_asymptotic_potential(diagnostics.asymptotic, scm.slab(), diagnostics.slab);

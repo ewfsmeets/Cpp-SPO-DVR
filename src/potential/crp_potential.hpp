@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -73,6 +74,9 @@ class CrpPotential final : public Potential {
   // Fortran: Get_CRP_QD_Wrapper_Params
   [[nodiscard]] const SystemParameters& system_parameters() const override { return parameters_; }
   [[nodiscard]] std::string name() const override { return "CRPlibrary"; }
+  [[nodiscard]] std::optional<std::reference_wrapper<const CrpPotential>> crp_potential() const override {
+    return *this;
+  }
 
   [[nodiscard]] const CrpDataSetSummary& summary() const { return summary_; }
   // The clamped grid points and the (Z, r) points without data (z: the Z points where the 6D

@@ -452,7 +452,10 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
         << (numa_nodes > 1 ? "s" : "") << ")\n";
     out << "  " << numerical_libraries_summary() << '\n';
 
-    const Config config = build_config(read_input_file(command_line.input_file));
+    // The PES is built once, before the input checks that need its system parameters.
+    const InputParameters input = read_input_file(command_line.input_file);
+    const std::unique_ptr<Potential> potential = make_potential(input);
+    const Config config = build_config(input, *potential);
     check_restart_directory(config, command_line.output_dir);
     // Checked before the (possibly long) set-up: the GPU must be available in this build.
     const Device device = parse_device(command_line.device);
@@ -462,7 +465,6 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
     if (device == Device::Cuda && propagates) out << "  " << prepare_device(device) << '\n';
     print_input_summary(out, style, config);
 
-    const auto potential = make_potential(config.input);
     const AngularGrid angular = make_angular_grid(config);
     const SpatialGrids grids = make_spatial_grids(config);
     // The flux analysis is not ported: a propagating run refuses it once its input checks have

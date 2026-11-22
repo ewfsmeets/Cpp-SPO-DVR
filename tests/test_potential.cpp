@@ -187,6 +187,15 @@ double relative(double a, double b) { return std::abs(a - b) / std::max({std::ab
 
 }  // namespace
 
+// Only the CRP and SCM PESs have the parts the set-up report and the restart files ask for.
+TEST(Cu111Potentials, NoCrpOrScmParts) {
+  for (const std::string id : {"HardWallPES", "H2Cu111DaiLight", "H2Cu111Persson"}) {
+    const auto pes = make_potential(input_with_id(id));
+    EXPECT_FALSE(pes->crp_potential()) << id;
+    EXPECT_FALSE(pes->scm_potential()) << id;
+  }
+}
+
 TEST(Cu111Potentials, SystemParametersAndFactory) {
   const auto dai = make_potential(input_with_id(" h2cu111dailight "));
   EXPECT_EQ(dai->name(), "H2Cu111DaiLight");

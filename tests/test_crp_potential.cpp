@@ -34,6 +34,7 @@
 #include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
 #include "report/crp_report.hpp"
+#include "report/potential_report.hpp"
 #include "symmetry/grid_symmetry.hpp"
 #include "temporary_directory.hpp"
 
@@ -140,6 +141,10 @@ TEST_P(CrpPotentialTest, FactoryAndSystemParameters) {
   // CRP_Constants_PI / 3.0 or / 2.0: the same double as the program's pi
   EXPECT_EQ(p.skewing_angle, symmetry == Symmetry::c4v ? Constants::pi / 2.0 : Constants::pi / 3.0);
   EXPECT_EQ(p.point_group, crplib::symmetry_name(symmetry));
+  // The set-up report finds the data set through crp_potential(): the PES itself; it has no SCM part.
+  ASSERT_TRUE(pes->crp_potential());
+  EXPECT_EQ(&pes->crp_potential()->get(), pes.get());
+  EXPECT_FALSE(pes->scm_potential());
 }
 
 // V is the library's QD wrapper value, bitwise (the adapter adds nothing).
@@ -242,6 +247,17 @@ TEST(CrpPotential, Summary) {
 
 // The C6v gate case: r = 0.8 + 0.25 k has 10 points in [Rmin, Rmax] = [0.6, 3.2] (22 clamped);
 // Z = -2 + 0.125 k below Zmin = 0.5 (+1e-12) for k <= 20 (21 clamped of the 80 6D points).
+// report_potential prints the data set of a plain CRP PES, and nothing of the SCM.
+TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
+  const RunSetup s(gate_case_json(Symmetry::c6v));
+  const CrpPotential pes(s.config.input.crp_dataset);
+  EXPECT_FALSE(s.config.derived.scm);
+  std::ostringstream out;
+  report_potential(out, Style{}, pes, s.config, s.grids, s.angular);
+  EXPECT_NE(out.str().find("CRP DATA SET"), std::string::npos) << out.str();
+  EXPECT_EQ(out.str().find("SCM"), std::string::npos) << out.str();
+}
+
 TEST(CrpPotential, RangeReportAndSetupReport) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
   const CrpPotential pes(s.config.input.crp_dataset);

@@ -196,6 +196,12 @@ TEST(ScmCrpPotential, ScmD1FactoryIsCaseInsensitive) {
   const std::unique_ptr<Potential> potential = make_potential(p);
   EXPECT_EQ(potential->name(), "CRPDistrtSurface");
   EXPECT_NO_THROW((void)dynamic_cast<const ScmCrpPotential&>(*potential));
+  // The set-up report and the restart files reach the SCM PES and its CRP part through the accessors.
+  const auto scm = potential->scm_potential();
+  ASSERT_TRUE(scm);
+  EXPECT_EQ(&scm->get(), potential.get());
+  ASSERT_TRUE(potential->crp_potential());
+  EXPECT_EQ(&potential->crp_potential()->get(), &scm->get().crp());
 }
 
 // With rescaling both lattice constants are the slab's a_T and s = a_T/a₀; without, the system

@@ -20,6 +20,7 @@
 #include "input/process.hpp"
 #include "input/validate_outputs.hpp"
 #include "input/wave_packet_params.hpp"
+#include "potential/potential_factory.hpp"
 #include "temporary_directory.hpp"
 
 using namespace spodvr;
@@ -1105,6 +1106,25 @@ TEST(Input, ReaderErrors) {
   Json json = reference_json();
   json["nZ"] = 10000000000LL;
   expect_input_error(json, "nZ", "integer out of range");
+}
+
+// run_program builds the PES once and passes it to build_config; the one-argument form builds it itself.
+// Both give the same system parameters; derived.scm is set only for the SCM PES.
+TEST(Input, BuildConfigWithThePotentialBuiltOnce) {
+  for (const Json& json : {reference_json(), scm_json()}) {
+    const InputParameters input = parse_input(json);
+    const Config one = build_config(input);
+    const Config two = build_config(input, *make_potential(input));
+    EXPECT_EQ(two.derived.system.point_group, one.derived.system.point_group);
+    EXPECT_EQ(two.derived.system.lattice_constant_x, one.derived.system.lattice_constant_x);
+    EXPECT_EQ(two.derived.z_asymptotic, one.derived.z_asymptotic);
+    ASSERT_EQ(two.derived.scm.has_value(), one.derived.scm.has_value());
+    if (two.derived.scm) {
+      EXPECT_EQ(two.derived.scm->slab_tag, one.derived.scm->slab_tag);
+    }
+  }
+  EXPECT_FALSE(build(reference_json()).derived.scm);
+  EXPECT_TRUE(build(scm_json()).derived.scm);
 }
 
 TEST(Input, DerivedQuantities) {

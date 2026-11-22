@@ -4,6 +4,7 @@
 // (GetCRPDistSurfParams, GetCRPDistSurfPotential), H2SurfaceSystem.f90 (CRPDistrtSurface branch)
 
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -33,6 +34,13 @@ class ScmCrpPotential final : public Potential {
   // The CRP's, with both lattice constants a_T when rescaling. Fortran: GetCRPDistSurfParams
   [[nodiscard]] const SystemParameters& system_parameters() const override { return parameters_; }
   [[nodiscard]] std::string name() const override { return "CRPDistrtSurface"; }
+  // Its CRP part (the data set the correction is added to), and itself.
+  [[nodiscard]] std::optional<std::reference_wrapper<const CrpPotential>> crp_potential() const override {
+    return crp_;
+  }
+  [[nodiscard]] std::optional<std::reference_wrapper<const ScmCrpPotential>> scm_potential() const override {
+    return *this;
+  }
 
   // The CRP potential of the data set (its own, unrescaled system parameters and summary).
   [[nodiscard]] const CrpPotential& crp() const { return crp_; }
