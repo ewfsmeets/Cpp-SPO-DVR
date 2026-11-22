@@ -1,10 +1,13 @@
 // Tests: associated Legendre functions, rotational basis and the FBR <-> DVR angular transform.
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
+#include <span>
 #include <vector>
 
+#include "core/aligned_vector.hpp"
 #include "core/constants.hpp"
 #include "core/fortran_math.hpp"
 #include "fft/fftw_fft.hpp"
@@ -239,4 +242,115 @@ TEST(AngularTransform, AnisotropicPhaseLosesTheNormOutsideTheBasis) {
     else
       EXPECT_GT(outside, 1e-3 * norm);
   }
+}
+
+namespace {
+
+// The same bits: in passes of fewer columns the phi FFT runs with a smaller batch count, which oneMKL and
+// FFTW both compute bitwise the same (checked in the oneMKL, FFTW and no-MKL builds, 2026-11-22).
+void expect_same_transform(std::span<const cplx> a, std::span<const cplx> b) {
+  ASSERT_EQ(a.size(), b.size());
+  EXPECT_TRUE(std::equal(a.begin(), a.end(), b.begin()));
+}
+
+}  // namespace
+
+// The CPU transforms the (x, y) columns of a point in passes (AngularTransform::columns_per_pass).
+// Passes of 1 or 3 columns give the bits of one pass over all 6: every theta sum keeps its order of
+// terms (5 rows at a time with a remainder for 3 and 7 theta points, three full blocks for 15); only
+// the batch count of the phi FFT changes.
+TEST(AngularTransform, ColumnPassesGiveTheBitsOfOnePass) {
+  const FftwFft fft;
+  constexpr int n_columns = 6;
+  for (const int j_max : {4, 12, 28}) {  // 3, 7 and 15 theta points
+    SCOPED_TRACE(j_max);
+    const AngularGrid grid(j_max, j_max, true, 0, 0);
+    const RotationalBasis basis(grid, 0, 0);
+    const AngularTransform one_pass(grid, basis, fft, n_columns);
+    const std::size_t n_rot = basis.size();
+    const std::size_t block = one_pass.dvr_block_size();
+    // 64-byte aligned like the program's work arrays: the FFT library picks its algorithm by address.
+    ComplexVector fbr(n_rot * n_columns, cplx(0.0, 0.0));
+    for (std::size_t i = 0; i < fbr.size(); ++i)
+      fbr[i] = cplx(std::cos(0.7 * double(i)), std::sin(1.3 * double(i) + 0.2));
+    ComplexVector dvr_one(block * n_columns, cplx(0.0, 0.0));
+    one_pass.fbr_to_dvr(fbr, dvr_one);
+    ComplexVector work = dvr_one;
+    ComplexVector back_one(fbr.size(), cplx(0.0, 0.0));
+    one_pass.dvr_to_fbr(work, back_one);
+
+    for (const int pass : {1, 3}) {
+      SCOPED_TRACE(pass);
+      const AngularTransform passes(grid, basis, fft, pass);
+      ComplexVector dvr(dvr_one.size(), cplx(0.0, 0.0));
+      ComplexVector back(fbr.size(), cplx(0.0, 0.0));
+      for (int c0 = 0; c0 < n_columns; c0 += pass) {
+        const std::span<cplx> d = std::span<cplx>(dvr).subspan(block * c0, block * pass);
+        passes.fbr_to_dvr(std::span<const cplx>(fbr).subspan(n_rot * c0, n_rot * pass), d);
+        ComplexVector w(d.begin(), d.end());
+        passes.dvr_to_fbr(w, std::span<cplx>(back).subspan(n_rot * c0, n_rot * pass));
+      }
+      expect_same_transform(dvr, dvr_one);
+      expect_same_transform(back, back_one);
+    }
+  }
+}
+
+// FBR -> DVR against the earlier code: the row-by-row loop over all columns (one theta row of one column
+// at a time), the empty phi slots set to zero, then the same phi FFT. The five-row sums give the same
+// bits: 3 theta points (the remainder loop only), 7 (one block of five plus a remainder), 15 (blocks only).
+TEST(AngularTransform, FiveRowSumsEqualTheRowByRowLoop) {
+  const FftwFft fft;
+  constexpr int n_columns = 4;
+  for (const int j_max : {4, 12, 28}) {
+    SCOPED_TRACE(j_max);
+    const AngularGrid grid(j_max, j_max, true, 0, 0);
+    const RotationalBasis basis(grid, 0, 0);
+    const AngularTransform transform(grid, basis, fft, n_columns);
+    const int n_theta = transform.n_theta();
+    const int n_phi = transform.n_phi();
+    const int ld = transform.leading_dimension();
+    const std::size_t n_rot = basis.size();
+    const std::size_t block = transform.dvr_block_size();
+    ComplexVector fbr(n_rot * n_columns, cplx(0.0, 0.0));
+    for (std::size_t i = 0; i < fbr.size(); ++i)
+      fbr[i] = cplx(std::cos(0.7 * double(i)), std::sin(1.3 * double(i) + 0.2));
+
+    ComplexVector expected(block * n_columns, cplx(0.0, 0.0));
+    int index = 0;
+    for (const AngularTransform::MjBlock& mj_block : transform.mj_blocks()) {
+      const int n_j = mj_block.fbr.size();
+      for (int t = 0; t < n_theta; ++t) {
+        for (int c = 0; c < n_columns; ++c) {
+          cplx sum(0.0, 0.0);
+          for (int j = 0; j < n_j; ++j)
+            sum = sum + transform.matrix()[index + j] * fbr[mj_block.fbr.first + j + n_rot * c];
+          expected[mj_block.phi_slot + ld * t + block * c] = sum;
+        }
+        index += n_j;
+      }
+    }
+    for (int c = 0; c < n_columns; ++c)
+      for (int t = 0; t < n_theta; ++t)
+        for (int k = transform.mj_max() + 1; k <= n_phi - transform.mj_max() - 1; ++k)
+          expected[k + ld * t + block * c] = 0.0;
+    fft.plan_complex(FftLayout{n_phi, n_theta * n_columns, 1, n_phi + 1}, FftSign::Plus, 1.0)->execute(expected);
+
+    ComplexVector dvr(block * n_columns, cplx(0.0, 0.0));
+    transform.fbr_to_dvr(fbr, dvr);
+    EXPECT_TRUE(std::equal(dvr.begin(), dvr.end(), expected.begin()));
+  }
+}
+
+// The largest divisor of n_xy whose DVR blocks fit AngularTransform::cpu_pass_bytes (58 KiB), at least 1.
+TEST(AngularTransform, ColumnsPerPass) {
+  EXPECT_EQ(AngularTransform::columns_per_pass(144, 15, 60), 4);   // DZ: 915 values = 14 640 B per block
+  EXPECT_EQ(AngularTransform::columns_per_pass(256, 15, 60), 4);   // ER, 16 x 16
+  EXPECT_EQ(AngularTransform::columns_per_pass(4096, 15, 60), 4);  // 64 x 64
+  EXPECT_EQ(AngularTransform::columns_per_pass(64, 3, 12), 64);    // Dai-Light 8 x 8: 39 values, all columns
+  EXPECT_EQ(AngularTransform::columns_per_pass(16, 3, 8), 16);     // hard wall 4 x 4
+  EXPECT_EQ(AngularTransform::columns_per_pass(1, 15, 60), 1);
+  EXPECT_EQ(AngularTransform::columns_per_pass(16, 100, 100), 1);  // one block alone exceeds the limit
+  EXPECT_EQ(AngularTransform::columns_per_pass(7, 3, 8), 7);       // prime n_xy, small blocks
+  EXPECT_EQ(AngularTransform::columns_per_pass(7, 15, 60), 1);     // prime n_xy, large blocks
 }

@@ -3,6 +3,7 @@
 #include "propagation/angular_transform.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <stdexcept>
@@ -42,22 +43,43 @@ AngularTransform::AngularTransform(const AngularGrid& grid, const RotationalBasi
   to_fbr_fft_ = fft.plan_complex(layout, FftSign::Minus, 1.0);
 }
 
+int AngularTransform::columns_per_pass(int n_xy, int n_theta, int n_phi) {
+  const std::size_t block_bytes = sizeof(std::complex<double>) * dvr_block_size(n_theta, n_phi);
+  for (int n = n_xy; n > 1; --n)
+    if (n_xy % n == 0 && n * block_bytes <= cpu_pass_bytes) return n;
+  return 1;
+}
+
 // Fortran: transform.f90 FBRToDVRGenComplexTransform
 void AngularTransform::fbr_to_dvr(std::span<const std::complex<double>> fbr,
                                   std::span<std::complex<double>> dvr) const {
   const int ld = leading_dimension();
   const int block_size = dvr_block_size();
+  // Per column, 5 theta rows at a time: five independent sums, each with its terms in the same order
+  // (J ascending) as one row at a time, so the additions are not one serial chain; the results are
+  // bitwise those of the row-by-row loop.
+  constexpr int rows = 5;
   int index = 0;  // start of the (theta, J) matrix of the current mJ block
   for (const MjBlock& block : blocks_) {
     const int n_j = block.fbr.size();
-    for (int t = 0; t < n_theta_; ++t) {
-      for (int c = 0; c < n_columns_; ++c) {
+    for (int c = 0; c < n_columns_; ++c) {
+      const std::size_t f0 = block.fbr.first + std::size_t(n_rot_) * c;
+      int t = 0;
+      for (; t + rows <= n_theta_; t += rows) {
+        std::array<std::complex<double>, rows> s{};  // (+0, +0), as the single sum below
+        for (int j = 0; j < n_j; ++j) {
+          const std::complex<double> f = fbr[f0 + j];
+          for (int k = 0; k < rows; ++k) s[k] = s[k] + matrix_[index + (t + k) * n_j + j] * f;
+        }
+        for (int k = 0; k < rows; ++k) dvr[block.phi_slot + ld * (t + k) + block_size * c] = s[k];
+      }
+      for (; t < n_theta_; ++t) {
         std::complex<double> sum(0.0, 0.0);
-        for (int j = 0; j < n_j; ++j) sum = sum + matrix_[index + j] * fbr[block.fbr.first + j + n_rot_ * c];
+        for (int j = 0; j < n_j; ++j) sum = sum + matrix_[index + t * n_j + j] * fbr[f0 + j];
         dvr[block.phi_slot + ld * t + block_size * c] = sum;
       }
-      index += n_j;
     }
+    index += n_theta_ * n_j;
   }
 
   // The phi slots of |mJ| > MjMax carry no basis function.

@@ -75,8 +75,9 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
     const ScatteringShape shape{basis.size(), p.nx, p.ny, p.nr, p.nz};
     const std::size_t zr_unit = std::size_t(zr_chunk_size(shape.n_rot * shape.ny)) * p.nr * p.nz;
     const std::size_t xy_group = std::size_t(shape.n_rot) * n_xy * xy_group_points(shape);
-    const std::size_t dvr_blocks =
-        std::size_t(AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi())) * n_xy;
+    // The DVR blocks of the columns of one angular-transform pass (AngularTransform::columns_per_pass).
+    const std::size_t dvr_blocks = std::size_t(AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi())) *
+                                   AngularTransform::columns_per_pass(p.nx * p.ny, angular.n_theta(), angular.n_phi());
     // On the fly with symmetry: exp(i A) of the representatives of one (Z, r) point.
     const std::size_t exp_scratch = !precomputed && reduced ? n_tp * symmetry.n_representatives() : 0;
     const std::size_t work_values = std::max(zr_unit, xy_group + dvr_blocks + exp_scratch);

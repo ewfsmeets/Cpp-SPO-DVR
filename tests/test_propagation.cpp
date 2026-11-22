@@ -6,6 +6,8 @@
 #include <cmath>
 #include <complex>
 #include <fstream>
+#include <functional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -139,6 +141,37 @@ TEST(ScatteringKinetic, FreeGaussianSpreadsAnalyticallyInZ) {
   EXPECT_LT(worst, 1e-12);
 }
 
+// With one (Z, r) point per group and no momentum shift, T_xy runs on the block in the wave function
+// itself: the same plans on the same layout as through the work array, so the same bits.
+TEST(ScatteringKinetic, InPlaceTxyEqualsGatheredTxyBitwise) {
+  const OperatorSetup& s = reference_setup();
+  const ScatteringKineticOperator in_place(s.shape, s.tables, s.fft, {.group_byte_limit = 1, .allow_in_place = true});
+  const ScatteringKineticOperator gathered(s.shape, s.tables, s.fft, {.group_byte_limit = 1, .allow_in_place = false});
+  ASSERT_EQ(in_place.group_points(), 1);
+  ASSERT_TRUE(in_place.transforms_in_place());
+  ASSERT_FALSE(gathered.transforms_in_place());
+  // The program's default on this small grid: several r points per group, gathered.
+  EXPECT_FALSE(ScatteringKineticOperator(s.shape, s.tables, s.fft).transforms_in_place());
+
+  for (const TimeStep step : {TimeStep::Full, TimeStep::Half}) {
+    ScatteringWave a = s.empty_wave();
+    fill_pseudo_random(a.values);
+    ScatteringWave b = a;
+    in_place.apply_xy(a, step);
+    gathered.apply_xy(b, step);
+    EXPECT_EQ(a.values, b.values);
+  }
+}
+
+// In place only with one aligned point per group and no momentum shift.
+TEST(ScatteringKinetic, InPlaceNeedsOneAlignedPointAndNoShift) {
+  EXPECT_TRUE(xy_in_place_possible({15, 4, 4, 56, 176}, 1, false));
+  EXPECT_FALSE(xy_in_place_possible({15, 4, 4, 56, 176}, 2, false));
+  EXPECT_FALSE(xy_in_place_possible({15, 4, 4, 56, 176}, 1, true));
+  EXPECT_FALSE(xy_in_place_possible({1, 3, 3, 8, 8}, 1, false));  // 144 bytes: not a multiple of 64
+  EXPECT_TRUE(xy_in_place_possible({4, 3, 3, 8, 8}, 1, false));   // 576 bytes
+}
+
 TEST(ScatteringKinetic, ParallelPlaneWaveGetsItsKineticPhase) {
   // With parallel momentum k0, the plane wave exp(i (k0 + G) . R) is an eigenfunction of the
   // xy step (shift, FFT, exp(-i T_xy dt), inverse FFT, unshift) with the tabulated energy of G.
@@ -148,6 +181,8 @@ TEST(ScatteringKinetic, ParallelPlaneWaveGetsItsKineticPhase) {
   const OperatorSetup s(json);
   const DerivedParameters& d = s.config.derived;
   const ScatteringKineticOperator kinetic(s.shape, s.tables, s.fft);
+  // A momentum shift keeps T_xy in the work array, even with one point per group.
+  EXPECT_FALSE(ScatteringKineticOperator(s.shape, s.tables, s.fft, {.group_byte_limit = 1}).transforms_in_place());
   const int n = 1;   // G = n delta_kx along x
   const int m = -1;  // and m delta_ky along y (FFT index ny - 1)
   ScatteringWave psi = s.empty_wave();
@@ -290,6 +325,56 @@ TEST(Averages, RestNormCountsFromAfterZanaToTheSurface) {
       EXPECT_EQ(a.rest_norm, 0.0);
     else
       EXPECT_NEAR(a.rest_norm, expected, 1e-14);
+  }
+}
+
+namespace {
+
+// The same bits: in passes of fewer columns the phi FFT runs with a smaller batch count, which oneMKL and
+// FFTW both compute bitwise the same (checked in the oneMKL, FFTW and no-MKL builds, 2026-11-22).
+void expect_same_wave(std::span<const cplx> a, std::span<const cplx> b) {
+  ASSERT_EQ(a.size(), b.size());
+  EXPECT_TRUE(std::equal(a.begin(), a.end(), b.begin()));
+}
+
+// The potential step with the angular transform in passes of n_col columns (the program: columns_per_pass).
+WavePacket potential_step_in_passes(const OperatorSetup& s, int n_col, std::size_t table_limit) {
+  AlignedVector<double> potential = s.potential.values;
+  premultiply_with_time_step(potential, s.config.input.time_step);
+  const AngularTransform transform(s.angular, s.basis, s.fft, n_col);
+  const PotentialOperator op(s.shape, s.grids.nz_potential, s.basis.initial_index(), s.tables, transform, potential,
+                             s.potential.symmetry, table_limit);
+  WavePacket psi{s.empty_wave(), SpecularWave(s.shape.nr, s.grids.z_specular.size())};
+  fill_pseudo_random(psi.scattering.values);
+  fill_pseudo_random(psi.specular.values);
+  op.apply(psi);
+  return psi;
+}
+
+}  // namespace
+
+// The potential step gives the same wave function whatever the number of columns per angular-transform pass:
+// with the exp(-i V dt) table and on the fly (table limit 0), without and with surface symmetry (where the
+// on-the-fly path computes the representatives' exp(i A) into a scratch array first).
+TEST(PotentialOperator, ColumnPassesGiveTheSameWave) {
+  nlohmann::json symmetric = reference_json();
+  symmetric["UseSymmetry"] = true;
+  const OperatorSetup symmetric_setup(symmetric);
+  for (const std::reference_wrapper<const OperatorSetup> setup :
+       {std::cref(reference_setup()), std::cref(symmetric_setup)}) {
+    const OperatorSetup& s = setup.get();
+    SCOPED_TRACE(s.config.input.use_symmetry ? "with symmetry" : "without symmetry");
+    const int n_xy = s.shape.nx * s.shape.ny;
+    for (const std::size_t table_limit : {PotentialOperator::default_table_limit, std::size_t(0)}) {
+      SCOPED_TRACE(table_limit);
+      const WavePacket all = potential_step_in_passes(s, n_xy, table_limit);
+      for (const int n_col : {1, 2, 4}) {
+        SCOPED_TRACE(n_col);
+        const WavePacket passes = potential_step_in_passes(s, n_col, table_limit);
+        expect_same_wave(passes.scattering.values, all.scattering.values);
+        expect_same_wave(passes.specular.values, all.specular.values);
+      }
+    }
   }
 }
 

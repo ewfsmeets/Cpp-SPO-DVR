@@ -33,7 +33,7 @@ README). Here N_tot = 435 × 112·32·16·16 = 399 million.
 
 ## Cost (this machine)
 
-CPU (8 threads): 5.9 GiB wave function plus 3.7 GiB potential, 9.7 GiB in total. exp(−iV dt)
+CPU (8 threads): 5.9 GiB wave function plus 3.7 GiB potential, 9.6 GiB in total. exp(−iV dt)
 exceeds the 4 GiB table limit and is computed in every step. With the 90-point grid a step took
 about 5.8 s (static schedule); this grid has 1.24× the points in Z.
 GPU: does not fit a 12 GB card (estimate 14.8 GiB, of which 7.4 GiB is the exp(−iV dt) table:

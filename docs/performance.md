@@ -126,7 +126,9 @@ header line.
   the Fortran code (production grids: the potential alone is tens of GB, so the on-the-fly path is
   used and the memory is that of the real potential). Both paths give bitwise identical results.
 - Work arrays per thread are cache-sized: (r, Z) units of ≤ 4 adjacent (irot, iy) values,
-  (x, y) groups of r points ≤ 1 MiB; the DVR work array of one (Z, r) point (as in the Fortran code).
+  (x, y) groups of r points ≤ 1 MiB; the DVR work array of one pass of the angular transform
+  (`AngularTransform::columns_per_pass`: ≤ 58 KiB of DVR blocks; the Fortran code holds all (x, y)
+  points of a (Z, r) point).
 - The program prints a "MEMORY ESTIMATE" block before it computes the potential
   (`propagation/memory_estimate.*`): the size of each large array, the total while the propagation
   is set up (potential and exp(−iV dt) table exist together) and during the time loop, and the
@@ -351,17 +353,33 @@ checked bitwise against the plain path):
 | First-touch parallel initialisation | bitwise identical |
 | T_Z + T_r as one 2D (r, Z) FFT on gathered contiguous units (Fortran: 1D FFTs in Z, then r) | ≤ 1e-14 |
 | T_xy as one 2D (x, y) FFT per group of points, gathered with a single batch dimension | ≤ 1e-14 |
-| Angular transform: all (x, y) columns of a point with one batched φ FFT | ≤ 1e-14 |
+| Angular transform: the (x, y) columns of a point in passes of `AngularTransform::columns_per_pass` (58 KiB of DVR blocks; DZ: 4 of 144 columns), each with one batched φ FFT | bitwise identical to one pass over all columns (2026-11-22: DZ and ER runs, oneMKL, FFTW and no-MKL builds) |
+| θ sums of the angular transform column by column, five θ rows at a time (each sum keeps its order of terms) | bitwise identical |
+| T_xy on the block itself when a group holds one (Z, r) point and there is no momentum shift (DZ, ER) | bitwise identical |
 | Merged scalar factors (optical × rotation × gas phase) | ≤ 1e-14 |
 | oneMKL BLAS/LAPACK and FFTs | ≤ 1e-14 |
+
+The angular transform in column passes with T_xy in place, measured on 2026-11-22 (build `build`:
+Release, oneMKL, `x86-64-v3`, LTO, no PGO; 8 threads, Ryzen 7 5800X, quiet machine; "Propagation time"
+of runs alternating with the build before the change):
+
+| Grid | Before (s per step) | After (s per step) | Change | Runs (spread) |
+|---|---|---|---|---|
+| DZ (`inputs/thesis_fig5_3_dz`, 16 steps) | 4.822 | 3.805 | −21.1 % | 6 + 6 (1.6 %, 1.4 %) |
+| ER (`inputs/thesis_fig5_3_er`, 8 steps) | 5.795 | 3.871 | −33.2 % | 3 + 3 (4.7 %, 1.4 %) |
+| medium grid (`tools/benchmark/compare_speed.sh`, 50 steps) | 50.20 s | 48.80 s | −2.8 %, within the spread | 5 + 5 (4.0 %, 4.9 %) |
+
+The medians are quoted; the gain counts where it exceeds the larger spread. The medium grid (JMax 8:
+DVR blocks of 1520 B, so 32 of its 256 columns per pass; several r points per T_xy group, so no T_xy in
+place) gains little; its work arrays shrink from 70 400 to 49 120 values per thread.
 
 Not done:
 
 - FFTW wisdom / `FFTW_MEASURE`: oneMKL (the default) ignores planner flags, and measured plans would
   make results depend on the planning run.
-- BLAS GEMM for the θ sums of the angular transform: the matrices are tiny for the test grids; the
-  sums are written in a batched, GEMM-shaped form over the (x, y) columns, so a oneMKL/cuBLAS batched
-  GEMM can replace them when profiling of production grids shows a need.
+- BLAS GEMM for the θ sums of the angular transform: the matrices are tiny for the test grids, and the
+  sums now run column by column in cache-sized passes (above); a batched GEMM would change the order
+  of the terms.
 
 ## GPU backend
 

@@ -66,11 +66,11 @@ PotentialOperator::PotentialOperator(const ScatteringShape& shape, int nz_potent
 }
 
 std::size_t PotentialOperator::dvr_work_size() const {
-  return std::size_t(transform_.dvr_block_size()) * shape_.nx * shape_.ny;
+  return std::size_t(transform_.dvr_block_size()) * transform_.n_columns();
 }
 
-// The DVR blocks of all (x, y) points, plus (on-the-fly path with symmetry) exp(i A) of the
-// representatives of one (Z, r) point.
+// The DVR blocks of one angular-transform pass, plus (on-the-fly path with symmetry) exp(i A) of
+// the representatives of one (Z, r) point.
 std::size_t PotentialOperator::work_size() const {
   const bool scratch = !uses_precomputed_exponentials() && reduces();
   const std::size_t n_tp = std::size_t(transform_.n_theta()) * transform_.n_phi();
@@ -167,9 +167,6 @@ void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::s
   const std::span<cplx> dvr = work.first(dvr_work_size());
 
   const int n_col = transform_.n_columns();
-  for (int c0 = 0; c0 < n_xy; c0 += n_col)
-    transform_.fbr_to_dvr(block.subspan(n_rot * c0, n_rot * n_col), dvr.subspan(dvr_size * c0, dvr_size * n_col));
-
   // Where exp(i A) of this (Z, r) point comes from: the precomputed table, the scratch array
   // (on the fly, with symmetry: each representative's value is used by several (x, y) points),
   // or (on the fly, without symmetry) evaluated at the point itself.
@@ -185,20 +182,22 @@ void PotentialOperator::apply_interaction(std::span<cplx> block, int izr, std::s
   const std::span<const double> potential =
       precomputed ? std::span<const double>() : potential_.subspan(n_tp * n_rep * izr, n_tp * n_rep);
 
-  for (int ixy = 0; ixy < n_xy; ++ixy) {
-    const std::size_t v0 = n_tp * symmetry_.representative_of(ixy);
-    const std::vector<int>& phi_index = symmetry_.phi_index(symmetry_.operation_of(ixy));
-    for (int itheta = 0; itheta < n_theta; ++itheta)
-      for (int iphi = 0; iphi < n_phi; ++iphi) {
-        const std::size_t i = v0 + phi_index[iphi] + n_phi * itheta;
-        const cplx b = (precomputed || scratch) ? exponentials[i] : exp_i(potential[i]);
-        cplx& v = dvr[dvr_size * ixy + iphi + ld * itheta];
-        v = b * v;
-      }
+  // n_col columns at a time (AngularTransform::columns_per_pass): their DVR blocks stay in L1/L2.
+  for (int c0 = 0; c0 < n_xy; c0 += n_col) {
+    transform_.fbr_to_dvr(block.subspan(n_rot * c0, n_rot * n_col), dvr);
+    for (int ixy = c0; ixy < c0 + n_col; ++ixy) {
+      const std::size_t v0 = n_tp * symmetry_.representative_of(ixy);
+      const std::vector<int>& phi_index = symmetry_.phi_index(symmetry_.operation_of(ixy));
+      for (int itheta = 0; itheta < n_theta; ++itheta)
+        for (int iphi = 0; iphi < n_phi; ++iphi) {
+          const std::size_t i = v0 + phi_index[iphi] + n_phi * itheta;
+          const cplx b = (precomputed || scratch) ? exponentials[i] : exp_i(potential[i]);
+          cplx& v = dvr[dvr_size * (ixy - c0) + iphi + ld * itheta];
+          v = b * v;
+        }
+    }
+    transform_.dvr_to_fbr(dvr, block.subspan(n_rot * c0, n_rot * n_col));
   }
-
-  for (int c0 = 0; c0 < n_xy; c0 += n_col)
-    transform_.dvr_to_fbr(dvr.subspan(dvr_size * c0, dvr_size * n_col), block.subspan(n_rot * c0, n_rot * n_col));
 }
 
 }  // namespace spodvr

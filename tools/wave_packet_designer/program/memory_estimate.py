@@ -2,7 +2,8 @@
 
 Shadows: src/propagation/memory_estimate.cpp (estimate_memory),
 src/propagation/kinetic_operators.cpp (zr_chunk_size, xy_group_points),
-src/propagation/angular_transform.hpp (dvr_block_size),
+src/propagation/angular_transform.hpp (dvr_block_size, cpu_pass_bytes),
+src/propagation/angular_transform.cpp (columns_per_pass),
 src/propagation/potential_operator.hpp (default_table_limit),
 src/cuda/cuda_backend.cpp (estimate_gpu_memory, staging_points, fft_work_limit, staging_bytes),
 src/cuda/device_potential_operator.cpp (slab_size),
@@ -146,7 +147,8 @@ def work_values_per_thread(
     n_xy = p.nx * p.ny
     zr_unit = zr_chunk_size(n_rot * p.ny) * p.nr * p.nz
     xy_group = n_rot * n_xy * xy_group_points(n_rot, p.nx, p.ny, p.nr)
-    dvr_blocks = dvr_block_size(angular.n_theta, angular.n_phi) * n_xy
+    # The DVR blocks of the columns of one angular-transform pass.
+    dvr_blocks = dvr_block_size(angular.n_theta, angular.n_phi) * columns_per_pass(n_xy, angular.n_theta, angular.n_phi)
     # On the fly with symmetry: exp(i A) of the representatives of one (Z, r) point.
     reduced = symmetry.n_representatives < n_xy
     exp_scratch = angular.n_theta * angular.n_phi * symmetry.n_representatives if not precomputed and reduced else 0
@@ -173,6 +175,19 @@ def xy_group_points(n_rot: int, nx: int, ny: int, nr: int) -> int:
 def dvr_block_size(n_theta: int, n_phi: int) -> int:
     """Values of one DVR block of the angular transform, padding included: (n_phi + 1) * n_theta."""
     return (n_phi + 1) * n_theta
+
+
+CPU_PASS_BYTES = 58 << 10  # AngularTransform::cpu_pass_bytes
+
+
+def columns_per_pass(n_xy: int, n_theta: int, n_phi: int) -> int:
+    """Columns per CPU angular-transform pass: the largest divisor of n_xy whose DVR blocks fit CPU_PASS_BYTES,
+    at least 1."""
+    block_bytes = COMPLEX_BYTES * dvr_block_size(n_theta, n_phi)
+    for n in range(n_xy, 1, -1):
+        if n_xy % n == 0 and n * block_bytes <= CPU_PASS_BYTES:
+            return n
+    return 1
 
 
 def estimate_gpu_memory(

@@ -1,6 +1,7 @@
 // Per-operator timing of the propagator for an input file: the (r, Z) kinetic step, the (x, y)
 // kinetic step, the potential step, the specular grid, and one analysis step (all operators).
-// Usage: spodvr_operator_timing <input.json> [repetitions]   (threads: OMP_NUM_THREADS)
+// Usage: spodvr_operator_timing <input.json> [repetitions [columns]]   (threads: OMP_NUM_THREADS; columns:
+// the angular transform's columns per pass, default AngularTransform::columns_per_pass as the program)
 #include <omp.h>
 
 #include <chrono>
@@ -33,7 +34,7 @@ void time_call(const std::string& name, int repetitions, const std::function<voi
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::fprintf(stderr, "usage: %s <input.json> [repetitions]\n", argv[0]);
+    std::fprintf(stderr, "usage: %s <input.json> [repetitions [columns]]\n", argv[0]);
     return 1;
   }
   const int repetitions = argc > 2 ? std::stoi(argv[2]) : 3;
@@ -47,7 +48,9 @@ int main(int argc, char** argv) {
   const GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver());
 
   const RotationalBasis basis(angular, p.j_in, p.mj_in);
-  const AngularTransform transform(angular, basis, fft, p.nx * p.ny);
+  const int columns = argc > 3 ? std::stoi(argv[3])
+                               : AngularTransform::columns_per_pass(p.nx * p.ny, angular.n_theta(), angular.n_phi());
+  const AngularTransform transform(angular, basis, fft, columns);
   const PropagationTables tables = make_propagation_tables(config, grids, basis, potential.asymptotic);
   premultiply_with_time_step(potential.values, p.time_step);
   const ScatteringShape shape{basis.size(), p.nx, p.ny, p.nr, p.nz};
@@ -63,6 +66,7 @@ int main(int argc, char** argv) {
   for (auto& c : psi.scattering.values) c = 1e-3;  // arbitrary non-zero data
 
   std::printf("%s\n", numerical_libraries_summary().c_str());
+  std::printf("angular transform: %d of %d columns per pass\n", columns, p.nx * p.ny);
   std::printf("%d OpenMP threads, %d rotational states, nx = ny = %d, nr = %d, nz = %d (%.2f GB wave function)\n",
               omp_get_max_threads(), shape.n_rot, p.nx, p.nr, p.nz, double(psi.scattering.values.size()) * 16.0 / 1e9);
   time_call("T_Z + T_r (2D FFT)", repetitions, [&] { kinetic.apply_zr(psi.scattering, TimeStep::Full); });

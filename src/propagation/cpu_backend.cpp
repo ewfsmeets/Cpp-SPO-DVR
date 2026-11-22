@@ -22,7 +22,9 @@ AlignedVector<double> premultiplied(AlignedVector<double>&& values, double time_
 }  // namespace
 
 CpuBackend::CpuBackend(const BackendInput& in, PotentialGrid potential, SpecularWave initial)
-    : transform_(in.angular, in.basis, in.fft, in.config.input.nx * in.config.input.ny),
+    : transform_(in.angular, in.basis, in.fft,
+                 AngularTransform::columns_per_pass(in.config.input.nx * in.config.input.ny, in.angular.n_theta(),
+                                                    in.angular.n_phi())),
       premultiplied_potential_(premultiplied(std::move(potential.values), in.config.input.time_step)),
       kinetic_(scattering_shape(in.config, in.basis), in.tables, in.fft),
       potential_(scattering_shape(in.config, in.basis), in.grids.nz_potential, in.basis.initial_index(), in.tables,

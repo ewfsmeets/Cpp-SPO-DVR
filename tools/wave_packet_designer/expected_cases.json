@@ -253,10 +253,10 @@
           {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 194400, "bytes": 24883200, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 66300, "bytes": 8486400, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 8466667712,
-        "propagation_bytes": 7807550912,
+        "propagation_bytes": 7791154112,
         "peak_bytes": 8466667712
       },
       "gpu": {
@@ -289,11 +289,11 @@
           {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 194400, "bytes": 24883200, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 66300, "bytes": 8486400, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 11598663680,
-        "propagation_bytes": 11623546880,
-        "peak_bytes": 11623546880
+        "propagation_bytes": 11607150080,
+        "peak_bytes": 11607150080
       },
       "gpu": {
         "items": [
@@ -326,11 +326,11 @@
           {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 11403264000, "bytes": 182452224000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 5866200, "bytes": 750873600, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 2122020, "bytes": 271618560, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 195916587328,
-        "propagation_bytes": 196667460928,
-        "peak_bytes": 196667460928
+        "propagation_bytes": 196188205888,
+        "peak_bytes": 196188205888
       },
       "gpu": {
         "items": [
@@ -362,11 +362,11 @@
           {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 399114240, "bytes": 6385827840, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 6720, "bytes": 215040, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 345600, "bytes": 44236800, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 115020, "bytes": 14722560, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 10337863680,
-        "propagation_bytes": 10382100480,
-        "peak_bytes": 10382100480
+        "propagation_bytes": 10352586240,
+        "peak_bytes": 10352586240
       },
       "gpu": {
         "items": [
@@ -399,10 +399,10 @@
           {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 194400, "bytes": 24883200, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 66300, "bytes": 8486400, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 8466667712,
-        "propagation_bytes": 7807550912,
+        "propagation_bytes": 7791154112,
         "peak_bytes": 8466667712
       },
       "gpu": {

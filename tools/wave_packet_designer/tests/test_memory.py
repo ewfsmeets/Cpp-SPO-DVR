@@ -52,7 +52,7 @@ def test_dz_matches_the_program() -> None:
         ("exp(-i V dt) table", 85500000, "1.3 GiB"),
         ("Wave function, scattering grid", 400896000, "6.0 GiB"),
         ("Wave function, specular grid", 10240, "320.0 KiB"),
-        ("Work arrays", 194400, "23.7 MiB"),
+        ("Work arrays", 66300, "8.1 MiB"),
     ]
     check_equal([(i.name, i.values, format_bytes(i.bytes)) for i in r.memory.items], cpu, "CPU rows")
     totals = (format_bytes(r.memory.setup_bytes), format_bytes(r.memory.propagation_bytes))
@@ -81,12 +81,13 @@ def test_large_potential_is_applied_on_the_fly() -> None:
 
 def test_on_the_fly_with_symmetry_adds_the_exp_scratch() -> None:
     """The same with UseSymmetry and 2000 of 4096 representatives (still above 4 GiB): each thread also holds
-    exp(i A) of the representatives of one (Z, r) point. By hand: (x, y) group 15 * 4096 = 61440, DVR blocks
-    11 * 3 * 4096 = 135168, scratch 3 * 10 * 2000 = 60000, in all 256608 (more than the (r, Z) unit 39424)."""
+    exp(i A) of the representatives of one (Z, r) point. By hand: (x, y) group 15 * 4096 = 61440, DVR blocks of
+    one angular-transform pass 11 * 3 * 64 = 2112 (64 columns of 528 bytes fit 58 KiB), scratch 3 * 10 * 2000 =
+    60000, in all 123552 (more than the (r, Z) unit 39424)."""
     settings = Settings(threads=1, representatives=2000)
     memory = resources_of(HARDWALL_INPUT, settings, nx=64, ny=64, use_symmetry=True).memory
     check_equal(memory.items[2].bytes, 0, "no exp table")
-    check_equal(memory.items[-1].values, 256608, "work arrays")
+    check_equal(memory.items[-1].values, 123552, "work arrays")
 
 
 def test_potential_only_run() -> None:

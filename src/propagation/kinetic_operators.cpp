@@ -26,22 +26,27 @@ int zr_chunk_size(int n_roty) {
   return 1;
 }
 
-int xy_group_points(const ScatteringShape& shape) {
-  constexpr std::size_t max_bytes = std::size_t(1) << 20;
+int xy_group_points(const ScatteringShape& shape, std::size_t max_bytes) {
   const std::size_t block_bytes = sizeof(cplx) * shape.n_rot * shape.nx * shape.ny;
   for (int g = shape.nr; g > 1; --g)
     if (shape.nr % g == 0 && g * block_bytes <= max_bytes) return g;
   return 1;
 }
 
+bool xy_in_place_possible(const ScatteringShape& shape, int group_points, bool shift) {
+  const std::size_t block_bytes = sizeof(cplx) * shape.n_rot * shape.nx * shape.ny;
+  return group_points == 1 && !shift && block_bytes % 64 == 0;
+}
+
 // Fortran: KineticOp.f90 SetupFFTs, SetupScaleFactors
 ScatteringKineticOperator::ScatteringKineticOperator(const ScatteringShape& shape, const PropagationTables& tables,
-                                                     const Fft& fft)
+                                                     const Fft& fft, const XyKineticOptions& options)
     : shape_(shape),
       tables_(tables),
       chunk_(zr_chunk_size(shape.n_rot * shape.ny)),
       shift_(!std::all_of(tables.shift_forward.begin(), tables.shift_forward.end(), is_one)),
-      group_points_(xy_group_points(shape)) {
+      group_points_(xy_group_points(shape, options.group_byte_limit)),
+      in_place_(options.allow_in_place && xy_in_place_possible(shape, group_points_, shift_)) {
   // (r, Z) unit buffer: (e, ir, iz) with e = 0 .. chunk-1 fastest.
   const FftLayout2D zr_layout{shape.nz, chunk_ * shape.nr, shape.nr, chunk_, chunk_, 1};
   const double scale_z = tables.fft_scale_z;
@@ -126,6 +131,16 @@ void ScatteringKineticOperator::apply_xy_group(std::span<cplx> group, TimeStep s
   const int n_rot = shape_.n_rot;
   const int n_xy = shape_.nx * shape_.ny;
   const int k_count = n_rot * group_points_;
+
+  // One point per group, no shift: the block already has the work layout (k = irot), so transform it
+  // in place instead of copying it into the work array and back (transforms_in_place).
+  if (in_place_) {
+    xy_to_momentum_->execute(group);
+    for (int ixy = 0; ixy < n_xy; ++ixy)
+      for (int k = 0; k < k_count; ++k) group[k + k_count * ixy] = factors[ixy] * group[k + k_count * ixy];
+    xy_to_coordinate_->execute(group);
+    return;
+  }
 
   for (int ir = 0; ir < group_points_; ++ir)
     for (int ixy = 0; ixy < n_xy; ++ixy)

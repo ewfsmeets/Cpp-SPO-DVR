@@ -460,7 +460,7 @@ Ready-to-run inputs, from small to production size:
 - How to choose the Z grids, the wave packet, the analysis lines and the absorbers for a new input,
   and how to check a finished run: [inputs/README.md](inputs/README.md).
 - Each thesis input has a README with its parameter choices. On the CPU they need 7.9 GiB (DZ) and
-  9.7 GiB (ER) of memory, from their set-up memory estimates
+  9.6 GiB (ER) of memory, from their set-up memory estimates
   ([DZ validation log](docs/validation_thesis_fig5_3_dz/data/logs/cleaned_cpu_fast.txt),
   [ER README](inputs/thesis_fig5_3_er/README.md)); finer grids and larger rotational bases need
   more. The DZ case is the GPU benchmark: it needs 8.8 GiB on the GPU, while the ER case needs
