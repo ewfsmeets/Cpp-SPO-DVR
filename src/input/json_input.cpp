@@ -34,7 +34,9 @@ class DuplicateKeyCheck {
     if (event == Json::parse_event_t::object_start) open_objects_.emplace_back();
     if (event == Json::parse_event_t::object_end) open_objects_.pop_back();
     if (event == Json::parse_event_t::key) check_key(parsed.get<std::string>());
-    return true;  // keep every value: the reader checks the content
+    // Keep every value (the reader checks the content). Returning false would discard an object without
+    // its object_end event and unbalance open_objects_.
+    return true;
   }
 
  private:
@@ -458,7 +460,7 @@ InputParameters parse_input(const Json& json) {
 Json parse_input_text(std::istream& text, const std::string& source) {
   try {
     return Json::parse(text, DuplicateKeyCheck(source), true, /*ignore_comments=*/true);
-  } catch (const Json::parse_error& e) {
+  } catch (const Json::exception& e) {  // a syntax error, or a number that overflows a double
     throw InputError("", "invalid JSON in '" + source + "': " + e.what());
   }
 }

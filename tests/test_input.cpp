@@ -69,6 +69,10 @@ void energy_resolved(Json& j) {
 // check that must fire: several checks share a parameter, so the message shows that the input reached
 // its own check and not an earlier one. Returns the message ("" if none).
 std::string expect_input_error(const Json& json, const std::string& parameter, const std::string& message) {
+  if (message.empty()) {  // an empty fragment would match any message
+    ADD_FAILURE() << "no expected message for " << parameter;
+    return "";
+  }
   try {
     const Config config = build(json);
     (void)make_spatial_grids(config);
@@ -137,6 +141,7 @@ TEST(Input, DuplicateKeyInsideAnEntryNamesTheTopLevelKey) {
   const std::string message =
       expect_repeated_key_error(R"({"PlotSites": [{"name": "a", "x": 0.0, "x": 0.5, "y": 0.0}]})", "PlotSites");
   EXPECT_NE(message.find("'x'"), std::string::npos) << message;
+  expect_repeated_key_error(R"({"a": 1, "PlotSites": [{"x": 0.0, "x": 0.5}]})", "PlotSites");
   expect_repeated_key_error(R"({"a": {"b": 1, "b": 2}})", "a");
   expect_repeated_key_error(R"({"a": [[{"b": 1, "b": 2}]]})", "a");
 }
@@ -600,8 +605,7 @@ TEST(Input, AnalysisD1TwoEnergiesAndNen95AreValid) {
   EXPECT_EQ(config.input.n_energies, -95);
 
   json["NrOfEs"] = 1;
-  const std::string message = expect_input_error(json, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies");
-  EXPECT_NE(message.find("NrOfEs = 1: the analysis needs at least 2 energies"), std::string::npos) << message;
+  expect_input_error(json, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies");
 }
 
 // RStart <= 0 is rejected with the 1e-12 absolute tolerance of .RLE. (5.24 InputNew.f90
@@ -900,7 +904,7 @@ INSTANTIATE_TEST_SUITE_P(
                   }, "PlotSites", "sites: at most 16"},
         Violation{"tEnd", [](Json& j) { j["tEnd"] = 14002.0; }, "tEnd", "tEnd /= tStart + nStep*dtStep."},
         Violation{"dtStep", [](Json& j) { j["dtStep"] = 0.0; j["nStep"] = 0; j["tEnd"] = 0.0; }, "dtStep", "dtStep <= 0."},
-        // nStep < 0 itself is reachable only within the 1e-12 tolerance band: tEnd < 0 comes first.
+        // tEnd < 0 comes first; nStep < 0 itself is reached only inside the 1e-12 band (nStepWithinTolerance).
         Violation{"nStep", [](Json& j) { j["nStep"] = -1; j["tEnd"] = -2.0; }, "tEnd", "tEnd < 0."},
         Violation{"dtAna", [](Json& j) { j["dtAna"] = 1.0; }, "dtAna", "dtAna < dtStep."},
         Violation{"dtAnaInteger", [](Json& j) { j["dtAna"] = 30.0; j["dtAve"] = 90.0; j["dtStep"] = 2.0; j["nStep"] = 7001; j["tEnd"] = 14002.0; }, "dtAna", "Propagation time must be an integer times dtAna."},
@@ -947,8 +951,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ZSpOptEnd", [](Json& j) { j["ZSpOptEnd"] = 21.0; }, "ZSpOptEnd", "ZSpOptEnd is too big for the specular grid in Z."},
         // ZSpOptStart < ZAsymptotic cannot be reached on its own: Z0 >= ZAsymptotic and
         // Z0 <= ZSpOptStart are checked first.
-        // ZSpOptStart < ZAsymptotic is reachable only within the 1e-12 tolerance band: Z0 > ZSpOptStart
-        // comes first.
+        // Z0 > ZSpOptStart comes first; ZSpOptStart < ZAsymptotic itself is reached only inside the 1e-12 band
+        // (ZSpOptStartBelowZAsymptotic).
         Violation{"ZSpOptStart", [](Json& j) { j["ZSpOptStart"] = 6.0; }, "Z0", "Z0 > ZSpOptStart."},
         Violation{"EParallel", [](Json& j) { j["EParallel"] = -0.1; }, "EParallel", "EParallel < 0."},
         Violation{"PhiParallelNeg", [](Json& j) { j["PhiParallel"] = -1.0; }, "PhiParallel", "PhiParallel < 0."},
@@ -1027,7 +1031,33 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ZSpOptEnergyBeyondTolerance", [](Json& j) { j["ZSpOptEnergy"] = -2.0e-12; }, "ZSpOptEnergy",
                   "ZSpOptEnergy < 0."},
         Violation{"LowZSpecularNoEnergyOrFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; },
-                  "ZSpOptLowEnergy", "ZSpOptLowFactor or ZSpOptLowEnergy should be present."}),
+                  "ZSpOptLowEnergy", "ZSpOptLowFactor or ZSpOptLowEnergy should be present."},
+        // Checks reached only inside the 1e-12 band of an earlier tolerant check.
+        Violation{"nStepWithinTolerance",
+                  [](Json& j) { j["dtStep"] = 1.5e-12; j["nStep"] = -1; j["tEnd"] = -9.0e-13; }, "nStep", "nStep < 0."},
+        Violation{"ZSpOptStartBelowZAsymptotic",
+                  [](Json& j) { j["ZSpOptStart"] = 7.0 - 1.5e-12; j["Z0"] = 7.0 - 8.0e-13; }, "ZSpOptStart",
+                  "ZSpOptStart < ZAsymptotic."},
+        Violation{"RestartDirMissing", [](Json& j) { j["NewCalc"] = false; j["tStart"] = 10.0; j["tEnd"] = 14010.0; },
+                  "RestartDir", "This is a restart (NewCalc = false) but RestartDir is not given."},
+        Violation{"FluxRBelowTheGrid",
+                  [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 0.5; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; },
+                  "rFluxAnalysis", "rFluxAnalysis < rmin"},
+        Violation{"FluxRBeyondTheGrid",
+                  [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 9.2; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; },
+                  "rFluxAnalysis", "rFluxAnalysis > rmax"},
+        Violation{"FluxEMinGeEMax",
+                  [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.4; j["EMaxFluxAna"] = 0.3; j["DeltaEFluxAna"] = 0.01; },
+                  "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna"},
+        // The tolerant siblings of the boundary rows above.
+        Violation{"Mass1WithinTolerance", [](Json& j) { j["Mass1"] = 5.0e-13; }, "Mass1", "Mass of atom 1 <= 0."},
+        Violation{"ZOptEnergyBeyondTolerance", [](Json& j) { j["ZOptEnergy"] = -2.0e-12; }, "ZOptEnergy", "ZOptEnergy < 0."},
+        Violation{"LowZEnergyBeyondTolerance",
+                  [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = -2.0e-12; },
+                  "ZOptLowEnergy", "ZOptLowEnergy < 0"},
+        Violation{"LowZSpecularEnergyBeyondTolerance",
+                  [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -2.0e-12; },
+                  "ZSpOptLowEnergy", "ZSpOptLowEnergy < 0"}),
     [](const ::testing::TestParamInfo<Violation>& param_info) { return std::string(param_info.param.name); });
 
 // The valid side of the tolerant checks above: within 1e-12 of the bound an rlt check accepts (a plain <
@@ -1040,8 +1070,41 @@ TEST(Input, TolerantChecksAcceptWithinTheirTolerance) {
     EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << key;
   }
   Json json = reference_json();
+  json["ZOptEnergy"] = -5.0e-13;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
+  for (const std::string prefix : {"ZOptLow", "ZSpOptLow"}) {
+    json = reference_json();
+    json[prefix + "Start"] = -2.0;
+    json[prefix + "End"] = 8.0;
+    json[prefix + "Energy"] = -5.0e-13;
+    EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << prefix;
+  }
+  json = reference_json();
   json["nY"] = 8;
   EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
+}
+
+// The reader's own errors: invalid JSON (including a number that overflows a double), a JSON value that is
+// not an object, a file that cannot be opened, an integer beyond the int range.
+TEST(Input, ReaderErrors) {
+  for (const std::string text : {"{\"nZ\": 176", R"({"dZ": 1e400})"}) {
+    try {
+      (void)parse_text(text);
+      ADD_FAILURE() << "accepted " << text;
+    } catch (const InputError& e) {
+      EXPECT_NE(std::string(e.what()).find("invalid JSON in 'test.json'"), std::string::npos) << e.what();
+    }
+  }
+  EXPECT_THROW((void)parse_input(Json::array({1})), InputError);
+  try {
+    (void)read_input_file("/nonexistent/input.json");
+    ADD_FAILURE() << "read a file that does not exist";
+  } catch (const InputError& e) {
+    EXPECT_NE(std::string(e.what()).find("cannot open input file"), std::string::npos) << e.what();
+  }
+  Json json = reference_json();
+  json["nZ"] = 10000000000LL;
+  expect_input_error(json, "nZ", "integer out of range");
 }
 
 TEST(Input, DerivedQuantities) {

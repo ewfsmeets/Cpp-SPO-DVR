@@ -180,7 +180,7 @@ waves, a high one reflects slow ones.
 - **End on the last grid point**: whatever passes the end wraps around to Z = 0.
 - **Scattering absorber**: sees all channels, down to their thresholds: target ~0.2 eV, L ≥ ~4 bohr
   (H₂: R + T ≤ 4e-5 for 0.05–1.0 eV, 8e-5 at 1.5 eV). Below ~0.03 eV it reflects whatever the choice
-  (section 8 for why that limit is set by T anyway; error in P: section 8).
+  (section 8: why that limit is set by T anyway, and the error this gives in P).
 - **Specular absorber**: sees only the initial channel, reflected elastically at the packet
   energies: target ≈ `EMinWP`, length up to L/λ ≈ 15 (R + T ≤ 4e-9 for 0.2–1.0 eV in the examples).
   Extra specular points cost nothing.
@@ -227,23 +227,30 @@ with Z_turn the classical turning point (~2 bohr). Diffraction channels open eve
 (Cu(111): |G|²/2M ≈ 8 meV for H₂), so slow outgoing waves are always present. DZ example: 16·354 +
 13·1290 ≈ 22 000 < 25 000 a.u. for E_n ≥ 0.03 eV.
 
-Check the norm N not yet across the analysis lines at `tEnd`: for the initial state the rest norm
-of the averages table, for the other channels the norm inside `Zana` (the plot tool's "norm by
-region at the end"). N bounds only the loss averaged over the packet's energies. At one energy the
-error is an amplitude: ΔP ≈ 2√N, larger where the packet carries little weight (the ends of its
-energy range), and it oscillates in energy with a period of about 2π/(`tEnd` − arrival time). On
-the hard wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and 3.6e-3 gave 0.12. Converge
-by comparing two `tEnd`.
+Check the norm N not yet across the analysis lines at `tEnd`: the norm inside `Zana` (both grids,
+all channels) plus the rest norm of the averages table (the initial channel between `Zana` and its
+specular line); the plot tool's "norm by region at the end" lists both. N bounds only the loss
+averaged over the packet's energies. At one energy the error of P is first order in the amplitude:
+up to about 2√N where P ≈ 1 (measured on the hard wall), of order 2√(P·N) for a channel of
+probability P (an estimate), larger where the packet carries little weight (the ends of its energy
+range), and it oscillates in energy with a period of about 2π/(`tEnd` − arrival time). On the hard
+wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and with the line fixed further out
+(`ZAnaSp` 15.04) a rest norm of 3.6e-3 gave 0.12. Converge by comparing two `tEnd`.
 
 - **Energy resolution** ≈ 2π/T (6.8 meV at 25 000 a.u.). A finer `NrOfEs` spacing interpolates.
 - **`dtAna`**: 2π/`dtAna` must exceed the span of total energies (incl. internal energy) in the
   analysis (8.5 eV at 20 a.u.).
 - **Errors no norm shows**: an absorber reflects √R of a channel's outgoing amplitude back across
-  the analysis line, so ΔP/P ≈ 2√R at the channel's outgoing normal energy (hard wall, R = 5e-7:
-  |S| off by 8.7e-4 against √R = 7e-4). For the specular absorber targets of section 7 that is
-  ≈ 1.3e-4; for the scattering absorber's (R ≤ 4e-5) up to ≈ 1e-2 (an estimate, not measured).
-  With `DynamZSpAna`, the incoming tail left beyond the specular line when it is fixed adds an
-  error of order 2√`TolSp` to the initial state's elements.
+  the analysis line, so ΔP/P oscillates in energy with an amplitude of about 2√R at the channel's
+  outgoing normal energy (hard wall, R = 5e-7: |S| off by up to 8.7e-4 against √R = 7e-4). For the
+  specular absorber targets of section 7 (R + T ≤ 4e-9) that is up to ≈ 1.3e-4; for the scattering
+  absorber's (R + T ≤ 4e-5 from 0.05 to 1.0 eV) up to ≈ 1.3e-2, more for channels just above their
+  threshold (an estimate, not measured).
+- **The tail beyond the specular line**: with `DynamZSpAna`, up to max(`TolSp`, the initial norm in
+  the specular absorber) of incoming tail lies beyond the line when it is fixed (section 6). It
+  crosses the line later and adds an error of order √`TolSp` to the elastic element's |S|
+  (2√`TolSp` in P: 6e-4 for 1e-7), larger at the ends of the energy range. An estimate: on the
+  hard wall `TolSp` 1e-11 lowered the error, but the line moved too.
 
 ## 9. Grid sizes and memory
 

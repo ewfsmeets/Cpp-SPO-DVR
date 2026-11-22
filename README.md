@@ -58,8 +58,8 @@ packet covers a whole range of collision energies.
 **The method.** Split-operator propagation; FFT grids in Z, r, x and y; a Gauss–Legendre/FFT DVR
 (discrete variable representation) in θ and φ; a long (Z, r) "specular" grid that carries the
 incoming packet in its initial channel; the asymptotic analysis of Balint-Kurti (BK) at a fixed Z
-(the initial state at its own line on the specular grid), during the run and as a fine analysis
-afterwards.
+(the initial rotational and diffraction state, every v, at its own line on the specular grid), during
+the run and as a fine analysis afterwards.
 
 **The potentials** (input key `SystemID`):
 
@@ -573,9 +573,10 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
     ([docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md));
   - a restart carries over the whole state of the specular analysis line; the Fortran does not save
     one part of it, `anlyTol` ([restart bug](docs/fortran_deviations.md#fortran-restart-bug));
-  - the phase of the initial state's S-matrix elements refers to the specular analysis line where
-    they are measured; the Fortran refers it to `ZAnalysis`, several radians off (the probabilities
-    are the same) ([analysis D2](docs/fortran_deviations.md#analysis-d2));
+  - the phase of the S-matrix elements of the initial rotational and diffraction state (elastic and
+    vibrationally inelastic) refers to the specular analysis line where they are measured; the
+    Fortran refers it to `ZAnalysis`, several radians off (the probabilities are the same)
+    ([analysis D2](docs/fortran_deviations.md#analysis-d2));
   - the surface symmetry is also used for C2v and C4v.
 - **Flux analysis:** not ported. With `ProjOp` 2 the Fortran's flux leaves out the initial channel
   on the specular grid ([findings](docs/flux_analysis_findings.md)).
