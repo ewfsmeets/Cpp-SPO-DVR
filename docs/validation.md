@@ -206,8 +206,11 @@ derived from exactly the same parameters.
 5. **Fine analysis** (`tests/test_regression_fine_analysis.cpp`): the C++ analyses the Fortran's
    own BK file (hardwall_small `fortran_fort21.bin`); Fortran reference from unmodified
    onlyAnalysis runs (`tools/fortran_reference/run_fine_analysis_reference.sh`, variants full,
-   truncated (tEnd 13860), nen95 (NrOfEs -95), small (tEnd 800), empty (tEnd 100, nen95 = 0) in
-   `hardwall_small/fine_<variant>/`). Compared to half a printed unit: AsympInfo numbers,
+   truncated (tEnd 13860), small (tEnd 800), empty (tEnd 100, nen95 = 0) in
+   `hardwall_small/fine_<variant>/`). The variant with NrOfEs −95 (analysis energies on fine-grid points) was
+   removed with r1719, which makes −95 an input error; no Fortran-compared case has its energies on grid points
+   any more, and the on-grid interpolation is covered by unit tests (`LocateOnGrid.NeighboursAndClamps`,
+   `InterpolateSMatrix.GridPointsAndLinearProbability`). Compared to half a printed unit: AsympInfo numbers,
    probaf table, all of fil10 and unit 3 (spectrum), the interpolated per-energy blocks and
    fort.25 probabilities; fort.25 Re S / Im S / phase against an emulation of the reference's
    interpolation, whose ATAN and sign bugs 5.24 keeps (see fortran_deviations.md). The gate analyses

@@ -50,11 +50,10 @@ nlohmann::json variant_input(const std::string& case_name, const std::string& va
   json["writeSMatrix"] = true;
   json["RestartDir"] = case_dir(case_name).string();
   json["RestartFormat"] = "fortran";
-  if (variant == "truncated" || variant == "nen95") {
+  if (variant == "truncated") {
     json["tEnd"] = 13860.0;
     json["nStep"] = 6930;
   }
-  if (variant == "nen95") json["NrOfEs"] = -95;
   if (variant == "small") {
     json["tEnd"] = 800.0;
     json["nStep"] = 400;
@@ -280,9 +279,9 @@ void run_gate(const std::string& case_name, const std::string& variant) {
       // On a grid point (f = 0 or 1 to rounding) the Fortran may have chosen the neighbouring
       // interval: its E_z (ensctr, quad precision) differs from the C++ one in the last bits.
       // The emulation of that interval is used if it matches the Fortran value better.
-      // Measured: the nen95 variant passes with either emulation (5.19's s1_real or 5.24's s1_imag),
-      // because the typo term is multiplied by f, which is close to 0 there or, in this fallback,
-      // by f - 1, close to 0 too.
+      // Measured with the former NrOfEs = -95 variant (energies on the fine grid; an input error since
+      // r1719): it passed with either emulation (5.19's s1_real or 5.24's s1_imag), because the typo term
+      // is multiplied by f, which is close to 0 there or, in this fallback, by f - 1, close to 0 too.
       const cplx printed(parse_fortran_real(entry.re), parse_fortran_real(entry.im));
       const int n_grid = g.size();
       std::optional<cplx> other;
@@ -310,7 +309,6 @@ void run_gate(const std::string& case_name, const std::string& variant) {
 
 TEST(RegressionFineAnalysis, Gate5Full) { run_gate("hardwall_small", "full"); }
 TEST(RegressionFineAnalysis, Gate5Truncated) { run_gate("hardwall_small", "truncated"); }
-TEST(RegressionFineAnalysis, Gate5Nen95) { run_gate("hardwall_small", "nen95"); }
 TEST(RegressionFineAnalysis, Gate5Small) { run_gate("hardwall_small", "small"); }
 TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("hardwall_small", "empty"); }
 // The corrugated C6v case (60 deg cell): on the BK file of the full Dai-Light Fortran run.

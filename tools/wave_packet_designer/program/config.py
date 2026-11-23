@@ -52,7 +52,7 @@ class InputParameters:
     dynamical_zsp_analysis: bool  # DynamZSpAna: the specular analysis line follows the packet
     dt_averages: float  # dtAve (a.u.)
     z_analysis: float  # Zana (bohr): the analysis line on the scattering grid
-    n_energies: int  # NrOfEs (or -95: energies pi/tEnd apart)
+    n_energies: int  # NrOfEs (>= 2)
 
     e_min_wave_packet: float  # EMinWP (eV)
     e_max_wave_packet: float  # EMaxWP (eV)

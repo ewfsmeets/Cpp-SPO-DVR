@@ -104,8 +104,8 @@ def absorber_strength(
 ) -> AbsorberStrength:
     """Strength from the target energy if it is > 0, else the factor (0 when absent).
 
-    An energy of 0 therefore gives strength 0, no absorption, where the Fortran keeps its default strength
-    (docs/fortran_deviations.md, absorber D1).
+    The input checks allow an energy of 0 only for ZOptLowEnergy; it gives strength 0, no absorption, as the
+    Fortran's low-Z default (docs/fortran_deviations.md, absorber D1).
     """
     if energy is not None and energy > 0.0:
         kinetic_energy = ev_to_hartree(energy)

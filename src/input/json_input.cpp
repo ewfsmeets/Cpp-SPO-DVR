@@ -239,6 +239,10 @@ struct LowZAbsorberKeys {
 const LowZAbsorberKeys scattering_low_z_keys{"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy", "ZOptLowFactor"};
 const LowZAbsorberKeys specular_low_z_keys{"ZSpOptLowStart", "ZSpOptLowEnd", "ZSpOptLowEnergy", "ZSpOptLowFactor"};
 
+// The Fortran's check of a low-Z absorber energy (upstream r1718): ZOptLowEnergy .RLT. 0 (tolerant, so
+// 0 is valid), ZSpOptLowEnergy <= 0 (exact).
+enum class LowZEnergyCheck { below_zero_tolerant, at_most_zero_exact };
+
 // Reads the keys of one low-Z absorber; an absent key leaves its value empty.
 void read_low_z_absorber(JsonReader& in, const LowZAbsorberKeys& keys, LowZAbsorberInput& absorber) {
   in.read(keys.start, absorber.start);
@@ -336,12 +340,13 @@ void require_energy_or_factor(const JsonReader& in, const std::string& energy, c
 }
 
 // A low-Z absorber (upstream 5.24). The Fortran switches it on only if Start and End are both
-// given with Start <= End, and then compares with plain < and > (not the tolerant .RLT./.RGT.),
-// so the comparisons here are exact. Errors here, ignored or accepted by the Fortran: an
-// incomplete set of keys (low-Z D3), Start > End (low-Z D1), Start = End (low-Z D2).
+// given with Start < End (r1717; before, Start <= End), and then compares with plain < and > (not
+// the tolerant .RLT./.RGT.), so the comparisons here are exact. Errors here, ignored or accepted by
+// the Fortran: an incomplete set of keys (low-Z D3), Start > End (low-Z D1), Start = End (low-Z D2).
+// The energy check follows each key's Fortran operator (energy_check).
 // Fortran: InputNew.f90 ReadInput
 void require_low_z_absorber(const JsonReader& in, const InputParameters& p, const LowZAbsorberKeys& keys,
-                            const LowZAbsorberInput& absorber) {
+                            const LowZAbsorberInput& absorber, LowZEnergyCheck energy_check) {
   const std::string& start_key = keys.start;
   const std::string& end_key = keys.end;
   if (!absorber.start && !absorber.end && !absorber.energy && !absorber.factor) return;  // off
@@ -364,8 +369,11 @@ void require_low_z_absorber(const JsonReader& in, const InputParameters& p, cons
   if (end > p.z_analysis)
     throw InputError(end_key, std::format("{} was set higher than Zana ({} > {} bohr)", end_key, end, p.z_analysis));
   require_energy_or_factor(in, keys.energy, keys.factor);
-  if (absorber.energy && fortran_compare::rlt(*absorber.energy, 0.0))
+  if (!absorber.energy) return;
+  if (energy_check == LowZEnergyCheck::below_zero_tolerant && fortran_compare::rlt(*absorber.energy, 0.0))
     throw InputError(keys.energy, std::format("{} < 0 ({} eV)", keys.energy, *absorber.energy));
+  if (energy_check == LowZEnergyCheck::at_most_zero_exact && *absorber.energy <= 0.0)
+    throw InputError(keys.energy, std::format("{} <= 0 ({} eV)", keys.energy, *absorber.energy));
 }
 
 // The SCM keys (SCM D1, D7, D12) and the inputs SCM rejects (SCM D2, D13), checked here since the
@@ -425,11 +433,12 @@ void check_while_reading(const JsonReader& in, const InputParameters& p) {
   const std::pair<std::string, std::string> cap_keys[] = {
       {"ZOptEnergy", "ZOptFactor"}, {"ROptEnergy", "ROptFactor"}, {"ZSpOptEnergy", "ZSpOptFactor"}};
   for (const auto& [energy, factor] : cap_keys) require_energy_or_factor(in, energy, factor);
-  if (p.z_opt_energy && rlt(*p.z_opt_energy, 0.0)) throw InputError("ZOptEnergy", "ZOptEnergy < 0.");
-  if (p.r_opt_energy && rlt(*p.r_opt_energy, 0.0)) throw InputError("ROptEnergy", "ROptEnergy < 0.");
-  if (p.zsp_opt_energy && rlt(*p.zsp_opt_energy, 0.0)) throw InputError("ZSpOptEnergy", "ZSpOptEnergy < 0.");
-  require_low_z_absorber(in, p, scattering_low_z_keys, p.z_opt_low);
-  require_low_z_absorber(in, p, specular_low_z_keys, p.zsp_opt_low);
+  // An exact <= 0, as the Fortran since r1718 (absorber D1 is resolved for these three keys).
+  if (p.z_opt_energy && *p.z_opt_energy <= 0.0) throw InputError("ZOptEnergy", "ZOptEnergy <= 0.");
+  if (p.r_opt_energy && *p.r_opt_energy <= 0.0) throw InputError("ROptEnergy", "ROptEnergy <= 0.");
+  if (p.zsp_opt_energy && *p.zsp_opt_energy <= 0.0) throw InputError("ZSpOptEnergy", "ZSpOptEnergy <= 0.");
+  require_low_z_absorber(in, p, scattering_low_z_keys, p.z_opt_low, LowZEnergyCheck::below_zero_tolerant);
+  require_low_z_absorber(in, p, specular_low_z_keys, p.zsp_opt_low, LowZEnergyCheck::at_most_zero_exact);
 
   if (p.z_analysis_specular) {
     const double z_ana_sp = *p.z_analysis_specular;

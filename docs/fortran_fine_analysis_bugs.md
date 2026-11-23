@@ -94,8 +94,9 @@ unreliable, and the run should be propagated longer.
 
 The reference data comes from the unmodified Fortran binary. It runs as an analysis-only run on
 the BK coefficients of its own full hardwall_small run:
-`tools/fortran_reference/run_fine_analysis_reference.sh`, variants `full`, `truncated`, `nen95`,
-`small` and `empty`, and of its cu111_dailight_small run (variant `full`). The C++ analyses the same file, so both programs start from identical
+`tools/fortran_reference/run_fine_analysis_reference.sh`, variants `full`, `truncated`, `small` and
+`empty` (until 2026-11-23 also `nen95`, NrOfEs −95, which upstream r1719 made an input error), and of its
+cu111_dailight_small run (variant `full`). The C++ analyses the same file, so both programs start from identical
 input.
 
 1. **The fine-grid S agrees with the Fortran, and the bug model is what the Fortran does**
@@ -115,7 +116,8 @@ input.
      | Dai–Light full (`cu111_dailight_small`) | 105303 |
 
      Values with |S| < 1e-8 of the largest are skipped.
-   - In the nen95 variant the analysis energies fall on grid points (f = 0 or 1). There the
+   - In the nen95 variant (removed 2026-11-23, see above) the analysis energies fell on grid points (f = 0 or
+     1). There the
      Fortran's quad-precision `ensctr` picks the neighbouring interval for 7 values; the test
      accepts either interval.
    - All probabilities agree with the fixed C++ directly, to within half a printed unit:

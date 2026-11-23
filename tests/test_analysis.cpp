@@ -282,19 +282,6 @@ TEST(SMatrix, AnalysisEnergiesOfTheReferenceCase) {
   EXPECT_EQ(e.total_hartree[3], e.total[3] / units::legacy.energy_factor());
 }
 
-TEST(SMatrix, Nen95UsesTheSpectralResolution) {
-  nlohmann::json json = reference_json();
-  json["NrOfEs"] = -95;
-  const AnalysisSetup s(json);
-  const AnalysisEnergies e = make_analysis_energies(s.config, s.gas);
-  const double step = Constants::pi / 14000.0 * units::legacy.energy_factor();
-  EXPECT_NEAR(e.collision[1] - e.collision[0], step, 1e-14);
-  EXPECT_GT(e.collision.front(), 0.2);
-  EXPECT_LE(e.collision.front(), 0.2 + step);
-  EXPECT_LE(e.collision.back(), 0.6);
-  EXPECT_GT(e.collision.back() + step, 0.6);
-}
-
 // A constant BK series c accumulates to the geometric sum c dT sum_k exp(i E k dT); open
 // channels then get the analytic prefactor, closed channels are zero.
 TEST(SMatrix, ConstantSeriesGivesTheGeometricSumAndThePrefactor) {

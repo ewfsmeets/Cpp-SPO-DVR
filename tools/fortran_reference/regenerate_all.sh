@@ -145,7 +145,7 @@ propagation scm_cu111_srp48_small
 restart
 
 # 5. Fine analysis of the regenerated BK coefficients.
-fine hardwall_small full truncated nen95 small empty
+fine hardwall_small full truncated small empty
 fine cu111_dailight_small full
 
 # 6. The CRP library driver on the committed point lists and data sets.

@@ -15,6 +15,11 @@ Fortran keeps for an absorber energy of 0 (absorber D1), the optical potentials 
 of the Z grid that upstream 5.24 added (low-Z D1–D4), and the number of analysis energies
 (analysis D1).
 
+**Status (2026-11-23):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
+analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
+NaN), and the C++ follows the fixed checks. Each section starts with its status. The demonstrations below show the
+Fortran before those fixes (5.19 and r1713).
+
 ## The demonstration runs
 
 - **Executables:**
@@ -39,6 +44,9 @@ of the Z grid that upstream 5.24 added (low-Z D1–D4), and the number of analys
   `FluxAnalyzor.f90 setupFluxAnalyzor` are identical in both versions.
 
 ## flux Q1: EMaxFluxAna is checked the wrong way round
+
+**Status:** fixed upstream in r1714 (2026-11-19): the Fortran checks EMinFluxAna > EMaxWP, EMaxFluxAna < EMinWP and
+EMaxFluxAna > EMaxWP, and the wrong check is gone. The C++ has the same checks.
 
 ### The Fortran code
 
@@ -130,11 +138,16 @@ Both versions accept it:
   Not supported: doFluxAnalysis = true: the flux analysis is not implemented yet
   ```
   Analysis-only and potential-only runs accept the flux keys and ignore them.
-- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxQ1EMax`,
-  `Input.FluxQ1EnergyRangeInsideTheWavePacketIsValid`) and `tests/test_cli.cpp`
-  (`FluxAnalysisGuard.*`).
+- The two range checks r1714 added (EMinFluxAna > EMaxWP, EMaxFluxAna < EMinWP; tolerant) are in
+  `validate_input` too.
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxQ1EMax`, `FluxEMinAboveEMaxWP`,
+  `FluxEMaxBelowEMinWP` and their tolerance rows, `Input.FluxQ1EnergyRangeInsideTheWavePacketIsValid`) and
+  `tests/test_cli.cpp` (`FluxAnalysisGuard.*`).
 
 ## flux Q2: a zero DeltaEFluxAna passes the check
+
+**Status:** fixed upstream in r1719 (2026-11-19): the Fortran rejects `deltaEFluxAna <= 0.0` (exact). The C++
+check is exact now too.
 
 ### The Fortran code
 
@@ -201,17 +214,21 @@ and no error or warning about the flux analysis. Their flux output files:
 
 ### The C++ behaviour
 
-- `validate_input` stops when DeltaEFluxAna ≤ 0. The test is tolerant (`.RLE.`), like the other
-  "≤ 0" checks of grid spacings (dZ, dR).
+- `validate_input` stops when DeltaEFluxAna ≤ 0. The test is exact, as the Fortran's since r1719 (before, it
+  was tolerant, like the "≤ 0" checks of the grid spacings dZ and dR).
 - The error names the key (exit code 2). For case (c) with a range inside the wave packet
   (EMaxFluxAna = 0.5, so that the flux Q1 check passes first):
   ```text
   Input error: DeltaEFluxAna: DeltaEFluxAna <= 0 (0 eV): the flux analysis energy grid needs a positive spacing; use DeltaEFluxAna > 0
   ```
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/FluxQ2DeltaZero` and
-  `FluxQ2DeltaNegative`).
+  `FluxQ2DeltaNegative`, `Input.FluxDeltaEJustAboveZeroIsValid`).
 
 ## absorber D1: an absorber energy of 0 keeps the default strength
+
+**Status:** fixed upstream in r1718 (2026-11-19): `ZOptEnergy`, `ROptEnergy`, `ZSpOptEnergy` and `ZSpOptLowEnergy`
+≤ 0 are input errors (exact `<=`), in the Fortran and the C++. `ZOptLowEnergy` keeps the tolerant `.RLT. 0`, so 0
+stays valid there (strength 0, no absorption, in both codes).
 
 ### The Fortran code
 
@@ -257,14 +274,24 @@ appended. 5.24 runs to the end (exit status 0) and prints the default strength:
 
 ### The C++ behaviour
 
-- An energy of 0 means no absorption: the strength is 0 and every absorption factor is exactly 1
-  (`src/input/process.cpp`, `process_input`). For case (d) the set-up prints
+- Since r1718, as the Fortran: an energy ≤ 0 of `ZOptEnergy`, `ROptEnergy`, `ZSpOptEnergy` or `ZSpOptLowEnergy` is
+  an input error (exit code 2). For case (d):
   ```text
-  CAP strengths (Z, r, Zsp) ..... 0.00000000e+00, 2.38963250e-02, 1.82989643e-02 hartree
+  Input error: ZOptEnergy: ZOptEnergy <= 0.
   ```
-- Tests: `tests/test_propagation_tables.cpp` (`PropagationTables.AbsorberD1EnergyZeroGivesNoAbsorption`).
+- A `ZOptLowEnergy` of 0 means no absorption: the strength is 0 and the low-end factors are exactly 1
+  (`src/input/process.cpp`, `process_input`).
+- Before r1718 an energy of 0 gave strength 0 for every absorber; for case (d) the set-up printed
+  `CAP strengths (Z, r, Zsp) ..... 0.00000000e+00, 2.38963250e-02, 1.82989643e-02 hartree`.
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/…EnergyZero` and `…EnergyJustBelowZero`,
+  `Input.AbsorberEnergiesJustAboveZeroAreValid`) and `tests/test_propagation_tables.cpp`
+  (`PropagationTables.LowZEnergyZeroGivesNoAbsorption`).
 
 ## The low-Z absorbers of upstream 5.24
+
+**Status:** since r1717 (2026-11-19) the Fortran switches an absorber on only for Start < End, so Start = End
+(low-Z D2) leaves it off without a message instead of producing NaN; since r1718 `ZSpOptLowEnergy` ≤ 0 is an error
+(absorber D1). Low-Z D1, D3 and D4 are unchanged. The C++ keeps its errors for D1–D3.
 
 ### The Fortran code
 
@@ -326,7 +353,7 @@ a positive length:
 
 - **low-Z D1:** with Start > End the condition `zsplmilow <= zsplmalow` is false: the absorber
   stays off, and no message says so.
-- **low-Z D2:** with Start = End the absorber is switched on with length 0. The strength is not
+- **low-Z D2** (up to r1713): with Start = End the absorber is switched on with length 0. The strength is not
   computed (the length is not positive), so it is the factor or the default 0. A grid point equal
   to Start gets `0 * (0/0)**2` = NaN in `vimag`, so its absorption factor `exp(-ima*vimag*dtlan)`
   is NaN too; the first time step spreads the NaN over the whole wave function (also where it is 0,
@@ -420,6 +447,9 @@ while `Setup.f90` prints the right index range (points 1 to 101, Z = −2.0 to 6
 
 ## analysis D1: NrOfEs = 0 and 1 pass the check
 
+**Status:** fixed upstream in r1715–r1719 (2026-11-19): the Fortran rejects NrOfEs < 2 (`'NrOfEs < 2.'`), which
+also makes NrOfEs = −95 an input error. The C++ check is the same.
+
 ### The Fortran code
 
 `InputNew.f90 ValidateInput` rejects only a negative number of analysis energies (line 574 in
@@ -481,13 +511,13 @@ times, and no fort.25 is written.
 
 ### The C++ behaviour
 
-- `src/input/validate.cpp` (`validate_input`) rejects NrOfEs = 0 and 1 after the Fortran's
-  `NrOfEs < 0` check (−95 stays valid). Both cases are input errors (exit code 2), e.g. for case (i):
+- `src/input/validate.cpp` (`validate_input`) rejects NrOfEs < 2, as the Fortran since r1719 (before, the
+  C++ rejected 0 and 1 and accepted −95). Both cases are input errors (exit code 2), e.g. for case (i):
   ```text
-  Input error: NrOfEs: NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart
+  Input error: NrOfEs: NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2.
   ```
 - Until this check the C++ behaved as the Fortran: for case (i) its summary table showed
   `E_coll = -nan`, `P_scattered = 0`, `P_reaction = 1`, and for case (j) empty tables, with exit
   code 0.
-- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD1NrOfEsZero` and
-  `AnalysisD1NrOfEsOne`, `Input.AnalysisD1TwoEnergiesAndNen95AreValid`).
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD1NrOfEsZero`,
+  `AnalysisD1NrOfEsOne` and `NrOfEsNen95`, `Input.NrOfEsTwoIsValid`).

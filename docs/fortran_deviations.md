@@ -11,13 +11,17 @@ differences are in [validation.md](validation.md).
 
 - `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2), so the
   Fortran always reads it as the specular grid size. C++: the same (a required key); ProjOp must be 2.
-- flux Q1<a id="flux-q1"></a>: the Fortran stops when `EMaxFluxAna .RLT. EMaxWP` (message `'EMaxFluxAna < EMinWP'`):
-  it rejects every flux energy range that ends inside the wave packet and accepts ranges beyond
-  it. C++: error if EMaxFluxAna > EMaxWP (tolerant, like the EMinFluxAna check). Details and a
-  demonstration: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q1-emaxfluxana-is-checked-the-wrong-way-round).
-- flux Q2<a id="flux-q2"></a>: the Fortran rejects only `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passes and
-  `FluxAnalyzor.f90 setupFluxAnalyzor` divides by it (a garbage energy count, no flux results).
-  C++: error if DeltaEFluxAna ≤ 0 (tolerant). Details: [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
+- flux Q1<a id="flux-q1"></a>: resolved upstream in r1714. Up to r1713 the Fortran stopped when
+  `EMaxFluxAna .RLT. EMaxWP` (message `'EMaxFluxAna < EMinWP'`): it rejected every flux energy range that ends
+  inside the wave packet and accepted ranges beyond it. r1714 checks the range the way the C++ always did
+  (error if EMaxFluxAna > EMaxWP, tolerant) and adds EMinFluxAna > EMaxWP and EMaxFluxAna < EMinWP, which the
+  C++ now has too. No deviation remains. Details and a demonstration:
+  [fortran_input_bugs.md](fortran_input_bugs.md#flux-q1-emaxfluxana-is-checked-the-wrong-way-round).
+- flux Q2<a id="flux-q2"></a>: resolved upstream in r1719. Up to r1713 the Fortran rejected only
+  `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passed and `FluxAnalyzor.f90 setupFluxAnalyzor` divided by it (a
+  garbage energy count, no flux results). r1719 rejects `deltaEFluxAna <= 0.0` (exact); the C++ check, tolerant
+  before, is exact now too. No deviation remains. Details:
+  [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
 - Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
   propagating run (new or restart) with exit code 3 once the input checks have passed;
   analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
@@ -78,11 +82,13 @@ differences are in [validation.md](validation.md).
   terms are still ~1e-4..1e-3 eV at 14.99).
 - Giving both `ZOptEnergy` and `ZOptFactor` (same for R/ZSp) is an error (Fortran silently ignores
   the factor).
-- absorber D1: an absorber energy of 0 (`ZOptEnergy`, `ROptEnergy`, `ZSpOptEnergy`) means no
-  absorption (strength 0). The Fortran computes the strength only for an energy > 0 and otherwise
-  keeps the factor's default (`globaldata.f90 SetupGlobalDataModule`, e.g. 4.38e-3 hartree for
-  ZOpt), so it absorbs without saying so. The low-Z absorbers' default strength is 0, so there both
-  codes agree. Details: [fortran_input_bugs.md](fortran_input_bugs.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength).
+- absorber D1: resolved upstream in r1718 for `ZOptEnergy`, `ROptEnergy`, `ZSpOptEnergy` and
+  `ZSpOptLowEnergy`: an energy ≤ 0 is an input error in both codes (an exact `<=`). Up to r1713 the Fortran
+  accepted an energy of 0, then computed no strength and kept the factor's default
+  (`globaldata.f90 SetupGlobalDataModule`, e.g. 4.38e-3 hartree for ZOpt), so it absorbed without saying so;
+  the C++ gave strength 0. `ZOptLowEnergy` keeps the tolerant `.RLT. 0` check: an energy of 0 stays valid
+  there and means no absorption in both codes (the low-Z default strength is 0). Details:
+  [fortran_input_bugs.md](fortran_input_bugs.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength).
 - absorber D2<a id="absorber-d2"></a>: an absorber whose reduced length L/λ is exactly 1, the first point of the
   Vibók–Balint-Kurti table, matches no interval of `MyFunctions.f90 getACoeffOptPotential` (the
   test is `xtab(i) < L/λ ≤ xtab(i+1)`, and L/λ < 1 is the clamp branch). The Fortran then returns
@@ -95,8 +101,9 @@ differences are in [validation.md](validation.md).
   `Absorption.f90 SetupAbsorpPot`). The Fortran's silent cases are errors here; details and
   demonstrations: [fortran_input_bugs.md](fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524).
   - low-Z D1: Start > End is an error (the Fortran leaves the absorber off without a message).
-  - low-Z D2: Start = End is an error (the Fortran switches on a zero-length absorber: a grid point
-    equal to Start gets 0·(0/0) = NaN, and the wave function becomes NaN).
+  - low-Z D2: Start = End is an error. Up to r1713 the Fortran switched on a zero-length absorber (a grid
+    point equal to Start got 0·(0/0) = NaN, and the wave function became NaN); since r1717 it leaves the
+    absorber off without a message.
   - low-Z D3: an incomplete set of keys (only one of Start and End, or the energy or factor
     without them) is an error (the Fortran leaves the absorber off without a message).
   - low-Z D4: the set-up output shows the absorbers' own values. The Fortran's printout
@@ -168,10 +175,12 @@ differences are in [validation.md](validation.md).
   Fortran replaces the on-the-fly results, C++ writes both (`fine_analysis/`). The transform is
   one zero-padded FFT with trapezoid weights instead of hlftrf's two (anti-)Hermitian FFTs
   (equal to rounding, tested).
-- analysis D1<a id="analysis-d1"></a>: NrOfEs = 0 and 1 are input errors. The Fortran accepts both: with 0
-  it computes no S-matrix at all, with 1 `InputNew.f90 ProcessInput` divides by zero in
-  `denrgy = (EMaxWP-EMinWP)/(nenrgy-1)`, and the run reports NaN energies and P_reaction = 1.
-  Details and a demonstration: [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d1-nrofes--0-and-1-pass-the-check).
+- analysis D1<a id="analysis-d1"></a>: resolved upstream in r1715–r1719: NrOfEs < 2 is an input error in both
+  codes. Up to r1713 the Fortran accepted 0 and 1: with 0 it computed no S-matrix at all, with 1
+  `InputNew.f90 ProcessInput` divided by zero in `denrgy = (EMaxWP-EMinWP)/(nenrgy-1)`, and the run reported NaN
+  energies and P_reaction = 1. The same change makes NrOfEs = −95 (`Constants_NEN95`, collision energies on the
+  grid of multiples of π/tEnd) an input error; the C++ no longer has that choice. Details and a demonstration:
+  [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d1-nrofes--0-and-1-pass-the-check).
 - analysis D2<a id="analysis-d2"></a>: the phase of the initial state's S-matrix elements (the elastic element and
   the vibrationally inelastic specular ones) is referred to the line where those coefficients are measured, the
   specular analysis line Z_sp once it is fixed, not to Zana. The Fortran removes the free outgoing phase at

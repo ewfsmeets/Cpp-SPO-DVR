@@ -12,8 +12,8 @@
 
 namespace spodvr {
 
-// Energies at which the S-matrix is computed on the fly. NrOfEs = -95 (nen95) chooses the
-// spectral resolution pi / tEnd of the propagation instead of NrOfEs equidistant energies.
+// Energies at which the S-matrix is computed on the fly: NrOfEs equidistant energies from EMinWP
+// to EMaxWP (plus EParallel).
 // Fortran: Analyzor.f90 SetupAnalysis (enrgi, denrgy, nenrgy, ensctr, enscev, enscau)
 struct AnalysisEnergies {
   std::vector<double> collision;     // translational energy (eV). Fortran: ensctr

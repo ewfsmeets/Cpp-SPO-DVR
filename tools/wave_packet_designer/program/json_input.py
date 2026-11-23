@@ -322,7 +322,8 @@ def check_while_reading(values: dict, p: InputParameters, reading: FindingList) 
         ("ROptEnergy", p.r_opt_energy),
         ("ZSpOptEnergy", p.zsp_opt_energy),
     ):
-        reading.error_if(energy is not None and rlt(energy, 0.0), energy_key, f"{energy_key} < 0.")
+        # An exact <= 0, as the Fortran since r1718.
+        reading.error_if(energy is not None and energy <= 0.0, energy_key, f"{energy_key} <= 0.")
     require_low_z_absorber(
         values, p, "ZOptLow", (p.z_opt_low_start, p.z_opt_low_end, p.z_opt_low_energy, p.z_opt_low_factor), reading
     )
@@ -377,9 +378,15 @@ def require_low_z_absorber(
         reading.error(end_key, f"{end_key} was set higher than Zana ({end} > {p.z_analysis} bohr)")
     else:
         require_energy_or_factor(values, prefix + "Energy", prefix + "Factor", reading)
-        reading.error_if(
-            energy is not None and rlt(energy, 0.0), prefix + "Energy", f"{prefix}Energy < 0 ({energy} eV)"
-        )
+        # Each key's Fortran operator (r1718): ZOptLowEnergy the tolerant .RLT. 0, ZSpOptLowEnergy an exact <= 0.
+        if prefix == "ZOptLow":
+            reading.error_if(
+                energy is not None and rlt(energy, 0.0), prefix + "Energy", f"{prefix}Energy < 0 ({energy} eV)"
+            )
+        else:
+            reading.error_if(
+                energy is not None and energy <= 0.0, prefix + "Energy", f"{prefix}Energy <= 0 ({energy} eV)"
+            )
 
 
 def key_of_field(field_name: str) -> str:

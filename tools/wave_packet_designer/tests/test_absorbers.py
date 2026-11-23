@@ -83,10 +83,11 @@ def test_dz_strengths_match_the_program() -> None:
 
 
 def test_factor_and_zero_energy() -> None:
-    """A …Factor key is the strength; a target energy of 0 gives strength 0 (absorber D1)."""
+    """A …Factor key is the strength; a ZOptLowEnergy of 0 gives strength 0 (absorber D1; the only absorber energy
+    that may be 0 since r1718)."""
     p = load_parameters(HARDWALL_INPUT, z_opt_energy=None, z_opt_factor=0.02)
     z_absorber = build_derived(p, HARDWALL_SYSTEM).absorbers[0]
     check_equal((z_absorber.name, z_absorber.strength), ("ZOpt", 0.02), "ZOptFactor")
-    p = load_parameters(HARDWALL_INPUT, r_opt_energy=0.0)
-    r_absorber = next(a for a in build_derived(p, HARDWALL_SYSTEM).absorbers if a.name == "ROpt")
-    check_equal((r_absorber.strength, r_absorber.target_energy), (0.0, None), "ROptEnergy = 0")
+    p = load_parameters(HARDWALL_INPUT, z_opt_low_start=-1.0, z_opt_low_end=-0.5, z_opt_low_energy=0.0)
+    low_absorber = next(a for a in build_derived(p, HARDWALL_SYSTEM).absorbers if a.name == "ZOptLow")
+    check_equal((low_absorber.strength, low_absorber.target_energy), (0.0, None), "ZOptLowEnergy = 0")

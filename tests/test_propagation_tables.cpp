@@ -197,25 +197,14 @@ TEST(PropagationTables, LowZAbsorberOverwritesTheHighEndWhereTheyOverlap) {
   EXPECT_EQ(overlap, 8);  // Z = 7.44 .. 8.0 (7.36 itself is 7.359999999999999 on the grid)
 }
 
-// absorber D1: an absorber energy of 0 means no absorption, for the high-end absorbers (the
-// Fortran would keep its default strength) and the low-Z ones (the Fortran's default is 0):
-// every factor is exactly 1.
-TEST(PropagationTables, AbsorberD1EnergyZeroGivesNoAbsorption) {
-  const TablesSetup s(with_changes({{"ZOptEnergy", 0.0},
-                                    {"ROptEnergy", 0.0},
-                                    {"ZSpOptEnergy", 0.0},
-                                    {"ZOptLowStart", -2.0},
-                                    {"ZOptLowEnd", 8.0},
-                                    {"ZOptLowEnergy", 0.0},
-                                    {"ZSpOptLowStart", -2.0},
-                                    {"ZSpOptLowEnd", 8.0},
-                                    {"ZSpOptLowEnergy", 0.0}}));
-  const std::vector<double> ones_z(s.tables.z_optical.size(), 1.0);
-  const std::vector<double> ones_r(s.tables.r_optical.size(), 1.0);
-  const std::vector<double> ones_z_specular(s.tables.z_specular_optical.size(), 1.0);
-  EXPECT_EQ(s.tables.z_optical, ones_z);
-  EXPECT_EQ(s.tables.r_optical, ones_r);
-  EXPECT_EQ(s.tables.z_specular_optical, ones_z_specular);
+// absorber D1: a ZOptLowEnergy of 0 means no absorption (strength 0; the Fortran's low-Z default
+// strength is 0 too). The other absorber energies must be > 0 since r1718 (input checks). The
+// scattering grid's table equals bitwise that of the same input without the low-Z absorber.
+TEST(PropagationTables, LowZEnergyZeroGivesNoAbsorption) {
+  const TablesSetup with_zero(with_changes({{"ZOptLowStart", -2.0}, {"ZOptLowEnd", 8.0}, {"ZOptLowEnergy", 0.0}}));
+  const TablesSetup without(reference_json());
+  EXPECT_EQ(with_zero.config.derived.z_opt_low_factor, 0.0);
+  EXPECT_EQ(with_zero.tables.z_optical, without.tables.z_optical);
 }
 
 TEST(PropagationTables, AbsorbingPotentialProfile) {

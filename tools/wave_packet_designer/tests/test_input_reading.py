@@ -69,7 +69,8 @@ def test_absorber_needs_energy_or_factor() -> None:
     check_has_error(read_with({"ZOptFactor": 0.01}).findings, "ZOptEnergy", "not both", "both")
     check_has_error(read_with({}, removed=("ROptEnergy",)).findings, "ROptEnergy", "should be present", "neither")
     check(read_with({"ZOptFactor": 0.01}, removed=("ZOptEnergy",)).parameters is not None, "factor only")
-    check_has_error(read_with({"ZSpOptEnergy": -0.1}).findings, "ZSpOptEnergy", "ZSpOptEnergy < 0.", "negative")
+    check_has_error(read_with({"ZSpOptEnergy": -0.1}).findings, "ZSpOptEnergy", "ZSpOptEnergy <= 0.", "negative")
+    check_has_error(read_with({"ZSpOptEnergy": 0.0}).findings, "ZSpOptEnergy", "ZSpOptEnergy <= 0.", "zero")
 
 
 def test_low_z_absorber_rules() -> None:

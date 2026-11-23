@@ -8,7 +8,6 @@
 # and in some variants tEnd / nStep / NrOfEs:
 #   full       tEnd unchanged (1400 records; ndused = 1386 < ndatol)
 #   truncated  tEnd 13860, nStep 6930 (only the first 1386 records are used; ndused = ndatol)
-#   nen95      as truncated, with NrOfEs = -95: the analysis energies fall on the fine grid
 #   small      tEnd 800, nStep 400 (80 records, a few energies; coefficients are still noise)
 #   empty      tEnd 100, nStep 50 (10 records: no energy in the confidence interval, nen95 = 0;
 #              so no fort.3 and no fort.25)
@@ -35,11 +34,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/reference_config.sh"
 case_name="${1:-hardwall_small}"
 shift || true
 variants=("$@")
-[[ ${#variants[@]} -gt 0 ]] || variants=(full truncated nen95 small empty)
+[[ ${#variants[@]} -gt 0 ]] || variants=(full truncated small empty)
 case_dir="${FORTRAN_REPO_DIR}/tests/reference/${case_name}"
 for variant in "${variants[@]}"; do
-  [[ "${variant}" =~ ^(full|truncated|nen95|small|empty)$ ]] || {
-    echo "usage: run_fine_analysis_reference.sh [case] [full|truncated|nen95|small|empty ...]" >&2
+  [[ "${variant}" =~ ^(full|truncated|small|empty)$ ]] || {
+    echo "usage: run_fine_analysis_reference.sh [case] [full|truncated|small|empty ...]" >&2
     exit 2
   }
 done
@@ -58,7 +57,6 @@ for variant in "${variants[@]}"; do
   case "${variant}" in
     full) ;;
     truncated) set_field "${inp}" tEnd 13860.0; set_field "${inp}" nStep 6930 ;;
-    nen95) set_field "${inp}" tEnd 13860.0; set_field "${inp}" nStep 6930; set_field "${inp}" NrOfEs -95 ;;
     small) set_field "${inp}" tEnd 800.0; set_field "${inp}" nStep 400 ;;
     empty) set_field "${inp}" tEnd 100.0; set_field "${inp}" nStep 50; outputs=(fort.10) ;;
   esac

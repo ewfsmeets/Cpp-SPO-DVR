@@ -17,8 +17,8 @@ checked 2026-11-14).
 ## 1. Status (2026-11-14)
 
 - **Not ported.** The flux keys are read and checked ([input_schema.md](input_schema.md); two
-  Fortran checks are wrong and fixed: flux Q1 and flux Q2 in [fortran_deviations.md](fortran_deviations.md)
-  and [fortran_input_bugs.md](fortran_input_bugs.md)). A propagating run (new or restart) with
+  Fortran checks were wrong up to r1713 and are fixed, upstream too: flux Q1 and flux Q2 in
+  [fortran_deviations.md](fortran_deviations.md) and [fortran_input_bugs.md](fortran_input_bugs.md)). A propagating run (new or restart) with
   `doFluxAnalysis: true` then stops with exit code 3 and "doFluxAnalysis = true: the flux analysis
   is not implemented yet" (`src/app/run.cpp`; test `FluxAnalysisGuard.PropagatingRunIsRefusedWithExitCode3`).
   Analysis-only and potential-only runs accept the keys and ignore them

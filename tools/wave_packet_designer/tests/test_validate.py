@@ -53,6 +53,7 @@ VIOLATIONS = [
     ({"mj_max": 30}, "MJMax", "|MJMax| > JMax."),
     ({"mj_in": 1}, "MJIn", "|MJIn| > JIn."),
     ({"j_in": 30}, "JIn", "JIn > JMax."),
+    ({"j_in": 28}, "JIn", "JIn >= JMax."),
     ({"j_in": 4, "mj_in": 4, "mj_max": 2}, "MJIn", "|MJIn| > |MJMax|."),  # JIn 4 keeps |MJIn| <= JIn
     ({"j_max": 27, "mj_max": 27}, "JMax", "homo-nuclear but JMax is even"),  # MJMax 27 keeps |MJMax| <= JMax
     ({"mj_max": 27}, "MJMax", "|MJMax| is odd"),
@@ -77,8 +78,8 @@ VIOLATIONS = [
     ({"j_analysis": -1}, "JAna", "JAna < 0."),
     ({"v_analysis": -1}, "VAna", "VAna < 0."),
     ({"diffraction_order_analysis": -1}, "DifOrdAna", "DifOrdAna < 0."),
-    ({"n_energies": -2}, "NrOfEs", "NrOfEs < 0."),
     ({"n_energies": 1}, "NrOfEs", "NrOfEs = 1"),
+    ({"n_energies": -95}, "NrOfEs", "NrOfEs = -95"),
     ({"dt_analysis": 30.0}, "dtAna", "Propagation time must be an integer times dtAna."),
     ({"dt_averages": 10.0}, "dtAve", "dtAve < dtAna."),
     ({"dt_averages": 510.0}, "dtAve", "dtAve must be an integer times dtAna."),
@@ -101,8 +102,8 @@ VIOLATIONS = [
     ({"v_in": -1}, "VIn", "VIn < 0."),
     ({"v_in": 40}, "VIn", "VIn > nR-1."),
     ({"j_in": 4, "mj_in": 4, "mj_max": 2}, "MJIn", "MJIn > MJMax."),  # as for |MJIn| > |MJMax| above
-    ({"v_in": 1, "v_analysis": 0}, "VIn", "VIn > VAna."),
-    ({"j_in": 2, "j_analysis": 0}, "JIn", "JIn > JAna."),
+    ({"v_in": 1, "v_analysis": 1}, "VIn", "VIn >= VAna."),
+    ({"j_in": 2, "j_analysis": 2}, "JIn", "JIn >= JAna."),
     ({"impose_v_min": True, "impose_v_max": True, "v_min": 11.0}, "VMin", "VMin > VMax."),
     ({"symmetry_tolerance": 0.0}, "SymmetryTolerance", "SymmetryTolerance <= 0."),
     ({"z_opt_start": 19.5}, "ZOptStart", "ZOptStart > ZOptEnd."),

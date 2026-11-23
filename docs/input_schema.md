@@ -30,7 +30,7 @@ Fortran default.
 | `dtAna` `dtAve` | real | dtAnalysis, dtAverages | analysis / averages interval |
 | `DynamZSpAna` | bool | dynamicalZSpAna | dynamical analysis surface on the specular grid |
 | `Zana` | real | ZAnalysis | analysis line (on the Z grid) |
-| `NrOfEs` | int | nenrgy | number of analysis energies, at least 2 (0 and 1 are input errors, analysis D1); −95 (Fortran `Constants_NEN95`): the collision energies k·π/tEnd (atomic units) between EMinWP + EParallel and EMaxWP + EParallel |
+| `NrOfEs` | int | nenrgy | number of analysis energies, at least 2 (NrOfEs < 2 is an input error, as the Fortran since r1719: analysis D1; the former −95 choice is an error too) |
 | `EMinWP` `EMaxWP` | real | | wave packet energy range (eV) |
 | `Z0` | real | z0 | initial wave packet centre |
 | `ZOptStart` `ZOptEnd` | real | zsplmi, zsplma | CAP in Z, scattering grid |
@@ -42,22 +42,22 @@ Fortran default.
 
 For each CAP, exactly one of `ZOptEnergy` / `ZOptFactor` (likewise `ROptEnergy` / `ROptFactor`,
 `ZSpOptEnergy` / `ZSpOptFactor`) is required.
-The energy is in eV, and the factor is the strength in hartree. An energy of 0 means no
-absorption (absorber D1: the Fortran silently keeps a default strength instead).
+The energy is in eV (> 0: an energy ≤ 0 is an input error, as the Fortran since r1718; absorber D1), and the
+factor is the strength in hartree.
 
 ## Optional keys (Fortran defaults)
 
 | Key | Type | Default | Fortran |
 |---|---|---|---|
 | `MJMax` | int | JMax | mjmaxw. A negative value means JMax. **0 also gives JMax** for the basis (Fortran quirk) |
-| `VIn` `JIn` `MJIn` | int | 0 | initial state |
+| `VIn` `JIn` `MJIn` | int | 0 | initial state; JIn < JMax (upstream r1726: JIn = JMax is an input error) |
 | `onlyAnalysis` | bool | false | analysis-only run (nread = 2): the fine analysis of the BK file in `RestartDir` (format `RestartFormat`); no propagation and no 6D potential. `tEnd` sets the number of BK records used (tEnd / dtAna) |
 | `alsoAnalysis` | bool | false | the fine analysis after the propagation, of the BK file the run has written (Fortran replaces the on-the-fly results by the fine ones; here both are written) |
 | `Potential` | bool | false | potential-only run (nread = 6) |
-| `JAna` `VAna` `DifOrdAna` | int | determined by the program | analysis limits |
+| `JAna` `VAna` `DifOrdAna` | int | determined by the program | analysis limits: JAna the highest analysed j, VAna the number of analysed vibrational levels (v = 0 to VAna − 1). Given, they need JIn < JAna and VIn < VAna (upstream r1726; a given VAna = 0 is therefore an error: leave the key out to let the program choose) |
 | `ZAnaSp` | real | none | fixed analysis line on the specular grid |
 | `doFluxAnalysis` | bool | false | doFluxAnalysis; needs the four keys below. The flux analysis (`FluxAnalyzor.f90`) is **not ported** ([flux_analysis_findings.md](flux_analysis_findings.md)): a propagating run (new or restart) with `true` stops with "doFluxAnalysis = true: the flux analysis is not implemented yet" (exit code 3) once the input checks have passed. Analysis-only and potential-only runs accept the keys and ignore them |
-| `rFluxAnalysis` `EMinFluxAna` `EMaxFluxAna` `DeltaEFluxAna` | real | none (required with `doFluxAnalysis`) | rFluxAnalysis, EMinFluxAna, EMaxFluxAna, deltaEFluxAna. rFluxAnalysis (bohr): a point of the r grid, ≤ ROptStart. Energies (eV): EMinWP ≤ EMinFluxAna < EMaxFluxAna ≤ EMaxWP and 0 < DeltaEFluxAna ≤ EMaxFluxAna − EMinFluxAna. Two of these rules differ from the Fortran checks: EMaxFluxAna ≤ EMaxWP (flux Q1) and DeltaEFluxAna > 0 (flux Q2); see [fortran_input_bugs.md](fortran_input_bugs.md) |
+| `rFluxAnalysis` `EMinFluxAna` `EMaxFluxAna` `DeltaEFluxAna` | real | none (required with `doFluxAnalysis`) | rFluxAnalysis, EMinFluxAna, EMaxFluxAna, deltaEFluxAna. rFluxAnalysis (bohr): a point of the r grid, ≤ ROptStart. Energies (eV): EMinWP ≤ EMinFluxAna < EMaxFluxAna ≤ EMaxWP and 0 < DeltaEFluxAna ≤ EMaxFluxAna − EMinFluxAna, the Fortran's checks since r1714/r1719 (DeltaEFluxAna > 0 exactly; the others within 1e-12); before, two of them were wrong in the Fortran (flux Q1, flux Q2; [fortran_input_bugs.md](fortran_input_bugs.md)) |
 | `ImposeVMin` `VMin` | bool, real | false, −5.5 eV | clamp the potential from below |
 | `ImposeVMax` `VMax` | bool, real | false, 10.0 eV | clamp the potential from above |
 | `UseSwitching` `ZminSwitch` `ZmaxSwitch` | bool, real, real | false, 6.0, 8.0 | switch V to the gas phase; zasymp becomes ZmaxSwitch |
@@ -68,7 +68,7 @@ absorption (absorber D1: the Fortran silently keeps a default strength instead).
 | `SymmetryTolerance` | real | 1e-5 eV | C++ only. With `UseSymmetry` the PES is first compared with its symmetry images at 1000 sample points (x, y, φ anywhere in the cell; θ, Z, r at grid points; images wrapped into the unit cell, VMin/VMax applied); a larger max \|ΔV\| is an error, and so is a non-finite V at a sample point or image (parameter `SystemID`, naming the point) |
 | `ZOptLowStart` `ZOptLowEnd` | real | none: off | zsplmilow, zsplmalow (keys of upstream 5.24). An absorbing potential at the low end of the scattering Z grid: the high-end profile mirrored, strongest at Start, 0 at End. On only if both are given, with ZStart ≤ Start < End ≤ Zana. These two bounds are compared exactly, as the Fortran does (plain `<`, `>`). Start > End, Start = End and an incomplete set of the four keys are errors (low-Z D1–D3, [fortran_input_bugs.md](fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524)). It may share the point Z = Zana with the high-end absorber (both are 0 there). The set-up warns when a grid point lies on different sides of Start here and in the Fortran ([inputs/README.md](../inputs/README.md#low-z-absorbers-and-the-grid-point-trap)) |
 | `ZOptLowEnergy` `ZOptLowFactor` | real | none (exactly one when the absorber is on) | ZOptLowEnergy (eV, ≥ 0 within 1e-12; 0 means no absorption), vabszblow (strength in hartree) |
-| `ZSpOptLowStart` `ZSpOptLowEnd` `ZSpOptLowEnergy` `ZSpOptLowFactor` | real | none: off | ssplmilow, ssplmalow, ZSpOptLowEnergy, vabssblow: the same on the specular grid, also with End ≤ Zana. Where it overlaps the high-end specular absorber (possible when Zana > ZSpOptStart), the low-end value replaces the high-end one, as in the Fortran |
+| `ZSpOptLowStart` `ZSpOptLowEnd` `ZSpOptLowEnergy` `ZSpOptLowFactor` | real | none: off | ssplmilow, ssplmalow, ZSpOptLowEnergy, vabssblow: the same on the specular grid, also with End ≤ Zana, except that ZSpOptLowEnergy must be > 0 (exact, as the Fortran since r1718). Where it overlaps the high-end specular absorber (possible when Zana > ZSpOptStart), the low-end value replaces the high-end one, as in the Fortran |
 | `DoDump` `FullSMatrix` | bool | false | accepted and ignored: the gas-phase states that `DoDump` writes in the Fortran are always written here (`gas_phase_states.dat`); `FullSMatrix` has no effect in the Fortran either ([fortran_deviations.md](fortran_deviations.md)) |
 
 ## SCM keys (SystemID `CRPDistrtSurface`)
@@ -151,8 +151,6 @@ and the nφ checks of `transform.f90` (which are hard errors here). Every check 
 most of them in `tests/test_input.cpp`; the initial norm outside the allowed region (`TolSp`) in
 `tests/test_initial_wave_packet.cpp`, the `RestartDir` checks in `tests/test_restart.cpp`.
 Deviations are listed in [fortran_deviations.md](fortran_deviations.md).
-Two Fortran flux analysis checks are wrong and are fixed here (flux Q1, flux Q2), and so are
-the silent cases of the low-Z absorber keys (low-Z D1–D3), the default strength the Fortran
-keeps for an absorber energy of 0 (absorber D1) and NrOfEs = 0 and 1 (analysis D1):
-[fortran_input_bugs.md](fortran_input_bugs.md) describes them, with demonstration runs of the
-Fortran program.
+The silent cases of the low-Z absorber keys (low-Z D1–D3) are errors here. Four wrong Fortran checks were fixed
+here first and upstream since (flux Q1, flux Q2, absorber D1, analysis D1; r1714–r1719):
+[fortran_input_bugs.md](fortran_input_bugs.md) describes them, with demonstration runs of the Fortran program.

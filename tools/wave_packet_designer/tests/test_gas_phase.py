@@ -169,10 +169,11 @@ def test_reference_tells_the_grid_from_the_extent() -> None:
 
 
 def test_analysed_levels_follow_vana_and_jana() -> None:
-    """VAna >= 1 and JAna >= 0 replace the open levels as the analysed ones; VAna 0 means the open levels."""
+    """VAna >= 1 and JAna >= 0 replace the open levels as the analysed ones; without VAna the open levels are
+    analysed (a given VAna 0 is an input error since upstream r1726: VIn >= VAna)."""
     gas = gas_phase_of(v_analysis=1, j_analysis=4)
     check_equal((gas.n_v_analysis, gas.j_max_analysis), (1, 4), "VAna 1, JAna 4")
-    check_equal(gas_phase_of(v_analysis=0).n_v_analysis, 2, "VAna 0")
+    check_equal(gas_phase_of().n_v_analysis, 2, "VAna absent")
 
 
 def test_small_rotational_basis_is_reported() -> None:

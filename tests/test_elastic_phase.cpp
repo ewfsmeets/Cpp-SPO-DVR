@@ -21,15 +21,16 @@ namespace {
 using cplx = std::complex<double>;
 using spodvr::Constants;
 
-// hardwall_small reduced to one rotational state and 2 x 2 (x, y) points: the hard wall has no
-// coupling, so the Z, r dynamics and the elastic element are those of the gate case (7000 steps).
+// hardwall_small reduced to JMax 2 (6 rotational states; JIn = JMax, i.e. JMax 0, is an input error since
+// r1726) and 2 x 2 (x, y) points: the hard wall has no coupling, so the Z, r dynamics and the elastic element
+// are those of the gate case (7000 steps).
 nlohmann::json reduced_hard_wall() {
   nlohmann::json json =
       nlohmann::json::parse(std::ifstream(std::filesystem::path(SPODVR_REFERENCE_DIR) / "hardwall_small/input.json"));
   json["nX"] = 2;
   json["nY"] = 2;
-  json["JMax"] = 0;
-  json["MJMax"] = 0;
+  json["JMax"] = 2;
+  json["MJMax"] = 2;
   json["writeProbs"] = false;
   json["writeRDProbs"] = false;
   return json;

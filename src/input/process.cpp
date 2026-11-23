@@ -60,8 +60,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
   const double reduced_mass = units.amu_to_me((p.mass1 * p.mass2) / (p.mass1 + p.mass2));
 
   d.optical_potential_power = 2;
-  // An energy of 0 leaves the strength 0, i.e. no absorption (absorber D1: the Fortran keeps the
-  // factor's default strength instead).
+  // Without an energy the factor is the strength (0 when absent). The high-end energies are > 0 by the
+  // input check (r1718); only ZOptLowEnergy may be 0, which gives strength 0 (absorber D1).
   d.z_opt_factor = p.z_opt_factor.value_or(0.0);
   d.r_opt_factor = p.r_opt_factor.value_or(0.0);
   d.zsp_opt_factor = p.zsp_opt_factor.value_or(0.0);

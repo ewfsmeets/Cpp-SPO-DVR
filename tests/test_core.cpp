@@ -18,7 +18,6 @@ TEST(Core, MachineEpsilonIsTwoToMinus54) { EXPECT_EQ(fortran_machine_epsilon(), 
 TEST(Core, ConstantsMatchFortran) {
   EXPECT_EQ(Constants::pi, 3.141592653589793);
   EXPECT_EQ(Constants::two_pi, 2.0 * Constants::pi);
-  EXPECT_EQ(Constants::nen95_sentinel, -95);
 }
 
 TEST(Core, LegacyUnitsDivideByChaev) {

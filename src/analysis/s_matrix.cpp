@@ -20,14 +20,9 @@ using cplx = std::complex<double>;
 AnalysisEnergies make_analysis_energies(const Config& config, const GasPhase& gas) {
   const InputParameters& p = config.input;
   const auto& units = units::legacy;
-  double start = config.derived.analysis_energy_start;  // Fortran: enrgi
-  double step = config.derived.analysis_energy_step;    // Fortran: denrgy
-  int count = p.n_energies;                             // Fortran: nenrgy
-  if (count == Constants::nen95_sentinel) {
-    step = (Constants::pi / p.t_end) * units.energy_factor();
-    start = static_cast<int>((p.e_min_wave_packet + p.e_parallel) / step) * step + step;
-    count = static_cast<int>((p.e_max_wave_packet + p.e_parallel - start) / step) + 1;
-  }
+  const double start = config.derived.analysis_energy_start;  // Fortran: enrgi
+  const double step = config.derived.analysis_energy_step;    // Fortran: denrgy
+  const int count = p.n_energies;                             // Fortran: nenrgy
 
   // Fortran: ensctr = enrgi + dfloat(ien-1) * denrgy is evaluated in quad precision; plain
   // double here (see docs/fortran_deviations.md, quad-precision sites).

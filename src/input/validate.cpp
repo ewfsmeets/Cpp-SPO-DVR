@@ -20,9 +20,8 @@ namespace spodvr {
 using validation::check;
 using validation::nint;
 
-// Fortran: InputNew.f90 ValidateInput. The checks appear in the same order and with the same
-// messages (a few message typos are corrected, two flux analysis checks are fixed: flux Q1,
-// flux Q2, and NrOfEs = 0 and 1 are rejected: analysis D1; see docs/fortran_deviations.md).
+// Fortran: InputNew.f90 ValidateInput (upstream r1727). The checks appear in the same order and with
+// the same messages (a few message typos are corrected; see docs/fortran_deviations.md).
 void validate_input(const InputParameters& p, const SystemParameters& system, double zasymp) {
   using namespace fortran_compare;
   const auto& units = units::legacy;
@@ -70,7 +69,7 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(p.j_max < 0, "JMax", "JMax < 0.");
   check(std::abs(p.mj_max) > p.j_max, "MJMax", "|MJMax| > JMax.");
   check(std::abs(p.mj_in) > p.j_in, "MJIn", "|MJIn| > JIn.");
-  check(p.j_in > p.j_max, "JIn", "JIn > JMax.");
+  check(p.j_in >= p.j_max, "JIn", "JIn >= JMax.");  // upstream r1726 (was >)
   check(std::abs(p.mj_in) > std::abs(p.mj_max), "MJIn", "|MJIn| > |MJMax|.");
   if (p.homonuclear)
     check(p.j_max % 2 != p.j_in % 2, "JMax",
@@ -111,12 +110,10 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   if (p.j_analysis) check(*p.j_analysis < 0, "JAna", "JAna < 0.");
   if (p.v_analysis) check(*p.v_analysis < 0, "VAna", "VAna < 0.");
   if (p.diffraction_order_analysis) check(*p.diffraction_order_analysis < 0, "DifOrdAna", "DifOrdAna < 0.");
-  if (p.n_energies != Constants::nen95_sentinel) check(p.n_energies < 0, "NrOfEs", "NrOfEs < 0.");
-  // analysis D1: the Fortran accepts NrOfEs = 0 (no analysis energies, no results) and 1
-  // (InputNew.f90 ProcessInput divides by zero in denrgy = (EMaxWP-EMinWP)/(nenrgy-1): NaN energies).
-  check(p.n_energies == 0 || p.n_energies == 1, "NrOfEs",
+  // NrOfEs < 2, as the Fortran since r1719 (analysis D1 is resolved; the -95 energy choice is gone).
+  check(p.n_energies < 2, "NrOfEs",
         std::format("NrOfEs = {}: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use "
-                    "NrOfEs >= 2, or -95 for energies pi/tEnd apart",
+                    "NrOfEs >= 2.",
                     p.n_energies));
 
   check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step), "dtAna",
@@ -148,16 +145,17 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
     check(rne(nint((p.r_flux_analysis - p.r_start) / p.dr) * p.dr, p.r_flux_analysis - p.r_start), "rFluxAnalysis",
           "rFluxAnalysis not on a grid point.");
     check(rlt(p.e_min_flux_analysis, p.e_min_wave_packet), "EMinFluxAna", "EMinFluxAna < EMinWP");
-    // flux Q1: the Fortran rejects EMaxFluxAna < EMaxWP (message 'EMaxFluxAna < EMinWP'), i.e. every
-    // range inside the wave packet. Here the range must end inside it, like the EMinFluxAna check.
+    check(rgt(p.e_min_flux_analysis, p.e_max_wave_packet), "EMinFluxAna", "EMinFluxAna > EMaxWP");
+    check(rlt(p.e_max_flux_analysis, p.e_min_wave_packet), "EMaxFluxAna", "EMaxFluxAna < EMinWP");
+    // flux Q1 (fixed upstream in r1714, which checks the range as here): the range must end inside the
+    // wave packet.
     check(rgt(p.e_max_flux_analysis, p.e_max_wave_packet), "EMaxFluxAna",
           std::format("EMaxFluxAna > EMaxWP ({} eV > {} eV): the flux analysis energies must lie inside the wave "
                       "packet's energy range; use EMaxFluxAna <= EMaxWP",
                       p.e_max_flux_analysis, p.e_max_wave_packet));
     check(rge(p.e_min_flux_analysis, p.e_max_flux_analysis), "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna");
-    // flux Q2: the Fortran rejects only DeltaEFluxAna < 0, and FluxAnalyzor.f90 setupFluxAnalyzor
-    // then divides by DeltaEFluxAna = 0.
-    check(rle(p.delta_e_flux_analysis, 0.0), "DeltaEFluxAna",
+    // flux Q2 (fixed upstream in r1719): an exact <= 0, as the Fortran now checks it.
+    check(p.delta_e_flux_analysis <= 0.0, "DeltaEFluxAna",
           std::format("DeltaEFluxAna <= 0 ({} eV): the flux analysis energy grid needs a positive spacing; use "
                       "DeltaEFluxAna > 0",
                       p.delta_e_flux_analysis));
@@ -178,10 +176,13 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(p.j_in < 0, "JIn", "JIn < 0.");
   check(std::abs(p.mj_in) > p.j_in, "MJIn", "|MJIn| > JIn.");
   check(p.v_in > p.nr - 1, "VIn", "VIn > nR-1.");
+  // Unreachable since r1726: the rotational-basis block above already rejects JIn >= JMax. Kept
+  // because the Fortran keeps it (InputNew.f90 ValidateInput, the initial-state block).
   check(p.j_in > p.j_max, "JIn", "JIn > JMax.");
   check(std::abs(p.mj_in) > p.mj_max, "MJIn", "MJIn > MJMax.");
-  if (p.v_analysis) check(p.v_in > *p.v_analysis, "VIn", "VIn > VAna.");
-  if (p.j_analysis) check(p.j_in > *p.j_analysis, "JIn", "JIn > JAna.");
+  // Upstream r1726: VAna counts levels (v = 0 to VAna-1) and JAna is checked the same way.
+  if (p.v_analysis) check(p.v_in >= *p.v_analysis, "VIn", "VIn >= VAna.");
+  if (p.j_analysis) check(p.j_in >= *p.j_analysis, "JIn", "JIn >= JAna.");
 
   // --- potential --------------------------------------------------------------------------
   if (p.impose_v_min && p.impose_v_max) check(rgt(p.v_min, p.v_max), "VMin", "VMin > VMax.");

@@ -19,7 +19,6 @@ struct Constants {
   static inline const double sqrt_2pi = std::sqrt(two_pi);
   static inline const double sqrt_4pi = std::sqrt(four_pi);
   static constexpr std::complex<double> imaginary_unit{0.0, 1.0};  // Fortran: Constants_I
-  static constexpr int nen95_sentinel = -95;                         // Fortran: Constants_NEN95
 };
 
 }  // namespace spodvr

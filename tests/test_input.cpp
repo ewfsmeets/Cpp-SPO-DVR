@@ -562,7 +562,7 @@ TEST(Input, CapEnergyOrFactor) {
   expect_input_error(json, "ZOptEnergy", "give either ZOptEnergy or ZOptFactor, not both");  // both given
   json.erase("ZOptFactor");
   json["ZOptEnergy"] = -0.1;
-  expect_input_error(json, "ZOptEnergy", "ZOptEnergy < 0.");
+  expect_input_error(json, "ZOptEnergy", "ZOptEnergy <= 0.");
 }
 
 TEST(Input, SwitchingReplacesZAsymptotic) {
@@ -577,8 +577,8 @@ TEST(Input, SwitchingReplacesZAsymptotic) {
   expect_input_error(json, "ZminSwitch", "ZminSwitch >= ZmaxSwitch.");
 }
 
-// flux Q1: a flux energy range that ends at or below EMaxWP is valid (the Fortran check rejects
-// every such range); the wave packet spans 0.2..0.6 eV.
+// flux Q1: a flux energy range that ends at or below EMaxWP is valid (the Fortran check rejected
+// every such range up to r1713; fixed in r1714); the wave packet spans 0.2..0.6 eV.
 TEST(Input, FluxQ1EnergyRangeInsideTheWavePacketIsValid) {
   Json json = reference_json();
   json["doFluxAnalysis"] = true;
@@ -593,20 +593,61 @@ TEST(Input, FluxQ1EnergyRangeInsideTheWavePacketIsValid) {
   }
 }
 
-// analysis D1: NrOfEs = 0 and 1 are errors (the Fortran gives no results or divides by zero); two
-// energies are the smallest valid grid, and -95 (nen95) chooses the energies itself.
-TEST(Input, AnalysisD1TwoEnergiesAndNen95AreValid) {
+// NrOfEs < 2 is an error (as the Fortran since r1719; analysis D1 is resolved); two energies are the
+// smallest valid grid.
+TEST(Input, NrOfEsTwoIsValid) {
   Json json = reference_json();
   json["NrOfEs"] = 2;
-  Config config = build(json);
+  const Config config = build(json);
   EXPECT_EQ(config.derived.analysis_energy_start, 0.2);
   EXPECT_EQ(config.derived.analysis_energy_step, 0.6 - 0.2);
-  json["NrOfEs"] = -95;
-  config = build(json);
-  EXPECT_EQ(config.input.n_energies, -95);
 
   json["NrOfEs"] = 1;
   expect_input_error(json, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies");
+}
+
+// The valid side of the exact absorber-energy checks (r1718): just above 0 is accepted, and a low-Z
+// absorber on the scattering grid may have the energy 0 (its tolerant .RLT. check).
+TEST(Input, AbsorberEnergiesJustAboveZeroAreValid) {
+  for (const std::string key : {"ZOptEnergy", "ROptEnergy", "ZSpOptEnergy"}) {
+    Json json = reference_json();
+    json[key] = 1.0e-13;
+    EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << key;
+  }
+  for (const auto& [prefix, energy] :
+       std::vector<std::pair<std::string, double>>{{"ZSpOptLow", 1.0e-13}, {"ZOptLow", 0.0}, {"ZOptLow", -5.0e-13}}) {
+    Json json = reference_json();
+    json[prefix + "Start"] = -2.0;
+    json[prefix + "End"] = 8.0;
+    json[prefix + "Energy"] = energy;
+    EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << prefix << " " << energy;
+  }
+}
+
+// The valid side of the exact flux spacing check (r1719): a spacing just above 0 is accepted.
+TEST(Input, FluxDeltaEJustAboveZeroIsValid) {
+  Json json = reference_json();
+  json["doFluxAnalysis"] = true;
+  json["rFluxAnalysis"] = 3.05;
+  json["EMinFluxAna"] = 0.2;
+  json["EMaxFluxAna"] = 0.6;
+  json["DeltaEFluxAna"] = 5.0e-13;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
+}
+
+// The valid side of the analysis limits of r1726: JIn < JMax, VIn < VAna, JIn < JAna (JAna is the
+// highest analysed j, of JIn's parity here).
+TEST(Input, AnalysisLimitsJustInsideAreValid) {
+  Json json = reference_json();
+  json["JIn"] = 2;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));  // JMax 4
+  json = reference_json();
+  json["VIn"] = 0;
+  json["VAna"] = 1;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
+  json = reference_json();
+  json["JAna"] = 2;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));  // JIn 0
 }
 
 // RStart <= 0 is rejected with the 1e-12 absolute tolerance of .RLE. (5.24 InputNew.f90
@@ -799,7 +840,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"JMax", [](Json& j) { j["JMax"] = -1; j["MJMax"] = 0; }, "JMax", "JMax < 0."},
         Violation{"MJMax", [](Json& j) { j["MJMax"] = 6; }, "MJMax", "|MJMax| > JMax."},
         Violation{"MJIn", [](Json& j) { j["MJIn"] = 1; }, "MJIn", "|MJIn| > JIn."},
-        Violation{"JInGtJMax", [](Json& j) { j["JIn"] = 6; }, "JIn", "JIn > JMax."},
+        Violation{"JInGtJMax", [](Json& j) { j["JIn"] = 6; }, "JIn", "JIn >= JMax."},
+        Violation{"JInEqJMax", [](Json& j) { j["JIn"] = 4; }, "JIn", "JIn >= JMax."},
         Violation{"MJInGtMJMax", [](Json& j) { j["JIn"] = 2; j["MJIn"] = 2; j["MJMax"] = 0; }, "MJIn", "|MJIn| > |MJMax|."},
         Violation{"ParityJ", [](Json& j) { j["JMax"] = 5; j["MJMax"] = 5; }, "JMax", "the molecule is homo-nuclear but JMax is even and JIn is odd, or vice versa."},
         Violation{"ParityMJ", [](Json& j) { j["MJMax"] = 3; }, "MJMax", "the molecule is homo-nuclear, but JMax is even and |MJMax| is odd, or vice versa."},
@@ -915,9 +957,10 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"JAnaNeg", [](Json& j) { j["JAna"] = -1; }, "JAna", "JAna < 0."},
         Violation{"VAnaNeg", [](Json& j) { j["VAna"] = -1; }, "VAna", "VAna < 0."},
         Violation{"DifOrdNeg", [](Json& j) { j["DifOrdAna"] = -1; }, "DifOrdAna", "DifOrdAna < 0."},
-        Violation{"NrOfEs", [](Json& j) { j["NrOfEs"] = -1; }, "NrOfEs", "NrOfEs < 0."},
-        Violation{"AnalysisD1NrOfEsZero", [](Json& j) { j["NrOfEs"] = 0; }, "NrOfEs", "NrOfEs = 0: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart"},
-        Violation{"AnalysisD1NrOfEsOne", [](Json& j) { j["NrOfEs"] = 1; }, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2, or -95 for energies pi/tEnd apart"},
+        Violation{"NrOfEs", [](Json& j) { j["NrOfEs"] = -1; }, "NrOfEs", "NrOfEs = -1: the analysis needs at least 2 energies"},
+        Violation{"NrOfEsNen95", [](Json& j) { j["NrOfEs"] = -95; }, "NrOfEs", "NrOfEs = -95: the analysis needs at least 2 energies"},
+        Violation{"AnalysisD1NrOfEsZero", [](Json& j) { j["NrOfEs"] = 0; }, "NrOfEs", "NrOfEs = 0: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2."},
+        Violation{"AnalysisD1NrOfEsOne", [](Json& j) { j["NrOfEs"] = 1; }, "NrOfEs", "NrOfEs = 1: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use NrOfEs >= 2."},
         Violation{"ZanaLtZasymp", [](Json& j) { j["Zana"] = 6.0; }, "Zana", "ZAna < ZAsymptotic."},
         Violation{"ZanaOffGrid", [](Json& j) { j["Zana"] = 8.01; }, "Zana", "ZAna not on a grid point."},
         Violation{"ZanaGtZOptStart", [](Json& j) { j["Zana"] = 9.04; }, "Zana", "ZAnalysis > ZOptStart."},
@@ -928,9 +971,14 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"FluxMissing", [](Json& j) { j["doFluxAnalysis"] = true; }, "rFluxAnalysis", "rFluxAnalysis must be present"},
         Violation{"FluxOffGrid", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.01; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "rFluxAnalysis", "rFluxAnalysis not on a grid point."},
         Violation{"FluxEMin", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.1; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna < EMinWP"},
+        // The range checks of r1714, and their 1e-12 bands, which pass on to the next check.
+        Violation{"FluxEMinAboveEMaxWP", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.7; j["EMaxFluxAna"] = 0.8; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna > EMaxWP"},
+        Violation{"FluxEMaxBelowEMinWP", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.1; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna", "EMaxFluxAna < EMinWP"},
+        Violation{"FluxEMinWithinToleranceAboveEMaxWPReachesTheNextCheck", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.6 + 5.0e-13; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna"},
+        Violation{"FluxEMaxWithinToleranceBelowEMinWPReachesTheNextCheck", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.2 - 5.0e-13; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna"},
         // flux Q1: EMaxFluxAna above EMaxWP (0.6 eV) is rejected.
         Violation{"FluxQ1EMax", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.7; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna", "EMaxFluxAna > EMaxWP"},
-        // flux Q2: a zero or negative energy spacing is rejected (the Fortran accepts 0).
+        // flux Q2: a zero or negative energy spacing is rejected (the Fortran accepted 0 up to r1713).
         Violation{"FluxQ2DeltaZero", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.0; }, "DeltaEFluxAna", "DeltaEFluxAna <= 0"},
         Violation{"FluxQ2DeltaNegative", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = -0.01; }, "DeltaEFluxAna", "DeltaEFluxAna <= 0"},
         Violation{"FluxDelta", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.5; }, "DeltaEFluxAna", "DeltaEFluxAna > EMaxFluxAna-EMinFluxAna"},
@@ -941,8 +989,11 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"Z0GtZSpOpt", [](Json& j) { j["Z0"] = 17.0; }, "Z0", "Z0 > ZSpOptStart."},
         Violation{"VIn", [](Json& j) { j["VIn"] = -1; }, "VIn", "VIn < 0."},
         Violation{"VInGtNr", [](Json& j) { j["VIn"] = 56; }, "VIn", "VIn > nR-1."},
-        Violation{"VInGtVAna", [](Json& j) { j["VIn"] = 2; j["VAna"] = 1; }, "VIn", "VIn > VAna."},
-        Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn", "JIn > JAna."},
+        Violation{"VInGtVAna", [](Json& j) { j["VIn"] = 2; j["VAna"] = 1; }, "VIn", "VIn >= VAna."},
+        Violation{"VInEqVAna", [](Json& j) { j["VIn"] = 1; j["VAna"] = 1; }, "VIn", "VIn >= VAna."},
+        Violation{"VAnaZeroGiven", [](Json& j) { j["VAna"] = 0; }, "VIn", "VIn >= VAna."},
+        Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
+        Violation{"JInEqJAna", [](Json& j) { j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
         Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin", "VMin > VMax."},
         Violation{"ZOptOrder", [](Json& j) { j["ZOptEnd"] = 8.5; }, "ZOptStart", "ZOptStart > ZOptEnd."},
         Violation{"ZOptEnd", [](Json& j) { j["ZOptEnd"] = 13.0; }, "ZOptEnd", "ZOptEnd is too big for the scattering grid in Z."},
@@ -973,7 +1024,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"LowZD3OnlyStart", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd", "ZOptLowEnd is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
         Violation{"LowZD3OnlyEnd", [](Json& j) { j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "ZOptLowStart is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
         Violation{"LowZD3OnlyStrength", [](Json& j) { j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowStart", "ZSpOptLowStart is missing: a low-Z absorber needs ZSpOptLowStart and ZSpOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
-        // low-Z D1 (Start > End, ignored by the Fortran) and low-Z D2 (Start = End, NaN there).
+        // low-Z D1 (Start > End, ignored by the Fortran) and low-Z D2 (Start = End: NaN in the Fortran up to
+        // r1713, ignored since r1717).
         Violation{"LowZD1StartAboveEnd", [](Json& j) { j["ZOptLowStart"] = 4.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "the absorber would be empty"},
         Violation{"LowZD1SpecularStartAboveEnd", [](Json& j) { j["ZSpOptLowStart"] = 4.0; j["ZSpOptLowEnd"] = 3.0; j["ZSpOptLowEnergy"] = 0.3; }, "ZSpOptLowStart", "the absorber would be empty"},
         Violation{"LowZD2StartEqualsEnd", [](Json& j) { j["ZOptLowStart"] = 3.0; j["ZOptLowEnd"] = 3.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "the absorber needs a positive length"},
@@ -986,7 +1038,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"LowZNoEnergyOrFactor", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; }, "ZOptLowEnergy", "ZOptLowFactor or ZOptLowEnergy should be present."},
         Violation{"LowZEnergyAndFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.3; j["ZSpOptLowFactor"] = 0.01; }, "ZSpOptLowEnergy", "give either ZSpOptLowEnergy or ZSpOptLowFactor, not both"},
         Violation{"LowZEnergyNegative", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = -0.1; }, "ZOptLowEnergy", "ZOptLowEnergy < 0"},
-        Violation{"LowZSpecularEnergyNegative", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -0.1; }, "ZSpOptLowEnergy", "ZSpOptLowEnergy < 0"},
+        Violation{"LowZSpecularEnergyNegative", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -0.1; }, "ZSpOptLowEnergy", "ZSpOptLowEnergy <= 0"},
+        Violation{"LowZSpecularEnergyZero", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = 0.0; }, "ZSpOptLowEnergy", "ZSpOptLowEnergy <= 0"},
         // Checks whose only violation used to trip an earlier check of the same key (or none at all).
         Violation{"RDoF", [](Json& j) { j["RDoF"] = false; }, "RDoF", "Currently only 6D calculations are supported."},
         Violation{"XDoF", [](Json& j) { j["XDoF"] = false; }, "XDoF", "Currently only 6D calculations are supported."},
@@ -1024,13 +1077,15 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"EMaxWPWithinTolerance", [](Json& j) { j["EMaxWP"] = 5.0e-13; }, "EMaxWP", "EMaxWP <= 0."},
         Violation{"ROptStrengthMissing", [](Json& j) { j.erase("ROptEnergy"); }, "ROptEnergy",
                   "ROptFactor or ROptEnergy should be present."},
-        Violation{"ROptEnergyNegative", [](Json& j) { j["ROptEnergy"] = -0.1; }, "ROptEnergy", "ROptEnergy < 0."},
-        Violation{"ROptEnergyBeyondTolerance", [](Json& j) { j["ROptEnergy"] = -2.0e-12; }, "ROptEnergy", "ROptEnergy < 0."},
+        Violation{"ROptEnergyNegative", [](Json& j) { j["ROptEnergy"] = -0.1; }, "ROptEnergy", "ROptEnergy <= 0."},
+        Violation{"ROptEnergyZero", [](Json& j) { j["ROptEnergy"] = 0.0; }, "ROptEnergy", "ROptEnergy <= 0."},
+        Violation{"ROptEnergyJustBelowZero", [](Json& j) { j["ROptEnergy"] = -1.0e-13; }, "ROptEnergy", "ROptEnergy <= 0."},
         Violation{"ZSpOptStrengthMissing", [](Json& j) { j.erase("ZSpOptEnergy"); }, "ZSpOptEnergy",
                   "ZSpOptFactor or ZSpOptEnergy should be present."},
-        Violation{"ZSpOptEnergyNegative", [](Json& j) { j["ZSpOptEnergy"] = -0.1; }, "ZSpOptEnergy", "ZSpOptEnergy < 0."},
-        Violation{"ZSpOptEnergyBeyondTolerance", [](Json& j) { j["ZSpOptEnergy"] = -2.0e-12; }, "ZSpOptEnergy",
-                  "ZSpOptEnergy < 0."},
+        Violation{"ZSpOptEnergyNegative", [](Json& j) { j["ZSpOptEnergy"] = -0.1; }, "ZSpOptEnergy", "ZSpOptEnergy <= 0."},
+        Violation{"ZSpOptEnergyZero", [](Json& j) { j["ZSpOptEnergy"] = 0.0; }, "ZSpOptEnergy", "ZSpOptEnergy <= 0."},
+        Violation{"ZSpOptEnergyJustBelowZero", [](Json& j) { j["ZSpOptEnergy"] = -1.0e-13; }, "ZSpOptEnergy",
+                  "ZSpOptEnergy <= 0."},
         Violation{"LowZSpecularNoEnergyOrFactor", [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; },
                   "ZSpOptLowEnergy", "ZSpOptLowFactor or ZSpOptLowEnergy should be present."},
         // Checks reached only inside the 1e-12 band of an earlier tolerant check.
@@ -1050,36 +1105,29 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"FluxEMinGeEMax",
                   [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.4; j["EMaxFluxAna"] = 0.3; j["DeltaEFluxAna"] = 0.01; },
                   "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna"},
-        // The tolerant siblings of the boundary rows above.
+        // The tolerant siblings of the boundary rows above, and the exact checks just below 0 (r1718).
         Violation{"Mass1WithinTolerance", [](Json& j) { j["Mass1"] = 5.0e-13; }, "Mass1", "Mass of atom 1 <= 0."},
-        Violation{"ZOptEnergyBeyondTolerance", [](Json& j) { j["ZOptEnergy"] = -2.0e-12; }, "ZOptEnergy", "ZOptEnergy < 0."},
+        Violation{"ZOptEnergyZero", [](Json& j) { j["ZOptEnergy"] = 0.0; }, "ZOptEnergy", "ZOptEnergy <= 0."},
+        Violation{"ZOptEnergyJustBelowZero", [](Json& j) { j["ZOptEnergy"] = -1.0e-13; }, "ZOptEnergy", "ZOptEnergy <= 0."},
         Violation{"LowZEnergyBeyondTolerance",
                   [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = -2.0e-12; },
                   "ZOptLowEnergy", "ZOptLowEnergy < 0"},
-        Violation{"LowZSpecularEnergyBeyondTolerance",
-                  [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -2.0e-12; },
-                  "ZSpOptLowEnergy", "ZSpOptLowEnergy < 0"}),
+        Violation{"LowZSpecularEnergyJustBelowZero",
+                  [](Json& j) { j["ZSpOptLowStart"] = -2.0; j["ZSpOptLowEnd"] = 8.0; j["ZSpOptLowEnergy"] = -1.0e-13; },
+                  "ZSpOptLowEnergy", "ZSpOptLowEnergy <= 0"}),
     [](const ::testing::TestParamInfo<Violation>& param_info) { return std::string(param_info.param.name); });
 
 // The valid side of the tolerant checks above: within 1e-12 of the bound an rlt check accepts (a plain <
 // would refuse), and the hard wall (C2v) may have nX /= nY.
 TEST(Input, TolerantChecksAcceptWithinTheirTolerance) {
-  for (const auto& [key, value] : std::vector<std::pair<std::string, double>>{
-           {"tStart", -5.0e-13}, {"ROptEnergy", -5.0e-13}, {"ZSpOptEnergy", -5.0e-13}}) {
-    Json json = reference_json();
-    json[key] = value;
-    EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << key;
-  }
   Json json = reference_json();
-  json["ZOptEnergy"] = -5.0e-13;
+  json["tStart"] = -5.0e-13;
   EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
-  for (const std::string prefix : {"ZOptLow", "ZSpOptLow"}) {
-    json = reference_json();
-    json[prefix + "Start"] = -2.0;
-    json[prefix + "End"] = 8.0;
-    json[prefix + "Energy"] = -5.0e-13;
-    EXPECT_NO_THROW((void)make_spatial_grids(build(json))) << prefix;
-  }
+  json = reference_json();  // ZOptLowEnergy keeps the Fortran's tolerant .RLT. 0 (its siblings are exact)
+  json["ZOptLowStart"] = -2.0;
+  json["ZOptLowEnd"] = 8.0;
+  json["ZOptLowEnergy"] = -5.0e-13;
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
   json = reference_json();
   json["nY"] = 8;
   EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
@@ -1231,7 +1279,8 @@ TEST(Input, AbsorberOutsideTheStrengthTableIsRecorded) {
   EXPECT_DOUBLE_EQ(d.zsp_opt_low_factor, 2.75 * u.ev_to_hartree(0.3));
 
   json["ZOptEnergy"] = 0.3;
-  json["ROptEnergy"] = 0.0;  // absorber D1: no strength computed, so nothing to warn about
+  json.erase("ROptEnergy");  // a factor: no strength computed from an energy, so nothing to warn about
+  json["ROptFactor"] = 0.01;
   json["ZSpOptEnergy"] = 0.3;
   for (const std::string key :
        {"ZOptLowStart", "ZOptLowEnd", "ZOptLowEnergy", "ZSpOptLowStart", "ZSpOptLowEnd", "ZSpOptLowEnergy"})

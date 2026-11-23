@@ -16,8 +16,6 @@ from program.potential_systems import SystemParameters, is_known_system
 from program.real_compare import nint, req, rge, rgt, rle, rlt, rne, seq
 from program.unit_conversion import PI, ev_to_hartree
 
-NEN95_SENTINEL = -95  # NrOfEs = -95: analysis energies pi/tEnd apart (Constants::nen95_sentinel)
-
 
 def validate_input(p: InputParameters, system: SystemParameters, z_asymptotic: float) -> list[Finding]:
     """Every consistency error of the input (the program stops at the first one)."""
@@ -79,7 +77,7 @@ def check_rotational_basis(p: InputParameters, checks: FindingList) -> None:
     checks.error_if(p.j_max < 0, "JMax", "JMax < 0.")
     checks.error_if(abs(p.mj_max) > p.j_max, "MJMax", "|MJMax| > JMax.")
     checks.error_if(abs(p.mj_in) > p.j_in, "MJIn", "|MJIn| > JIn.")
-    checks.error_if(p.j_in > p.j_max, "JIn", "JIn > JMax.")
+    checks.error_if(p.j_in >= p.j_max, "JIn", "JIn >= JMax.")  # upstream r1726 (was >)
     checks.error_if(abs(p.mj_in) > abs(p.mj_max), "MJIn", "|MJIn| > |MJMax|.")
     if p.homonuclear:
         checks.error_if(
@@ -140,14 +138,12 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         checks.error_if(p.v_analysis < 0, "VAna", "VAna < 0.")
     if p.diffraction_order_analysis is not None:
         checks.error_if(p.diffraction_order_analysis < 0, "DifOrdAna", "DifOrdAna < 0.")
-    if p.n_energies != NEN95_SENTINEL:
-        checks.error_if(p.n_energies < 0, "NrOfEs", "NrOfEs < 0.")
-    # NrOfEs = 0 and 1 are rejected where the Fortran accepts them (docs/fortran_deviations.md, analysis D1).
+    # NrOfEs < 2, as the Fortran since r1719 (docs/fortran_deviations.md, analysis D1).
     checks.error_if(
-        p.n_energies in (0, 1),
+        p.n_energies < 2,
         "NrOfEs",
         f"NrOfEs = {p.n_energies}: the analysis needs at least 2 energies, (EMaxWP-EMinWP)/(NrOfEs-1) apart; use "
-        "NrOfEs >= 2, or -95 for energies pi/tEnd apart",
+        "NrOfEs >= 2.",
     )
     if rle(p.dt_analysis, 0.0) or rle(p.dz, 0.0):
         return  # the divisions below would fail; the program stopped at the checks above already
@@ -204,12 +200,13 @@ def check_wave_packet_and_state(p: InputParameters, z_asymptotic: float, checks:
     checks.error_if(p.j_in < 0, "JIn", "JIn < 0.")
     checks.error_if(abs(p.mj_in) > p.j_in, "MJIn", "|MJIn| > JIn.")
     checks.error_if(p.v_in > p.nr - 1, "VIn", "VIn > nR-1.")
-    checks.error_if(p.j_in > p.j_max, "JIn", "JIn > JMax.")
+    checks.error_if(p.j_in > p.j_max, "JIn", "JIn > JMax.")  # unreachable in the program since r1726, as there
     checks.error_if(abs(p.mj_in) > p.mj_max, "MJIn", "MJIn > MJMax.")
+    # Upstream r1726: VAna counts levels (v = 0 to VAna-1) and JAna is checked the same way.
     if p.v_analysis is not None:
-        checks.error_if(p.v_in > p.v_analysis, "VIn", "VIn > VAna.")
+        checks.error_if(p.v_in >= p.v_analysis, "VIn", "VIn >= VAna.")
     if p.j_analysis is not None:
-        checks.error_if(p.j_in > p.j_analysis, "JIn", "JIn > JAna.")
+        checks.error_if(p.j_in >= p.j_analysis, "JIn", "JIn >= JAna.")
 
 
 def check_potential_and_absorbers(p: InputParameters, z_asymptotic: float, checks: FindingList) -> None:
