@@ -33,6 +33,12 @@ program and checks its exit status and the FAIL line it prints:
   test_refusals              an expected file with unsorted rows, an unknown class, a limit that
                              does not fit its class (inf included), a row without reason, no install
                              line; a tree without the reference directories: refused (each)
+  test_initial_phase_*       class initial_phase (an on-the-fly fort.25 of a case whose specular line is
+                             fixed): the initial state's rows rotated by -k_v (Z_sp - Zana) for v = 0 and 1,
+                             |S| and P kept: passes; a changed row of another state, a changed |S|, a wrong
+                             rotation, P changed by 2 printed units, a changed block header: fails (each)
+  test_nproj_label           the stdout label "(nproj = 2)" that r1725 prints as "(nproj = 1)": passes under
+                             labels; with its number changed: fails
   test_reference_lists       the MANIFEST header and column count, the reference trees and
                              NOT_A_CASE in ReferenceManifest.cmake, tools/check_docs.py and
                              reference_config.sh equal refdata.py's, and the exclude of .pre-commit-
@@ -47,8 +53,10 @@ Environment: none read. Run time: about a second (test_expected_file: about 4 s,
 Docs: tools/fortran_reference/README.md "Comparing two reference trees".
 """
 
+import cmath
 import hashlib
 import importlib.util
+import math
 import re
 import shutil
 import struct
@@ -291,6 +299,171 @@ def edit(root, path, old, new):
     if text.count(old) != 1:
         pytest.fail(f"test set-up: {old!r} is not once in {target}")
     target.write_text(text.replace(old, new), encoding="utf-8")
+
+
+# Class initial_phase: a case of DAILIGHT_SHORT with VIn = JIn = MJIn = 0, Zana 8, the specular line fixed at
+# Z_sp = 10.88, the gas-phase levels E(0, 0) and E(1, 0), and one energy block with the initial state's rows for
+# v = 0 and 1 and a row of another state.
+INITIAL_PHASE_DVR = "VIn : INTEGER : 0;\nJIn : INTEGER : 0;\nMJIn : INTEGER : 0;\nEParallel : 0.0;\n"
+INITIAL_PHASE_STDOUT = """\
+* Mass of atom 1 (amu):                                     0.10078000E+01
+* Mass of atom 2 (amu):                                     0.10078000E+01
+* Wave function analysed at (bohr):                         0.80000000E+01
+* Tolerance for transferring the wavefunction (nproj = {nproj}):  0.10000000E-06
+ asymptotic molecular vibrational wave functions
+
+   v   j       e(ev)    erel(ev)         psi(1)        psi(nr)       norm
+
+   0   0   -4.467141    0.000000  0.1853026D-01  0.1513393D-02  1.0000000 1.4425817
+
+   1   0   -3.963306    0.503835  0.1793600D-01  0.1500000D-02  1.0000000 1.4800000
+
+   ==> ZAnalysis on specular channel fixed at Z =  0.10880000E+02
+"""
+# The initial rows (v, S) and a row of another state (m1, m2) = (1, 0) of v = 0, as OLD prints them.
+INITIAL_PHASE_ROWS = ((0, complex(-0.470660e-03, -0.850680e-03)), (1, complex(0.212345e-02, -0.123456e-02)))
+OTHER_ROW = complex(0.100000e-02, 0.200000e-02)
+TRANS_ENERGY = 0.7  # eV; all six fixed-line cases have EParallel 0, so the block's momentum is k_z of v = VIn
+MASS = 1822.89 * (1.0078 + 1.0078)
+CHAEV = 27.2114
+
+
+def fortran_d(x):
+    """x in the Fortran's D13.6 format (0.dddddd and the exponent)."""
+    if x == 0.0:
+        return "0.000000D+00"
+    exponent = math.floor(math.log10(abs(x))) + 1
+    mantissa = round(x / 10.0**exponent, 6)
+    if abs(mantissa) >= 1.0:
+        mantissa, exponent = mantissa / 10.0, exponent + 1
+    return f"{mantissa:.6f}D{exponent:+03d}"
+
+
+def from_fortran(token):
+    """The value of a printed D number."""
+    return float(token.replace("D", "E"))
+
+
+def fort25_row(m1, m2, s):
+    """A row m1 m2 Re S Im S P phase as smatrix_combine prints it, from the printed Re S and Im S."""
+    re_s, im_s = fortran_d(s.real), fortran_d(s.imag)
+    printed = complex(from_fortran(re_s), from_fortran(im_s))
+    phase = math.atan2(printed.imag, printed.real) if printed.real != 0.0 else 0.0
+    return f"{m1:4d}{m2:4d}  {re_s:>13} {im_s:>13} {fortran_d(abs(printed) ** 2):>13} {phase:10.6f}"
+
+
+def initial_phase_fort25(rotation=lambda v: 1.0, other=OTHER_ROW, order=0):
+    """A fort.25 block: each initial row multiplied by rotation(v), the other row as given; the header of v = 0
+    with diffraction order `order`."""
+    k = math.sqrt(2.0 * MASS * TRANS_ENERGY / CHAEV)
+    lines = [
+        " total energy = " + fortran_d(-4.467141 + TRANS_ENERGY).replace("D", "D", 1),
+        " trans energy = " + fortran_d(TRANS_ENERGY),
+        " trans energy in z = " + fortran_d(TRANS_ENERGY),
+        f" total momentum =  {k / 100.0:.8f}D+02",
+    ]
+    for v, s in INITIAL_PHASE_ROWS:
+        lines.append(f" v j mj dif.order are:   {v}   0   0   {order if v == 0 else 0}")
+        lines.append("  m1  m2        s-matrix element          prob          phase")
+        lines.append(fort25_row(0, 0, s * rotation(v)))
+        if v == 0:
+            lines.append(fort25_row(1, 0, other))
+    return "\n".join(lines) + "\n"
+
+
+def momentum(v):
+    """k_v of the initial state's channel at level v, as class initial_phase computes it."""
+    k_in = math.sqrt(2.0 * MASS * TRANS_ENERGY / CHAEV)
+    return k_in if v == 0 else math.sqrt(k_in * k_in + 2.0 * MASS * (-4.467141 - -3.963306) / CHAEV)
+
+
+def r1720_rotation(v, extra=0.0):
+    """exp(-i k_v (Z_sp - Zana)) times exp(i extra)."""
+    return cmath.exp(1j * (-momentum(v) * (10.88 - 8.0) + extra))
+
+
+def initial_phase_trees(work, new_fort25, new_stdout=None):
+    """(OLD, NEW, expected file) for class initial_phase: the case as above, NEW's fort.25 as given."""
+    shutil.rmtree(work, ignore_errors=True)
+    old, new = work / "old", work / "new"
+    for root, fort25, stdout in (
+        (old, initial_phase_fort25(), INITIAL_PHASE_STDOUT.format(nproj=2)),
+        (new, new_fort25, new_stdout or INITIAL_PHASE_STDOUT.format(nproj=2)),
+    ):
+        for tree in ("tests/reference", "tests/crplib/reference", "tests/scm/reference"):
+            (root / tree).mkdir(parents=True)
+        write_tree(
+            root,
+            {
+                f"{DAILIGHT_SHORT}/DVR.inp": INITIAL_PHASE_DVR,
+                f"{DAILIGHT_SHORT}/fortran_stdout.txt": stdout,
+                f"{DAILIGHT_SHORT}/fortran_fort25.txt": fort25,
+            },
+        )
+    expected = work / "expected.tsv"
+    expected.write_text(
+        EXPECTED_HEADER
+        + f"{DAILIGHT_SHORT}/fortran_fort25.txt\tinitial_phase\t-\tr1720\n"
+        + f"{DAILIGHT_SHORT}/fortran_stdout.txt\tlabels\t-\tr1725\n",
+        encoding="utf-8",
+    )
+    return old, new, expected
+
+
+def compare_initial_phase(work, new_fort25, new_stdout=None):
+    """(exit status, output) of compare on initial_phase_trees."""
+    old, new, expected = initial_phase_trees(work, new_fort25, new_stdout)
+    return compare(old, new, "--no-provenance", expected=expected)
+
+
+def test_initial_phase_rotation_passes(work):
+    """The initial rows of v = 0 and 1 rotated by -k_v (Z_sp - Zana), the other row unchanged: passes."""
+    status, output = compare_initial_phase(work, initial_phase_fort25(rotation=r1720_rotation))
+    expect_pass(status, output)
+    if not re.search(r"^  ok    initial_phase .*fortran_fort25.txt: 2 lines differ", output, re.MULTILINE):
+        pytest.fail(f"the two initial rows should differ and be allowed:\n{output}")
+
+
+def test_initial_phase_other_row_fails(work):
+    """A row of another state changed (as if rotated too): fails."""
+    fort25 = initial_phase_fort25(rotation=r1720_rotation, other=OTHER_ROW * r1720_rotation(0))
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*not a row of the initial state")
+
+
+def test_initial_phase_s_magnitude_fails(work):
+    """The initial row of v = 0 rotated and scaled by 1.001: fails on |S|."""
+    fort25 = initial_phase_fort25(rotation=lambda v: r1720_rotation(v) * (1.001 if v == 0 else 1.0))
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*\|S\| changed")
+
+
+def test_initial_phase_wrong_rotation_fails(work):
+    """The initial row of v = 1 rotated 0.01 rad too far: fails on the phase."""
+    fort25 = initial_phase_fort25(rotation=lambda v: r1720_rotation(v, extra=0.01 if v == 1 else 0.0))
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*the phase changed by")
+
+
+def test_initial_phase_p_change_fails(work):
+    """The rotated rows with P of v = 0 raised by 2 printed units: fails."""
+    fort25 = initial_phase_fort25(rotation=r1720_rotation)
+    row = next(line for line in fort25.splitlines() if line.startswith("   0   0"))
+    p = row.split()[4]
+    raised = fortran_d(from_fortran(p) + 2e-12)
+    fort25 = fort25.replace(row, row.replace(p, raised))
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*P \S+ became \S+, more than one printed")
+
+
+def test_initial_phase_header_fails(work):
+    """The block header of v = 0 with diffraction order 1 instead of 0: fails."""
+    fort25 = initial_phase_fort25(rotation=r1720_rotation, order=1)
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*dif.order are.*not a row of the initial")
+
+
+def test_nproj_label(work):
+    """r1725's "(nproj = 1)" label passes under labels; with its number changed it fails."""
+    fort25 = initial_phase_fort25()
+    expect_pass(*compare_initial_phase(work, fort25, INITIAL_PHASE_STDOUT.format(nproj=1)))
+    changed = INITIAL_PHASE_STDOUT.format(nproj=1).replace("0.10000000E-06", "0.20000000E-06")
+    expect_failure(*compare_initial_phase(work, fort25, changed), r"labels .*fortran_stdout.txt.*became")
 
 
 def test_bk_nan(work):

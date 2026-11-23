@@ -193,6 +193,20 @@ add_pytest_test(NAME FortranReference.CompareUnknownLabelFails TOOL tools/fortra
                 SELECT test_refdata.py::test_unknown_label)
 add_pytest_test(NAME FortranReference.CompareSMagnitudeChangeFails TOOL tools/fortran_reference
                 SELECT test_refdata.py::test_s_magnitude)
+add_pytest_test(NAME FortranReference.CompareInitialPhaseRotationPasses TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_initial_phase_rotation_passes)
+add_pytest_test(NAME FortranReference.CompareInitialPhaseOtherRowFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_initial_phase_other_row_fails)
+add_pytest_test(NAME FortranReference.CompareInitialPhaseSMagnitudeFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_initial_phase_s_magnitude_fails)
+add_pytest_test(NAME FortranReference.CompareInitialPhaseWrongRotationFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_initial_phase_wrong_rotation_fails)
+add_pytest_test(NAME FortranReference.CompareInitialPhasePChangeFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_initial_phase_p_change_fails)
+add_pytest_test(NAME FortranReference.CompareInitialPhaseHeaderFails TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_initial_phase_header_fails)
+add_pytest_test(NAME FortranReference.CompareNprojLabelPasses TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_nproj_label)
 add_pytest_test(NAME FortranReference.CompareBkBeyondLimitFails TOOL tools/fortran_reference
                 SELECT test_refdata.py::test_bk_limit)
 add_pytest_test(NAME FortranReference.CompareBkNotFiniteFails TOOL tools/fortran_reference

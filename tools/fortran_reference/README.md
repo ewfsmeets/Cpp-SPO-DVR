@@ -267,10 +267,11 @@ list:
 |---|---|---|
 | `identical` | None: the same as no row, written to document a measurement | `-` |
 | `volatile` | Text lines that differ between two runs of one build: the version line (build and run dates), the thread count, the set-up timings, the `iz = N` lines (printed from a parallel loop), the CPU timing table at the end | `-` |
-| `labels` | As `volatile`, plus the label whitelist `LABELS_519_TO_524` in refdata.py: the stdout lines whose text changed from 5.19 to 5.24 while their numbers did not. Every `labels` row uses it, so a later bump of the reference must review it | `-` |
+| `labels` | As `volatile`, plus the label whitelists `LABELS_519_TO_524` and `LABELS_R1725` in refdata.py: the stdout lines whose text changed from 5.19 to 5.24, and after 5.24 up to r1727, while their numbers did not. Every `labels` row uses them, so a later bump of the reference must review them | `-` |
 | `abs` | As `labels`, plus every number within `limit` of its old value | absolute limit |
 | `printed_units` | As `labels`, plus every number within `limit` units of its last printed digit | units |
 | `signs_only` | As `labels`, plus a sign change of the numbers at the listed positions (1-based) of a table row: a line of numbers only, with at least as many numbers as the largest position (an S-matrix row of `fort.25`, not a block header). With the sign, their printed digits may change by one unit (the negated value is computed another way) | positions, e.g. `4,6` |
+| `initial_phase` | An on-the-fly `fortran_fort25.txt` of a case whose specular analysis line becomes fixed (its stdout says "fixed at Z"), after upstream r1720 referred the initial state's phase to that line: only the rows m1 = m2 = 0 of the blocks `v JIn MJIn 0` (every v; JIn, MJIn from the case's DVR.inp) may change, with \|S\| and P kept to their printed digits and the phase rotated by −k_v (Z_sp − Zana) mod 2π (k_v: the block's total momentum for v = VIn, from the stdout's gas-phase levels for the other v; the tolerance follows from the printed digits). Needs EParallel 0 | `-` |
 | `bk_scaled` | BK coefficients (`fortran_fort21.bin`): identical header records, every coefficient within `limit` times the gate-4 scale of `OLD` (its largest coefficient modulus, at least 1e-4) | fraction of the scale |
 | `unread` | Any change of content (no test reads the file; the line still reports what changed, e.g. the line count of an emptied file); it must exist in both trees | `-` |
 | `removed` | The file may be missing from `NEW` (if present, it must be identical) | `-` |

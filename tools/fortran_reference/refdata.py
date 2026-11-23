@@ -321,6 +321,7 @@ CLASSES = (
     "bk_scaled",
     "printed_units",
     "signs_only",
+    "initial_phase",
     "unread",
     "removed",
     "added",
@@ -371,6 +372,9 @@ LABELS_519_TO_524 = (
         r"\1\2 \3",
     ),
 )
+# Labels changed after 5.24 (svn r1714-r1727, upstream fixes of 2026-11): the "(nproj = 2)" of the specular
+# tolerance line became "(nproj = 1)" in r1725, with the same number. Used with LABELS_519_TO_524.
+LABELS_R1725 = ((re.compile(r"(\* Tolerance for transferring the wavefunction \(nproj = )1(\):.*)"), r"\g<1>2\2"),)
 # A number as Fortran prints it (I, F, E or D format), and a right-aligned field of one: a sign
 # change takes a blank of the field, so only the field width must stay.
 NUMBER = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[EeDd][-+]?\d+)?")
@@ -528,7 +532,7 @@ def comparable_lines(text, labels):
         if VOLATILE_LINE.fullmatch(line):
             continue
         line = HEX_DOUBLE_LINE.sub(r"\1\2", line)
-        for pattern, canonical in LABELS_519_TO_524 if labels else ():
+        for pattern, canonical in LABELS_519_TO_524 + LABELS_R1725 if labels else ():
             match = pattern.fullmatch(line)
             if match:
                 line = None if canonical is None else match.expand(canonical)
@@ -632,6 +636,178 @@ def text_differences(old, new, rule):
     return diff
 
 
+# Class initial_phase (an on-the-fly fortran_fort25.txt): upstream r1720 refers the phase of the initial
+# rot-dif state's S elements (every v) to the fixed specular analysis line Z_sp instead of ZAnalysis
+# (Analyzor.f90 smatrix_calc: S = ... exp(i arg), arg = -skz zRef + ...), so those rows rotate by
+# exp(-i k_v (Z_sp - Zana)) and nothing else changes. k_v is the channel's normal momentum: the block's
+# "total momentum" for v = VIn (EParallel 0), from the printed gas-phase levels for the other v.
+CHAEV = 27.2114  # the Fortran's hartree -> eV (chaev)
+CAMAU = 1822.89  # the Fortran's amu -> electron masses (camau)
+GAS_LEVEL_DIGITS = 1e-6  # the gas-phase table prints its energies (eV) with 6 decimals
+FORT25_HEADER = re.compile(r" v j mj dif\.order are: +(-?\d+) +(-?\d+) +(-?\d+) +(-?\d+) *")
+FORT25_ROW = re.compile(r" +(-?\d+) +(-?\d+) +(\S+) +(\S+) +(\S+) +(\S+) *")
+FORT25_MOMENTUM = re.compile(r" total momentum = +(\S+) *")
+GAS_LEVELS_TITLE = " asymptotic molecular vibrational wave functions"
+GAS_LEVEL = re.compile(r" +(\d+) +(\d+) +(-?\d+\.\d+) +(-?\d+\.\d+) .*")
+
+
+@dataclass(frozen=True, kw_only=True)
+class InitialPhaseCase:
+    """What class initial_phase reads from a case: the initial state (VIn, JIn, MJIn, DVR.inp), the analysis
+    line ZAnalysis and the fixed specular line Z_sp (printed, with half a printed unit each), the total mass
+    (electron masses) and the gas-phase levels E(v, j) (eV) of fortran_stdout.txt."""
+
+    v_in: int
+    j_in: int
+    mj_in: int
+    z_ana: float
+    z_sp: float
+    z_rounding: float
+    mass: float
+    levels: dict
+
+
+def dvr_value(text, key):
+    """The value of KEY in a DVR.inp ("Key : TYPE : value;" or "Key : value;"), or None."""
+    match = re.search(rf"^{key} *:(?:[^:;]*:)? *([^;]+);", text, re.MULTILINE)
+    return match.group(1).strip() if match else None
+
+
+def printed_value(text, label):
+    """(value, half a printed unit) of the one stdout line "<label> <number>"; Refusal if not exactly one."""
+    values = re.findall(rf"^{re.escape(label)} +(\S+) *$", text, re.MULTILINE)
+    if len(values) != 1:
+        raise Refusal(f"{len(values)} lines {label!r} in the case's fortran_stdout.txt, not one")
+    return as_float(values[0]), 0.5 * printed_unit(values[0])
+
+
+def gas_levels(text):
+    """{(v, j): E (eV)} of the gas-phase table of a stdout (the lines after GAS_LEVELS_TITLE)."""
+    lines = text.splitlines()
+    if GAS_LEVELS_TITLE not in lines:
+        raise Refusal("no gas-phase table in the case's fortran_stdout.txt")
+    levels = {}
+    for line in lines[lines.index(GAS_LEVELS_TITLE) + 1 :]:
+        match = GAS_LEVEL.fullmatch(line)
+        if match:
+            levels[(int(match.group(1)), int(match.group(2)))] = float(match.group(3))
+        elif line.strip() and levels:
+            break
+    return levels
+
+
+def initial_phase_case(root, path):
+    """The InitialPhaseCase of the case of path in the tree root (its DVR.inp and fortran_stdout.txt)."""
+    located = case_and_relative_path(path)
+    if located is None:
+        raise Refusal("not in a case directory")
+    case_dir = Path(root) / located[0]
+    dvr = (case_dir / "DVR.inp").read_text(encoding="utf-8")
+    stdout = (case_dir / "fortran_stdout.txt").read_text(encoding="utf-8")
+    if as_float(dvr_value(dvr, "EParallel") or "0") != 0.0:
+        raise Refusal("the case has EParallel /= 0 (the block's total momentum is not k_z then)")
+    z_ana, z_ana_rounding = printed_value(stdout, "* Wave function analysed at (bohr):")
+    z_sp, z_sp_rounding = printed_value(stdout, "   ==> ZAnalysis on specular channel fixed at Z =")
+    mass_1, _ = printed_value(stdout, "* Mass of atom 1 (amu):")
+    mass_2, _ = printed_value(stdout, "* Mass of atom 2 (amu):")
+    return InitialPhaseCase(
+        v_in=int(dvr_value(dvr, "VIn") or 0),
+        j_in=int(dvr_value(dvr, "JIn") or 0),
+        mj_in=int(dvr_value(dvr, "MJIn") or 0),
+        z_ana=z_ana,
+        z_sp=z_sp,
+        z_rounding=z_ana_rounding + z_sp_rounding,
+        mass=CAMAU * (mass_1 + mass_2),
+        levels=gas_levels(stdout),
+    )
+
+
+def channel_momentum(case, v, momentum):
+    """(k_v, its uncertainty from the printed digits) of the initial state's channel at level v, from the
+    block's printed total momentum (k of v = VIn); None if a level is missing or the channel is closed."""
+    k_in, dk_in = as_float(momentum), 0.5 * printed_unit(momentum)
+    if v == case.v_in:
+        return k_in, dk_in
+    e_in, e_v = case.levels.get((case.v_in, case.j_in)), case.levels.get((v, case.j_in))
+    if e_in is None or e_v is None:
+        return None
+    k_squared = k_in * k_in + 2.0 * case.mass * (e_in - e_v) / CHAEV
+    if not k_squared > 0.0:
+        return None
+    k = math.sqrt(k_squared)
+    dk_squared = 2.0 * k_in * dk_in + 2.0 * case.mass * GAS_LEVEL_DIGITS / CHAEV
+    return k, dk_squared / (2.0 * k)
+
+
+def initial_row_change(diff, case, where, v, momentum, old, new):
+    """Records whether one changed initial-state row (Re S, Im S, P, phase as printed) changed only as the
+    r1720 rotation does: |S| and P kept to their printed digits, the phase rotated by -k_v (Z_sp - Zana) mod
+    2 pi within the printed digits. The comparisons are written so that a NaN fails them."""
+    diff.numbers += sum(a != b for a, b in zip(old, new, strict=True))
+    values = [as_float(token) for token in (*old, *new)]
+    if not all(math.isfinite(x) for x in values):
+        diff.forbid(f"{where}: a number is not finite")
+        return
+    re_old, im_old, p_old, phase_old, re_new, im_new, p_new, phase_new = values
+    s_tolerance = 0.5 * (
+        math.hypot(printed_unit(old[0]), printed_unit(old[1])) + math.hypot(printed_unit(new[0]), printed_unit(new[1]))
+    )
+    if not abs(math.hypot(re_old, im_old) - math.hypot(re_new, im_new)) <= s_tolerance * (1 + UNIT_SLACK):
+        diff.forbid(f"{where}: |S| changed ({old[0]} {old[1]} became {new[0]} {new[1]})")
+    if not abs(p_old - p_new) <= max(printed_unit(old[2]), printed_unit(new[2])) * (1 + UNIT_SLACK):
+        diff.forbid(f"{where}: P {old[2]} became {new[2]}, more than one printed unit")
+    if re_old == 0.0 or re_new == 0.0:
+        return  # the Fortran prints a zero phase when Re S = 0 (smatrix_combine)
+    if momentum is None:
+        diff.forbid(f"{where}: no 'total momentum' line before the row")
+        return
+    found = channel_momentum(case, v, momentum)
+    if found is None:
+        diff.forbid(f"{where}: no momentum for v = {v} (a gas-phase level missing, or the channel closed)")
+        return
+    k, dk = found
+    distance = case.z_sp - case.z_ana
+    expected = -k * distance
+    deviation = math.remainder(phase_new - phase_old - expected, 2.0 * math.pi)
+    tolerance = 0.5 * (printed_unit(old[3]) + printed_unit(new[3])) + abs(distance) * dk + k * case.z_rounding
+    diff.max_abs = max(diff.max_abs, abs(deviation))
+    if not abs(deviation) <= tolerance * (1 + UNIT_SLACK):
+        diff.forbid(
+            f"{where}: the phase changed by {phase_new - phase_old:.6f}, not by -k (Z_sp - Zana) = {expected:.6f} "
+            f"mod 2 pi (off by {deviation:.3g} rad, tolerance {tolerance:.3g})"
+        )
+
+
+def initial_phase_differences(old, new, case):
+    """The Differences of two versions of an on-the-fly fort.25 under class initial_phase: only the rows
+    m1 = m2 = 0 below a block header of the initial state (v any, JIn, MJIn, diffraction order 0) may change,
+    as initial_row_change allows; every other line must be identical."""
+    diff = Differences()
+    a, b = old.decode().splitlines(), new.decode().splitlines()
+    if len(a) != len(b):
+        diff.line_counts = f"{len(a)} lines became {len(b)}"
+        diff.forbid(diff.line_counts)
+        return diff
+    state, momentum = None, None
+    for number, (x, y) in enumerate(zip(a, b, strict=True), start=1):
+        header = FORT25_HEADER.fullmatch(x)
+        if header:
+            state = tuple(int(group) for group in header.groups())
+        found = FORT25_MOMENTUM.fullmatch(x)
+        if found:
+            momentum = found.group(1)
+        if x == y:
+            continue
+        diff.lines += 1
+        row_old, row_new = FORT25_ROW.fullmatch(x), FORT25_ROW.fullmatch(y)
+        initial = state is not None and state[1:] == (case.j_in, case.mj_in, 0)
+        if not (initial and row_old and row_new and row_old.group(1, 2) == ("0", "0") == row_new.group(1, 2)):
+            diff.forbid(f"line {number}: {x.strip()!r} became {y.strip()!r}, not a row of the initial state")
+            continue
+        initial_row_change(diff, case, f"line {number}", state[0], momentum, row_old.groups()[2:], row_new.groups()[2:])
+    return diff
+
+
 def read_records(data):
     """The records of a gfortran unformatted sequential file: a 4-byte little-endian length before
     and after each. Records over 2 GiB are split into subrecords (negative lengths), which no
@@ -719,11 +895,16 @@ def file_kind(path, data):
         return "binary"
 
 
-def file_differences(path, old, new, rule):
-    """The Differences of the two versions (bytes) of a file under its rule."""
+def file_differences(path, old, new, rule, case=None):
+    """The Differences of the two versions (bytes) of a file under its rule; case: the InitialPhaseCase of
+    class initial_phase."""
     kind = file_kind(path, old)
     if file_kind(path, new) != kind:
         return Differences(kind="binary", violation=f"the {kind} file became {file_kind(path, new)}")
+    if rule.allowed == "initial_phase":
+        if kind != "text":
+            return Differences(kind="binary", violation=f"class initial_phase does not apply to a {kind} file")
+        return initial_phase_differences(old, new, case)
     if (rule.allowed == "bk_scaled" and kind != "bk") or (rule.allowed in TEXT_CLASSES and kind != "text"):
         return Differences(
             kind="binary", violation=f"class {rule.allowed} does not apply to a {kind} file; fix the row"
@@ -757,7 +938,13 @@ def classify(old_root, new_root, path, rule):
     old_bytes, new_bytes = old.read_bytes(), new.read_bytes()
     if old_bytes == new_bytes:
         return True, ""
-    diff = file_differences(path, old_bytes, new_bytes, rule)
+    case = None
+    if rule.allowed == "initial_phase":
+        try:
+            case = initial_phase_case(new_root, path)
+        except (Refusal, OSError, ValueError) as error:
+            return False, f"class initial_phase needs the case's inputs; not allowed: {error}"
+    diff = file_differences(path, old_bytes, new_bytes, rule, case)
     # A text file reports a change of its line count; a binary or BK file its size (e.g. truncated).
     resized = diff.kind != "text" and len(old_bytes) != len(new_bytes)
     sizes = f" ({len(old_bytes)} bytes became {len(new_bytes)})" if resized else ""
