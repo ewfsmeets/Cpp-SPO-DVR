@@ -3,6 +3,8 @@
 
 #include <cmath>
 #include <fstream>
+#include <stdexcept>
+#include <string>
 
 #include <nlohmann/json.hpp>
 
@@ -86,4 +88,72 @@ TEST(GasPhase, ReferenceCaseSixDigitValues) {
   EXPECT_EQ(gas.n_v_analysis, 2);
   EXPECT_EQ(gas.j_max_analysis, 4);
   for (const auto& s : gas.summary) EXPECT_NEAR(s.norm, 1.0, 1e-12);
+}
+
+namespace {
+
+// hardwall_small with the given input changes (validated).
+Config hard_wall_config(const nlohmann::json& changes) {
+  std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/hardwall_small/input.json");
+  nlohmann::json json = nlohmann::json::parse(file);
+  json.update(changes);
+  return build_config(parse_input(json));
+}
+
+// The gas phase of a hard-wall configuration (the hard wall's asymptotic curve).
+GasPhase hard_wall_gas_phase(const Config& config) {
+  const SpatialGrids grids = make_spatial_grids(config);
+  const AngularGrid angular = make_angular_grid(config);
+  const PotentialGrid pot = compute_potential_grid(HardWallPotential(), config, grids, angular);
+  return compute_gas_phase(config, grids, angular, pot.asymptotic, FftwFft(), LapackEigensolver());
+}
+
+bool has_warning(const GasPhase& gas, const std::string& text) {
+  for (const std::string& w : gas.warnings)
+    if (w == text) return true;
+  return false;
+}
+
+// The bug report's example 1 (docs/fortran_analysis_limits_bugs.md): odd JIn, homonuclear, levels j = 1, 3
+// open (E(0, j) - E(0, 0) = 0.01424, 0.08482 eV; available 0.12 + 0.01424), j = 5 closed (0.20923).
+const nlohmann::json odd_jin_example = {{"JMax", 5}, {"MJMax", 5},     {"JIn", 1},
+                                        {"MJIn", 0}, {"EMinWP", 0.06}, {"EMaxWP", 0.12}};
+
+}  // namespace
+
+// Upstream r1727: the search starts at JIn, so it tests the odd j of the basis (from 0 it gave 2).
+TEST(GasPhase, OddJInSearchReachesJ3) {
+  const GasPhase gas = hard_wall_gas_phase(hard_wall_config(odd_jin_example));
+  EXPECT_EQ(gas.j_max_open, 3);
+  EXPECT_EQ(gas.j_max_analysis, 3);
+  EXPECT_FALSE(has_warning(gas, "Not all open j channels analysed!"));
+}
+
+// JMax 7 and EMaxWP 0.3 eV: j = 5 is open (0.209 <= 0.3 + 0.014), j = 7 closed. The search from 0 gave 6, a
+// level of the wrong parity, and the "Rotational basis too small" warning.
+TEST(GasPhase, JMax7OpensJ5) {
+  nlohmann::json changes = odd_jin_example;
+  changes.update({{"JMax", 7}, {"MJMax", 7}, {"EMinWP", 0.2}, {"EMaxWP", 0.3}});
+  const GasPhase gas = hard_wall_gas_phase(hard_wall_config(changes));
+  EXPECT_EQ(gas.j_max_analysis, 5);
+  EXPECT_FALSE(has_warning(gas, "Rotational basis too small to describe all open channels!"));
+}
+
+// With JAna 3 the open level j = 5 is not analysed: the warning tests the next level of the basis, j = 5.
+TEST(GasPhase, OddJInWarnsForTheNextOddLevel) {
+  nlohmann::json changes = odd_jin_example;
+  changes.update({{"JMax", 7}, {"MJMax", 7}, {"EMinWP", 0.2}, {"EMaxWP", 0.3}, {"JAna", 3}});
+  const GasPhase gas = hard_wall_gas_phase(hard_wall_config(changes));
+  EXPECT_EQ(gas.j_max_analysis, 3);
+  EXPECT_TRUE(has_warning(gas, "Not all open j channels analysed!"));
+}
+
+// The post-conditions, reached only through a configuration changed after validation.
+TEST(GasPhase, PostConditionsThrow) {
+  Config config = hard_wall_config({{"JIn", 2}});
+  config.input.j_analysis = 0;
+  EXPECT_THROW((void)hard_wall_gas_phase(config), std::logic_error);
+  config = hard_wall_config({{"VIn", 1}});
+  config.input.v_analysis = 1;
+  EXPECT_THROW((void)hard_wall_gas_phase(config), std::logic_error);
 }

@@ -192,6 +192,16 @@ differences are in [validation.md](validation.md).
   Fortran's convention, to compare with its fort.25. Tests: `ElasticPhase.HardWallElasticElementIsTheExactReflection`
   (the hard-wall elastic element against the exact 1D reflection, with the Fortran phase as negative test),
   `SMatrix.InitialStatePhaseRefersToTheSpecularLine`. Details: [fortran_elastic_phase_bug.md](fortran_elastic_phase_bug.md).
+- analysis D3<a id="analysis-d3"></a>: VIn = nR − 1 is an input error. Without VAna the gas phase analyses at most
+  nR − 1 vibrational levels (v = 0 to nR − 2: `GasPhase.f90 SetupAsympWF` stops the open-level search at
+  `iv == nr`, C++ `count_open_vibrational_levels`), and the levels are sorted with EMaxWP > 0, so with
+  VIn = nR − 1 every level is open and the initial one is still left out of the analysis. The Fortran (r1727)
+  accepts that input and then analyses no initial level (read from the code; the case of bug 2 in
+  [fortran_analysis_limits_bugs.md](fortran_analysis_limits_bugs.md)); with VAna given, its r1726 check VIn ≥ VAna
+  already rejects it. The C++ also checks after the gas phase that the initial state is analysed
+  (`compute_gas_phase`, `AnalysisBasis`; unreachable for a valid input). Tests:
+  `Checks/InputViolation.IsRejected/AnalysisD3VInIsTheLastLevel`, `Input.AnalysisD3VInBelowTheLastLevelIsValid`,
+  `GasPhase.PostConditionsThrow`, `AnalysisBasis.InitialStateOutsideTheBasisThrows`.
 - <a id="projop-1"></a>ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
   option); the input reader rejects it.
 - Kept on purpose (`Analyzor.f90 FindNewAnalysisPoint`): the clamp of `izanlySpecChan` to `nschmi`

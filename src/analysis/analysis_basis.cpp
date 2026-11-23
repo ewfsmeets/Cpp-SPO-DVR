@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <stdexcept>
 
 #include "core/unit_conversion.hpp"
 #include "symmetry/surface_lattice.hpp"
@@ -103,6 +104,9 @@ AnalysisBasis::AnalysisBasis(const Config& config, const AngularGrid& angular, c
     const int irot = rotations_[irotana];
     if (basis.j(irot) == p.j_in && basis.mj(irot) == p.mj_in) initial_ = irotana * n_diffraction_;
   }
+  // Every user of initial_state() indexes with it; compute_gas_phase guarantees it for a valid input.
+  if (initial_ < 0 || p.v_in >= n_v_)
+    throw std::invalid_argument("AnalysisBasis: the initial state (VIn, JIn, MJIn) is not in the analysis basis");
 
   // Channel energies E_dif + E(v, j). Fortran: SetupGridEnergies (enymo)
   channel_energies_.resize(n_states() * n_v_);

@@ -104,6 +104,13 @@ def test_available_energy_includes_the_initial_state() -> None:
     check_equal(gas_phase_of(e_parallel=0.3).j_max_open, 12, "highest open j with EParallel 0.3")
 
 
+def test_odd_jin_searches_the_odd_levels() -> None:
+    """A homonuclear molecule with odd JIn has only odd j, and the search starts at JIn (upstream r1727). By hand
+    from the program's printed E(0, j): JIn 1 adds E(0, 1) - E(0, 0) = 0.015 eV, and E(0, 11) - E(0, 0) = 0.890 <=
+    0.95 + 0.015 < 1.188 = E(0, 13) - E(0, 0), so j 11 is the highest open (the search over even j gave 10)."""
+    check_equal(gas_phase_of(j_in=1, j_max=27, mj_max=27).j_max_open, 11, "highest open j with JIn 1")
+
+
 def test_too_small_vana_and_jana_are_reported() -> None:
     """Channels within the 95% interval (up to 0.95 eV for DZ) but not analysed give the program's warnings."""
     check_equal(gas_phase_of(j_analysis=4).warnings, ("Not all open j channels analysed!",), "JAna 4")

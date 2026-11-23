@@ -73,8 +73,8 @@ def compute_gas_phase(p: InputParameters, d: DerivedParameters, angular: Angular
     available_energy = ev_to_hartree(p.e_max_wave_packet) + (e_initial - e00) + ev_to_hartree(p.e_parallel)
     warnings: list[str] = []
     v_max_open = count_open_vibrational_levels(energies, available_energy, warnings)
-    j_max_open = highest_open_rotational_level(energies, angular.delta_j, available_energy, warnings)
-    # VAna < 1 (or absent) and absent JAna mean: determined by the program.
+    j_max_open = highest_open_rotational_level(energies, p.j_in, angular.delta_j, available_energy, warnings)
+    # Absent VAna and JAna mean: determined by the program (a given VAna < 1 or JAna < 0 fails the input checks).
     n_v_analysis = p.v_analysis if p.v_analysis is not None and p.v_analysis >= 1 else v_max_open
     j_max_analysis = p.j_analysis if p.j_analysis is not None and p.j_analysis >= 0 else j_max_open
     warnings += analysis_warnings(p, d, angular, energies, e_initial, n_v_analysis, j_max_analysis)
@@ -182,12 +182,13 @@ def count_open_vibrational_levels(energies: np.ndarray, available_energy: float,
 
 
 def highest_open_rotational_level(
-    energies: np.ndarray, delta_j: int, available_energy: float, warnings: list[str]
+    energies: np.ndarray, j_in: int, delta_j: int, available_energy: float, warnings: list[str]
 ) -> int:
-    """The highest open j (v = 0), in steps of delta_j (highest_open_rotational_level)."""
+    """The highest open j (v = 0), from JIn upwards in steps of delta_j (highest_open_rotational_level; upstream
+    r1727 starts at jin)."""
     e00 = energies[0, 0]
     j_max = energies.shape[1] - 1
-    j = 0
+    j = j_in
     while energies[0, j] - e00 <= available_energy:
         j = j + delta_j
         if j > j_max:

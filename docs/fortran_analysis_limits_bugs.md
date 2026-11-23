@@ -1,8 +1,9 @@
 # Bugs: the highest analysed j for odd JIn, and the VIn check against VAna
 
-**Status:** open in the Fortran (5.19, 5.24 and upstream master 8c2b3fe of 2026-11-22) and in the C++, which
-reproduces both. Found on 2026-11-23 while checking which input paths no reference case covers (every
-Fortran-compared case has `VIn = JIn = MJIn = 0`), and verified by runs of both codes.
+**Status:** fixed upstream on 2026-11-23 in r1726 (the input checks) and r1727 (the search starts at `jin`), and
+ported to the C++ (section [The C++](#the-c)). Found on 2026-11-23 while checking which input paths no reference case
+covers (every Fortran-compared case has `VIn = JIn = MJIn = 0`), and verified by runs of both codes. The sections
+below describe the bugs as they were in 5.19, 5.24 and upstream master up to 8c2b3fe (r1725).
 
 **In one paragraph.** The analysis projects the outgoing wave onto the channels (v, j, mJ, diffraction order) with
 v below `VAna` levels and j up to `jana`. Two of the limits are wrong:
@@ -261,20 +262,42 @@ with the keys listed changed (`DVR.inp` and `input.json` alike); the executables
 **Tests:** example 1 must give `nana = 10`; example 2 must analyse j = 1 and 3 (`inchna` ≠ 0) and report a non-zero
 sum; example 3 with `VAna` 1 must stop with the error, and `VAna` 2 must run.
 
+## The upstream fix
+
+- **r1727** (`GasPhase.f90 SetupAsympWF`): the search starts at `j = jin` instead of 0. Like the proposal above, it
+  then tests only levels of the basis's parity, and its result is ≥ `jin`.
+- **r1726** (`InputNew.f90 ValidateInput`): `JIn >= JMax`, `VIn >= VAna` and `JIn >= JAna` are input errors (were
+  `>`). This differs from the proposal in three ways:
+  - `JIn = JMax` is rejected, so example 2 is now an input error, and so is every input with JMax = 0;
+  - a given `VAna = 0` ("set by the program", `GasPhase.f90`) is rejected whatever `VIn` is; leaving `VAna` out keeps
+    the program's choice;
+  - `JIn = JAna` is rejected, although `jana` is an inclusive highest j (`RotDifBasis.f90` keeps `j <= jana`), so a
+    valid input (e.g. JIn = JAna = 0, only j = 0 analysed) is refused.
+- Not changed upstream: the check that the initial state is in the analysis basis (`inchna`), and the case
+  VIn = nR − 1 without `VAna`, where at most nR − 1 levels are analysed (bug 2 remains there; read from the code).
+
 ## The C++
 
-Not fixed yet. The C++ counterpart of the proposed fix:
+The C++ follows upstream in all three r1726 checks (the user's decision, 2026-11-23) and ports r1727:
 
-- `highest_open_rotational_level` starts at `angular.j_min()`;
-- `AnalysisBasis` throws when `initial_` stays −1;
-- `validate.cpp` checks `p.v_in >= *p.v_analysis` when `*p.v_analysis >= 1`.
-
-Each is a deviation from the Fortran, to be recorded in [fortran_deviations.md](fortran_deviations.md) with a test
-(examples 1–3 above, as unit or set-up tests; example 2 needs a propagation until the specular line is fixed).
+- `highest_open_rotational_level` (`src/gasphase/gas_phase.cpp`) starts at JIn;
+- `validate_input` (`src/input/validate.cpp`): `JIn >= JMax`, `VIn >= VAna`, `JIn >= JAna`;
+- [analysis D3](fortran_deviations.md#analysis-d3): VIn = nR − 1 is an input error;
+- `compute_gas_phase` and `AnalysisBasis` stop when the initial state is not analysed (internal checks, unreachable
+  for a valid input). This also covers the sites the C++ reached out of range in bug 1 with JIn = JMax and in bug 2:
+  `balint_kurti.cpp`, `fine_analysis.cpp`, `fine_analysis_run.cpp`, `analysis_report.cpp` (the initial state's
+  diffraction table and its set-up label), `fine_analysis_report.cpp` and the `initial_state_index` of analysis.json.
+- Tests: `GasPhase.OddJInSearchReachesJ3` (example 1), `GasPhase.JMax7OpensJ5`, `GasPhase.OddJInWarnsForTheNextOddLevel`,
+  `GasPhase.PostConditionsThrow`, `AnalysisBasis.OddJInExampleHasTenRotationalStates`,
+  `AnalysisBasis.InitialStateOutsideTheBasisThrows`, the input rows `JInEqJMax`, `VInEqVAna`, `VAnaZeroGiven`,
+  `JInEqJAna`, `AnalysisD3VInIsTheLastLevel`, and the designer's copy (`tools/wave_packet_designer`).
+- BK and checkpoint files written before the fix by a run with odd JIn and without JAna have another number of
+  analysed states; reading them now stops with exit code 4 (give the old run's JAna to read them).
 
 ## Open points
 
-- **Report upstream?** All three changes are a few lines in the Fortran.
+- **Reported upstream** and fixed on 2026-11-23 (r1726/r1727). Still to tell the authors: `JIn >= JAna` refuses the
+  valid JIn = JAna, and VIn = nR − 1 (without VAna) leaves the initial level out of the analysis.
 - **The size in production use** is estimated from the level ladder, not measured: which odd level is lost depends
   on the energy window; the loss is largest for the Δj = 2 excitation at low energy.
 - **The fine-analysis consequences** (bug 1 with `JIn = JMax`, bug 2) are read from the code, not run.

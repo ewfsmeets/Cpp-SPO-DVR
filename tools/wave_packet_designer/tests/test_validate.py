@@ -104,6 +104,7 @@ VIOLATIONS = [
     ({"j_in": 4, "mj_in": 4, "mj_max": 2}, "MJIn", "MJIn > MJMax."),  # as for |MJIn| > |MJMax| above
     ({"v_in": 1, "v_analysis": 1}, "VIn", "VIn >= VAna."),
     ({"j_in": 2, "j_analysis": 2}, "JIn", "JIn >= JAna."),
+    ({"v_in": 39}, "VIn", "VIn = nR-1 = 39"),  # analysis D3 (nR 40)
     ({"impose_v_min": True, "impose_v_max": True, "v_min": 11.0}, "VMin", "VMin > VMax."),
     ({"symmetry_tolerance": 0.0}, "SymmetryTolerance", "SymmetryTolerance <= 0."),
     ({"z_opt_start": 19.5}, "ZOptStart", "ZOptStart > ZOptEnd."),

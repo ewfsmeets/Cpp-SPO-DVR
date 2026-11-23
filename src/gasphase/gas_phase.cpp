@@ -3,6 +3,7 @@
 #include "gasphase/gas_phase.hpp"
 
 #include <algorithm>
+#include <format>
 #include <stdexcept>
 
 #include "core/machine_epsilon.hpp"
@@ -58,12 +59,14 @@ int count_open_vibrational_levels(const RovibrationalStates& states, double avai
   return iv - 1;
 }
 
-// Highest open j (for v = 0), stepping by delta_j (2 for a homonuclear molecule).
-// Fortran: SetupAsympWF (E. Pijper part), jmaxAnalysis
-int highest_open_rotational_level(const RovibrationalStates& states, int delta_j, double available_energy,
+// Highest open j (for v = 0), searched from JIn upwards in steps of delta_j (2 for a homonuclear
+// molecule), so it has the parity of the basis. Fortran: SetupAsympWF (E. Pijper part), jmaxAnalysis;
+// upstream r1727 starts at jin (before, at 0: for a homonuclear molecule with odd JIn only even j were
+// tested, docs/fortran_analysis_limits_bugs.md).
+int highest_open_rotational_level(const RovibrationalStates& states, int j_in, int delta_j, double available_energy,
                                   std::vector<std::string>& warnings) {
   const double e00 = states.energy(0, 0);
-  int j = 0;
+  int j = j_in;
   while (states.energy(0, j) - e00 <= available_energy) {
     j = j + delta_j;
     if (j > states.j_max()) {
@@ -141,11 +144,22 @@ GasPhase compute_gas_phase(const Config& config, const SpatialGrids& grids, cons
   const double available_energy =
       units.ev_to_hartree(p.e_max_wave_packet) + (e_initial - e00) + units.ev_to_hartree(p.e_parallel);
   gas.v_max_open = count_open_vibrational_levels(states, available_energy, gas.warnings);
-  gas.j_max_open = highest_open_rotational_level(states, angular.delta_j(), available_energy, gas.warnings);
+  gas.j_max_open = highest_open_rotational_level(states, p.j_in, angular.delta_j(), available_energy, gas.warnings);
 
-  // VAna < 1 (or absent) and absent JAna mean: determined by the program.
+  // Absent VAna and JAna mean: determined by the program. (A given VAna < 1 or JAna < 0 cannot pass the
+  // input checks since r1726; the Fortran's tests nviba < 1 and jana < 0 are kept.)
   gas.n_v_analysis = (p.v_analysis && *p.v_analysis >= 1) ? *p.v_analysis : gas.v_max_open;
   gas.j_max_analysis = (p.j_analysis && *p.j_analysis >= 0) ? *p.j_analysis : gas.j_max_open;
+
+  // The initial state must be among the analysed levels: the BK coefficients, the S-matrix and the fine
+  // analysis index it, and gas.initial is filled only below. The input checks (r1726, analysis D3) and
+  // the search from JIn guarantee it; these checks guard the code.
+  if (gas.n_v_analysis <= p.v_in)
+    throw std::logic_error(std::format("compute_gas_phase: VIn = {} is not among the {} analysed vibrational levels",
+                                       p.v_in, gas.n_v_analysis));
+  if (gas.j_max_analysis < p.j_in)
+    throw std::logic_error(
+        std::format("compute_gas_phase: JIn = {} is above the highest analysed j = {}", p.j_in, gas.j_max_analysis));
 
   for (int v = 0; v < gas.n_v_analysis; ++v) {
     for (int j = 0; j <= p.j_max; ++j) {

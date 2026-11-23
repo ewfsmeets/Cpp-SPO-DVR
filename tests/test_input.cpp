@@ -635,6 +635,13 @@ TEST(Input, FluxDeltaEJustAboveZeroIsValid) {
   EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
 }
 
+// analysis D3: VIn = nR-2 (no VAna) is valid; VIn = nR-1 is the violation row AnalysisD3VInIsTheLastLevel.
+TEST(Input, AnalysisD3VInBelowTheLastLevelIsValid) {
+  Json json = reference_json();
+  json["VIn"] = 54;  // nR 56
+  EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
+}
+
 // The valid side of the analysis limits of r1726: JIn < JMax, VIn < VAna, JIn < JAna (JAna is the
 // highest analysed j, of JIn's parity here).
 TEST(Input, AnalysisLimitsJustInsideAreValid) {
@@ -994,6 +1001,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"VAnaZeroGiven", [](Json& j) { j["VAna"] = 0; }, "VIn", "VIn >= VAna."},
         Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
         Violation{"JInEqJAna", [](Json& j) { j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
+        // analysis D3: the initial level must be analysed, and at most nR-1 levels are (nR 56).
+        Violation{"AnalysisD3VInIsTheLastLevel", [](Json& j) { j["VIn"] = 55; }, "VIn", "so the initial level would not be analysed"},
         Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin", "VMin > VMax."},
         Violation{"ZOptOrder", [](Json& j) { j["ZOptEnd"] = 8.5; }, "ZOptStart", "ZOptStart > ZOptEnd."},
         Violation{"ZOptEnd", [](Json& j) { j["ZOptEnd"] = 13.0; }, "ZOptEnd", "ZOptEnd is too big for the scattering grid in Z."},

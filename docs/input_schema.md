@@ -50,7 +50,7 @@ factor is the strength in hartree.
 | Key | Type | Default | Fortran |
 |---|---|---|---|
 | `MJMax` | int | JMax | mjmaxw. A negative value means JMax. **0 also gives JMax** for the basis (Fortran quirk) |
-| `VIn` `JIn` `MJIn` | int | 0 | initial state; JIn < JMax (upstream r1726: JIn = JMax is an input error) |
+| `VIn` `JIn` `MJIn` | int | 0 | initial state; JIn < JMax (upstream r1726: JIn = JMax is an input error) and VIn < nR − 1 (analysis D3: at most nR − 1 levels are analysed) |
 | `onlyAnalysis` | bool | false | analysis-only run (nread = 2): the fine analysis of the BK file in `RestartDir` (format `RestartFormat`); no propagation and no 6D potential. `tEnd` sets the number of BK records used (tEnd / dtAna) |
 | `alsoAnalysis` | bool | false | the fine analysis after the propagation, of the BK file the run has written (Fortran replaces the on-the-fly results by the fine ones; here both are written) |
 | `Potential` | bool | false | potential-only run (nread = 6) |

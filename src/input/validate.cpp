@@ -183,6 +183,13 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   // Upstream r1726: VAna counts levels (v = 0 to VAna-1) and JAna is checked the same way.
   if (p.v_analysis) check(p.v_in >= *p.v_analysis, "VIn", "VIn >= VAna.");
   if (p.j_analysis) check(p.j_in >= *p.j_analysis, "JIn", "JIn >= JAna.");
+  // analysis D3 (C++ only): the gas phase analyses at most nR-1 vibrational levels (GasPhase.f90
+  // SetupAsympWF stops the open-level search there; with VAna given, VIn < VAna <= nR-1 already), so
+  // VIn = nR-1 would leave the initial level out of the analysis, in the Fortran too.
+  check(p.v_in == p.nr - 1, "VIn",
+        std::format("VIn = nR-1 = {}: the analysis takes at most nR-1 vibrational levels (v = 0 to nR-2), so the "
+                    "initial level would not be analysed; use VIn < nR-1.",
+                    p.v_in));
 
   // --- potential --------------------------------------------------------------------------
   if (p.impose_v_min && p.impose_v_max) check(rgt(p.v_min, p.v_max), "VMin", "VMin > VMax.");

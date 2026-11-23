@@ -207,6 +207,13 @@ def check_wave_packet_and_state(p: InputParameters, z_asymptotic: float, checks:
         checks.error_if(p.v_in >= p.v_analysis, "VIn", "VIn >= VAna.")
     if p.j_analysis is not None:
         checks.error_if(p.j_in >= p.j_analysis, "JIn", "JIn >= JAna.")
+    # analysis D3 (C++ only): the analysis takes at most nR-1 vibrational levels (docs/fortran_deviations.md).
+    checks.error_if(
+        p.v_in == p.nr - 1,
+        "VIn",
+        f"VIn = nR-1 = {p.v_in}: the analysis takes at most nR-1 vibrational levels (v = 0 to nR-2), so the "
+        "initial level would not be analysed; use VIn < nR-1.",
+    )
 
 
 def check_potential_and_absorbers(p: InputParameters, z_asymptotic: float, checks: FindingList) -> None:
