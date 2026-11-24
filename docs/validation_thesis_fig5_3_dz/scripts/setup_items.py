@@ -453,9 +453,9 @@ def main():
         "analysed J, v, diffraction order",
         "Maximum J/V/diffraction order analysed",
         echo["Maximum J analysed"],
-        "(JAna, VAna, MDifAna absent from input.json)",
+        "(JAna, VAna, DifOrdAna absent from input.json)",
         "determined by the program (see info Analysis)"
-        if not any(k in js for k in ("JAna", "VAna", "MDifAna"))
+        if not any(k in js for k in ("JAna", "VAna", "DifOrdAna"))
         else "?",
         "text",
     )
@@ -667,8 +667,8 @@ def main():
         "flux analysis",
         "No flux analysis performed.",
         "no" if any("No flux analysis performed" in l for l in FL) else "yes",
-        "(no FluxAnalysis key)",
-        "no" if "FluxAnalysis" not in js else "yes",
+        "(no doFluxAnalysis key)",
+        "no" if "doFluxAnalysis" not in js else "yes",
         "text",
     )
     add(3, "nzpot", "nzpot", m["nzpot"], "Z points in interaction region", cgr["Z points in interaction region"], "int")

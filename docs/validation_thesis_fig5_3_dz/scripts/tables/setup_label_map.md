@@ -9,7 +9,7 @@
 | 1 | projection scheme | The projection operator scheme used: `using two grids all the way` | ProjOp (input; only 2 is accepted): `using two grids all the way` | text |  | exact | identical |
 | 1 | switching function | Using a switching function for the potential in Z: `F` | Switching to gas phase: `F` | text |  | exact | identical |
 | 1 | only/also fine analysis | Only / Also performing a fine analysis: `FF` | Run mode: `FF` | text |  | exact | identical |
-| 1 | analysed J, v, diffraction order | Maximum J/V/diffraction order analysed: `determined by the program (see info Analysis)` | (JAna, VAna, MDifAna absent from input.json): `determined by the program (see info Analysis)` | text |  | exact | identical |
+| 1 | analysed J, v, diffraction order | Maximum J/V/diffraction order analysed: `determined by the program (see info Analysis)` | (JAna, VAna, DifOrdAna absent from input.json): `determined by the program (see info Analysis)` | text |  | exact | identical |
 | 1 | potential limits, mixing | Imposing a minimum / maximum value; mixing alfa: `FF0.00000000E+00` | (VMin, VMax absent; PESMixingAlfa rejected): `—` | n/a |  |  | n/a (C++ has no mixing (NotSupportedError); no limits in either input) |
 | 1 | mJ-independent grid | A general MjIn independant grid will be used: `yes` | -: `—` | n/a |  |  | n/a (Fortran setupdvr.f90 message; the C++ grid is always MJIn independent) |
 | 2 | number of phi points | Number of phi's: `60` | Phi points: `60` | int | 0 | exact | identical |
@@ -39,7 +39,7 @@
 | 3 | initial k_y | initial momentum in reciprocal y direction: `0.000000` | Parallel kinetic energy (hartree): `0` | printed | 0.00e+00 | 5.05e-07 | printed |
 | 3 | nmoder | For backward compatibility: nmoder: `4` | -: `—` | n/a |  |  | n/a (legacy diagnostic, no C++ counterpart) |
 | 3 | analysis line Z | asymptotic analysis at z: `15.000000` | Analysis at Z (index): `15.000000` | printed | 0.00e+00 | 1.01e-06 | printed |
-| 3 | flux analysis | No flux analysis performed.: `no` | (no FluxAnalysis key): `no` | text |  | exact | identical |
+| 3 | flux analysis | No flux analysis performed.: `no` | (no doFluxAnalysis key): `no` | text |  | exact | identical |
 | 3 | nzpot | nzpot: `125` | Z points in interaction region: `125` | int | 0 | exact | identical |
 | 3 | nzchsp | nzchsp: `126` | Optical potential Z (indices) (0-based): `125` | int | 0 | exact | identical |
 | 3 | z(nzchsp) | z(nzchsp): `15.000000` | z_scattering[125] (helper grids.txt): `15` | printed | 0.00e+00 | 5.05e-07 | printed |

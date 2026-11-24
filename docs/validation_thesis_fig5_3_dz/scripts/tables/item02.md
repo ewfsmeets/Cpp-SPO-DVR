@@ -4,4 +4,4 @@
 | θ nodes (15, full precision) | `.pes` | helper grids.txt | 8/15 identical, max 3.3e-16 rad (6 ulp) |
 | φ nodes (60) | `.pes` | helper grids.txt | 60/60 identical |
 | nφ, nθ, J range, (x, y) points computed | 60, 15, 0..28 step 2, 19 | same | identical |
-| Momentum grids dk_Z, dk_r, dk_x, dk_y | 6 decimals | %.16e | identical 8 (item 3) |
+| Momentum grids dk_Z, dk_r, dk_x, dk_y | 6 decimals | %.16e | printed 5 (item 3) |

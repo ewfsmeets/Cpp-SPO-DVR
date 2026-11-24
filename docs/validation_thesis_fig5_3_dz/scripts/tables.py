@@ -32,6 +32,15 @@ def link(n):
     return f"[{n}](stages.md#item-{n.lower()})"
 
 
+def momentum_grid_verdicts(s):
+    """Verdict counts of the momentum-grid spacing rows (dk_...) of item 3."""
+    counts = {}
+    for r in s["rows"]:
+        if r["item"] == 3 and r["quantity"].startswith("dk_"):
+            counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
+    return ", ".join(f"{k} {n}" for k, n in counts.items())
+
+
 def verdict_counts(item):
     v = R["setup"]["verdicts_by_item"][str(item)]
     return ", ".join(f"{k} {n}" for k, n in v.items())
@@ -185,7 +194,7 @@ def strict_tables():
         "strict_composition",
         table(
             [
-                "Propagation only (replay vs replay, relative to \\|S\\|)",
+                "Propagation only (replay vs replay; relative to \\|S\\| except the absolute \\|ΔS\\| and \\|ΔP_reaction\\| rows; one BK-level row)",
                 "C++ CPU fast − F",
                 "C++ GPU fast − F",
                 "C++ GPU strict − F",
@@ -534,7 +543,7 @@ def main():
                     "Momentum grids dk_Z, dk_r, dk_x, dk_y",
                     "6 decimals",
                     "%.16e",
-                    verdict_counts(3).split(",")[0] + " (item 3)",
+                    momentum_grid_verdicts(s) + " (item 3)",
                 ),
             ],
         ),

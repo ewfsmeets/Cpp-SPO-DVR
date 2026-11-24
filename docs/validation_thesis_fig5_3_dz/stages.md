@@ -139,7 +139,7 @@ writes the grids with `%.17e`); counts from both logs.
 | θ nodes (15, full precision) | `.pes` | helper grids.txt | 8/15 identical, max 3.3e-16 rad (6 ulp) |
 | φ nodes (60) | `.pes` | helper grids.txt | 60/60 identical |
 | nφ, nθ, J range, (x, y) points computed | 60, 15, 0..28 step 2, 19 | same | identical |
-| Momentum grids dk_Z, dk_r, dk_x, dk_y | 6 decimals | %.16e | identical 8 (item 3) |
+| Momentum grids dk_Z, dk_r, dk_x, dk_y | 6 decimals | %.16e | printed 5 (item 3) |
 
 <!-- END table:item02 -->
 
@@ -170,7 +170,7 @@ steps, `%.6f` otherwise; when both sides are printed both half units count) and 
 | `initial momentum in reciprocal y direction = 0.000000` | Parallel kinetic energy (hartree): `0.0` | printed | printed |
 | `For backward compatibility: nmoder = 4` | -: `None` | n/a | n/a |
 | `asymptotic analysis at z = 15.000000` | Analysis at Z (index): `15.000000` | printed | printed |
-| `No flux analysis performed. = no` | (no FluxAnalysis key): `no` | text | identical |
+| `No flux analysis performed. = no` | (no doFluxAnalysis key): `no` | text | identical |
 | `nzpot = 125` | Z points in interaction region: `125` | int | identical |
 | `nzchsp = 126` | Optical potential Z (indices) (0-based): `125` | int | identical |
 | `z(nzchsp) = 15.000000` | z_scattering[125] (helper grids.txt): `15.0` | printed | printed |

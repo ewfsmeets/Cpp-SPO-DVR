@@ -10,7 +10,7 @@
 | `initial momentum in reciprocal y direction = 0.000000` | Parallel kinetic energy (hartree): `0.0` | printed | printed |
 | `For backward compatibility: nmoder = 4` | -: `None` | n/a | n/a |
 | `asymptotic analysis at z = 15.000000` | Analysis at Z (index): `15.000000` | printed | printed |
-| `No flux analysis performed. = no` | (no FluxAnalysis key): `no` | text | identical |
+| `No flux analysis performed. = no` | (no doFluxAnalysis key): `no` | text | identical |
 | `nzpot = 125` | Z points in interaction region: `125` | int | identical |
 | `nzchsp = 126` | Optical potential Z (indices) (0-based): `125` | int | identical |
 | `z(nzchsp) = 15.000000` | z_scattering[125] (helper grids.txt): `15.0` | printed | printed |

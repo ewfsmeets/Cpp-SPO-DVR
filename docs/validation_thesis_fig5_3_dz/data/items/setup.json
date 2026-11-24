@@ -1139,7 +1139,7 @@
   },
   {
    "cpp": "determined by the program (see info Analysis)",
-   "cpp_label": "(JAna, VAna, MDifAna absent from input.json)",
+   "cpp_label": "(JAna, VAna, DifOrdAna absent from input.json)",
    "fortran": "determined by the program (see info Analysis)",
    "fortran_label": "Maximum J/V/diffraction order analysed",
    "gpu_equal_to_cpu": true,
@@ -1560,7 +1560,7 @@
   },
   {
    "cpp": "no",
-   "cpp_label": "(no FluxAnalysis key)",
+   "cpp_label": "(no doFluxAnalysis key)",
    "fortran": "no",
    "fortran_label": "No flux analysis performed.",
    "gpu_equal_to_cpu": true,

@@ -249,7 +249,7 @@ and its κ(t) (Figure 3, bottom) lie well below those of the fast-math runs.
 
 <!-- BEGIN table:strict_composition -->
 
-| Propagation only (replay vs replay, relative to \|S\|) | C++ CPU fast − F | C++ GPU fast − F | C++ GPU strict − F | GPU strict − GPU fast | Criterion (2026-11-08) |
+| Propagation only (replay vs replay; relative to \|S\| except the absolute \|ΔS\| and \|ΔP_reaction\| rows; one BK-level row) | C++ CPU fast − F | C++ GPU fast − F | C++ GPU strict − F | GPU strict − GPU fast | Criterion (2026-11-08) |
 |---|---|---|---|---|---|
 | κ, uniform amplitude part (median over E) | 6.0e-12 | 6.6e-12 | 1.5e-13 | -6.4e-12 | fast math if \|κ\| ≤ 1.5e-12, not if ≥ 4.5e-12 |
 | κ range over E | 5.4e-12 … 6.9e-12 | 6.0e-12 … 7.8e-12 | -3.8e-14 … 4.1e-13 | -7.4e-12 … -5.8e-12 |  |
