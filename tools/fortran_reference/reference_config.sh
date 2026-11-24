@@ -42,21 +42,22 @@ FORTRAN_REFERENCE_TREES=(tests/reference tests/crplib/reference tests/scm/refere
 
 # The reference every run script uses: an install with the fixed layout bin/spodvr.x, OBJS/ (*.o,
 # *.mod), BUILDINFO.tsv and SHA256SUMS (README.md of this directory). The reference is
-# r1713-dce0ecc (5.24 plus the r1713 fine-analysis fix, built with -O3); v5.19 is the archive build.
+# r1727-3d00331 (5.24 plus the upstream fixes up to svn r1727, built with -O3); v5.19 is the archive build.
 FORTRAN_REF_ROOT="${HOME}/work/SPO-DVR_ref"
-FORTRAN_REF_ID="r1713-dce0ecc"
+FORTRAN_REF_ID="r1727-3d00331"
 FORTRAN_REF_DIR="${SPODVR_FORTRAN_REF_DIR:-${FORTRAN_REF_ROOT}/${FORTRAN_REF_ID}}"
 FORTRAN_REF_EXE="${FORTRAN_REF_DIR}/bin/spodvr.x"
 FORTRAN_REF_OBJS="${FORTRAN_REF_DIR}/OBJS"
 # Threads of every Fortran run, whatever the caller's OMP_NUM_THREADS.
 FORTRAN_REF_THREADS=4
 
-# The upstream commit build_fortran_reference.sh builds: svn r1713 (5.24 plus the fine-analysis
-# sign fix). The tree hash identifies the content even if the git-svn mirror is regenerated.
+# The upstream commit build_fortran_reference.sh builds: svn r1727 (5.24 plus the fine-analysis sign
+# fix of r1713 and the input-check and analysis fixes of r1714-r1727). The tree hash identifies the
+# content even if the git-svn mirror is regenerated.
 FORTRAN_MIRROR="${SPODVR_FORTRAN_MIRROR:-"${HOME}/work/SPO-DVR"}"
-FORTRAN_BUILD_COMMIT="dce0ecc44a401098528e9ef94c54e1086d393ebb"
-FORTRAN_BUILD_TREE="3784a9530904190af7a804448cec0260f10edcf6"
-FORTRAN_BUILD_SVN="r1713"
+FORTRAN_BUILD_COMMIT="3d003315c155ca8e85d90ae3e14d80357c83793e"
+FORTRAN_BUILD_TREE="15a185fefde7c6a05ca4a2765ed92eed1534c8a8"
+FORTRAN_BUILD_SVN="r1727"
 FORTRAN_BUILD_VERSION="5.24"
 FORTRAN_BUILD_ID="${FORTRAN_BUILD_SVN}-${FORTRAN_BUILD_COMMIT:0:7}"
 FORTRAN_BUILD_INSTALL_DIR="${SPODVR_FORTRAN_REF_DIR:-${FORTRAN_REF_ROOT}/${FORTRAN_BUILD_ID}}"

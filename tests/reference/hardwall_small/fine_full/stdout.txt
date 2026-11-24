@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 145105.709 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov 23 2026 at 13:44:10) run on 20261123 at 235157.755 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -132,7 +132,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 * Dumping debug information to file:                       F
 * Dumping full S-matrix to file fil10:                     F
 
-* Tolerance for transferring the wavefunction (nproj = 2):  0.10000000E-06
+* Tolerance for transferring the wavefunction (nproj = 1):  0.10000000E-06
 
 * Validating the input...
 * Processing the input...
@@ -241,7 +241,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  * Initialising the HardwallPES module
 
- Total time for potential initialisation =  0.66799985E-05 secs
+ Total time for potential initialisation =  0.65699569E-05 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -12323,13 +12323,13 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                           0.1182 (a)
+ Total computation                           0.1109 (a)
 
                ...
 
  Propagating the wavefunction                0.0000 (b)
 
- Setup time                                  0.0701
+ Setup time                                  0.0636
 
  Saving the wave function for rerun          0.0000
 
@@ -12337,7 +12337,7 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  Calculating and saving BK-coeffs            0.0000
 
- Asymptotic analysis                         0.0481
+ Asymptotic analysis                         0.0472
 
  Saving the flux coefficients                0.0000
 
@@ -12345,7 +12345,7 @@ WARNING: Diffractional basis too small to describe all open channels!
 
 -----------------------------------------------------
 
- Sum                                         0.1182 (a)
+ Sum                                         0.1108 (a)
 
                ...
 
@@ -12383,5 +12383,5 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  FFTs along Y                                0.0000
 
- Time spent on FGH for asympwf               0.0292
+ Time spent on FGH for asympwf               0.0286
 

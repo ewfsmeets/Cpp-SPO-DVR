@@ -8,11 +8,11 @@ in the table below, and the Fortran reference data of the regression tests come 
 | Item | Value |
 |---|---|
 | Upstream repository | the git-svn mirror of the SPO-DVR SVN trunk (Leiden), branch `master`; a local clone (`SPODVR_FORTRAN_MIRROR`; how to get it: [tools/fortran_reference/README.md](../tools/fortran_reference/README.md#getting-the-fortran-code)), updated with `git pull` and never built in |
-| Upstream commit | `dce0ecc44a401098528e9ef94c54e1086d393ebb` |
-| svn revision | r1713 |
-| Date | 2026-11-09 |
-| Version | 5.24 plus the fine-analysis sign fix (`s1_real` → `s1_imag` in `Analyzor.f90 smatrix_calc`) |
-| Reference install | `r1713-dce0ecc`, built with `-O3` ([tools/fortran_reference/README.md](../tools/fortran_reference/README.md)) |
+| Upstream commit | `3d003315c155ca8e85d90ae3e14d80357c83793e` |
+| svn revision | r1727 |
+| Date | 2026-11-23 |
+| Version | 5.24 plus the fine-analysis sign fix of r1713 (`s1_real` → `s1_imag` in `Analyzor.f90 smatrix_calc`) and the input-check and analysis fixes of r1714–r1727 (below) |
+| Reference install | `r1727-3d00331`, built with `-O3` ([tools/fortran_reference/README.md](../tools/fortran_reference/README.md)) |
 
 The pin itself lives in
 [tools/fortran_reference/reference_config.sh](../tools/fortran_reference/reference_config.sh)
@@ -26,18 +26,19 @@ With `SPODVR_FORTRAN_MIRROR` set to the local clone of the mirror:
 
 ```bash
 git -C "$SPODVR_FORTRAN_MIRROR" pull                                               # update the mirror
-git -C "$SPODVR_FORTRAN_MIRROR" log --oneline dce0ecc..master                      # commits after the pin
-git -C "$SPODVR_FORTRAN_MIRROR" diff -w dce0ecc master -- sources.dir/SOURCES.dir  # their source changes
+git -C "$SPODVR_FORTRAN_MIRROR" log --oneline 3d00331..master                      # commits after the pin
+git -C "$SPODVR_FORTRAN_MIRROR" diff -w 3d00331 master -- sources.dir/SOURCES.dir  # their source changes
 ```
 
-On 2026-11-12 the mirror's `master` was `dce0ecc` itself: no newer commit. Each newer change gets a
+On 2026-11-23 the mirror's `master` was `3d00331` itself: no newer commit. Each newer change gets a
 row below; moving the reference to a newer commit follows the recipe in
 [tools/fortran_reference/README.md](../tools/fortran_reference/README.md#moving-the-reference-to-a-newer-upstream-commit).
 
 ## Port status of the upstream changes since 5.19
 
-5.19 is git `601d833` (svn r1572, 2023-07-13). Up to `dce0ecc`, 43 commits changed
-`sources.dir/SOURCES.dir` (`git -C "$SPODVR_FORTRAN_MIRROR" log --oneline 601d833..dce0ecc -- sources.dir/SOURCES.dir`);
+5.19 is git `601d833` (svn r1572, 2023-07-13). Up to `dce0ecc` (r1713), 43 commits changed
+`sources.dir/SOURCES.dir` (`git -C "$SPODVR_FORTRAN_MIRROR" log --oneline 601d833..dce0ecc -- sources.dir/SOURCES.dir`),
+and 10 more up to `3d00331` (r1727; the first rows of the table below);
 many source files changed only by the GPL 3 license header (f52dbf3, 2025-09-19). For inputs that
 use only 5.19 features, the operators, absorber formulas, input defaults and file formats are
 unchanged: built with `-O3`, 5.24 reproduces the 5.19 results bitwise on every gate case (checked
@@ -58,6 +59,16 @@ gives the status of each of the others.
 
 | Upstream change | Commit, date | Status | In the C++ today |
 |---|---|---|---|
+| Analysis limits: the highest analysed j searched from `jin`, not 0 (`GasPhase.f90 SetupAsympWF`) | 3d00331 (r1727), 2026-11-23 | **ported** | `highest_open_rotational_level` (`src/gasphase/gas_phase.cpp`); [fortran_analysis_limits_bugs.md](fortran_analysis_limits_bugs.md) |
+| Analysis limits: `JIn >= JMax`, `VIn >= VAna`, `JIn >= JAna` are input errors (were `>`; `InputNew.f90 ValidateInput`) | ed825d2 (r1726), 2026-11-23 | **ported** (plus **deviation** analysis D3: VIn = nR − 1 is an input error) | input errors (exit code 2), the same messages |
+| Stdout label `(nproj = 2)` → `(nproj = 1)` of the specular tolerance line | 8c2b3fe (r1725), 2026-11-22 | **not ported** | not relevant: the C++ prints no such line; the reference comparison maps it (`LABELS_R1725` in `tools/fortran_reference/refdata.py`) |
+| ChangeLog entries only | a4f5c85, a831105, 380e938, a04bf2d (r1721–r1724), 2026-11-21/22 | **not ported** | not relevant |
+| On-the-fly S matrix: the initial state's phase (every v) referred to the fixed specular analysis line instead of ZAnalysis (`Analyzor.f90 smatrix_calc`, `zRef`) | a338f5d (r1720), 2026-11-21 | **ported** (the C++ did so before: [analysis D2](fortran_deviations.md#analysis-d2), which now concerns the fine analysis only) | the same elements; gate 4 compares them with `fortran_fort25.txt` |
+| `deltaEFluxAna <= 0.0` an input error (exact; was `< 0`) | 040459b (r1719), 2026-11-19 | **ported** (was [flux Q2](fortran_deviations.md#flux-q2)) | the same check |
+| Absorber energies: `ZOptEnergy`, `ROptEnergy`, `ZSpOptEnergy`, `ZSpOptLowEnergy` `<= 0.0` input errors (exact; were `.RLT. 0`); `ZOptLowEnergy` keeps `.RLT. 0` | a2562fd (r1718), 2026-11-19 | **ported** (was absorber D1) | the same checks |
+| Low-Z absorbers switched on only for Start < End (was ≤) | 020c39a (r1717), 2026-11-19 | **ported** (Start = End stays an input error: **deviation** low-Z D2) | Start = End is an input error, as before |
+| `NrOfEs < 2` an input error, also for NrOfEs = −95 (the `Constants_NEN95` exception removed) | 815f871, 8650592, 040459b (r1715, r1716, r1719), 2026-11-19 | **ported** (was [analysis D1](fortran_deviations.md#analysis-d1)) | the same check; the C++ no longer has the −95 energy choice |
+| Flux input checks: `EMinFluxAna > EMaxWP`, `EMaxFluxAna < EMinWP` and `EMaxFluxAna > EMaxWP` added, the reversed check `EMaxFluxAna < EMaxWP` removed | b817834 (r1714), 2026-11-19 | **ported** (was [flux Q1](fortran_deviations.md#flux-q1)) | the same checks |
 | `RStart = 0` rejected (`InputNew.f90 ValidateInput`: `.RLE.` instead of `<`) | 9761502, 2025-11-25 | **ported** | `RStart ≤ 0` is an input error (exit code 2), with the 1e-12 tolerance of `.RLE.` (`src/input/validate.cpp`) |
 | Fine-analysis interpolation of Im S: `s1_real` → `s1_imag` (`Analyzor.f90 smatrix_calc`) | dce0ecc, 2026-11-09 | **ported** | fixed in the C++ before upstream, together with the two other interpolation bugs, which the reference keeps ([fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md)) |
 | Optical potentials at the low end of the Z grid, scattering and specular (keys `ZOptLow…`, `ZSpOptLow…`) | c441b95 and fixes, 2025-09-12 to 09-14 | **ported** (its input checks: **deviations** low-Z D1–D4) | on the CPU and the GPU; gates 3 and 4 compare it with the reference in the case `cu111_dailight_short_lowz` ([validation.md](validation.md)); the Fortran's silent cases are input errors (low-Z D1–D3) |

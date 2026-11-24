@@ -1,0 +1,9 @@
+# Expected differences of the switch from the r1713-dce0ecc reference data to r1727-3d00331 (svn r1714-r1727,
+# upstream fixes of 2026-11-19 to 23), measured on 2026-11-23 with refdata.py compare; every other file identical.
+# install: r1727-3d00331
+glob	allowed	limit	reason
+tests/reference/*/fine_*/stdout.txt	labels	-	the label (nproj = 2) of r1713 is (nproj = 1) since r1725, the same number; versions and timings are volatile
+tests/reference/*/fortran_fort25.txt	initial_phase	-	r1720 refers the initial state's phase (every v) to the fixed specular line Z_sp instead of ZAnalysis: those rows rotate by -k_v (Z_sp - Zana), |S| and P unchanged; hardwall_short is identical (its line never fixes)
+tests/reference/*/fortran_restart_stdout.txt	labels	-	the (nproj = 1) label of r1725
+tests/reference/*/fortran_setup_stdout.txt	labels	-	the (nproj = 1) label of r1725
+tests/reference/*/fortran_stdout.txt	labels	-	the (nproj = 1) label of r1725; the stdout prints no S-matrix element, so r1720 changes none of its numbers

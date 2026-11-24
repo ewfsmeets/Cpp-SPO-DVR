@@ -496,7 +496,7 @@ and their options: [tools/wave_packet_designer/README.md](tools/wave_packet_desi
 ## Validation
 
 **Five acceptance tests ("gates")** compare the C++ program with the Fortran code it was ported
-from, upstream SPO-DVR 5.24 (svn r1713) built with `-O3`, on small grids:
+from, upstream SPO-DVR 5.24 (svn r1727) built with `-O3`, on small grids:
 
 1. the potential (the gas-phase curve and the 6D grid);
 2. the gas-phase rovibrational states;
@@ -559,7 +559,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 
 ## Coming from the Fortran SPO-DVR
 
-- **Version:** the port started from 5.19 (2023) and follows upstream 5.24 (svn r1713). Built with
+- **Version:** the port started from 5.19 (2023) and follows upstream 5.24 (svn r1727). Built with
   `-O3`, 5.24 is bitwise identical to 5.19 on every gate case of 5.19 features.
 - **Input:** a JSON file with the Fortran's `DVR.inp` key names (case-sensitive). There is no
   converter; `inputs/hardwall_small/` has the same calculation in both formats. `TolSp` is

@@ -404,7 +404,7 @@ TEST(FineAnalysis, SkippedEnergiesAndSmallGrids) {
 namespace {
 
 // Fortran 5.19 smatrix_calc (nread = 2, non-NAG) literally, bugs included: the documented 5.19
-// model (docs/fortran_fine_analysis_bugs.md). The gate 5 test emulates the reference 5.24 r1713,
+// model (docs/fortran_fine_analysis_bugs.md). The gate 5 test emulates the reference (since 5.24 r1713),
 // which fixed the s1_real typo.
 cplx fortran519_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   const double prob1 = s1.real() * s1.real() + s1.imag() * s1.imag();

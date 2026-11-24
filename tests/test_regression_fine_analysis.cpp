@@ -130,7 +130,7 @@ struct Comparison {
 };
 
 // The Fortran interpolation of S between two grid points, literally (Analyzor.f90 smatrix_calc,
-// nread = 2), as in the reference 5.24 (svn r1713), including its remaining bugs: ATAN
+// nread = 2), as in the reference (5.24 since svn r1713; the same up to r1727), including its remaining bugs: ATAN
 // instead of ATAN2 for the phases, and the signs of Re S and Im S taken separately from the
 // linearly interpolated S. r1713 fixed the third one, s1_real for s1_imag in the interpolated Im S
 // (5.19; the unit tests in test_fine_analysis.cpp keep that documented 5.19 model). Test use only.
@@ -269,7 +269,7 @@ void run_gate(const std::string& case_name, const std::string& variant) {
       if (std::abs(s1) < 1e-8 * s_max && std::abs(s2) < 1e-8 * s_max) continue;
       // Signs decided by a linear interpolation within rounding of zero cannot be compared.
       const double re_lin = s1.real() + (s2.real() - s1.real()) * f;
-      // As the reference 5.24 r1713 (5.19 had s1.real()).
+      // As the reference since 5.24 r1713 (5.19 had s1.real()).
       const double im_lin = s1.imag() + (s2.imag() - s1.imag()) * f;
       if (std::abs(re_lin) < 1e-10 * s_max || std::abs(im_lin) < 1e-10 * s_max) {
         n_undecidable = n_undecidable + 1;

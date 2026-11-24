@@ -17,7 +17,7 @@ of the Z grid that upstream 5.24 added (low-Z D1–D4), and the number of analys
 
 **Status (2026-11-23):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
 analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
-NaN), and the C++ follows the fixed checks. Each section starts with its status. The demonstrations below show the
+NaN), and the C++ follows the fixed checks. The reference of the port is r1727 since 2026-11-23, so it has them. Each section starts with its status. The demonstrations below show the
 Fortran before those fixes (5.19 and r1713).
 
 ## The demonstration runs
@@ -26,9 +26,9 @@ Fortran before those fixes (5.19 and r1713).
   - 5.19, the version the port started from: the archive install `v5.19`, whose `bin/spodvr.x` is
     the 5.19 distribution's `EXECUTABLE.DIR/SPO-DVR_5.19_O3_GFORTRAN_OMP_FFTW.x` (gfortran 15,
     `-O3`, OpenMP, FFTW);
-  - 5.24: the reference install `r1713-dce0ecc`, upstream master at commit dce0ecc (svn r1713),
-    built with `O3FLAGS = -O3` in `GNU.mk` (the default flags enable fast-math); now the reference
-    of the port ([validation.md](validation.md#reference-data)).
+  - 5.24: the install `r1713-dce0ecc`, upstream master at commit dce0ecc (svn r1713), built with
+    `O3FLAGS = -O3` in `GNU.mk` (the default flags enable fast-math); the reference of the port until
+    2026-11-23. The reference since then, `r1727-3d00331`, has the fixes ([validation.md](validation.md#reference-data)).
   - The installs: [tools/fortran_reference/README.md](../tools/fortran_reference/README.md#the-reference-install).
 - **Input:** `tests/reference/hardwall_small/DVR.inp` with the keys of each case appended (or, where
   a case says so, lines of it replaced).

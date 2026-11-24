@@ -252,7 +252,7 @@ al., J. Phys. Chem. A 117, 8770 (2013); upstream input `input.dir/v0j0_WPC_H2Cu1
 C3v, Å and eV, a = 2.6015 Å, 4 layers, 10 atom cuts, CutsInterpolation = F (the cuts hold V, up to
 2091 eV (77 Hartree) at the wall). `CRPData.6D` lists 31 molecular cuts, 29 used; the two extra ones have no file
 and are skipped, as in the Fortran (two warnings). Checked 2026-11-11 against Fortran 5.19; the
-current reference, 5.24 r1713, gives bitwise the same driver outputs and potential on these cases
+references 5.24 r1713 and r1727 give bitwise the same driver outputs and potential on these cases
 ([validation.md](validation.md#reference-data)):
 
 - **Reading** (`tests/crplib/test_real_data_set.cpp`): every file as gfortran reads it, including the

@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261112 at 140936.027 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov 23 2026 at 13:44:10) run on 20261123 at 231333.413 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -132,7 +132,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 * Dumping debug information to file:                       F
 * Dumping full S-matrix to file fil10:                     F
 
-* Tolerance for transferring the wavefunction (nproj = 2):  0.10000000E-06
+* Tolerance for transferring the wavefunction (nproj = 1):  0.10000000E-06
 
 * Validating the input...
 * Processing the input...
@@ -241,7 +241,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 
  * Initialising the HardwallPES module
 
- Total time for potential initialisation =  0.18459999E-04 secs
+ Total time for potential initialisation =  0.21199987E-04 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -377,7 +377,7 @@ reaches the gas phase, is the new asymptotic Z-value.
  iz = 113
  Saving HardWallPES PES into file : ./HardWallPES_113_-2.000_0.080_56_0.800_0.150_4_4_6.240_4_4.pes
 
- Total time setting up the potential =  0.26926387E-01 secs
+ Total time setting up the potential =  0.28480034E-01 secs
 
 
 
@@ -13063,21 +13063,21 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  CPU TIMES 
 
- Total computation                          40.9254 (a)
+ Total computation                          40.0818 (a)
 
                ...
 
- Propagating the wavefunction               40.6709 (b)
+ Propagating the wavefunction               39.8330 (b)
 
- Setup time                                  0.1116
+ Setup time                                  0.1134
 
- Saving the wave function for rerun          0.0166
+ Saving the wave function for rerun          0.0163
 
  Calculating averages                        0.0162
 
- Calculating and saving BK-coeffs            0.0284
+ Calculating and saving BK-coeffs            0.0276
 
- Asymptotic analysis                         0.0278
+ Asymptotic analysis                         0.0210
 
  Saving the flux coefficients                0.0000
 
@@ -13085,43 +13085,43 @@ WARNING: Diffractional basis too small to describe all open channels!
 
 -----------------------------------------------------
 
- Sum                                        40.8715 (a)
+ Sum                                        40.0275 (a)
 
                ...
 
- FFTs along X and Y                          3.2533
+ FFTs along X and Y                          3.3239
 
- Kinetic energy operation along Z            7.7509
+ Kinetic energy operation along Z            7.4687
 
- Kinetic energy operation along r            6.4444
+ Kinetic energy operation along r            6.3799
 
- Potential energy multiplication            12.0300
+ Potential energy multiplication            11.8141
 
- Legengre transforms                         5.4003
+ Legengre transforms                         5.3041
 
- Shifting the wavefunction                   1.8329
+ Shifting the wavefunction                   1.8820
 
- Kinetic energy multiplications (xy)         0.5099
+ Kinetic energy multiplications (xy)         0.5065
 
- Absorbing the wavefunction                  0.7653
+ Absorbing the wavefunction                  0.7563
 
- Projection formalism                        0.1600
+ Projection formalism                        0.1570
 
- Operations on specular grid                 0.0798
+ Operations on specular grid                 0.0794
 
 -----------------------------------------------------
 
- Sum                                        38.2269 (b)
+ Sum                                        37.6719 (b)
 
                ...
 
  Potential initialisation time               0.0000
 
- Potential setup time                        0.0269
+ Potential setup time                        0.0285
 
- FFTs along X                                1.5233
+ FFTs along X                                1.5373
 
- FFTs along Y                                1.7301
+ FFTs along Y                                1.7867
 
- Time spent on FGH for asympwf               0.0299
+ Time spent on FGH for asympwf               0.0288
 

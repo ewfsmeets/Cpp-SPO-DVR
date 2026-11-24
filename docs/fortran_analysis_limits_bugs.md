@@ -1,7 +1,7 @@
 # Bugs: the highest analysed j for odd JIn, and the VIn check against VAna
 
 **Status:** fixed upstream on 2026-11-23 in r1726 (the input checks) and r1727 (the search starts at `jin`), and
-ported to the C++ (section [The C++](#the-c)). Found on 2026-11-23 while checking which input paths no reference case
+ported to the C++ (section [The C++](#the-c)); r1727 is the reference of the port since 2026-11-23. Found on 2026-11-23 while checking which input paths no reference case
 covers (every Fortran-compared case has `VIn = JIn = MJIn = 0`), and verified by runs of both codes. The sections
 below describe the bugs as they were in 5.19, 5.24 and upstream master up to 8c2b3fe (r1725).
 
@@ -293,6 +293,20 @@ The C++ follows upstream in all three r1726 checks (the user's decision, 2026-11
   `JInEqJAna`, `AnalysisD3VInIsTheLastLevel`, and the designer's copy (`tools/wave_packet_designer`).
 - BK and checkpoint files written before the fix by a run with odd JIn and without JAna have another number of
   analysed states; reading them now stops with exit code 4 (give the old run's JAna to read them).
+- Commits: the input checks d18066b, the search and analysis D3 26f1730.
+
+## Demonstration with the fixed versions
+
+The r1727 Fortran (install `r1727-3d00331`) and the C++ of 26f1730 on the examples above (each input a reference
+case with the keys changed, both codes in a fresh directory, the Fortran on 4 threads), 2026-11-23:
+
+| Input | Fortran r1727 | C++ |
+|---|---|---|
+| example 1 (odd JIn) | `nana = 10`: j = 1 and 3 analysed | highest j analysed 3 |
+| example 2 (JIn = JMax = 3) | input error "JIn >= JMax." | the same input error (exit code 2) |
+| example 3 (VIn 1, VAna 1) | input error "VIn >= VAna." | the same input error (exit code 2) |
+| example 3 without VAna | runs; sums 0.0000010, 0.0000014, 0.0000179 at 0.2, 0.4, 0.6 eV | runs; 9.96e-07, 1.43e-06, 1.79e-05 |
+| VIn = nR − 1 (hardwall_small, VIn 55, no VAna) | runs; prints the initial state's vibrational and rovibrational energy as 0.000000 (the initial level is not analysed) | input error (analysis D3, exit code 2) |
 
 ## Open points
 

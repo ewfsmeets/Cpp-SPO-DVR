@@ -1,7 +1,7 @@
 # Deviations from the Fortran code
 
 Every known difference between the C++ program and the Fortran reference (upstream 5.24 at svn
-r1713, built with `-O3`: [validation.md](validation.md#reference-data)): Fortran bugs that the C++
+r1727, built with `-O3`: [validation.md](validation.md#reference-data)): Fortran bugs that the C++
 fixes, Fortran quirks that it reproduces on purpose, features that were not ported, and places
 where the Fortran computes in quad precision while the C++ uses double. The port started from 5.19,
 which gives the same results as the reference for its features; where the two versions differ, the
@@ -473,6 +473,6 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
 
 ## Upstream changes after 5.19
 
-The port started from 5.19; the reference is now 5.24 at svn r1713. The port status of every
+The port started from 5.19; the reference is now 5.24 at svn r1727. The port status of every
 upstream change since 5.19 (ported, a deviation listed here, or not ported, and what such an input
 does in the C++ today) is in [upstream_sync.md](upstream_sync.md).

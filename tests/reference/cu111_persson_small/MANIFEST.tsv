@@ -1,8 +1,8 @@
 # Provenance of the Fortran reference files of this case, written by
 # tools/fortran_reference/refdata.py manifest. Columns: tools/fortran_reference/README.md.
 path	sha256	script	commit	fortran_ref	input_sha	runtime_drift	cpu	date
-debug_asyp.dat	cd2206f4b11ccedceaf194821a08876be265fc9b49bae64a73e1d2172e0e15f0	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:11b9db0092a8	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
-fortran_setup_stdout.txt	eb8c93927112a8f2b5a13783d2e5f393468fe22baa8da489309d2351b124a43b	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:11b9db0092a8	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
-pes_cut_1.dat	9f8897599b3ed1e41b42e112b43c5e49d600a6864e5e1abc4077a41cc025f985	run_pes_cut_reference.sh	14351dd	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:6296b3ae73c9	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-19
-pes_cut_2.dat	5aff2ad4ec13d35d9c5a6a21a1269357cd475148a0e161ab8824b14041697799	run_pes_cut_reference.sh	14351dd	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:be455d3e3494	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-19
-pes_reference.txt	343222f369cdc3f92de8dacbadc3f9ea178f5abe5bdb74edf1c4c8864a8e9f65	run_setup_reference.sh	7fa5e58	r1713-dce0ecc spodvr.x:3b2fb98bf9bd	DVR.inp:11b9db0092a8	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-12
+debug_asyp.dat	cd2206f4b11ccedceaf194821a08876be265fc9b49bae64a73e1d2172e0e15f0	run_setup_reference.sh	26f1730-dirty	r1727-3d00331 spodvr.x:aec0865bd08f	DVR.inp:11b9db0092a8	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-23
+fortran_setup_stdout.txt	2061b6cb463f0281f33e0bead68f770343235c640b23ac873824b3c0fa63c343	run_setup_reference.sh	26f1730-dirty	r1727-3d00331 spodvr.x:aec0865bd08f	DVR.inp:11b9db0092a8	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-23
+pes_cut_1.dat	9f8897599b3ed1e41b42e112b43c5e49d600a6864e5e1abc4077a41cc025f985	run_pes_cut_reference.sh	26f1730-dirty	r1727-3d00331 spodvr.x:aec0865bd08f	DVR.inp:6296b3ae73c9	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-23
+pes_cut_2.dat	5aff2ad4ec13d35d9c5a6a21a1269357cd475148a0e161ab8824b14041697799	run_pes_cut_reference.sh	26f1730-dirty	r1727-3d00331 spodvr.x:aec0865bd08f	DVR.inp:be455d3e3494	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-23
+pes_reference.txt	343222f369cdc3f92de8dacbadc3f9ea178f5abe5bdb74edf1c4c8864a8e9f65	run_setup_reference.sh	26f1730-dirty	r1727-3d00331 spodvr.x:aec0865bd08f	DVR.inp:11b9db0092a8	-	AMD Ryzen 7 5800X 8-Core Processor flags:83eff264fe1e	2026-11-23

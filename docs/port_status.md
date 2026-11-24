@@ -1,16 +1,17 @@
 # Port status: the Fortran SPO-DVR features in the C++ program
 
 The C++ program is a port of the Fortran SPO-DVR code. This page lists every feature of the Fortran
-code (5.24 r1713) and its status in the C++, then what the C++ adds.
+code (5.24 r1727) and its status in the C++, then what the C++ adds.
 
 **Which Fortran version.** The port started from version 5.19 (2023). The gates compare with
-upstream 5.24 at svn r1713 (2026), built with `-O3` ([reference data](validation.md#reference-data)).
+upstream 5.24 at svn r1727 (2026), built with `-O3` ([reference data](validation.md#reference-data)).
 The production-grid validation and the
 [Fortran benchmark](performance.md#fortran-vs-c-full-dailight-run-8-threads-2026-11-05) used 5.19.
 That makes no difference there: built with `-O3`, 5.24 is bitwise identical to 5.19 on every gate
 case of 5.19 features, the benchmark case among them, and on the production grid's potential and
 first 40 steps ([production grid](validation.md#production-grid)). r1713 adds a sign fix in the
-fine-analysis S matrix; the screen labels differ.
+fine-analysis S matrix, r1714–r1727 input-check and analysis fixes and the on-the-fly phase of the initial
+state's S elements ([upstream_sync.md](upstream_sync.md)); the screen labels differ.
 
 **Where else to look:**
 

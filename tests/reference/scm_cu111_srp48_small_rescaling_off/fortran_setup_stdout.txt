@@ -1,5 +1,5 @@
 
-*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov  9 2026 at 12:54:37) run on 20261115 at 083902.368 ***
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov 23 2026 at 13:44:10) run on 20261123 at 231321.395 ***
 
 * Using the new style input format...
 * OpenMP enabled ...
@@ -137,7 +137,7 @@ reaches the gas phase, is the new asymptotic Z-value.
 * Dumping debug information to file:                       T
 * Dumping full S-matrix to file fil10:                     F
 
-* Tolerance for transferring the wavefunction (nproj = 2):  0.50000000E-08
+* Tolerance for transferring the wavefunction (nproj = 1):  0.50000000E-08
 
 * Validating the input...
 * Processing the input...
@@ -238,7 +238,7 @@ reaches the gas phase, is the new asymptotic Z-value.
      ectmin (ev) =                                     0.500000
      ectmax (ev) =                                     0.900000
 
- Total time for potential initialisation =  0.79100137E-05 secs
+ Total time for potential initialisation =  0.59799640E-05 secs
 
  * Grids are setup!
  * 5-Mode arrays are allocated!
@@ -344,7 +344,7 @@ reaches the gas phase, is the new asymptotic Z-value.
  Saving dataset PES into file : ./dataset_76_0.500_0.150_48_0.400_0.200_6_6_4.916_4_4_2_EAMSCM_Multiseedv3_New_1.pes
  * Imposing a maximum on the potential; vmax (eV) =  0.10000000E+02
 
- Total time setting up the potential =  0.79066931E+01 secs
+ Total time setting up the potential =  0.75659032E+01 secs
 
 
 
@@ -553,13 +553,13 @@ WARNING: Diffractional basis too small to describe all open channels!
 
  Potential initialisation time               0.0000
 
- Potential setup time                        7.9067
+ Potential setup time                        7.5659
 
  FFTs along X                                0.0000
 
  FFTs along Y                                0.0000
 
- Time spent on FGH for asympwf               0.0179
+ Time spent on FGH for asympwf               0.0180
 
  *** DISPOSURE OF DVR ***
 

@@ -12,8 +12,8 @@ lines 732–790) has two bugs, and its sign handling causes a third class of err
 fixes all three. The probabilities are not affected; the S-matrix elements and phases are.
 Line numbers refer to version 5.19, and so do the counts of wrong values in the last table
 (the 5.19 model with all three bugs). Upstream fixed bug 1 on 2026-11-09
-(svn r1713, after version 5.24); that is the reference of the port
-([validation.md](validation.md#reference-data)). Bugs 2 and 3 are still present there.
+(svn r1713, after version 5.24); the reference of the port has had that fix since (now r1727, whose fine
+analysis is that of r1713: [validation.md](validation.md#reference-data)). Bugs 2 and 3 are still present there.
 
 ## The Fortran code
 

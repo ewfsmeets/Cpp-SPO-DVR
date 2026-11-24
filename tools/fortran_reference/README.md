@@ -26,7 +26,7 @@ strings the three together.
 | `run_scm_reference.sh [--generate] example\|synthetic` | The SCM driver ([scm_driver/](scm_driver/)) on the committed inputs of `tests/scm/reference/` ([below](#the-scm-driver)); `--generate` first rewrites them |
 | [regenerate_all.sh](regenerate_all.sh) | Regenerates every reference file, in dependency order ([below](#regenerating-all-references)) |
 | [refdata.py](refdata.py) `manifest` | Writes (`record`) and deletes (`delete`) the lines of `MANIFEST.tsv` ([below](#manifesttsv)) |
-| [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1713.tsv](expected/r1713.tsv) ([below](#comparing-two-reference-trees)) |
+| [refdata.py](refdata.py) `compare` | Compares two reference trees against an expected-differences file such as [expected/r1727.tsv](expected/r1727.tsv) ([below](#comparing-two-reference-trees)) |
 | [ReferenceManifest.cmake](ReferenceManifest.cmake) | Checks every file a `MANIFEST.tsv` lists against its sha256 (`ctest -R ReferenceManifest`) |
 | `test_reference_tools.sh`, `test_refdata.py`, `test_extract_pes.py`, `test_pes_cuts.py` | The tests of these tools (`ctest -R FortranReference`; no Fortran run, stub installs; they write only to scratch). Every refusal (`error: …`, exit 1) of the shell and Python tools of this directory and its subdirectories has a negative test there, but one: `scm_driver/make_scm_inputs.py` "no position exactly on the cut-off sphere" depends only on the script's constants, so it cannot fire without editing the code. A new refusal gets a test |
 
@@ -163,7 +163,8 @@ recorded, rows sorted by path. Hashes other than the file's own are shortened to
 `refdata.py manifest record --pre-manifest` records files generated before the MANIFESTs existed
 (it bootstrapped the MANIFESTs of the 5.19 data): `fortran_ref` `5.19 (pre-MANIFEST)`, `-` in the
 columns not recorded then, and the script that made them. Since the data were regenerated with
-5.24 r1713, every line names that install.
+5.24 r1713 (2026-11-12) and again with r1727 (2026-11-23), every line names the install of the latest
+regeneration, `r1727-3d00331`.
 
 When a run-time package of the install is upgraded and the rebuilt install is byte-identical
 (as for libc6 2.43-2ubuntu2.7 on 2026-11-14), its `BUILDINFO.tsv` and the tracked copy in
@@ -234,7 +235,7 @@ Then compare the regenerated tree with the committed one ([below](#comparing-two
 ## Comparing two reference trees
 
 ```bash
-python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected tools/fortran_reference/expected/r1713.tsv
+python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected tools/fortran_reference/expected/r1727.tsv
 python3 -I -B tools/fortran_reference/refdata.py compare OLD NEW --expected FILE --no-provenance
 ```
 
@@ -287,7 +288,9 @@ on the same line determines the double.
 
 [expected/r1713.tsv](expected/r1713.tsv) lists the differences of the switch from the 5.19 data
 to the 5.24 r1713 `-O3` build, measured on 2026-11-11, each with its reason; the regenerated tree
-of the switch passed it. `ctest -R FortranReference.Compare` checks that it matches the committed
+of the switch passed it. [expected/r1727.tsv](expected/r1727.tsv) does the same for the switch from
+r1713 to r1727 (2026-11-23): the stdout label of r1725, and the initial state's fort.25 rows rotated by
+r1720 (class `initial_phase`). `ctest -R FortranReference.Compare` checks that it matches the committed
 files, that every class it allows
 passes, and that each fault fails: an edited number, a deleted file, an unknown label, a change
 of |S| or of a block header's sign in a fine `fort.25`, a BK change beyond the limit, NaN BK

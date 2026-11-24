@@ -1,7 +1,7 @@
 # Validation against the Fortran code
 
 The C++ program is checked against the original Fortran program (upstream SPO-DVR 5.24 at svn
-r1713, built with `-O3`: [Reference data](#reference-data)) by five acceptance gates. Each gate is
+r1727, built with `-O3`: [Reference data](#reference-data)) by five acceptance gates. Each gate is
 a regression test in `tests/` that compares the C++ results with Fortran output stored in
 `tests/reference/<case>/`; see the README section "Testing" and [CONTRIBUTING.md](CONTRIBUTING.md#testing) for how to run them.
 
@@ -33,8 +33,9 @@ same grid, the potential and the first 40 steps of 5.24 built with `-O3` are bit
 
 The Fortran output in `tests/reference/`, `tests/crplib/reference/` and `tests/scm/reference/` (the
 CRP and SCM driver outputs) comes from one build, the
-reference install `r1713-dce0ecc`: upstream 5.24 plus the fine-analysis sign fix (git `dce0ecc`,
-svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream_sync.md)).
+reference install `r1727-3d00331`: upstream 5.24 plus the fine-analysis sign fix of svn r1713 and the
+input-check and analysis fixes of r1714–r1727 (git `3d00331`, svn r1727), the commit the port is up to speed
+with ([upstream_sync.md](upstream_sync.md)).
 
 - **Why `-O3`:** the upstream default (`-Ofast -mtune=native -march=native`) brings fast-math and
   FMA (CPU-dependent results; the computed machine epsilon underflows to 0, so the code falls back
@@ -53,6 +54,7 @@ svn r1713), the commit the port is up to speed with ([upstream_sync.md](upstream
 | until 2026-11-06 | 5.19 (svn r1572), gfortran 13 build of 2026-10-26, `-O3` | generated, mostly at 16 threads |
 | from the GCC 15 switch (2026-11-06) | 5.19 rebuilt with gfortran 15 | kept; the rebuild reproduces them except the Dai–Light BK files (≤ 8.3e-13 of the gate-4 scale) and last digits of fort.25 |
 | since 2026-11-12 | 5.24 r1713 `-O3` (install `r1713-dce0ecc`), gfortran 15, 4 threads | all regenerated (`regenerate_all.sh`) and compared with `refdata.py compare … --expected tools/fortran_reference/expected/r1713.tsv`. Identical: the averages of all 5 propagation cases, the potentials and gas-phase states, the hard-wall BK files, the CRP driver outputs, fine-analysis fort.10 and fort.3. Changed by the toolchain (gfortran 13 → 15 and its run-time libraries): the Dai–Light BK files by ≤ 8.3e-13 (short), 4.1e-13 (short_sym), 1.1e-14 (small) of the gate-4 scale, the propagation fort.25 (read by no test), stdout probabilities below 1e-20 by ≤ 1e-21. Changed by the r1713 fix: the signs of Im S and of the phase in the fine-analysis fort.25. Stdout labels |
+| since 2026-11-23 | 5.24 r1727 `-O3` (install `r1727-3d00331`), gfortran 15, 4 threads | all regenerated and compared with `refdata.py compare … --expected tools/fortran_reference/expected/r1727.tsv`: 993 of 1022 files identical (every BK file, averages, potential, gas phase, fine-analysis output, CRP and SCM driver output). Changed by r1720: in the propagation `fortran_fort25.txt` of the six cases whose specular analysis line becomes fixed, the initial state's rows (every v) rotate by −k_v (Z_sp − Zana), \|S\| and P unchanged (class `initial_phase`; hardwall_short identical, its line never fixes). Changed by r1725: the stdout label `(nproj = 1)`. Removed before the switch: the gate-5 variant `fine_nen95` (NrOfEs −95 is an input error since r1719) |
 
 With the switch the C++ follows 5.24 twice: `RStart ≤ 0` is rejected (5.19: only `< 0`), and
 gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `FortranInterpolationBugs.*`

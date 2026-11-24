@@ -1,0 +1,23 @@
+# Fortran reference install r1727-3d00331, written by tools/fortran_reference/build_fortran_reference.sh.
+# Keys: tools/fortran_reference/README.md; "-" = not recorded.
+key	value
+commit	3d003315c155ca8e85d90ae3e14d80357c83793e
+date	2026-11-23
+defines	-DX86 -DGNU -DNO_SCSL -DNO_ESSL -DFFTWL -DNO_MKL -DUSE_OMP -DNO_USE_MPI -D__COMP__=\"GNU\" -D__PROGRAM_VERSION__=\"5.24\"
+exe.sha256	aec0865bd08ff41391567a2dab179d5e48a84cd7e69e6fe3db0006dc8a8a8cb3
+flags	-fdefault-real-8 -ffree-line-length-none -fopenmp -O3 -I/usr/include
+id	r1727-3d00331
+package.build.cpp-15	15.2.0-16ubuntu1
+package.build.gfortran-15	15.2.0-16ubuntu1
+package.build.libc6-dev	2.43-2ubuntu2.7
+package.build.libfftw3-dev	3.3.10-2fakesync1build3
+package.runtime.libc6	2.43-2ubuntu2.7
+package.runtime.libfftw3-double3	3.3.10-2fakesync1build3
+package.runtime.libgfortran5	16-20260322-1ubuntu1
+package.runtime.libgomp1	16-20260322-1ubuntu1
+source	upstream SPO-DVR git (git-svn mirror of the Leiden SVN trunk): git archive <commit> sources.dir
+svn	r1727
+tarball.sha256	b175e753e9c79116959df617c0c9c10e5756d0a5a9bdae0ec54faf15a7bca751
+tree	15a185fefde7c6a05ca4a2765ed92eed1534c8a8
+version	5.24
+zgvb	_ZGVbN2v_acos@GLIBC_2.35 _ZGVbN2v_cos@GLIBC_2.22 _ZGVbN2v_exp@GLIBC_2.22 _ZGVbN2v_sin@GLIBC_2.22

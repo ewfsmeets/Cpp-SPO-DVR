@@ -4,7 +4,7 @@ copies of refdata.py's lists (ctest FortranReference.ReferenceListsAgree).
 Each test builds an OLD tree in the 5.19 style and a NEW tree in the 5.24 style in its scratch
 directory `work`, at the paths of real reference cases (small synthetic files), runs compare as a
 program and checks its exit status and the FAIL line it prints:
-  test_expected_file         the repository against itself: r1713.tsv is valid, every row matches a
+  test_expected_file         the repository against itself: r1727.tsv is valid, every row matches a
                              file (a removed row may match none: its files are gone after the
                              switch)
   test_allowed               every class of r1713.tsv at work (labels, a sign change of Im S and of
@@ -69,7 +69,8 @@ import pytest
 TOOLS_DIR = Path(__file__).resolve().parent
 REPO_DIR = TOOLS_DIR.parents[1]
 REFDATA = TOOLS_DIR / "refdata.py"
-EXPECTED = TOOLS_DIR / "expected" / "r1713.tsv"
+EXPECTED = TOOLS_DIR / "expected" / "r1713.tsv"  # the synthetic 5.19 -> 5.24 trees of test_allowed
+CURRENT_EXPECTED = TOOLS_DIR / "expected" / "r1727.tsv"  # the switch that made the committed references
 # The install r1713.tsv names; the stub install of these tests takes its id.
 INSTALL_ID = re.search(r"^# install: (\S+)$", EXPECTED.read_text(encoding="utf-8"), re.MULTILINE).group(1)
 EXPECTED_HEADER = "# install: x\nglob\tallowed\tlimit\treason\n"
@@ -608,12 +609,13 @@ def test_reference_lists():
 
 
 def test_expected_file():
-    """The repository against itself: r1713.tsv is valid and every row matches a committed file."""
-    status, output = compare(REPO_DIR, REPO_DIR, "--no-provenance")
+    """The repository against itself: r1727.tsv (the latest switch) is valid and every row matches a committed
+    file."""
+    status, output = compare(REPO_DIR, REPO_DIR, "--no-provenance", expected=CURRENT_EXPECTED)
     expect_pass(status, output)
     # A glob typo; a removed row matches nothing once the switch has deleted its files.
     if re.search(r"note: .*\((?!removed\))", output):
-        pytest.fail(f"a row of {EXPECTED} matches no committed file:\n{output}")
+        pytest.fail(f"a row of {CURRENT_EXPECTED} matches no committed file:\n{output}")
 
 
 def test_allowed(work):
