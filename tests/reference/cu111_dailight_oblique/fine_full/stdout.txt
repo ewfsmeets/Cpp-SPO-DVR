@@ -1,0 +1,12148 @@
+
+*** SPO-DVR program version 5.24 (Compiled using GNU for X86 on Nov 23 2026 at 13:44:10) run on 20261124 at 133229.671 ***
+
+* Using the new style input format...
+* OpenMP enabled ...
+* MPI disabled ...
+* FFTW library will be used for FFTs ...
+* Estimate FFTW plans will be used for FFTs ...
+* Generic code will be used for diagonalizations ...
+* Extra check calls enabled ...
+* The internal timers of module Timers are not used ...
+* The FFT over R is performed using a single call ...
+* Full potential energy operation optimization has been enabled...
+* Potential energy multiplication optimization has been disabled...
+* Kinetic energy multiplication optimization has been disabled ...
+* Optimization of the kinetic energy operator routine in Z on the scattering grid has been disabled ...
+
+
+* Setting up global data...
+* Calculated machines precision: 0.55511151E-16
+* Using a maximum number of 4 threads in this run.
+* Setting up global data...
+* Preparing module inputfields for reading the input file ...
+* Trying to read input file "DVR.inp" ...
+* Input file read OK ...
+
+*** THE INPUT PARAMETERS SETUP INTERNALLY BY THE PROGRAM ***
+
+* The surface lattice constant in U (bohr):                 0.48400000E+01
+* The surface lattice constant in V (bohr):                 0.48400000E+01
+* The asymptotic value in Z (bohr):                         0.80000000E+01
+* The cutoff value in r (bohr):                             0.10000000E+04
+* The unit cell skewing angle (degrees):                    0.60000000E+02
+* The unit cell point group:                               C6v
+
+NOTE: If the potential switching option is used to switch the potential
+faster to the gas phase, the Z-value at which the potential first
+reaches the gas phase, is the new asymptotic Z-value.
+
+
+*** THE INPUT READ ***
+
+* Title:                                                   Dai-Light H2/Cu(111) oblique incidence test (JIn 1, MJIn -1, EParallel 0.1 eV)
+
+* SystemID:                                                H2Cu111DaiLight
+* NewCalc:                                                 T
+* Z degree of freedom:                                     T
+* R degree of freedom:                                     T
+* X degree of freedom:                                     T
+* Y degree of freedom:                                     T
+* Theta degree of freedom:                                 T
+* Phi degree of freedom:                                   T
+
+* Mass of atom 1 (amu):                                     0.10078000E+01
+* Mass of atom 2 (amu):                                     0.10078000E+01
+* Homo-nuclear molecule:                                   T
+
+* Number of points on the scattering grid in Z:             176
+* Step size of the scattering Z (bohr):                     0.80000000E-01
+* Starting point of the scattering in Z (bohr):            -0.20000000E+01
+* Number of points on the specular grid in Z:               280
+
+* Number of points on the scattering grid in r:              56
+* Step size of the scattering r (bohr):                     0.15000000E+00
+* Starting point of the scattering in r (bohr):             0.80000000E+00
+* Specular grid in r is identical to the scattering grid in r.
+
+* Number of points on the scattering grid in X:               8
+* Number of points on the scattering grid in Y:               8
+
+* Maximum J value in grid representation.:                    3
+* Maximum Mj value in grid representation.:                   3
+
+* The projection operator scheme used:                     using two grids all the way
+
+* Propagation method used:                                 Split operator
+* Calculation starts at (aut):                              0.00000000E+00
+* Calculation ends at (aut):                                0.21000000E+04
+* Time step used in the propagation (aut):                  0.20000000E+01
+* Number of time steps taken:                               1050
+
+* Only performing a fine analysis:                         T
+* Also performing a fine analysis:                         F
+* Wave function analysed every (aut):                       0.10000000E+02
+* Averages printed every (aut):                             0.10000000E+03
+* Initially using a dynamical specular analysis surface:   T
+* Wave function analysed at (bohr):                         0.80000000E+01
+* Maximum J analysed:                                      determined by the program (see info Analysis)
+* Maximum V analysed:                                      determined by the program (see info Analysis)
+* Maximum diffraction order analysed:                      determined by the program (see info Analysis)
+* Number of energies that are on-the-fly analysed:            41
+
+* Lowest energy of the initial wave packet:                 0.20000000E+00
+* Highest energy of the initial wave packet:                0.60000000E+00
+* Average position of the initial wave packet:              0.11440000E+02
+
+* Initial rotational quantum number J:                        1
+* Initial rotational quantum number Mj:                      -1
+* Initial rotational quantum number V:                        0
+
+* Only computing the potential:                            F
+* Imposing a minimum value on the potential:               F
+* Imposing a maximum value on the potential:               F
+* Using symmetry in setting up the potential:              F
+* Potential mixing alfa value:                              0.00000000E+00
+
+* Using a quadratic optical potential on the scattering grid in Z:
+* Optical potential in Z start at (bohr):                   0.88800000E+01
+* Optical potential in Z ends at (bohr):                    0.12000000E+02
+* Optical potential in Z absorbs optimally for (eV):        0.30000000E+00
+
+* Using a quadratic optical potential on the scattering grid in r:
+* Optical potential in r start at (bohr):                   0.45500000E+01
+* Optical potential in r ends at (bohr):                    0.90500000E+01
+* Optical potential in r absorbs optimally for (eV):        0.30000000E+00
+
+* Using a quadratic optical potential on the specular grid in Z:
+* Optical potential in Z start at (bohr):                   0.16800000E+02
+* Optical potential in Z ends at (bohr):                    0.20320000E+02
+* Optical potential in Z specular absorbs optimally for (eV 0.30000000E+00
+
+* Initial energy parallel to the surface (eV):              0.10000000E+00
+* Azimuthal angle of the incident molecule (degrees):       0.17000000E+02
+
+* Using a switching function for the potential in Z:       T
+* Switching function starts at (bohr):                      0.60000000E+01
+* Switching function ends at (bohr):                        0.80000000E+01
+
+* S-matrix elements written to file 3:                     T
+* Rot-vib-diff resolved probs written to file 25:          T
+* Rot-diff resolved probs written to file 10:              T
+* Dumping debug information to file:                       F
+* Dumping full S-matrix to file fil10:                     F
+
+* Tolerance for transferring the wavefunction (nproj = 1):  0.10000000E-06
+
+* Validating the input...
+* Processing the input...
+
+ *** THE INPUT FOR ROTATIONAL DEGREES OF FREEDOM ***
+
+ * J in:            1
+ * Mj in:           -1
+ * Maximum J value in grid rep.:            3
+ * HomeNuclear:  T
+
+ * A general MjIn independant grid will be used ...
+
+ *** CONTINUING SETUP I ***
+
+ * Setting up the FFT module ...
+ * Setting up legendre module with JMax + 1 =            4  ...
+ * Setting up the angular grid module with JMax =            3  ...
+ * The nearest size allowed by FFT routines (           8 ) for phi grid will be used ...
+ * Setting up the angular grid and basis functions...
+
+ *** THE GRID PARAMETERS ***
+
+ * Number of phi's :            8
+ * Delta value in phi coordinate :   0.78539816339744828     
+ * Number of theta's :            2
+ * JMax in basis set :            3
+ * JMin in basis set :            1
+ * Delta J in basis set :           2
+ * Grid has been set up for JIn =            1 ,  MjIn =           -1  ...
+
+ *** CONTINUING SETUP II ***
+
+ * Setting up the angular DVR/FBR transform module and the transformation matrices ...
+
+ *** SETUP DONE ***
+
+
+
+
+********************************************************************************
+                     INFO FROM MISCELLANEOUS SETUP
+********************************************************************************
+
+     grid interval size in kz dir. (scat. grid) =      0.446249
+     grid interval size in kz dir. (spec. grid) =      0.280499
+     initial momentum in z direction =                10.039122
+
+     grid interval size in kr dir. =                   0.747998
+
+     grid interval size in kx dir. =                   1.499008
+     initial momentum in reciprocal x direction =      5.738358
+
+     grid interval size in ky dir. =                   1.499008
+     initial momentum in reciprocal y direction =      4.388527
+
+     For backward compatibility: nmoder =                  4
+
+     asymptotic analysis at z =                        8.000000
+
+ No flux analysis performed.
+
+     nzpot =                                       125
+
+     start optical potential in z scat.grid:
+     nzchmi =                                         136
+     z(nzchmi)=                                        8.800000
+
+     end optical potential in z scat.grid:
+     nzchmx =                                         176
+     z(nzchmx)=                                       12.000000
+
+     start optical potential in z spec.grid:
+     nschmi =                                         235
+     z(nschmi)=                                       16.720000
+
+     end optical potential in z spec.grid:
+     nschmx =                                         280
+     z(nschmx)=                                       20.320000
+
+     start optical potential in r scat.grid:
+     nrchmi =                                          25
+     r(nrchmi)=                                        4.400000
+
+     end optical potential in r scat.grid:
+     nrchmx =                                          56
+     r(nrchmx)=                                        9.050000
+
+     max kinetic energy in r (ev) =                    6.497306
+
+     with current time interval in the analysis
+     the max total energy for which results 
+     can be obtained (eV) =                            8.548713
+     zero of etot is energy lowest h2 state
+
+     the 95% confidence interval defined by 
+     alfwv and enrgy:
+     ectmin (ev) =                                     0.200000
+     ectmax (ev) =                                     0.600000
+
+ Total time for potential initialisation =  0.49700029E-05 secs
+
+ * Grids are setup!
+ * 5-Mode arrays are allocated!
+ * 4-Mode arrays are allocated!
+
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ROVIBARIONAL ASYMPTOTIC POTENTIAL
+********************************************************************************
+
+      The gas phase vibrational potential for Z =    8.0000000000000000     
+
+        r(Bohr)                 V(eV)
+ ---------------------------------------------
+  0.80000000000000004       -1.2839780284663225     
+  0.95000000000000007       -3.0947780403152882     
+   1.1000000000000001       -4.1171257553332525     
+   1.2500000000000000       -4.6042426454819223     
+   1.3999999999999999       -4.7358682882732976     
+   1.5500000000000000       -4.6386603679442713     
+   1.7000000000000000       -4.4010528934441941     
+   1.8500000000000001       -4.0840616643744729     
+   2.0000000000000000       -3.7291282258135778     
+   2.1499999999999999       -3.3638017016672310     
+   2.2999999999999998       -3.0058438205191176     
+   2.4500000000000002       -2.6661854677021211     
+   2.6000000000000001       -2.3510480273337082     
+   2.7500000000000000       -2.0634584671173268     
+   2.8999999999999999       -1.8043253751946469     
+   3.0499999999999998       -1.5731979602778219     
+   3.2000000000000002       -1.3687969398158486     
+   3.3500000000000001       -1.1893819903573120     
+   3.5000000000000000       -1.0330025806645688     
+   3.6499999999999999      -0.89766570459075279     
+   3.7999999999999998      -0.78144383711273580     
+   3.9499999999999997      -0.68253821003448234     
+   4.0999999999999996      -0.59930545344424269     
+   4.2500000000000000      -0.53024976901079968     
+   4.4000000000000004      -0.47397985879109211     
+   4.5499999999999998      -0.42913417834637790     
+   4.7000000000000002      -0.39429395434809383     
+   4.8499999999999996      -0.36792490675951145     
+   5.0000000000000000      -0.34839172743663549     
+   5.1499999999999995      -0.33405311386954872     
+   5.2999999999999998      -0.32339228657785002     
+   5.4500000000000002      -0.31512044546203966     
+   5.5999999999999996      -0.30822061951184943     
+   5.7500000000000000      -0.30193874421226946     
+   5.8999999999999995      -0.29574627466700298     
+   6.0499999999999998      -0.28929550146500010     
+   6.2000000000000002      -0.28237896083633729     
+   6.3499999999999996      -0.27489655265489732     
+   6.5000000000000000      -0.26682994520146897     
+   6.6499999999999995      -0.25822247864187459     
+   6.7999999999999998      -0.24916276869416040     
+   6.9500000000000002      -0.23977071414952483     
+   7.0999999999999996      -0.23018519673170210     
+   7.2500000000000000      -0.22055323990795198     
+   7.3999999999999995      -0.21102069820731495     
+   7.5499999999999998      -0.20172467722324502     
+   7.7000000000000002      -0.19278786854790200     
+   7.8499999999999996      -0.18431487312534695     
+   8.0000000000000000      -0.17639043497972087     
+   8.1500000000000004      -0.16907936198337145     
+   8.2999999999999989      -0.16242780358309941     
+   8.4499999999999993      -0.15646550206975546     
+   8.5999999999999996      -0.15120863340639226     
+   8.7500000000000000      -0.14666289457279427     
+   8.9000000000000004      -0.14282656078141892     
+   9.0499999999999989      -0.13969331179731978     
+
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ASYMPTOTIC ROVIBRATIONAL STATES
+********************************************************************************
+
+
+WARNING: Rotational basis too small to describe all open channels!
+
+ asymptotic molecular vibrational wave functions
+
+   v   j       e(ev)    erel(ev)         psi(1)        psi(nr)       norm
+
+   0   0   -4.467141   -0.014820  0.1853026D-01  0.1513393D-02  1.0000000 1.4425817
+
+   0   1   -4.452322    0.000000  0.1794210D-01  0.1461485D-02  1.0000000 1.4448255
+
+   0   2   -4.422824    0.029498  0.1682109D-01  0.1362919D-02  1.0000000 1.4492952
+
+   0   3   -4.378925    0.073397  0.1526932D-01  0.1227327D-02  1.0000000 1.4559569
+
+   1   0   -3.953174    0.499148  0.5145150D-01  0.4943060D-02  1.0000000 1.5324088
+
+   1   1   -3.938940    0.513382  0.4988813D-01  0.4780137D-02  1.0000000 1.5348523
+
+   1   2   -3.910620    0.541702  0.4689975D-01  0.4469884D-02  1.0000000 1.5397195
+
+   1   3   -3.868499    0.583823  0.4274350D-01  0.4041100D-02  1.0000000 1.5469721
+
+ energy initial v,j state =                           -4.452322
+ potential energy =                                   -4.599384
+ rotational energy =                                   0.014796
+ vibrational energy =                                  0.132266
+ rovibrational energy =                                0.147062
+ expectation value r =                                 1.444825
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE DIFFRACTION BASIS
+********************************************************************************
+
+
+WARNING: Diffractional basis too small to describe all open channels!
+
+    64 diffraction channels in basis (ndftow)
+
+ * Number of diffraction states analysed, ndifa =            64
+ * Highest diffraction order, maxord =                        7
+ * Largest number of diffraction states that belong
+   to the same diffraction order, maxnum =                   18
+
+
+
+********************************************************************************
+          INFO FROM SETTING UP THE ROTATION BASIS
+********************************************************************************
+
+    10 rotation channels in basis (nrotw)
+
+ * number of rotational states analysed, nana =              10
+ * initial rotational state in basis, ichn =                 3
+
+
+
+********************************************************************************
+    INFO FROM SETTING UP THE ROTATION-DIFFRACTION BASIS
+********************************************************************************
+
+   640 rotation-diffraction channels in basis (nstatw)
+
+ * Number of rotation-diffraction analysed, nstata =              640
+ * Index of initial rot-dif channel in basis, inchna =            129
+
+
+
+********************************************************************************
+              INFO FROM SETTING UP THE OPTICAL POTENTIALS
+********************************************************************************
+
+
+* Optical potential in Z [high end] absorbs with coefficient:                   0.19938827E-01
+* Optical potential in r absorbs with coefficient:                              0.23896325E-01
+* Optical potential in Z [high end] specular absorbs with coefficient:          0.18298964E-01
+
+
+
+
+********************************************************************************
+                  INFO FROM SETTING UP THE GRID ENERGIES
+********************************************************************************
+
+ * initial parallel energy (eV) =  0.10000000E+00
+
+
+
+********************************************************************************
+              INFO FROM SETTING UP THE KINETIC ENERGY OPERATORS
+********************************************************************************
+
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE WAVE FUNCTION
+********************************************************************************
+
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE ANALYSIS
+********************************************************************************
+
+ * Maximum j in analysis:                        jana =   3
+ * Maximum v in analysis:                        nviba =   2
+ * Maximum diffraction order in analysis:        mdifa =   7
+
+
+ ************************************************************************
+ info from reading or writing asymptotic info
+ ************************************************************************
+
+
+ # timesteps for which bk coefs available is:        210
+
+ # data used, ndused =        210
+
+ effective prop.time, spectral resolution (mev) =    2100.0000  0.4070816E+02
+
+ meaningful results in kin energy range (ev)   0.040708   8.548713
+
+ results will be obtained for nen95 energies,nen95 =       10
+
+
+
+
+********************************************************************************
+               INFO FROM SETTING UP THE SPLIT OPERATOR PROPAGATOR
+********************************************************************************
+
+ ----- Split operator propagator set up -----
+
+
+ ************************************************************************
+ info from gtaife
+ ************************************************************************
+
+
+
+
+ ************************************************************************
+ info from probaf
+ ************************************************************************
+
+
+ # of data skipped in between data in next printout =      0
+
+  idat    ekin(ev)    preact     phase
+
+      1   0.2035408   0.999998E+00   0.211154E+01
+      2   0.2442490   0.999999E+00  -0.222276E+01
+      3   0.2849571   0.999999E+00   0.736724E+00
+      4   0.3256653   0.999998E+00  -0.177882E+01
+      5   0.3663734   0.999998E+00   0.266239E+01
+      6   0.4070816   0.999997E+00   0.139395E+01
+      7   0.4477898   0.999995E+00   0.621346E+00
+      8   0.4884979   0.999992E+00   0.282993E+00
+      9   0.5292061   0.999986E+00   0.329456E+00
+     10   0.5699142   0.999976E+00   0.720795E+00
+
+
+
+
+
+********************************************************************************
+          PRINTING SCATTERING AND REACTION PROBABILITIES
+********************************************************************************
+
+
+ etrans(icomin)=                                       0.203541
+ etrans(icomax)=                                       0.569914
+ etrans=                                               0.200000
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.41423218D+01
+ trans energy =  0.31000000D+00
+ trans energy in z =  0.21000000D+00
+ total momentum =  0.91496147D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1667236E-05  0.1000078E+00  0.1482218E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1667162E-05
+
+  0    5     1    0  0.2382615E-11
+
+  0    7     1    1  0.1239935E-10
+
+  0    1     3   -3  0.2744180E-10
+
+  0    2     3   -2  0.7083812E-11
+
+  0    4     3   -1  0.2127189E-10
+
+  0    6     3    0  0.1795093E-11
+
+  0    8     3    1  0.1596802E-11
+
+  0    9     3    2  0.2259593E-13
+
+  0   10     3    3  0.1745285E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1666717E-05
+
+   1  0.4364739E-09
+
+   2  0.8112527E-11
+
+   3  0.3126613E-13
+
+   4  0.1557013E-14
+
+   5  0.2723402E-15
+
+   6  0.7080386E-16
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   0
+
+   0  0.4061542E-19
+
+   1  0.2107674E-11
+
+   2  0.2731186E-12
+
+   3  0.1784230E-14
+
+   4  0.3115464E-16
+
+   5  0.6215638E-17
+
+   6  0.9798923E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   1
+
+   0  0.7065589E-18
+
+   1  0.7479968E-11
+
+   2  0.4832838E-11
+
+   3  0.8379722E-13
+
+   4  0.2261198E-14
+
+   5  0.4052711E-15
+
+   6  0.7871438E-16
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -3
+
+   0  0.5670005E-18
+
+   1  0.1826944E-10
+
+   2  0.9103550E-11
+
+   3  0.6611614E-13
+
+   4  0.2681340E-14
+
+   5  0.3532518E-17
+
+   6  0.4717046E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1800065E-18
+
+   1  0.6510223E-11
+
+   2  0.5726591E-12
+
+   3  0.9145622E-15
+
+   4  0.1465485E-16
+
+   5  0.3411502E-22
+
+   6  0.6665710E-23
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.1163061E-10
+
+   1  0.7438390E-11
+
+   2  0.2186523E-11
+
+   3  0.1575034E-13
+
+   4  0.6126119E-15
+
+   5  0.3216304E-18
+
+   6  0.4075877E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.4331504E-19
+
+   1  0.1694975E-11
+
+   2  0.1001089E-12
+
+   3  0.1610082E-17
+
+   4  0.7525358E-17
+
+   5  0.1717897E-19
+
+   6  0.2319828E-20
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.5023567E-19
+
+   1  0.1113887E-11
+
+   2  0.4811681E-12
+
+   3  0.1731733E-14
+
+   4  0.1599039E-16
+
+   5  0.9362864E-19
+
+   6  0.1287664E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.2102351E-22
+
+   1  0.1065509E-13
+
+   2  0.1163732E-13
+
+   3  0.2794374E-15
+
+   4  0.2404743E-16
+
+   5  0.2880153E-19
+
+   6  0.2474213E-20
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.2203734E-21
+
+   1  0.4284488E-13
+
+   2  0.1139814E-12
+
+   3  0.1649136E-13
+
+   4  0.1210834E-14
+
+   5  0.6508390E-19
+
+   6  0.5795160E-20
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000017
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100008
+
+ the reaction probability =  0.9999983D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.41323218D+01
+ trans energy =  0.32000000D+00
+ trans energy in z =  0.22000000D+00
+ total momentum =  0.92960179D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1567009E-05  0.1000076E+00  0.1482215E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1566940E-05
+
+  0    5     1    0  0.2183205E-11
+
+  0    7     1    1  0.1136555E-10
+
+  0    1     3   -3  0.2575358E-10
+
+  0    2     3   -2  0.6528812E-11
+
+  0    4     3   -1  0.1963306E-10
+
+  0    6     3    0  0.1651425E-11
+
+  0    8     3    1  0.1494773E-11
+
+  0    9     3    2  0.2159476E-13
+
+  0   10     3    3  0.1722344E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1566533E-05
+
+   1  0.3997101E-09
+
+   2  0.7426461E-11
+
+   3  0.3196321E-13
+
+   4  0.1834549E-14
+
+   5  0.4230699E-15
+
+   6  0.1792704E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   0
+
+   0  0.3692716E-19
+
+   1  0.1931279E-11
+
+   2  0.2500629E-12
+
+   3  0.1813455E-14
+
+   4  0.3794850E-16
+
+   5  0.9666347E-17
+
+   6  0.2487300E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   1
+
+   0  0.6310480E-18
+
+   1  0.6853418E-11
+
+   2  0.4423587E-11
+
+   3  0.8494016E-13
+
+   4  0.2780715E-14
+
+   5  0.6272981E-15
+
+   6  0.1952724E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -3
+
+   0  0.5197322E-18
+
+   1  0.1673917E-10
+
+   2  0.8943161E-11
+
+   3  0.6850087E-13
+
+   4  0.2741538E-14
+
+   5  0.4198672E-17
+
+   6  0.1201987E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1715717E-18
+
+   1  0.5965074E-11
+
+   2  0.5627771E-12
+
+   3  0.9453855E-15
+
+   4  0.1513043E-16
+
+   5  0.5083482E-22
+
+   6  0.1698542E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.1065941E-10
+
+   1  0.6810747E-11
+
+   2  0.2145975E-11
+
+   3  0.1629658E-13
+
+   4  0.6265883E-15
+
+   5  0.3968290E-18
+
+   6  0.1038606E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.4126965E-19
+
+   1  0.1553243E-11
+
+   2  0.9817265E-13
+
+   3  0.1666244E-17
+
+   4  0.7515852E-17
+
+   5  0.2043030E-19
+
+   6  0.5911335E-20
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.4755470E-19
+
+   1  0.1020636E-11
+
+   2  0.4723183E-12
+
+   3  0.1801674E-14
+
+   4  0.1636412E-16
+
+   5  0.1058945E-18
+
+   6  0.3281197E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.1782292E-22
+
+   1  0.9763863E-14
+
+   2  0.1152104E-13
+
+   3  0.2852966E-15
+
+   4  0.2451458E-16
+
+   5  0.4208899E-19
+
+   6  0.6304735E-20
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.2105985E-21
+
+   1  0.3919217E-13
+
+   2  0.1143869E-12
+
+   3  0.1746589E-13
+
+   4  0.1189294E-14
+
+   5  0.9753873E-19
+
+   6  0.1476710E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000016
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100008
+
+ the reaction probability =  0.9999984D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.41223218D+01
+ trans energy =  0.33000000D+00
+ trans energy in z =  0.23000000D+00
+ total momentum =  0.94401508D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1466783E-05  0.1000075E+00  0.1482212E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1466719E-05
+
+  0    5     1    0  0.1983795E-11
+
+  0    7     1    1  0.1033175E-10
+
+  0    1     3   -3  0.2406537E-10
+
+  0    2     3   -2  0.5973811E-11
+
+  0    4     3   -1  0.1799423E-10
+
+  0    6     3    0  0.1507758E-11
+
+  0    8     3    1  0.1392743E-11
+
+  0    9     3    2  0.2059359E-13
+
+  0   10     3    3  0.1699403E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1466349E-05
+
+   1  0.3629463E-09
+
+   2  0.6740395E-11
+
+   3  0.3266030E-13
+
+   4  0.2112084E-14
+
+   5  0.5737995E-15
+
+   6  0.2877370E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   0
+
+   0  0.3323889E-19
+
+   1  0.1754884E-11
+
+   2  0.2270072E-12
+
+   3  0.1842681E-14
+
+   4  0.4474237E-16
+
+   5  0.1311706E-16
+
+   6  0.3994707E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   1
+
+   0  0.5555372E-18
+
+   1  0.6226867E-11
+
+   2  0.4014336E-11
+
+   3  0.8608310E-13
+
+   4  0.3300232E-14
+
+   5  0.8493252E-15
+
+   6  0.3118304E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -3
+
+   0  0.4724639E-18
+
+   1  0.1520890E-10
+
+   2  0.8782772E-11
+
+   3  0.7088560E-13
+
+   4  0.2801737E-14
+
+   5  0.4864826E-17
+
+   6  0.1932270E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1631369E-18
+
+   1  0.5419924E-11
+
+   2  0.5528951E-12
+
+   3  0.9762087E-15
+
+   4  0.1560601E-16
+
+   5  0.6755462E-22
+
+   6  0.2730513E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.9688214E-11
+
+   1  0.6183104E-11
+
+   2  0.2105426E-11
+
+   3  0.1684282E-13
+
+   4  0.6405647E-15
+
+   5  0.4720276E-18
+
+   6  0.1669625E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3922427E-19
+
+   1  0.1411512E-11
+
+   2  0.9623641E-13
+
+   3  0.1722407E-17
+
+   4  0.7506346E-17
+
+   5  0.2368163E-19
+
+   6  0.9502842E-20
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.4487373E-19
+
+   1  0.9273861E-12
+
+   2  0.4634685E-12
+
+   3  0.1871614E-14
+
+   4  0.1673785E-16
+
+   5  0.1181604E-18
+
+   6  0.5274730E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.1462233E-22
+
+   1  0.8872635E-14
+
+   2  0.1140476E-13
+
+   3  0.2911558E-15
+
+   4  0.2498174E-16
+
+   5  0.5537646E-19
+
+   6  0.1013526E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.2008237E-21
+
+   1  0.3553947E-13
+
+   2  0.1147925E-12
+
+   3  0.1844042E-13
+
+   4  0.1167754E-14
+
+   5  0.1299936E-18
+
+   6  0.2373904E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000015
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100007
+
+ the reaction probability =  0.9999985D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.41123218D+01
+ trans energy =  0.34000000D+00
+ trans energy in z =  0.24000000D+00
+ total momentum =  0.95821159D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1366556E-05  0.1000073E+00  0.1482209E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1366498E-05
+
+  0    5     1    0  0.1784386E-11
+
+  0    7     1    1  0.9297947E-11
+
+  0    1     3   -3  0.2237716E-10
+
+  0    2     3   -2  0.5418811E-11
+
+  0    4     3   -1  0.1635540E-10
+
+  0    6     3    0  0.1364090E-11
+
+  0    8     3    1  0.1290713E-11
+
+  0    9     3    2  0.1959243E-13
+
+  0   10     3    3  0.1676461E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1366166E-05
+
+   1  0.3261825E-09
+
+   2  0.6054329E-11
+
+   3  0.3335739E-13
+
+   4  0.2389619E-14
+
+   5  0.7245291E-15
+
+   6  0.3962036E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   0
+
+   0  0.2955063E-19
+
+   1  0.1578489E-11
+
+   2  0.2039515E-12
+
+   3  0.1871907E-14
+
+   4  0.5153623E-16
+
+   5  0.1656776E-16
+
+   6  0.5502115E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   1   1
+
+   0  0.4800263E-18
+
+   1  0.5600316E-11
+
+   2  0.3605084E-11
+
+   3  0.8722604E-13
+
+   4  0.3819749E-14
+
+   5  0.1071352E-14
+
+   6  0.4283884E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -3
+
+   0  0.4251956E-18
+
+   1  0.1367863E-10
+
+   2  0.8622383E-11
+
+   3  0.7327033E-13
+
+   4  0.2861936E-14
+
+   5  0.5530980E-17
+
+   6  0.2662553E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1547021E-18
+
+   1  0.4874775E-11
+
+   2  0.5430130E-12
+
+   3  0.1007032E-14
+
+   4  0.1608159E-16
+
+   5  0.8427441E-22
+
+   6  0.3762484E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.8717016E-11
+
+   1  0.5555461E-11
+
+   2  0.2064878E-11
+
+   3  0.1738906E-13
+
+   4  0.6545411E-15
+
+   5  0.5472262E-18
+
+   6  0.2300643E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3717888E-19
+
+   1  0.1269780E-11
+
+   2  0.9430017E-13
+
+   3  0.1778569E-17
+
+   4  0.7496840E-17
+
+   5  0.2693296E-19
+
+   6  0.1309435E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.4219276E-19
+
+   1  0.8341358E-12
+
+   2  0.4546187E-12
+
+   3  0.1941554E-14
+
+   4  0.1711158E-16
+
+   5  0.1304263E-18
+
+   6  0.7268264E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.1142175E-22
+
+   1  0.7981407E-14
+
+   2  0.1128847E-13
+
+   3  0.2970151E-15
+
+   4  0.2544889E-16
+
+   5  0.6866392E-19
+
+   6  0.1396578E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1910489E-21
+
+   1  0.3188676E-13
+
+   2  0.1151980E-12
+
+   3  0.1941495E-13
+
+   4  0.1146214E-14
+
+   5  0.1624484E-18
+
+   6  0.3271099E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000014
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100007
+
+ the reaction probability =  0.9999986D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.41023218D+01
+ trans energy =  0.35000000D+00
+ trans energy in z =  0.25000000D+00
+ total momentum =  0.97220082D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1330193E-05  0.1000068E+00  0.1482194E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1330140E-05
+
+  0    5     1    0  0.1616460E-11
+
+  0    7     1    1  0.8427946E-11
+
+  0    1     3   -3  0.2067511E-10
+
+  0    2     3   -2  0.4925571E-11
+
+  0    4     3   -1  0.1491064E-10
+
+  0    6     3    0  0.1237729E-11
+
+  0    8     3    1  0.1189744E-11
+
+  0    9     3    2  0.1840225E-13
+
+  0   10     3    3  0.1610835E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1329839E-05
+
+   1  0.2953262E-09
+
+   2  0.5471193E-11
+
+   3  0.3402709E-13
+
+   4  0.2573100E-14
+
+   5  0.7717091E-15
+
+   6  0.4456169E-15
+
+   7  0.1234353E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2727041E-19
+
+   1  0.1430118E-11
+
+   2  0.1843080E-12
+
+   3  0.1952529E-14
+
+   4  0.5535670E-16
+
+   5  0.1763379E-16
+
+   6  0.6181551E-17
+
+   7  0.2936032E-17
+
+ v, j, mj =   0   1   1
+
+   0  0.4188211E-18
+
+   1  0.5074263E-11
+
+   2  0.3256902E-11
+
+   3  0.9079401E-13
+
+   4  0.4106328E-14
+
+   5  0.1141122E-14
+
+   6  0.4813929E-15
+
+   7  0.2585231E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.3810830E-18
+
+   1  0.1236372E-10
+
+   2  0.8229440E-11
+
+   3  0.7892234E-13
+
+   4  0.2888883E-14
+
+   5  0.1372288E-15
+
+   6  0.3090045E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1506412E-18
+
+   1  0.4406176E-11
+
+   2  0.5182875E-12
+
+   3  0.1091124E-14
+
+   4  0.1612989E-16
+
+   5  0.7318603E-18
+
+   6  0.4288487E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.7902991E-11
+
+   1  0.5018551E-11
+
+   2  0.1969584E-11
+
+   3  0.1883091E-13
+
+   4  0.6553479E-15
+
+   5  0.3205889E-16
+
+   6  0.2669776E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3620681E-19
+
+   1  0.1147839E-11
+
+   2  0.8988087E-13
+
+   3  0.1890127E-17
+
+   4  0.7461689E-17
+
+   5  0.4466053E-18
+
+   6  0.1520863E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.3943146E-19
+
+   1  0.7539746E-12
+
+   2  0.4336740E-12
+
+   3  0.2077061E-14
+
+   4  0.1770685E-16
+
+   5  0.6617487E-18
+
+   6  0.8448929E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.9423282E-23
+
+   1  0.7215077E-14
+
+   2  0.1082674E-13
+
+   3  0.3337562E-15
+
+   4  0.2519435E-16
+
+   5  0.1471983E-17
+
+   6  0.1621188E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1846117E-21
+
+   1  0.2877820E-13
+
+   2  0.1112899E-12
+
+   3  0.1977810E-13
+
+   4  0.1196301E-14
+
+   5  0.4095781E-16
+
+   6  0.3787571E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000013
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100007
+
+ the reaction probability =  0.9999987D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40923218D+01
+ trans energy =  0.36000000D+00
+ trans energy in z =  0.26000000D+00
+ total momentum =  0.98599159D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1341014E-05  0.1000061E+00  0.1482172E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1340965E-05
+
+  0    5     1    0  0.1471796E-11
+
+  0    7     1    1  0.7678964E-11
+
+  0    1     3   -3  0.1896285E-10
+
+  0    2     3   -2  0.4477961E-11
+
+  0    4     3   -1  0.1360927E-10
+
+  0    6     3    0  0.1124156E-11
+
+  0    8     3    1  0.1089558E-11
+
+  0    9     3    2  0.1707244E-13
+
+  0   10     3    3  0.1513671E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1340691E-05
+
+   1  0.2688346E-09
+
+   2  0.4964103E-11
+
+   3  0.3467656E-13
+
+   4  0.2687092E-14
+
+   5  0.7423850E-15
+
+   6  0.4514009E-15
+
+   7  0.3380664E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2603047E-19
+
+   1  0.1302451E-11
+
+   2  0.1671855E-12
+
+   3  0.2071124E-14
+
+   4  0.5698039E-16
+
+   5  0.1693797E-16
+
+   6  0.6249270E-17
+
+   7  0.8041246E-17
+
+ v, j, mj =   0   1   1
+
+   0  0.3681851E-18
+
+   1  0.4622458E-11
+
+   2  0.2953837E-11
+
+   3  0.9615362E-13
+
+   4  0.4220811E-14
+
+   5  0.1098401E-14
+
+   6  0.4874430E-15
+
+   7  0.7080469E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.3393019E-18
+
+   1  0.1120792E-10
+
+   2  0.7664683E-11
+
+   3  0.8698827E-13
+
+   4  0.2891264E-14
+
+   5  0.3657346E-15
+
+   6  0.3293830E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1498120E-18
+
+   1  0.3994133E-11
+
+   2  0.4825953E-12
+
+   3  0.1214573E-14
+
+   4  0.1586251E-16
+
+   5  0.2004271E-17
+
+   6  0.4440674E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.7205086E-11
+
+   1  0.4548677E-11
+
+   2  0.1833842E-11
+
+   3  0.2093446E-13
+
+   4  0.6464247E-15
+
+   5  0.8679627E-16
+
+   6  0.2845425E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3602771E-19
+
+   1  0.1040518E-11
+
+   2  0.8362705E-13
+
+   3  0.2042612E-17
+
+   4  0.7407591E-17
+
+   5  0.1173936E-17
+
+   6  0.1623152E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.3661082E-19
+
+   1  0.6834837E-12
+
+   2  0.4037934E-12
+
+   3  0.2261009E-14
+
+   4  0.1846581E-16
+
+   5  0.1576558E-17
+
+   6  0.9029035E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.8312966E-23
+
+   1  0.6541023E-14
+
+   2  0.1010977E-13
+
+   3  0.3933132E-15
+
+   4  0.2440661E-16
+
+   5  0.3902278E-17
+
+   6  0.1728737E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1806405E-21
+
+   1  0.2607166E-13
+
+   2  0.1041947E-12
+
+   3  0.1968955E-13
+
+   4  0.1299307E-14
+
+   5  0.1118694E-15
+
+   6  0.4022760E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000013
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100006
+
+ the reaction probability =  0.9999987D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40823218D+01
+ trans energy =  0.37000000D+00
+ trans energy in z =  0.27000000D+00
+ total momentum =  0.99959212D+01
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1351834E-05  0.1000055E+00  0.1482151E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1351790E-05
+
+  0    5     1    0  0.1327132E-11
+
+  0    7     1    1  0.6929981E-11
+
+  0    1     3   -3  0.1725059E-10
+
+  0    2     3   -2  0.4030350E-11
+
+  0    4     3   -1  0.1230790E-10
+
+  0    6     3    0  0.1010582E-11
+
+  0    8     3    1  0.9893725E-12
+
+  0    9     3    2  0.1574262E-13
+
+  0   10     3    3  0.1416508E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1351543E-05
+
+   1  0.2423430E-09
+
+   2  0.4457012E-11
+
+   3  0.3532603E-13
+
+   4  0.2801085E-14
+
+   5  0.7130609E-15
+
+   6  0.4571849E-15
+
+   7  0.5526975E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2479053E-19
+
+   1  0.1174785E-11
+
+   2  0.1500630E-12
+
+   3  0.2189719E-14
+
+   4  0.5860407E-16
+
+   5  0.1624216E-16
+
+   6  0.6316990E-17
+
+   7  0.1314646E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.3175491E-18
+
+   1  0.4170653E-11
+
+   2  0.2650773E-11
+
+   3  0.1015132E-12
+
+   4  0.4335293E-14
+
+   5  0.1055680E-14
+
+   6  0.4934932E-15
+
+   7  0.1157571E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2975207E-18
+
+   1  0.1005212E-10
+
+   2  0.7099925E-11
+
+   3  0.9505419E-13
+
+   4  0.2893644E-14
+
+   5  0.5942404E-15
+
+   6  0.3497614E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1489827E-18
+
+   1  0.3582090E-11
+
+   2  0.4469031E-12
+
+   3  0.1338021E-14
+
+   4  0.1559514E-16
+
+   5  0.3276681E-17
+
+   6  0.4592861E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.6507182E-11
+
+   1  0.4078803E-11
+
+   2  0.1698100E-11
+
+   3  0.2303801E-13
+
+   4  0.6375016E-15
+
+   5  0.1415337E-15
+
+   6  0.3021074E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3584862E-19
+
+   1  0.9331977E-12
+
+   2  0.7737324E-13
+
+   3  0.2195097E-17
+
+   4  0.7353493E-17
+
+   5  0.1901266E-17
+
+   6  0.1725441E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.3379018E-19
+
+   1  0.6129929E-12
+
+   2  0.3739129E-12
+
+   3  0.2444957E-14
+
+   4  0.1922477E-16
+
+   5  0.2491367E-17
+
+   6  0.9609141E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.7202650E-23
+
+   1  0.5866970E-14
+
+   2  0.9392809E-14
+
+   3  0.4528703E-15
+
+   4  0.2361887E-16
+
+   5  0.6332573E-17
+
+   6  0.1836287E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1766693E-21
+
+   1  0.2336512E-13
+
+   2  0.9709951E-13
+
+   3  0.1960100E-13
+
+   4  0.1402312E-14
+
+   5  0.1827810E-15
+
+   6  0.4257949E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000014
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014822
+
+ average diffraction energy (ev) =     0.100005
+
+ the reaction probability =  0.9999986D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40723218D+01
+ trans energy =  0.38000000D+00
+ trans energy in z =  0.28000000D+00
+ total momentum =  0.10130101D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1362655E-05  0.1000049E+00  0.1482129E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1362615E-05
+
+  0    5     1    0  0.1182468E-11
+
+  0    7     1    1  0.6180999E-11
+
+  0    1     3   -3  0.1553833E-10
+
+  0    2     3   -2  0.3582740E-11
+
+  0    4     3   -1  0.1100653E-10
+
+  0    6     3    0  0.8970090E-12
+
+  0    8     3    1  0.8891867E-12
+
+  0    9     3    2  0.1441280E-13
+
+  0   10     3    3  0.1319344E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1362395E-05
+
+   1  0.2158514E-09
+
+   2  0.3949922E-11
+
+   3  0.3597549E-13
+
+   4  0.2915077E-14
+
+   5  0.6837368E-15
+
+   6  0.4629688E-15
+
+   7  0.7673286E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2355059E-19
+
+   1  0.1047119E-11
+
+   2  0.1329405E-12
+
+   3  0.2308314E-14
+
+   4  0.6022776E-16
+
+   5  0.1554635E-16
+
+   6  0.6384709E-17
+
+   7  0.1825168E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.2669131E-18
+
+   1  0.3718848E-11
+
+   2  0.2347709E-11
+
+   3  0.1068728E-12
+
+   4  0.4449775E-14
+
+   5  0.1012959E-14
+
+   6  0.4995433E-15
+
+   7  0.1607094E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2557396E-18
+
+   1  0.8896316E-11
+
+   2  0.6535168E-11
+
+   3  0.1031201E-12
+
+   4  0.2896025E-14
+
+   5  0.8227463E-15
+
+   6  0.3701399E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1481535E-18
+
+   1  0.3170047E-11
+
+   2  0.4112109E-12
+
+   3  0.1461470E-14
+
+   4  0.1532776E-16
+
+   5  0.4549091E-17
+
+   6  0.4745048E-22
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.5809278E-11
+
+   1  0.3608929E-11
+
+   2  0.1562359E-11
+
+   3  0.2514156E-13
+
+   4  0.6285784E-15
+
+   5  0.1962710E-15
+
+   6  0.3196722E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3566952E-19
+
+   1  0.8258772E-12
+
+   2  0.7111942E-13
+
+   3  0.2347582E-17
+
+   4  0.7299395E-17
+
+   5  0.2628596E-17
+
+   6  0.1827730E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.3096953E-19
+
+   1  0.5425020E-12
+
+   2  0.3440323E-12
+
+   3  0.2628905E-14
+
+   4  0.1998373E-16
+
+   5  0.3406175E-17
+
+   6  0.1018925E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.6092333E-23
+
+   1  0.5192916E-14
+
+   2  0.8675846E-14
+
+   3  0.5124274E-15
+
+   4  0.2283113E-16
+
+   5  0.8762867E-17
+
+   6  0.1943837E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1726980E-21
+
+   1  0.2065858E-13
+
+   2  0.9000434E-13
+
+   3  0.1951245E-13
+
+   4  0.1505318E-14
+
+   5  0.2536926E-15
+
+   6  0.4493139E-19
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000014
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014821
+
+ average diffraction energy (ev) =     0.100005
+
+ the reaction probability =  0.9999986D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40623218D+01
+ trans energy =  0.39000000D+00
+ trans energy in z =  0.29000000D+00
+ total momentum =  0.10262526D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1405753E-05  0.1000042E+00  0.1482106E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1405718E-05
+
+  0    5     1    0  0.1050168E-11
+
+  0    7     1    1  0.5492493E-11
+
+  0    1     3   -3  0.1389415E-10
+
+  0    2     3   -2  0.3168768E-11
+
+  0    4     3   -1  0.9796000E-11
+
+  0    6     3    0  0.7923303E-12
+
+  0    8     3    1  0.7934478E-12
+
+  0    9     3    2  0.1308783E-13
+
+  0   10     3    3  0.1217901E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1405522E-05
+
+   1  0.1916985E-09
+
+   2  0.3488440E-11
+
+   3  0.3494491E-13
+
+   4  0.3259261E-14
+
+   5  0.7359437E-15
+
+   6  0.4504312E-15
+
+   7  0.8757183E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2284227E-19
+
+   1  0.9304179E-12
+
+   2  0.1173529E-12
+
+   3  0.2286374E-14
+
+   4  0.6710372E-16
+
+   5  0.1671713E-16
+
+   6  0.6198525E-17
+
+   7  0.2082088E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.2252393E-18
+
+   1  0.3306192E-11
+
+   2  0.2072088E-11
+
+   3  0.1058150E-12
+
+   4  0.4983278E-14
+
+   5  0.1093876E-14
+
+   6  0.4863807E-15
+
+   7  0.1834558E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2172777E-18
+
+   1  0.7840740E-11
+
+   2  0.5938417E-11
+
+   3  0.1106909E-12
+
+   4  0.3204597E-14
+
+   5  0.1011295E-14
+
+   6  0.8171852E-16
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1493897E-18
+
+   1  0.2793651E-11
+
+   2  0.3735162E-12
+
+   3  0.1578119E-14
+
+   4  0.1664122E-16
+
+   5  0.5593783E-17
+
+   6  0.5078356E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.5167240E-11
+
+   1  0.3181381E-11
+
+   2  0.1419271E-11
+
+   3  0.2716377E-13
+
+   4  0.6857614E-15
+
+   5  0.2414545E-15
+
+   6  0.1623120E-16
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3599355E-19
+
+   1  0.7277699E-12
+
+   2  0.6454653E-13
+
+   3  0.2459107E-17
+
+   4  0.8091214E-17
+
+   5  0.3226226E-17
+
+   6  0.8390002E-19
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.2795157E-19
+
+   1  0.4781037E-12
+
+   2  0.3125185E-12
+
+   3  0.2798230E-14
+
+   4  0.2251492E-16
+
+   5  0.4160582E-17
+
+   6  0.7415872E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.5374096E-23
+
+   1  0.4577034E-14
+
+   2  0.7904400E-14
+
+   3  0.5705940E-15
+
+   4  0.2455944E-16
+
+   5  0.1075522E-16
+
+   6  0.4912303E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1715992E-21
+
+   1  0.1819270E-13
+
+   2  0.8222692E-13
+
+   3  0.1926342E-13
+
+   4  0.1775753E-14
+
+   5  0.3122596E-15
+
+   6  0.1907131E-16
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000014
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014821
+
+ average diffraction energy (ev) =     0.100004
+
+ the reaction probability =  0.9999986D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40523218D+01
+ trans energy =  0.40000000D+00
+ trans energy in z =  0.30000000D+00
+ total momentum =  0.10393264D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1480579E-05  0.1000035E+00  0.1482082E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1480548E-05
+
+  0    5     1    0  0.9300214E-12
+
+  0    7     1    1  0.4863435E-11
+
+  0    1     3   -3  0.1231689E-10
+
+  0    2     3   -2  0.2787864E-11
+
+  0    4     3   -1  0.8674761E-11
+
+  0    6     3    0  0.6963952E-12
+
+  0    8     3    1  0.7020802E-12
+
+  0    9     3    2  0.1176763E-13
+
+  0   10     3    3  0.1112251E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1480375E-05
+
+   1  0.1698446E-09
+
+   2  0.3071789E-11
+
+   3  0.3226285E-13
+
+   4  0.3829721E-14
+
+   5  0.8682949E-15
+
+   6  0.4198834E-15
+
+   7  0.8796737E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2265653E-19
+
+   1  0.8244955E-12
+
+   2  0.1032740E-12
+
+   3  0.2126291E-14
+
+   4  0.7914264E-16
+
+   5  0.1972276E-16
+
+   6  0.5762755E-17
+
+   7  0.2089722E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1923753E-18
+
+   1  0.2932019E-11
+
+   2  0.1823444E-11
+
+   3  0.9844884E-13
+
+   4  0.5928674E-14
+
+   5  0.1296328E-14
+
+   6  0.4543320E-15
+
+   7  0.1843738E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.1820788E-18
+
+   1  0.6883685E-11
+
+   2  0.5310218E-11
+
+   3  0.1177749E-12
+
+   4  0.3814153E-14
+
+   5  0.1160567E-14
+
+   6  0.2362255E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1526564E-18
+
+   1  0.2452295E-11
+
+   2  0.3338533E-12
+
+   3  0.1688085E-14
+
+   4  0.1950863E-16
+
+   5  0.6414629E-17
+
+   6  0.1514774E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.4580119E-11
+
+   1  0.2795439E-11
+
+   2  0.1268963E-11
+
+   3  0.2910601E-13
+
+   4  0.8079262E-15
+
+   5  0.2772467E-15
+
+   6  0.4776637E-16
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3681214E-19
+
+   1  0.6387191E-12
+
+   2  0.5765997E-13
+
+   3  0.2530369E-17
+
+   4  0.9714563E-17
+
+   5  0.3696361E-17
+
+   6  0.2130238E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.2473963E-19
+
+   1  0.4196942E-12
+
+   2  0.2793992E-12
+
+   3  0.2953181E-14
+
+   4  0.2678819E-16
+
+   5  0.4757314E-17
+
+   6  0.2004394E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.5041269E-23
+
+   1  0.4018335E-14
+
+   2  0.7079398E-14
+
+   3  0.6273938E-15
+
+   4  0.2876099E-16
+
+   5  0.1231709E-16
+
+   6  0.1425732E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1733240E-21
+
+   1  0.1596338E-13
+
+   2  0.7377886E-13
+
+   3  0.1885663E-13
+
+   4  0.2210769E-14
+
+   5  0.3586921E-15
+
+   6  0.5679816E-16
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000015
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014821
+
+ average diffraction energy (ev) =     0.100004
+
+ the reaction probability =  0.9999985D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40423218D+01
+ trans energy =  0.41000000D+00
+ trans energy in z =  0.31000000D+00
+ total momentum =  0.10522378D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1555406E-05  0.1000029E+00  0.1482060E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1555379E-05
+
+  0    5     1    0  0.8098748E-12
+
+  0    7     1    1  0.4234377E-11
+
+  0    1     3   -3  0.1073963E-10
+
+  0    2     3   -2  0.2406960E-11
+
+  0    4     3   -1  0.7553521E-11
+
+  0    6     3    0  0.6004601E-12
+
+  0    8     3    1  0.6107125E-12
+
+  0    9     3    2  0.1044743E-13
+
+  0   10     3    3  0.1006601E-12
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1555228E-05
+
+   1  0.1479907E-09
+
+   2  0.2655139E-11
+
+   3  0.2958080E-13
+
+   4  0.4400181E-14
+
+   5  0.1000646E-14
+
+   6  0.3893357E-15
+
+   7  0.8836291E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2247080E-19
+
+   1  0.7185731E-12
+
+   2  0.8919522E-13
+
+   3  0.1966207E-14
+
+   4  0.9118156E-16
+
+   5  0.2272838E-16
+
+   6  0.5326985E-17
+
+   7  0.2097355E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1595113E-18
+
+   1  0.2557847E-11
+
+   2  0.1574800E-11
+
+   3  0.9108268E-13
+
+   4  0.6874070E-14
+
+   5  0.1498780E-14
+
+   6  0.4222833E-15
+
+   7  0.1852918E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.1468798E-18
+
+   1  0.5926631E-11
+
+   2  0.4682018E-11
+
+   3  0.1248590E-12
+
+   4  0.4423709E-14
+
+   5  0.1309839E-14
+
+   6  0.3907325E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1559231E-18
+
+   1  0.2110939E-11
+
+   2  0.2941903E-12
+
+   3  0.1798051E-14
+
+   4  0.2237605E-16
+
+   5  0.7235476E-17
+
+   6  0.2521712E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.3992998E-11
+
+   1  0.2409498E-11
+
+   2  0.1118655E-11
+
+   3  0.3104826E-13
+
+   4  0.9300909E-15
+
+   5  0.3130388E-15
+
+   6  0.7930153E-16
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3763073E-19
+
+   1  0.5496682E-12
+
+   2  0.5077342E-13
+
+   3  0.2601630E-17
+
+   4  0.1133791E-16
+
+   5  0.4166496E-17
+
+   6  0.3421477E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.2152770E-19
+
+   1  0.3612848E-12
+
+   2  0.2462799E-12
+
+   3  0.3108131E-14
+
+   4  0.3106146E-16
+
+   5  0.5354047E-17
+
+   6  0.3267201E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.4708441E-23
+
+   1  0.3459635E-14
+
+   2  0.6254396E-14
+
+   3  0.6841936E-15
+
+   4  0.3296254E-16
+
+   5  0.1387895E-16
+
+   6  0.2360235E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1750488E-21
+
+   1  0.1373406E-13
+
+   2  0.6533081E-13
+
+   3  0.1844984E-13
+
+   4  0.2645784E-14
+
+   5  0.4051246E-15
+
+   6  0.9452501E-16
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000016
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014821
+
+ average diffraction energy (ev) =     0.100003
+
+ the reaction probability =  0.9999984D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40323218D+01
+ trans energy =  0.42000000D+00
+ trans energy in z =  0.32000000D+00
+ total momentum =  0.10649926D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1630233E-05  0.1000024E+00  0.1482041E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1630210E-05
+
+  0    5     1    0  0.6897282E-12
+
+  0    7     1    1  0.3605320E-11
+
+  0    1     3   -3  0.9162375E-11
+
+  0    2     3   -2  0.2026055E-11
+
+  0    4     3   -1  0.6432282E-11
+
+  0    6     3    0  0.5045250E-12
+
+  0    8     3    1  0.5193448E-12
+
+  0    9     3    2  0.9127223E-14
+
+  0   10     3    3  0.9009515E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1630081E-05
+
+   1  0.1261368E-09
+
+   2  0.2238488E-11
+
+   3  0.2689874E-13
+
+   4  0.4970642E-14
+
+   5  0.1132997E-14
+
+   6  0.3587880E-15
+
+   7  0.8875844E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2228506E-19
+
+   1  0.6126507E-12
+
+   2  0.7511639E-13
+
+   3  0.1806124E-14
+
+   4  0.1032205E-15
+
+   5  0.2573401E-16
+
+   6  0.4891215E-17
+
+   7  0.2104988E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1266473E-18
+
+   1  0.2183674E-11
+
+   2  0.1326156E-11
+
+   3  0.8371652E-13
+
+   4  0.7819465E-14
+
+   5  0.1701232E-14
+
+   6  0.3902347E-15
+
+   7  0.1862098E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.1116808E-18
+
+   1  0.4969576E-11
+
+   2  0.4053818E-11
+
+   3  0.1319431E-12
+
+   4  0.5033265E-14
+
+   5  0.1459111E-14
+
+   6  0.5452394E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -2
+
+   0  0.1591898E-18
+
+   1  0.1769583E-11
+
+   2  0.2545274E-12
+
+   3  0.1908017E-14
+
+   4  0.2524346E-16
+
+   5  0.8056322E-17
+
+   6  0.3528650E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3  -1
+
+   0  0.3405877E-11
+
+   1  0.2023556E-11
+
+   2  0.9683465E-12
+
+   3  0.3299050E-13
+
+   4  0.1052256E-14
+
+   5  0.3488309E-15
+
+   6  0.1108367E-15
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   0
+
+   0  0.3844932E-19
+
+   1  0.4606173E-12
+
+   2  0.4388687E-13
+
+   3  0.2672892E-17
+
+   4  0.1296126E-16
+
+   5  0.4636632E-17
+
+   6  0.4712715E-18
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   1
+
+   0  0.1831577E-19
+
+   1  0.3028753E-12
+
+   2  0.2131606E-12
+
+   3  0.3263082E-14
+
+   4  0.3533473E-16
+
+   5  0.5950779E-17
+
+   6  0.4530008E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   2
+
+   0  0.4375614E-23
+
+   1  0.2900936E-14
+
+   2  0.5429394E-14
+
+   3  0.7409934E-15
+
+   4  0.3716410E-16
+
+   5  0.1544081E-16
+
+   6  0.3294737E-17
+
+   7  0.0000000E+00
+
+ v, j, mj =   0   3   3
+
+   0  0.1767735E-21
+
+   1  0.1150474E-13
+
+   2  0.5688275E-13
+
+   3  0.1804306E-13
+
+   4  0.3080800E-14
+
+   5  0.4515571E-15
+
+   6  0.1322519E-15
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000016
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100002
+
+ the reaction probability =  0.9999984D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40223218D+01
+ trans energy =  0.43000000D+00
+ trans energy in z =  0.33000000D+00
+ total momentum =  0.10775965D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1736866E-05  0.1000019E+00  0.1482023E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1736847E-05
+
+  0    5     1    0  0.5839260E-12
+
+  0    7     1    1  0.3050244E-11
+
+  0    1     3   -3  0.7733864E-11
+
+  0    2     3   -2  0.1688989E-11
+
+  0    4     3   -1  0.5425685E-11
+
+  0    6     3    0  0.4198383E-12
+
+  0    8     3    1  0.4369333E-12
+
+  0    9     3    2  0.7890699E-14
+
+  0   10     3    3  0.7990358E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1736738E-05
+
+   1  0.1069265E-09
+
+   2  0.1873525E-11
+
+   3  0.2403139E-13
+
+   4  0.5217848E-14
+
+   5  0.1227323E-14
+
+   6  0.3690731E-15
+
+   7  0.8584566E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2246326E-19
+
+   1  0.5193414E-12
+
+   2  0.6279549E-13
+
+   3  0.1627345E-14
+
+   4  0.1084955E-15
+
+   5  0.2787076E-16
+
+   6  0.5027395E-17
+
+   7  0.2034058E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1055943E-18
+
+   1  0.1853807E-11
+
+   2  0.1108673E-11
+
+   3  0.7547170E-13
+
+   4  0.8234189E-14
+
+   5  0.1846397E-14
+
+   6  0.4108258E-15
+
+   7  0.1801802E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.8446184E-19
+
+   1  0.4129201E-11
+
+   2  0.3461899E-11
+
+   3  0.1349647E-12
+
+   4  0.5424078E-14
+
+   5  0.1509278E-14
+
+   6  0.6311131E-15
+
+   7  0.2351154E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.1645098E-18
+
+   1  0.1469798E-11
+
+   2  0.2171936E-12
+
+   3  0.1956711E-14
+
+   4  0.2719501E-16
+
+   5  0.8325337E-17
+
+   6  0.4084904E-17
+
+   7  0.9317505E-18
+
+ v, j, mj =   0   3  -1
+
+   0  0.2878326E-11
+
+   1  0.1684990E-11
+
+   2  0.8268073E-12
+
+   3  0.3389747E-13
+
+   4  0.1133012E-14
+
+   5  0.3608663E-15
+
+   6  0.1283773E-15
+
+   7  0.4169834E-16
+
+ v, j, mj =   0   3   0
+
+   0  0.3976608E-19
+
+   1  0.3823997E-12
+
+   2  0.3741601E-13
+
+   3  0.2663541E-17
+
+   4  0.1394130E-16
+
+   5  0.4791362E-17
+
+   6  0.5420742E-18
+
+   7  0.6149719E-18
+
+ v, j, mj =   0   3   1
+
+   0  0.1528337E-19
+
+   1  0.2515866E-12
+
+   2  0.1819761E-12
+
+   3  0.3318919E-14
+
+   4  0.3799029E-16
+
+   5  0.6148937E-17
+
+   6  0.5231025E-17
+
+   7  0.2318477E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.4230227E-23
+
+   1  0.2410143E-14
+
+   2  0.4647844E-14
+
+   3  0.7716415E-15
+
+   4  0.4025941E-16
+
+   5  0.1595170E-16
+
+   6  0.3810186E-17
+
+   7  0.1049350E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.1830042E-21
+
+   1  0.9549302E-14
+
+   2  0.4881407E-13
+
+   3  0.1732530E-13
+
+   4  0.3333970E-14
+
+   5  0.4672301E-15
+
+   6  0.1532728E-15
+
+   7  0.2604325E-15
+
+ sum of the probabilities =  0.0000017
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100002
+
+ the reaction probability =  0.9999983D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40123218D+01
+ trans energy =  0.44000000D+00
+ trans energy in z =  0.34000000D+00
+ total momentum =  0.10900547D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1885070E-05  0.1000014E+00  0.1482008E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1885053E-05
+
+  0    5     1    0  0.4968712E-12
+
+  0    7     1    1  0.2591860E-11
+
+  0    1     3   -3  0.6499755E-11
+
+  0    2     3   -2  0.1409219E-11
+
+  0    4     3   -1  0.4568920E-11
+
+  0    6     3    0  0.3498529E-12
+
+  0    8     3    1  0.3662271E-12
+
+  0    9     3    2  0.6763541E-14
+
+  0   10     3    3  0.7020006E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1884961E-05
+
+   1  0.9117141E-10
+
+   2  0.1576114E-11
+
+   3  0.2092189E-13
+
+   4  0.5042575E-14
+
+   5  0.1271951E-14
+
+   6  0.4327246E-15
+
+   7  0.7860906E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2311709E-19
+
+   1  0.4425166E-12
+
+   2  0.5277211E-13
+
+   3  0.1424131E-14
+
+   4  0.1049304E-15
+
+   5  0.2887191E-16
+
+   6  0.5911084E-17
+
+   7  0.1860450E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.9997759E-19
+
+   1  0.1581843E-11
+
+   2  0.9319154E-12
+
+   3  0.6607851E-13
+
+   4  0.7955348E-14
+
+   5  0.1916693E-14
+
+   6  0.5002146E-15
+
+   7  0.1650704E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.6767226E-19
+
+   1  0.3441319E-11
+
+   2  0.2917395E-11
+
+   3  0.1326770E-12
+
+   4  0.5529005E-14
+
+   5  0.1429920E-14
+
+   6  0.6272865E-15
+
+   7  0.7775151E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.1725134E-18
+
+   1  0.1224347E-11
+
+   2  0.1829038E-12
+
+   3  0.1925324E-14
+
+   4  0.2794956E-16
+
+   5  0.7873137E-17
+
+   6  0.4052138E-17
+
+   7  0.3081253E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.2428630E-11
+
+   1  0.1408343E-11
+
+   2  0.6967291E-12
+
+   3  0.3345137E-13
+
+   4  0.1159649E-14
+
+   5  0.3418528E-15
+
+   6  0.1276275E-15
+
+   7  0.1378943E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.4173393E-19
+
+   1  0.3183407E-12
+
+   2  0.3148844E-13
+
+   3  0.2548836E-17
+
+   4  0.1408055E-16
+
+   5  0.4533873E-17
+
+   6  0.5366541E-18
+
+   7  0.2033682E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.1248562E-19
+
+   1  0.2096043E-12
+
+   2  0.1533204E-12
+
+   3  0.3245220E-14
+
+   4  0.3853159E-16
+
+   5  0.5826176E-17
+
+   6  0.5197812E-17
+
+   7  0.7667088E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.4329816E-23
+
+   1  0.2008099E-14
+
+   2  0.3923085E-14
+
+   3  0.7681106E-15
+
+   4  0.4190893E-16
+
+   5  0.1508902E-16
+
+   6  0.3777952E-17
+
+   7  0.3470150E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.1951240E-21
+
+   1  0.7951824E-14
+
+   2  0.4124123E-13
+
+   3  0.1620113E-13
+
+   4  0.3349475E-14
+
+   5  0.4427021E-15
+
+   6  0.1524601E-15
+
+   7  0.8612376E-15
+
+ sum of the probabilities =  0.0000019
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100001
+
+ the reaction probability =  0.9999981D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.40023218D+01
+ trans energy =  0.45000000D+00
+ trans energy in z =  0.35000000D+00
+ total momentum =  0.11023721D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2033273E-05  0.1000011E+00  0.1481995E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.2033260E-05
+
+  0    5     1    0  0.4098165E-12
+
+  0    7     1    1  0.2133476E-11
+
+  0    1     3   -3  0.5265647E-11
+
+  0    2     3   -2  0.1129448E-11
+
+  0    4     3   -1  0.3712155E-11
+
+  0    6     3    0  0.2798674E-12
+
+  0    8     3    1  0.2955209E-12
+
+  0    9     3    2  0.5636383E-14
+
+  0   10     3    3  0.6049653E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.2033183E-05
+
+   1  0.7541629E-10
+
+   2  0.1278704E-11
+
+   3  0.1781238E-13
+
+   4  0.4867303E-14
+
+   5  0.1316579E-14
+
+   6  0.4963760E-15
+
+   7  0.7137246E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2377092E-19
+
+   1  0.3656919E-12
+
+   2  0.4274873E-13
+
+   3  0.1220917E-14
+
+   4  0.1013652E-15
+
+   5  0.2987307E-16
+
+   6  0.6794774E-17
+
+   7  0.1686842E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.9436091E-19
+
+   1  0.1309880E-11
+
+   2  0.7551582E-12
+
+   3  0.5668532E-13
+
+   4  0.7676508E-14
+
+   5  0.1986989E-14
+
+   6  0.5896033E-15
+
+   7  0.1499606E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.5088269E-19
+
+   1  0.2753438E-11
+
+   2  0.2372891E-11
+
+   3  0.1303894E-12
+
+   4  0.5633932E-14
+
+   5  0.1350562E-14
+
+   6  0.6234598E-15
+
+   7  0.1319915E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1805169E-18
+
+   1  0.9788947E-12
+
+   2  0.1486141E-12
+
+   3  0.1893938E-14
+
+   4  0.2870412E-16
+
+   5  0.7420937E-17
+
+   6  0.4019371E-17
+
+   7  0.5230755E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.1978934E-11
+
+   1  0.1131695E-11
+
+   2  0.5666508E-12
+
+   3  0.3300527E-13
+
+   4  0.1186286E-14
+
+   5  0.3228392E-15
+
+   6  0.1268778E-15
+
+   7  0.2340903E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.4370179E-19
+
+   1  0.2542816E-12
+
+   2  0.2556087E-13
+
+   3  0.2434130E-17
+
+   4  0.1421980E-16
+
+   5  0.4276385E-17
+
+   6  0.5312340E-18
+
+   7  0.3452392E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.9687872E-20
+
+   1  0.1676219E-12
+
+   2  0.1246647E-12
+
+   3  0.3171521E-14
+
+   4  0.3907289E-16
+
+   5  0.5503416E-17
+
+   6  0.5164599E-17
+
+   7  0.1301570E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.4429405E-23
+
+   1  0.1606056E-14
+
+   2  0.3198326E-14
+
+   3  0.7645797E-15
+
+   4  0.4355845E-16
+
+   5  0.1422633E-16
+
+   6  0.3745719E-17
+
+   7  0.5890949E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.2072437E-21
+
+   1  0.6354346E-14
+
+   2  0.3366839E-13
+
+   3  0.1507696E-13
+
+   4  0.3364981E-14
+
+   5  0.4181742E-15
+
+   6  0.1516474E-15
+
+   7  0.1462043E-14
+
+ sum of the probabilities =  0.0000020
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100001
+
+ the reaction probability =  0.9999980D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39923218D+01
+ trans energy =  0.46000000D+00
+ trans energy in z =  0.36000000D+00
+ total momentum =  0.11145534D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2181477E-05  0.1000008E+00  0.1481984E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.2181467E-05
+
+  0    5     1    0  0.3227617E-12
+
+  0    7     1    1  0.1675092E-11
+
+  0    1     3   -3  0.4031539E-11
+
+  0    2     3   -2  0.8496777E-12
+
+  0    4     3   -1  0.2855391E-11
+
+  0    6     3    0  0.2098820E-12
+
+  0    8     3    1  0.2248148E-12
+
+  0    9     3    2  0.4509225E-14
+
+  0   10     3    3  0.5079301E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.2181406E-05
+
+   1  0.5966118E-10
+
+   2  0.9812937E-12
+
+   3  0.1470288E-13
+
+   4  0.4692030E-14
+
+   5  0.1361208E-14
+
+   6  0.5600275E-15
+
+   7  0.6413586E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2442475E-19
+
+   1  0.2888671E-12
+
+   2  0.3272535E-13
+
+   3  0.1017704E-14
+
+   4  0.9780013E-16
+
+   5  0.3087422E-16
+
+   6  0.7678463E-17
+
+   7  0.1513233E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.8874422E-19
+
+   1  0.1037917E-11
+
+   2  0.5784009E-12
+
+   3  0.4729213E-13
+
+   4  0.7397668E-14
+
+   5  0.2057285E-14
+
+   6  0.6789921E-15
+
+   7  0.1348509E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.3409311E-19
+
+   1  0.2065557E-11
+
+   2  0.1828388E-11
+
+   3  0.1281017E-12
+
+   4  0.5738859E-14
+
+   5  0.1271204E-14
+
+   6  0.6196332E-15
+
+   7  0.1862314E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1885204E-18
+
+   1  0.7334428E-12
+
+   2  0.1143244E-12
+
+   3  0.1862552E-14
+
+   4  0.2945868E-16
+
+   5  0.6968737E-17
+
+   6  0.3986605E-17
+
+   7  0.7380258E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.1529238E-11
+
+   1  0.8550476E-12
+
+   2  0.4365725E-12
+
+   3  0.3255918E-13
+
+   4  0.1212924E-14
+
+   5  0.3038257E-15
+
+   6  0.1261281E-15
+
+   7  0.3302863E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.4566964E-19
+
+   1  0.1902225E-12
+
+   2  0.1963330E-13
+
+   3  0.2319424E-17
+
+   4  0.1435905E-16
+
+   5  0.4018896E-17
+
+   6  0.5258139E-18
+
+   7  0.4871102E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.6890121E-20
+
+   1  0.1256396E-12
+
+   2  0.9600903E-13
+
+   3  0.3097822E-14
+
+   4  0.3961419E-16
+
+   5  0.5180656E-17
+
+   6  0.5131386E-17
+
+   7  0.1836431E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.4528994E-23
+
+   1  0.1204013E-14
+
+   2  0.2473567E-14
+
+   3  0.7610488E-15
+
+   4  0.4520797E-16
+
+   5  0.1336364E-16
+
+   6  0.3713485E-17
+
+   7  0.8311749E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.2193634E-21
+
+   1  0.4756868E-14
+
+   2  0.2609554E-13
+
+   3  0.1395279E-13
+
+   4  0.3380486E-14
+
+   5  0.3936462E-15
+
+   6  0.1508346E-15
+
+   7  0.2062848E-14
+
+ sum of the probabilities =  0.0000022
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100001
+
+ the reaction probability =  0.9999978D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39823218D+01
+ trans energy =  0.47000000D+00
+ trans energy in z =  0.37000000D+00
+ total momentum =  0.11266030D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2370858E-05  0.1000005E+00  0.1481976E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.2370850E-05
+
+  0    5     1    0  0.2535332E-12
+
+  0    7     1    1  0.1309012E-11
+
+  0    1     3   -3  0.3023175E-11
+
+  0    2     3   -2  0.6258210E-12
+
+  0    4     3   -1  0.2155963E-11
+
+  0    6     3    0  0.1540597E-12
+
+  0    8     3    1  0.1673201E-12
+
+  0    9     3    2  0.3554933E-14
+
+  0   10     3    3  0.4241147E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.2370802E-05
+
+   1  0.4714349E-10
+
+   2  0.7453936E-12
+
+   3  0.1190866E-13
+
+   4  0.4397833E-14
+
+   5  0.1346611E-14
+
+   6  0.6104941E-15
+
+   7  0.5635822E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2549599E-19
+
+   1  0.2277646E-12
+
+   2  0.2479230E-13
+
+   3  0.8324594E-15
+
+   4  0.9168054E-16
+
+   5  0.3052872E-16
+
+   6  0.8376254E-17
+
+   7  0.1327326E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.9530879E-19
+
+   1  0.8209298E-12
+
+   2  0.4384668E-12
+
+   3  0.3871059E-13
+
+   4  0.6930384E-14
+
+   5  0.2037502E-14
+
+   6  0.7508715E-15
+
+   7  0.1185772E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2789495E-19
+
+   1  0.1518775E-11
+
+   2  0.1372414E-11
+
+   3  0.1218797E-12
+
+   4  0.6042435E-14
+
+   5  0.1284804E-14
+
+   6  0.5953085E-15
+
+   7  0.2183751E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1995481E-18
+
+   1  0.5383605E-12
+
+   2  0.8563677E-13
+
+   3  0.1773025E-14
+
+   4  0.3101038E-16
+
+   5  0.7057998E-17
+
+   6  0.3820070E-17
+
+   7  0.8650749E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.1160799E-11
+
+   1  0.6343446E-12
+
+   2  0.3276505E-12
+
+   3  0.3107634E-13
+
+   4  0.1276628E-14
+
+   5  0.3079799E-15
+
+   6  0.1211541E-15
+
+   7  0.3873433E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.4837081E-19
+
+   1  0.1393509E-12
+
+   2  0.1468132E-13
+
+   3  0.2156021E-17
+
+   4  0.1505602E-16
+
+   5  0.4050521E-17
+
+   6  0.5045490E-18
+
+   7  0.5709408E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.4774294E-20
+
+   1  0.9228570E-13
+
+   2  0.7202682E-13
+
+   3  0.2933886E-14
+
+   4  0.4199704E-16
+
+   5  0.5238468E-17
+
+   6  0.4936521E-17
+
+   7  0.2153285E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.4771826E-23
+
+   1  0.8843224E-15
+
+   2  0.1864249E-14
+
+   3  0.7312323E-15
+
+   4  0.4806361E-16
+
+   5  0.1376529E-16
+
+   6  0.3558515E-17
+
+   7  0.9741628E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.2373875E-21
+
+   1  0.3490915E-14
+
+   2  0.1969890E-13
+
+   3  0.1263772E-13
+
+   4  0.3608365E-14
+
+   5  0.4113669E-15
+
+   6  0.1449350E-15
+
+   7  0.2419276E-14
+
+ sum of the probabilities =  0.0000024
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100001
+
+ the reaction probability =  0.9999976D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39723218D+01
+ trans energy =  0.48000000D+00
+ trans energy in z =  0.38000000D+00
+ total momentum =  0.11385250D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2632604E-05  0.1000004E+00  0.1481970E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.2632598E-05
+
+  0    5     1    0  0.2156331E-12
+
+  0    7     1    1  0.1105148E-11
+
+  0    1     3   -3  0.2411541E-11
+
+  0    2     3   -2  0.5002291E-12
+
+  0    4     3   -1  0.1733045E-11
+
+  0    6     3    0  0.1231284E-12
+
+  0    8     3    1  0.1330438E-12
+
+  0    9     3    2  0.2904439E-14
+
+  0   10     3    3  0.3635323E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.2632557E-05
+
+   1  0.4031533E-10
+
+   2  0.6175936E-12
+
+   3  0.9668549E-14
+
+   4  0.3894634E-14
+
+   5  0.1227933E-14
+
+   6  0.6377892E-15
+
+   7  0.4762976E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2730079E-19
+
+   1  0.1942926E-12
+
+   2  0.2053287E-13
+
+   3  0.6787944E-15
+
+   4  0.8107165E-16
+
+   5  0.2781656E-16
+
+   6  0.8747344E-17
+
+   7  0.1119804E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1232810E-18
+
+   1  0.7005601E-12
+
+   2  0.3632469E-12
+
+   3  0.3155545E-13
+
+   4  0.6131923E-14
+
+   5  0.1859412E-14
+
+   6  0.7919794E-15
+
+   7  0.1002579E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.4031044E-19
+
+   1  0.1219963E-11
+
+   2  0.1072026E-11
+
+   3  0.1087436E-12
+
+   4  0.6695123E-14
+
+   5  0.1461770E-14
+
+   6  0.5349599E-15
+
+   7  0.2116860E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.2158903E-18
+
+   1  0.4317992E-12
+
+   2  0.6679447E-13
+
+   3  0.1581320E-14
+
+   4  0.3396300E-16
+
+   5  0.8098838E-17
+
+   6  0.3418448E-17
+
+   7  0.8376440E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.9351615E-12
+
+   1  0.5119601E-12
+
+   2  0.2559092E-12
+
+   3  0.2777149E-13
+
+   4  0.1405475E-14
+
+   5  0.3528496E-15
+
+   6  0.1087563E-15
+
+   7  0.3756161E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.5236075E-19
+
+   1  0.1116553E-12
+
+   2  0.1144387E-13
+
+   3  0.1907034E-17
+
+   4  0.1673311E-16
+
+   5  0.4590241E-17
+
+   6  0.4554380E-18
+
+   7  0.5527695E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.3856895E-20
+
+   1  0.7409562E-13
+
+   2  0.5625793E-13
+
+   3  0.2611364E-14
+
+   4  0.4761630E-16
+
+   5  0.5965106E-17
+
+   6  0.4457564E-17
+
+   7  0.2087006E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.5266398E-23
+
+   1  0.7093616E-15
+
+   2  0.1457811E-14
+
+   3  0.6552206E-15
+
+   4  0.5303892E-16
+
+   5  0.1638891E-16
+
+   6  0.3187844E-17
+
+   7  0.9430034E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.2657880E-21
+
+   1  0.2807595E-14
+
+   2  0.1536934E-13
+
+   3  0.1098716E-13
+
+   4  0.4209475E-14
+
+   5  0.5033366E-15
+
+   6  0.1300954E-15
+
+   7  0.2346228E-14
+
+ sum of the probabilities =  0.0000026
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999974D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39623218D+01
+ trans energy =  0.49000000D+00
+ trans energy in z =  0.39000000D+00
+ total momentum =  0.11503235D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2894351E-05  0.1000003E+00  0.1481966E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.2894346E-05
+
+  0    5     1    0  0.1777330E-12
+
+  0    7     1    1  0.9012850E-12
+
+  0    1     3   -3  0.1799907E-11
+
+  0    2     3   -2  0.3746371E-12
+
+  0    4     3   -1  0.1310127E-11
+
+  0    6     3    0  0.9219712E-13
+
+  0    8     3    1  0.9876753E-13
+
+  0    9     3    2  0.2253946E-14
+
+  0   10     3    3  0.3029499E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.2894312E-05
+
+   1  0.3348718E-10
+
+   2  0.4897936E-12
+
+   3  0.7428434E-14
+
+   4  0.3391435E-14
+
+   5  0.1109254E-14
+
+   6  0.6650843E-15
+
+   7  0.3890130E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2910559E-19
+
+   1  0.1608206E-12
+
+   2  0.1627345E-13
+
+   3  0.5251293E-15
+
+   4  0.7046275E-16
+
+   5  0.2510441E-16
+
+   6  0.9118434E-17
+
+   7  0.9122824E-17
+
+ v, j, mj =   0   1   1
+
+   0  0.1512533E-18
+
+   1  0.5801903E-12
+
+   2  0.2880270E-12
+
+   3  0.2440031E-13
+
+   4  0.5333462E-14
+
+   5  0.1681322E-14
+
+   6  0.8330873E-15
+
+   7  0.8193873E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.5272593E-19
+
+   1  0.9211510E-12
+
+   2  0.7716376E-12
+
+   3  0.9560742E-13
+
+   4  0.7347812E-14
+
+   5  0.1638737E-14
+
+   6  0.4746113E-15
+
+   7  0.2049969E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.2322326E-18
+
+   1  0.3252380E-12
+
+   2  0.4795218E-13
+
+   3  0.1389615E-14
+
+   4  0.3691562E-16
+
+   5  0.9139677E-17
+
+   6  0.3016826E-17
+
+   7  0.8102132E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.7095243E-12
+
+   1  0.3895755E-12
+
+   2  0.1841679E-12
+
+   3  0.2446665E-13
+
+   4  0.1534323E-14
+
+   5  0.3977193E-15
+
+   6  0.9635841E-16
+
+   7  0.3638889E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.5635068E-19
+
+   1  0.8395968E-13
+
+   2  0.8206428E-14
+
+   3  0.1658048E-17
+
+   4  0.1841021E-16
+
+   5  0.5129960E-17
+
+   6  0.4063270E-18
+
+   7  0.5345982E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.2939497E-20
+
+   1  0.5590554E-13
+
+   2  0.4048903E-13
+
+   3  0.2288842E-14
+
+   4  0.5323556E-16
+
+   5  0.6691744E-17
+
+   6  0.3978607E-17
+
+   7  0.2020728E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.5760970E-23
+
+   1  0.5344008E-15
+
+   2  0.1051374E-14
+
+   3  0.5792090E-15
+
+   4  0.5801422E-16
+
+   5  0.1901252E-16
+
+   6  0.2817173E-17
+
+   7  0.9118441E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.2941885E-21
+
+   1  0.2124275E-14
+
+   2  0.1103978E-13
+
+   3  0.9336599E-14
+
+   4  0.4810585E-14
+
+   5  0.5953064E-15
+
+   6  0.1152558E-15
+
+   7  0.2273180E-14
+
+ sum of the probabilities =  0.0000029
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999971D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39523218D+01
+ trans energy =  0.50000000D+00
+ trans energy in z =  0.40000000D+00
+ total momentum =  0.11620022D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.3156097E-05  0.1000002E+00  0.1481962E-01
+
+   1  0.0000000E+00  0.0000000E+00  0.0000000E+00
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.3156094E-05
+
+  0    5     1    0  0.1398329E-12
+
+  0    7     1    1  0.6974215E-12
+
+  0    1     3   -3  0.1188273E-11
+
+  0    2     3   -2  0.2490452E-12
+
+  0    4     3   -1  0.8872085E-12
+
+  0    6     3    0  0.6126581E-13
+
+  0    8     3    1  0.6449123E-13
+
+  0    9     3    2  0.1603452E-14
+
+  0   10     3    3  0.2423674E-13
+
+  1    3     1   -1  0.0000000E+00
+
+  1    5     1    0  0.0000000E+00
+
+  1    7     1    1  0.0000000E+00
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.3156067E-05
+
+   1  0.2665903E-10
+
+   2  0.3619936E-12
+
+   3  0.5188318E-14
+
+   4  0.2888236E-14
+
+   5  0.9905750E-15
+
+   6  0.6923794E-15
+
+   7  0.3017284E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.3091039E-19
+
+   1  0.1273486E-12
+
+   2  0.1201402E-13
+
+   3  0.3714642E-15
+
+   4  0.5985386E-16
+
+   5  0.2239225E-16
+
+   6  0.9489523E-17
+
+   7  0.7047607E-17
+
+ v, j, mj =   0   1   1
+
+   0  0.1792255E-18
+
+   1  0.4598205E-12
+
+   2  0.2128070E-12
+
+   3  0.1724517E-13
+
+   4  0.4535001E-14
+
+   5  0.1503232E-14
+
+   6  0.8741952E-15
+
+   7  0.6361952E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.6514143E-19
+
+   1  0.6223392E-12
+
+   2  0.4712492E-12
+
+   3  0.8247126E-13
+
+   4  0.8000500E-14
+
+   5  0.1815704E-14
+
+   6  0.4142627E-15
+
+   7  0.1983078E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.2485749E-18
+
+   1  0.2186767E-12
+
+   2  0.2910988E-13
+
+   3  0.1197911E-14
+
+   4  0.3986824E-16
+
+   5  0.1018052E-16
+
+   6  0.2615203E-17
+
+   7  0.7827823E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.4838871E-12
+
+   1  0.2671910E-12
+
+   2  0.1124267E-12
+
+   3  0.2116180E-13
+
+   4  0.1663170E-14
+
+   5  0.4425890E-15
+
+   6  0.8396054E-16
+
+   7  0.3521617E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.6034061E-19
+
+   1  0.5626407E-13
+
+   2  0.4968984E-14
+
+   3  0.1409061E-17
+
+   4  0.2008731E-16
+
+   5  0.5669680E-17
+
+   6  0.3572159E-18
+
+   7  0.5164269E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.2022099E-20
+
+   1  0.3771546E-13
+
+   2  0.2472013E-13
+
+   3  0.1966320E-14
+
+   4  0.5885481E-16
+
+   5  0.7418383E-17
+
+   6  0.3499650E-17
+
+   7  0.1954450E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.6255543E-23
+
+   1  0.3594400E-15
+
+   2  0.6449361E-15
+
+   3  0.5031973E-15
+
+   4  0.6298953E-16
+
+   5  0.2163614E-16
+
+   6  0.2446502E-17
+
+   7  0.8806847E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.3225890E-21
+
+   1  0.1440955E-14
+
+   2  0.6710228E-14
+
+   3  0.7686041E-14
+
+   4  0.5411694E-14
+
+   5  0.6872761E-15
+
+   6  0.1004162E-15
+
+   7  0.2200133E-14
+
+ sum of the probabilities =  0.0000032
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999968D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39423218D+01
+ trans energy =  0.51000000D+00
+ trans energy in z =  0.41000000D+00
+ total momentum =  0.11735647D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.3474221E-05  0.1000001E+00  0.1481960E-01
+
+   1  0.2849536E-13  0.2834490E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.3474219E-05
+
+  0    5     1    0  0.1146118E-12
+
+  0    7     1    1  0.5598497E-12
+
+  0    1     3   -3  0.7646787E-12
+
+  0    2     3   -2  0.1651274E-12
+
+  0    4     3   -1  0.5942166E-12
+
+  0    6     3    0  0.4077245E-13
+
+  0    8     3    1  0.4098282E-13
+
+  0    9     3    2  0.1126060E-14
+
+  0   10     3    3  0.1947192E-13
+
+  1    3     1   -1  0.2651045E-13
+
+  1    5     1    0  0.1128326E-15
+
+  1    7     1    1  0.1872075E-14
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.3474197E-05
+
+   1  0.2210092E-10
+
+   2  0.2770434E-12
+
+   3  0.3442523E-14
+
+   4  0.2414683E-14
+
+   5  0.8687189E-15
+
+   6  0.6933351E-15
+
+   7  0.2993998E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.3330390E-19
+
+   1  0.1050719E-12
+
+   2  0.9203532E-14
+
+   3  0.2504129E-15
+
+   4  0.4989262E-16
+
+   5  0.1961301E-16
+
+   6  0.9496470E-17
+
+   7  0.6920541E-17
+
+ v, j, mj =   0   1   1
+
+   0  0.2136373E-18
+
+   1  0.3787052E-12
+
+   2  0.1629799E-12
+
+   3  0.1159539E-13
+
+   4  0.3784030E-14
+
+   5  0.1319749E-14
+
+   6  0.8802515E-15
+
+   7  0.5848873E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.8432012E-19
+
+   1  0.4246732E-12
+
+   2  0.2576098E-12
+
+   3  0.6994323E-13
+
+   4  0.8271497E-14
+
+   5  0.1919853E-14
+
+   6  0.3943701E-15
+
+   7  0.1866657E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.2696784E-18
+
+   1  0.1483239E-12
+
+   2  0.1572653E-13
+
+   3  0.1015174E-14
+
+   4  0.4100453E-16
+
+   5  0.1080260E-16
+
+   6  0.2426116E-17
+
+   7  0.7359017E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.3276880E-12
+
+   1  0.1845662E-12
+
+   2  0.6137518E-13
+
+   3  0.1799191E-13
+
+   4  0.1715773E-14
+
+   5  0.4694651E-15
+
+   6  0.7843818E-16
+
+   7  0.3316151E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.6548664E-19
+
+   1  0.3806386E-13
+
+   2  0.2675354E-14
+
+   3  0.1181556E-17
+
+   4  0.2080909E-16
+
+   5  0.5983826E-17
+
+   6  0.3405797E-18
+
+   7  0.4854520E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.1886583E-20
+
+   1  0.2571326E-13
+
+   2  0.1351716E-13
+
+   3  0.1661255E-14
+
+   4  0.6139406E-16
+
+   5  0.7846193E-17
+
+   6  0.3504638E-17
+
+   7  0.1839471E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.6909442E-23
+
+   1  0.2437386E-15
+
+   2  0.3539854E-15
+
+   3  0.4294051E-15
+
+   4  0.6517190E-16
+
+   5  0.2329541E-16
+
+   6  0.2186546E-17
+
+   7  0.8276733E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.3568282E-21
+
+   1  0.9960902E-15
+
+   2  0.3599026E-14
+
+   3  0.6236340E-14
+
+   4  0.5702152E-14
+
+   5  0.7471837E-15
+
+   6  0.1190238E-15
+
+   7  0.2072099E-14
+
+ sum of the probabilities =  0.0000035
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999965D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39323218D+01
+ trans energy =  0.52000000D+00
+ trans energy in z =  0.42000000D+00
+ total momentum =  0.11850144D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.3929148E-05  0.1000001E+00  0.1481960E-01
+
+   1  0.1261354E-12  0.2834490E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.3929146E-05
+
+  0    5     1    0  0.1201564E-12
+
+  0    7     1    1  0.5831359E-12
+
+  0    1     3   -3  0.7973663E-12
+
+  0    2     3   -2  0.1823331E-12
+
+  0    4     3   -1  0.6164943E-12
+
+  0    6     3    0  0.4560707E-13
+
+  0    8     3    1  0.4360295E-13
+
+  0    9     3    2  0.1068700E-14
+
+  0   10     3    3  0.1784559E-13
+
+  1    3     1   -1  0.1173492E-12
+
+  1    5     1    0  0.4994565E-15
+
+  1    7     1    1  0.8286790E-14
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.3929122E-05
+
+   1  0.2305115E-10
+
+   2  0.2960692E-12
+
+   3  0.2896211E-14
+
+   4  0.2013067E-14
+
+   5  0.7391529E-15
+
+   6  0.6303778E-15
+
+   7  0.5032190E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.3712590E-19
+
+   1  0.1099606E-12
+
+   2  0.9908933E-14
+
+   3  0.2084997E-15
+
+   4  0.4150296E-16
+
+   5  0.1667098E-16
+
+   6  0.8619814E-17
+
+   7  0.1152071E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.2636750E-18
+
+   1  0.3928418E-12
+
+   2  0.1747691E-12
+
+   3  0.9598406E-14
+
+   4  0.3148297E-14
+
+   5  0.1123183E-14
+
+   6  0.8012543E-15
+
+   7  0.8535997E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.1199099E-18
+
+   1  0.4724402E-12
+
+   2  0.2544688E-12
+
+   3  0.5889083E-13
+
+   4  0.7616312E-14
+
+   5  0.1847312E-14
+
+   6  0.4726449E-15
+
+   7  0.1630050E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.3023352E-18
+
+   1  0.1658318E-12
+
+   2  0.1558947E-13
+
+   3  0.8541982E-15
+
+   4  0.3773343E-16
+
+   5  0.1040857E-16
+
+   6  0.2752753E-17
+
+   7  0.6418260E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.3399821E-12
+
+   1  0.1984193E-12
+
+   2  0.6052806E-13
+
+   3  0.1514948E-13
+
+   4  0.1583368E-14
+
+   5  0.4526790E-15
+
+   6  0.8959941E-16
+
+   7  0.2896682E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.7343795E-19
+
+   1  0.4290448E-13
+
+   2  0.2671912E-14
+
+   3  0.1006176E-17
+
+   4  0.1921279E-16
+
+   5  0.5750610E-17
+
+   6  0.4027442E-18
+
+   7  0.4234088E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.3648326E-20
+
+   1  0.2872612E-13
+
+   2  0.1339352E-13
+
+   3  0.1398550E-14
+
+   4  0.5645960E-16
+
+   5  0.7548890E-17
+
+   6  0.4683932E-17
+
+   7  0.1606320E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.7949953E-23
+
+   1  0.2718317E-15
+
+   2  0.3432665E-15
+
+   3  0.3609982E-15
+
+   4  0.6057713E-16
+
+   5  0.2261467E-16
+
+   6  0.2195240E-17
+
+   7  0.7216373E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.4052350E-21
+
+   1  0.1129842E-14
+
+   2  0.3444191E-14
+
+   3  0.5274026E-14
+
+   4  0.5238804E-14
+
+   5  0.7292914E-15
+
+   6  0.2187920E-15
+
+   7  0.1810640E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1163667E-12
+
+   3  0.9825101E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.4988408E-15
+
+   3  0.6157405E-18
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.8176594E-14
+
+   3  0.1101958E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000039
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999961D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39223218D+01
+ trans energy =  0.53000000D+00
+ trans energy in z =  0.43000000D+00
+ total momentum =  0.11963545D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.4384075E-05  0.1000001E+00  0.1481959E-01
+
+   1  0.2237755E-12  0.2834490E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.4384073E-05
+
+  0    5     1    0  0.1257011E-12
+
+  0    7     1    1  0.6064222E-12
+
+  0    1     3   -3  0.8300539E-12
+
+  0    2     3   -2  0.1995388E-12
+
+  0    4     3   -1  0.6387721E-12
+
+  0    6     3    0  0.5044169E-13
+
+  0    8     3    1  0.4622308E-13
+
+  0    9     3    2  0.1011340E-14
+
+  0   10     3    3  0.1621926E-13
+
+  1    3     1   -1  0.2081879E-12
+
+  1    5     1    0  0.8860804E-15
+
+  1    7     1    1  0.1470150E-13
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.4384048E-05
+
+   1  0.2400138E-10
+
+   2  0.3150950E-12
+
+   3  0.2349899E-14
+
+   4  0.1611451E-14
+
+   5  0.6095870E-15
+
+   6  0.5674206E-15
+
+   7  0.7070382E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.4094791E-19
+
+   1  0.1148494E-12
+
+   2  0.1061433E-13
+
+   3  0.1665865E-15
+
+   4  0.3311329E-16
+
+   5  0.1372895E-16
+
+   6  0.7743159E-17
+
+   7  0.1612089E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.3137127E-18
+
+   1  0.4069784E-12
+
+   2  0.1865583E-12
+
+   3  0.7601419E-14
+
+   4  0.2512564E-14
+
+   5  0.9266159E-15
+
+   6  0.7222571E-15
+
+   7  0.1122312E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.1554997E-18
+
+   1  0.5202072E-12
+
+   2  0.2513278E-12
+
+   3  0.4783844E-13
+
+   4  0.6961127E-14
+
+   5  0.1774770E-14
+
+   6  0.5509196E-15
+
+   7  0.1393442E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.3349921E-18
+
+   1  0.1833398E-12
+
+   2  0.1545241E-13
+
+   3  0.6932225E-15
+
+   4  0.3446234E-16
+
+   5  0.1001454E-16
+
+   6  0.3079390E-17
+
+   7  0.5477503E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.3522763E-12
+
+   1  0.2122725E-12
+
+   2  0.5968094E-13
+
+   3  0.1230705E-13
+
+   4  0.1450963E-14
+
+   5  0.4358930E-15
+
+   6  0.1007606E-15
+
+   7  0.2477213E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.8138925E-19
+
+   1  0.4774510E-13
+
+   2  0.2668471E-14
+
+   3  0.8307961E-18
+
+   4  0.1761648E-16
+
+   5  0.5517394E-17
+
+   6  0.4649087E-18
+
+   7  0.3613656E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.5410068E-20
+
+   1  0.3173897E-13
+
+   2  0.1326988E-13
+
+   3  0.1135844E-14
+
+   4  0.5152514E-16
+
+   5  0.7251588E-17
+
+   6  0.5863226E-17
+
+   7  0.1373170E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.8990464E-23
+
+   1  0.2999248E-15
+
+   2  0.3325476E-15
+
+   3  0.2925913E-15
+
+   4  0.5598236E-16
+
+   5  0.2193393E-16
+
+   6  0.2203934E-17
+
+   7  0.6156014E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.4536419E-21
+
+   1  0.1263593E-14
+
+   2  0.3289356E-14
+
+   3  0.4311713E-14
+
+   4  0.4775457E-14
+
+   5  0.7113990E-15
+
+   6  0.3185602E-15
+
+   7  0.1549181E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2064449E-12
+
+   3  0.1743060E-14
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.8849880E-15
+
+   3  0.1092379E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1450601E-13
+
+   3  0.1954971E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000044
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999956D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39123218D+01
+ trans energy =  0.54000000D+00
+ trans energy in z =  0.44000000D+00
+ total momentum =  0.12075881D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.4839002E-05  0.1000001E+00  0.1481959E-01
+
+   1  0.3214156E-12  0.2834490E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.4838999E-05
+
+  0    5     1    0  0.1312457E-12
+
+  0    7     1    1  0.6297085E-12
+
+  0    1     3   -3  0.8627414E-12
+
+  0    2     3   -2  0.2167444E-12
+
+  0    4     3   -1  0.6610498E-12
+
+  0    6     3    0  0.5527631E-13
+
+  0    8     3    1  0.4884321E-13
+
+  0    9     3    2  0.9539801E-15
+
+  0   10     3    3  0.1459293E-13
+
+  1    3     1   -1  0.2990267E-12
+
+  1    5     1    0  0.1272704E-14
+
+  1    7     1    1  0.2111622E-13
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.4838974E-05
+
+   1  0.2495160E-10
+
+   2  0.3341208E-12
+
+   3  0.1803586E-14
+
+   4  0.1209835E-14
+
+   5  0.4800211E-15
+
+   6  0.5044633E-15
+
+   7  0.9108573E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.4476992E-19
+
+   1  0.1197382E-12
+
+   2  0.1131974E-13
+
+   3  0.1246733E-15
+
+   4  0.2472362E-16
+
+   5  0.1078692E-16
+
+   6  0.6866504E-17
+
+   7  0.2072106E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.3637504E-18
+
+   1  0.4211150E-12
+
+   2  0.1983475E-12
+
+   3  0.5604432E-14
+
+   4  0.1876831E-14
+
+   5  0.7300493E-15
+
+   6  0.6432599E-15
+
+   7  0.1391025E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.1910894E-18
+
+   1  0.5679741E-12
+
+   2  0.2481869E-12
+
+   3  0.3678604E-13
+
+   4  0.6305942E-14
+
+   5  0.1702229E-14
+
+   6  0.6291944E-15
+
+   7  0.1156834E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.3676489E-18
+
+   1  0.2008477E-12
+
+   2  0.1531534E-13
+
+   3  0.5322468E-15
+
+   4  0.3119124E-16
+
+   5  0.9620513E-17
+
+   6  0.3406026E-17
+
+   7  0.4536746E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.3645704E-12
+
+   1  0.2261256E-12
+
+   2  0.5883382E-13
+
+   3  0.9464618E-14
+
+   4  0.1318558E-14
+
+   5  0.4191070E-15
+
+   6  0.1119219E-15
+
+   7  0.2057744E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.8934056E-19
+
+   1  0.5258571E-13
+
+   2  0.2665030E-14
+
+   3  0.6554162E-18
+
+   4  0.1602018E-16
+
+   5  0.5284178E-17
+
+   6  0.5270733E-18
+
+   7  0.2993224E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.7171811E-20
+
+   1  0.3475183E-13
+
+   2  0.1314625E-13
+
+   3  0.8731390E-15
+
+   4  0.4659068E-16
+
+   5  0.6954285E-17
+
+   6  0.7042520E-17
+
+   7  0.1140019E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.1003098E-22
+
+   1  0.3280179E-15
+
+   2  0.3218287E-15
+
+   3  0.2241844E-15
+
+   4  0.5138760E-16
+
+   5  0.2125319E-16
+
+   6  0.2212629E-17
+
+   7  0.5095654E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.5020488E-21
+
+   1  0.1397345E-14
+
+   2  0.3134521E-14
+
+   3  0.3349399E-14
+
+   4  0.4312109E-14
+
+   5  0.6935067E-15
+
+   6  0.4183284E-15
+
+   7  0.1287722E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2965231E-12
+
+   3  0.2503611E-14
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1271135E-14
+
+   3  0.1569017E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2083542E-13
+
+   3  0.2807985E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000048
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999952D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.39023218D+01
+ trans energy =  0.55000000D+00
+ trans energy in z =  0.45000000D+00
+ total momentum =  0.12187182D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.5368844E-05  0.1000001E+00  0.1481959E-01
+
+   1  0.7715452E-12  0.4183457E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.5368842E-05
+
+  0    5     1    0  0.1381401E-12
+
+  0    7     1    1  0.6612716E-12
+
+  0    1     3   -3  0.9430504E-12
+
+  0    2     3   -2  0.2415384E-12
+
+  0    4     3   -1  0.7184445E-12
+
+  0    6     3    0  0.6190554E-13
+
+  0    8     3    1  0.5403024E-13
+
+  0    9     3    2  0.9591191E-15
+
+  0   10     3    3  0.1367203E-13
+
+  1    3     1   -1  0.7201122E-12
+
+  1    5     1    0  0.7221769E-14
+
+  1    7     1    1  0.4421118E-13
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.5368815E-05
+
+   1  0.2611634E-10
+
+   2  0.3583277E-12
+
+   3  0.1537720E-14
+
+   4  0.8879976E-15
+
+   5  0.3702129E-15
+
+   6  0.4427250E-15
+
+   7  0.1059605E-14
+
+ v, j, mj =   0   1   0
+
+   0  0.4944637E-19
+
+   1  0.1257889E-12
+
+   2  0.1219206E-13
+
+   3  0.1026936E-15
+
+   4  0.1802025E-16
+
+   5  0.8296087E-17
+
+   6  0.6008544E-17
+
+   7  0.2407779E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.4143238E-18
+
+   1  0.4396595E-12
+
+   2  0.2129909E-12
+
+   3  0.4537536E-14
+
+   4  0.1367831E-14
+
+   5  0.5631537E-15
+
+   6  0.5649315E-15
+
+   7  0.1587384E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2266237E-18
+
+   1  0.6314310E-12
+
+   2  0.2749278E-12
+
+   3  0.2780905E-13
+
+   4  0.5639842E-14
+
+   5  0.1607760E-14
+
+   6  0.6888455E-15
+
+   7  0.9458373E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.4075356E-18
+
+   1  0.2240498E-12
+
+   2  0.1704216E-13
+
+   3  0.4016802E-15
+
+   4  0.2787374E-16
+
+   5  0.9098103E-17
+
+   6  0.3649614E-17
+
+   7  0.3713207E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.3978119E-12
+
+   1  0.2465015E-12
+
+   2  0.6511413E-13
+
+   3  0.7147956E-14
+
+   4  0.1183094E-14
+
+   5  0.3966860E-15
+
+   6  0.1203074E-15
+
+   7  0.1688645E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.9905103E-19
+
+   1  0.5890319E-13
+
+   2  0.2979348E-14
+
+   3  0.5192084E-18
+
+   4  0.1438372E-16
+
+   5  0.4985345E-17
+
+   6  0.5738794E-18
+
+   7  0.2444803E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.9242849E-20
+
+   1  0.3871685E-13
+
+   2  0.1458698E-13
+
+   3  0.6610110E-15
+
+   4  0.4159371E-16
+
+   5  0.6567592E-17
+
+   6  0.7955073E-17
+
+   7  0.9268907E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.1128274E-22
+
+   1  0.3654975E-15
+
+   2  0.3523435E-15
+
+   3  0.1680776E-15
+
+   4  0.4653707E-16
+
+   5  0.2023676E-16
+
+   6  0.2205841E-17
+
+   7  0.4220719E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.5565288E-21
+
+   1  0.1566958E-14
+
+   2  0.3434086E-14
+
+   3  0.2622181E-14
+
+   4  0.3840045E-14
+
+   5  0.6635330E-15
+
+   6  0.4968088E-15
+
+   7  0.1048419E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.3026726E-12
+
+   2  0.4142556E-12
+
+   3  0.3184015E-14
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.5443407E-14
+
+   2  0.1776382E-14
+
+   3  0.1980120E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.1469789E-13
+
+   2  0.2915916E-13
+
+   3  0.3541331E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000054
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999946D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38923218D+01
+ trans energy =  0.56000000D+00
+ trans energy in z =  0.46000000D+00
+ total momentum =  0.12297476D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6162718E-05  0.1000001E+00  0.1481960E-01
+
+   1  0.2463981E-11  0.5167994E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.6162715E-05
+
+  0    5     1    0  0.1497915E-12
+
+  0    7     1    1  0.7220057E-12
+
+  0    1     3   -3  0.1191195E-11
+
+  0    2     3   -2  0.2930766E-12
+
+  0    4     3   -1  0.8996042E-12
+
+  0    6     3    0  0.7485967E-13
+
+  0    8     3    1  0.6826399E-13
+
+  0    9     3    2  0.1184528E-14
+
+  0   10     3    3  0.1523733E-13
+
+  1    3     1   -1  0.2305112E-11
+
+  1    5     1    0  0.3277498E-13
+
+  1    7     1    1  0.1260936E-12
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.6162686E-05
+
+   1  0.2803710E-10
+
+   2  0.4007943E-12
+
+   3  0.2260250E-14
+
+   4  0.8473294E-15
+
+   5  0.3300388E-15
+
+   6  0.3852831E-15
+
+   7  0.1014259E-14
+
+ v, j, mj =   0   1   0
+
+   0  0.5713416E-19
+
+   1  0.1359348E-12
+
+   2  0.1365272E-13
+
+   3  0.1509675E-15
+
+   4  0.1726005E-16
+
+   5  0.7395462E-17
+
+   6  0.5216474E-17
+
+   7  0.2305217E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.4667853E-18
+
+   1  0.4737390E-12
+
+   2  0.2376936E-12
+
+   3  0.6748630E-14
+
+   4  0.1305487E-14
+
+   5  0.5008302E-15
+
+   6  0.4889601E-15
+
+   7  0.1528743E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2619620E-18
+
+   1  0.7501850E-12
+
+   2  0.4069841E-12
+
+   3  0.2614661E-13
+
+   4  0.4935271E-14
+
+   5  0.1436010E-14
+
+   6  0.6828598E-15
+
+   7  0.8251030E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.4729029E-18
+
+   1  0.2673204E-12
+
+   2  0.2533802E-13
+
+   3  0.3782870E-15
+
+   4  0.2439267E-16
+
+   5  0.8123229E-17
+
+   6  0.3600506E-17
+
+   7  0.3302792E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.5048798E-12
+
+   1  0.2898661E-12
+
+   2  0.9651422E-13
+
+   3  0.6684295E-14
+
+   4  0.1036848E-14
+
+   5  0.3544055E-15
+
+   6  0.1189101E-15
+
+   7  0.1497066E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.1149614E-18
+
+   1  0.7042569E-13
+
+   2  0.4413573E-14
+
+   3  0.5210578E-18
+
+   4  0.1260573E-16
+
+   5  0.4455249E-17
+
+   6  0.5665567E-18
+
+   7  0.2150174E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.1240396E-19
+
+   1  0.4603766E-13
+
+   2  0.2154117E-13
+
+   3  0.6271365E-15
+
+   4  0.3637641E-16
+
+   5  0.5865856E-17
+
+   6  0.7927531E-17
+
+   7  0.7843281E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.1327902E-22
+
+   1  0.4360588E-15
+
+   2  0.5281816E-15
+
+   3  0.1553212E-15
+
+   4  0.4078514E-16
+
+   5  0.1803725E-16
+
+   6  0.2144490E-17
+
+   7  0.3999289E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.6324125E-21
+
+   1  0.1862963E-14
+
+   2  0.5335133E-14
+
+   3  0.2723529E-14
+
+   4  0.3337259E-14
+
+   5  0.5909796E-15
+
+   6  0.5002629E-15
+
+   7  0.8872016E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.1672078E-11
+
+   2  0.6294524E-12
+
+   3  0.3581954E-14
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.3007143E-13
+
+   2  0.2701382E-14
+
+   3  0.2160254E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.8119667E-13
+
+   2  0.4451165E-13
+
+   3  0.3852927E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000062
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999938D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38823218D+01
+ trans energy =  0.57000000D+00
+ trans energy in z =  0.47000000D+00
+ total momentum =  0.12406789D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.6956592E-05  0.1000001E+00  0.1481960E-01
+
+   1  0.4156416E-11  0.5350751E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.6956588E-05
+
+  0    5     1    0  0.1614429E-12
+
+  0    7     1    1  0.7827398E-12
+
+  0    1     3   -3  0.1439340E-11
+
+  0    2     3   -2  0.3446148E-12
+
+  0    4     3   -1  0.1080764E-11
+
+  0    6     3    0  0.8781381E-13
+
+  0    8     3    1  0.8249775E-13
+
+  0    9     3    2  0.1409936E-14
+
+  0   10     3    3  0.1680262E-13
+
+  1    3     1   -1  0.3890112E-11
+
+  1    5     1    0  0.5832818E-13
+
+  1    7     1    1  0.2079761E-12
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.6956557E-05
+
+   1  0.2995786E-10
+
+   2  0.4432609E-12
+
+   3  0.2982780E-14
+
+   4  0.8066612E-15
+
+   5  0.2898648E-15
+
+   6  0.3278412E-15
+
+   7  0.9689127E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.6482196E-19
+
+   1  0.1460808E-12
+
+   2  0.1511337E-13
+
+   3  0.1992414E-15
+
+   4  0.1649985E-16
+
+   5  0.6494837E-17
+
+   6  0.4424404E-17
+
+   7  0.2202654E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.5192468E-18
+
+   1  0.5078185E-12
+
+   2  0.2623963E-12
+
+   3  0.8959725E-14
+
+   4  0.1243144E-14
+
+   5  0.4385067E-15
+
+   6  0.4129886E-15
+
+   7  0.1470102E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.2973004E-18
+
+   1  0.8689390E-12
+
+   2  0.5390403E-12
+
+   3  0.2448417E-13
+
+   4  0.4230701E-14
+
+   5  0.1264260E-14
+
+   6  0.6768742E-15
+
+   7  0.7043687E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.5382703E-18
+
+   1  0.3105910E-12
+
+   2  0.3363388E-13
+
+   3  0.3548937E-15
+
+   4  0.2091160E-16
+
+   5  0.7148355E-17
+
+   6  0.3551399E-17
+
+   7  0.2892376E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.6119477E-12
+
+   1  0.3332306E-12
+
+   2  0.1279143E-12
+
+   3  0.6220635E-14
+
+   4  0.8906013E-15
+
+   5  0.3121250E-15
+
+   6  0.1175128E-15
+
+   7  0.1305487E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.1308718E-18
+
+   1  0.8194819E-13
+
+   2  0.5847798E-14
+
+   3  0.5229072E-18
+
+   4  0.1082774E-16
+
+   5  0.3925154E-17
+
+   6  0.5592340E-18
+
+   7  0.1855545E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.1556507E-19
+
+   1  0.5335847E-13
+
+   2  0.2849536E-13
+
+   3  0.5932621E-15
+
+   4  0.3115911E-16
+
+   5  0.5164120E-17
+
+   6  0.7899989E-17
+
+   7  0.6417655E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.1527530E-22
+
+   1  0.5066201E-15
+
+   2  0.7040196E-15
+
+   3  0.1425647E-15
+
+   4  0.3503321E-16
+
+   5  0.1583774E-16
+
+   6  0.2083139E-17
+
+   7  0.3777859E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.7082963E-21
+
+   1  0.2158967E-14
+
+   2  0.7236179E-14
+
+   3  0.2824878E-14
+
+   4  0.2834473E-14
+
+   5  0.5184262E-15
+
+   6  0.5037171E-15
+
+   7  0.7259843E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.3041483E-11
+
+   2  0.8446492E-12
+
+   3  0.3979894E-14
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.5469946E-13
+
+   2  0.3626382E-14
+
+   3  0.2340388E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.1476955E-12
+
+   2  0.5986414E-13
+
+   3  0.4164522E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000070
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999930D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38723218D+01
+ trans energy =  0.58000000D+00
+ trans energy in z =  0.48000000D+00
+ total momentum =  0.12515147D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.7750465E-05  0.1000001E+00  0.1481960E-01
+
+   1  0.5848852E-11  0.5427742E-01  0.1481957E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.7750460E-05
+
+  0    5     1    0  0.1730943E-12
+
+  0    7     1    1  0.8434739E-12
+
+  0    1     3   -3  0.1687485E-11
+
+  0    2     3   -2  0.3961530E-12
+
+  0    4     3   -1  0.1261924E-11
+
+  0    6     3    0  0.1007679E-12
+
+  0    8     3    1  0.9673150E-13
+
+  0    9     3    2  0.1635345E-14
+
+  0   10     3    3  0.1836792E-13
+
+  1    3     1   -1  0.5475112E-11
+
+  1    5     1    0  0.8388139E-13
+
+  1    7     1    1  0.2898585E-12
+
+  1    1     3   -3  0.0000000E+00
+
+  1    2     3   -2  0.0000000E+00
+
+  1    4     3   -1  0.0000000E+00
+
+  1    6     3    0  0.0000000E+00
+
+  1    8     3    1  0.0000000E+00
+
+  1    9     3    2  0.0000000E+00
+
+  1   10     3    3  0.0000000E+00
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.7750428E-05
+
+   1  0.3187862E-10
+
+   2  0.4857276E-12
+
+   3  0.3705310E-14
+
+   4  0.7659930E-15
+
+   5  0.2496907E-15
+
+   6  0.2703993E-15
+
+   7  0.9235666E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.7250975E-19
+
+   1  0.1562267E-12
+
+   2  0.1657402E-13
+
+   3  0.2475153E-15
+
+   4  0.1573965E-16
+
+   5  0.5594212E-17
+
+   6  0.3632334E-17
+
+   7  0.2100092E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.5717083E-18
+
+   1  0.5418980E-12
+
+   2  0.2870990E-12
+
+   3  0.1117082E-13
+
+   4  0.1180800E-14
+
+   5  0.3761832E-15
+
+   6  0.3370172E-15
+
+   7  0.1411461E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.3326388E-18
+
+   1  0.9876930E-12
+
+   2  0.6710965E-12
+
+   3  0.2282173E-13
+
+   4  0.3526130E-14
+
+   5  0.1092510E-14
+
+   6  0.6708885E-15
+
+   7  0.5836345E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.6036376E-18
+
+   1  0.3538616E-12
+
+   2  0.4192974E-13
+
+   3  0.3315004E-15
+
+   4  0.1743053E-16
+
+   5  0.6173481E-17
+
+   6  0.3502291E-17
+
+   7  0.2481960E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.7190155E-12
+
+   1  0.3765952E-12
+
+   2  0.1593144E-12
+
+   3  0.5756975E-14
+
+   4  0.7443549E-15
+
+   5  0.2698445E-15
+
+   6  0.1161155E-15
+
+   7  0.1113909E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.1467823E-18
+
+   1  0.9347068E-13
+
+   2  0.7282022E-14
+
+   3  0.5247566E-18
+
+   4  0.9049748E-17
+
+   5  0.3395059E-17
+
+   6  0.5519113E-18
+
+   7  0.1560915E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.1872618E-19
+
+   1  0.6067928E-13
+
+   2  0.3544955E-13
+
+   3  0.5593876E-15
+
+   4  0.2594182E-16
+
+   5  0.4462384E-17
+
+   6  0.7872446E-17
+
+   7  0.4992029E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.1727159E-22
+
+   1  0.5771813E-15
+
+   2  0.8798577E-15
+
+   3  0.1298083E-15
+
+   4  0.2928128E-16
+
+   5  0.1363823E-16
+
+   6  0.2021788E-17
+
+   7  0.3556430E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.7841801E-21
+
+   1  0.2454971E-14
+
+   2  0.9137226E-14
+
+   3  0.2926226E-14
+
+   4  0.2331687E-14
+
+   5  0.4458728E-15
+
+   6  0.5071712E-15
+
+   7  0.5647670E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.0000000E+00
+
+   1  0.4410888E-11
+
+   2  0.1059846E-11
+
+   3  0.4377833E-14
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.0000000E+00
+
+   1  0.7932749E-13
+
+   2  0.4551382E-14
+
+   3  0.2520522E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.0000000E+00
+
+   1  0.2141942E-12
+
+   2  0.7521664E-13
+
+   3  0.4476118E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000078
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999922D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38623218D+01
+ trans energy =  0.59000000D+00
+ trans energy in z =  0.49000000D+00
+ total momentum =  0.12622575D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.8634389E-05  0.1000001E+00  0.1481960E-01
+
+   1  0.7497138E-11  0.5588823E-01  0.1482790E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.8634384E-05
+
+  0    5     1    0  0.1805220E-12
+
+  0    7     1    1  0.8835872E-12
+
+  0    1     3   -3  0.1890786E-11
+
+  0    2     3   -2  0.4362038E-12
+
+  0    4     3   -1  0.1412014E-11
+
+  0    6     3    0  0.1107673E-12
+
+  0    8     3    1  0.1082986E-12
+
+  0    9     3    2  0.1830615E-14
+
+  0   10     3    3  0.1982709E-13
+
+  1    3     1   -1  0.7021001E-11
+
+  1    5     1    0  0.1082775E-12
+
+  1    7     1    1  0.3670086E-12
+
+  1    1     3   -3  0.5468775E-15
+
+  1    2     3   -2  0.1978718E-16
+
+  1    4     3   -1  0.6864770E-16
+
+  1    6     3    0  0.2093128E-17
+
+  1    8     3    1  0.1556534E-16
+
+  1    9     3    2  0.1142489E-16
+
+  1   10     3    3  0.1868133E-15
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.8634351E-05
+
+   1  0.3303297E-10
+
+   2  0.5152034E-12
+
+   3  0.4402072E-14
+
+   4  0.7664500E-15
+
+   5  0.2244759E-15
+
+   6  0.2218454E-15
+
+   7  0.8729230E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.8137040E-19
+
+   1  0.1625912E-12
+
+   2  0.1759207E-13
+
+   3  0.2949413E-15
+
+   4  0.1583855E-16
+
+   5  0.5032055E-17
+
+   6  0.2963042E-17
+
+   7  0.1985862E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.6275104E-18
+
+   1  0.5630562E-12
+
+   2  0.3040483E-12
+
+   3  0.1334176E-13
+
+   4  0.1183792E-14
+
+   5  0.3366458E-15
+
+   6  0.2724649E-15
+
+   7  0.1347485E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.3671908E-18
+
+   1  0.1077409E-11
+
+   2  0.7860321E-12
+
+   3  0.2230083E-13
+
+   4  0.2925176E-14
+
+   5  0.9395378E-15
+
+   6  0.6587567E-15
+
+   7  0.5209392E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.6791313E-18
+
+   1  0.3867150E-12
+
+   2  0.4913787E-13
+
+   3  0.3247032E-15
+
+   4  0.1446883E-16
+
+   5  0.5304102E-17
+
+   6  0.3430789E-17
+
+   7  0.2339989E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.8094502E-12
+
+   1  0.4092568E-12
+
+   2  0.1866469E-12
+
+   3  0.5591037E-14
+
+   4  0.6193106E-15
+
+   5  0.2320728E-15
+
+   6  0.1139151E-15
+
+   7  0.1041060E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.1651616E-18
+
+   1  0.1022290E-12
+
+   2  0.8525160E-14
+
+   3  0.5455095E-18
+
+   4  0.7528736E-17
+
+   5  0.2924050E-17
+
+   6  0.5398475E-18
+
+   7  0.1427481E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.2175000E-19
+
+   1  0.6621168E-13
+
+   2  0.4149767E-13
+
+   3  0.5521734E-15
+
+   4  0.2149825E-16
+
+   5  0.3837381E-17
+
+   6  0.7744166E-17
+
+   7  0.3979878E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.1955479E-22
+
+   1  0.6307559E-15
+
+   2  0.1033776E-14
+
+   3  0.1243624E-15
+
+   4  0.2430769E-16
+
+   5  0.1165432E-16
+
+   6  0.1967162E-17
+
+   7  0.3791851E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.8704227E-21
+
+   1  0.2679320E-14
+
+   2  0.1081518E-13
+
+   3  0.3098973E-14
+
+   4  0.1902114E-14
+
+   5  0.3799282E-15
+
+   6  0.5013693E-15
+
+   7  0.4502041E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.6859173E-13
+
+   1  0.5706321E-11
+
+   2  0.1241426E-11
+
+   3  0.4662302E-14
+
+   4  0.5050725E-19
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.1200358E-19
+
+   1  0.1029318E-12
+
+   2  0.5343015E-14
+
+   3  0.2650760E-17
+
+   4  0.6816572E-20
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.1303069E-19
+
+   1  0.2781698E-12
+
+   2  0.8836947E-13
+
+   3  0.4688303E-15
+
+   4  0.4754066E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.5282912E-15
+
+   3  0.1858628E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1916176E-16
+
+   3  0.6254196E-18
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.6368627E-16
+
+   3  0.4961437E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.9753569E-18
+
+   3  0.1117772E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1110709E-16
+
+   3  0.4458255E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1084623E-16
+
+   3  0.5786662E-18
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1798537E-15
+
+   3  0.6959593E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000086
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999914D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38523218D+01
+ trans energy =  0.60000000D+00
+ trans energy in z =  0.50000000D+00
+ total momentum =  0.12729097D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1002777E-04  0.1000001E+00  0.1481959E-01
+
+   1  0.8895653E-11  0.6263766E-01  0.1487334E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1002776E-04
+
+  0    5     1    0  0.1640548E-12
+
+  0    7     1    1  0.8070407E-12
+
+  0    1     3   -3  0.1840391E-11
+
+  0    2     3   -2  0.4112657E-12
+
+  0    4     3   -1  0.1386334E-11
+
+  0    6     3    0  0.1040506E-12
+
+  0    8     3    1  0.1047795E-12
+
+  0    9     3    2  0.1855380E-14
+
+  0   10     3    3  0.2068582E-13
+
+  1    3     1   -1  0.8345621E-11
+
+  1    5     1    0  0.1261273E-12
+
+  1    7     1    1  0.4173863E-12
+
+  1    1     3   -3  0.4187656E-14
+
+  1    2     3   -2  0.1515182E-15
+
+  1    4     3   -1  0.5256624E-15
+
+  1    6     3    0  0.1602791E-16
+
+  1    8     3    1  0.1191899E-15
+
+  1    9     3    2  0.8748488E-16
+
+  1   10     3    3  0.1430503E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1002773E-04
+
+   1  0.2985146E-10
+
+   2  0.4711856E-12
+
+   3  0.4953053E-14
+
+   4  0.9995682E-15
+
+   5  0.2838920E-15
+
+   6  0.2235742E-15
+
+   7  0.7923088E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.9686635E-19
+
+   1  0.1475627E-12
+
+   2  0.1610617E-13
+
+   3  0.3375708E-15
+
+   4  0.2079769E-16
+
+   5  0.6384747E-17
+
+   6  0.2988351E-17
+
+   7  0.1805627E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.7022112E-18
+
+   1  0.5111132E-12
+
+   2  0.2771331E-12
+
+   3  0.1528552E-13
+
+   4  0.1556409E-14
+
+   5  0.4260182E-15
+
+   6  0.2725146E-15
+
+   7  0.1253329E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.3972940E-18
+
+   1  0.1002842E-11
+
+   2  0.8041091E-12
+
+   3  0.2823811E-13
+
+   4  0.2910425E-14
+
+   5  0.8927958E-15
+
+   6  0.6118535E-15
+
+   7  0.7865940E-15
+
+ v, j, mj =   0   3  -2
+
+   0  0.8119141E-18
+
+   1  0.3606344E-12
+
+   2  0.5019228E-13
+
+   3  0.4117964E-15
+
+   4  0.1444537E-16
+
+   5  0.5031550E-17
+
+   6  0.3232594E-17
+
+   7  0.3716710E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.8057841E-12
+
+   1  0.3813679E-12
+
+   2  0.1909675E-12
+
+   3  0.7109430E-14
+
+   4  0.6142149E-15
+
+   5  0.2198094E-15
+
+   6  0.1071714E-15
+
+   7  0.1639916E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.1975085E-18
+
+   1  0.9534953E-13
+
+   2  0.8687244E-14
+
+   3  0.6732068E-18
+
+   4  0.7461543E-17
+
+   5  0.2787310E-17
+
+   6  0.5009615E-18
+
+   7  0.2205990E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.2399707E-19
+
+   1  0.6162640E-13
+
+   2  0.4241987E-13
+
+   3  0.6957864E-15
+
+   4  0.2143196E-16
+
+   5  0.3646490E-17
+
+   6  0.7045974E-17
+
+   7  0.5306919E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.2346121E-22
+
+   1  0.5882300E-15
+
+   2  0.1063685E-14
+
+   3  0.1602750E-15
+
+   4  0.2373749E-16
+
+   5  0.1089012E-16
+
+   6  0.1950581E-17
+
+   7  0.6611856E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.1015270E-20
+
+   1  0.2498281E-14
+
+   2  0.1123099E-13
+
+   3  0.3675652E-14
+
+   4  0.1886736E-14
+
+   5  0.3513719E-15
+
+   6  0.4432020E-15
+
+   7  0.5995839E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.5252338E-12
+
+   1  0.6583259E-11
+
+   2  0.1232824E-11
+
+   3  0.4304825E-14
+
+   4  0.3867539E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.9191609E-19
+
+   1  0.1207445E-12
+
+   2  0.5380146E-14
+
+   3  0.2498712E-17
+
+   4  0.5219717E-19
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.9978108E-19
+
+   1  0.3278708E-12
+
+   2  0.8907797E-13
+
+   3  0.4338086E-15
+
+   4  0.3640375E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.4045333E-14
+
+   3  0.1423224E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1467291E-15
+
+   3  0.4789084E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.4876708E-15
+
+   3  0.3799167E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.7468691E-17
+
+   3  0.8559216E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.8505133E-16
+
+   3  0.3413861E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.8305381E-16
+
+   3  0.4431075E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1377210E-14
+
+   3  0.5329234E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000100
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999900D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38423218D+01
+ trans energy =  0.61000000D+00
+ trans energy in z =  0.51000000D+00
+ total momentum =  0.12834734D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1142114E-04  0.1000001E+00  0.1481959E-01
+
+   1  0.1029417E-10  0.6755320E-01  0.1490644E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1142114E-04
+
+  0    5     1    0  0.1475876E-12
+
+  0    7     1    1  0.7304943E-12
+
+  0    1     3   -3  0.1789997E-11
+
+  0    2     3   -2  0.3863276E-12
+
+  0    4     3   -1  0.1360654E-11
+
+  0    6     3    0  0.9733387E-13
+
+  0    8     3    1  0.1012604E-12
+
+  0    9     3    2  0.1880145E-14
+
+  0   10     3    3  0.2154455E-13
+
+  1    3     1   -1  0.9670242E-11
+
+  1    5     1    0  0.1439771E-12
+
+  1    7     1    1  0.4677640E-12
+
+  1    1     3   -3  0.7828434E-14
+
+  1    2     3   -2  0.2832493E-15
+
+  1    4     3   -1  0.9826772E-15
+
+  1    6     3    0  0.2996268E-16
+
+  1    8     3    1  0.2228145E-15
+
+  1    9     3    2  0.1635449E-15
+
+  1   10     3    3  0.2674192E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1142111E-04
+
+   1  0.2666994E-10
+
+   2  0.4271677E-12
+
+   3  0.5504033E-14
+
+   4  0.1232686E-14
+
+   5  0.3433080E-15
+
+   6  0.2253030E-15
+
+   7  0.7116946E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.1123623E-18
+
+   1  0.1325343E-12
+
+   2  0.1462027E-13
+
+   3  0.3802003E-15
+
+   4  0.2575683E-16
+
+   5  0.7737439E-17
+
+   6  0.3013660E-17
+
+   7  0.1625391E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.7769119E-18
+
+   1  0.4591702E-12
+
+   2  0.2502179E-12
+
+   3  0.1722927E-13
+
+   4  0.1929026E-14
+
+   5  0.5153905E-15
+
+   6  0.2725643E-15
+
+   7  0.1159172E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.4273973E-18
+
+   1  0.9282759E-12
+
+   2  0.8221861E-12
+
+   3  0.3417538E-13
+
+   4  0.2895674E-14
+
+   5  0.8460538E-15
+
+   6  0.5649504E-15
+
+   7  0.1052249E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.9446968E-18
+
+   1  0.3345537E-12
+
+   2  0.5124668E-13
+
+   3  0.4988897E-15
+
+   4  0.1442191E-16
+
+   5  0.4758998E-17
+
+   6  0.3034398E-17
+
+   7  0.5093432E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.8021180E-12
+
+   1  0.3534790E-12
+
+   2  0.1952881E-12
+
+   3  0.8627824E-14
+
+   4  0.6091191E-15
+
+   5  0.2075460E-15
+
+   6  0.1004277E-15
+
+   7  0.2238772E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.2298553E-18
+
+   1  0.8847002E-13
+
+   2  0.8849327E-14
+
+   3  0.8009042E-18
+
+   4  0.7394351E-17
+
+   5  0.2650570E-17
+
+   6  0.4620755E-18
+
+   7  0.2984499E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.2624415E-19
+
+   1  0.5704112E-13
+
+   2  0.4334206E-13
+
+   3  0.8393994E-15
+
+   4  0.2136568E-16
+
+   5  0.3455598E-17
+
+   6  0.6347782E-17
+
+   7  0.6633960E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.2736762E-22
+
+   1  0.5457041E-15
+
+   2  0.1093594E-14
+
+   3  0.1961876E-15
+
+   4  0.2316728E-16
+
+   5  0.1012593E-16
+
+   6  0.1933999E-17
+
+   7  0.9431861E-17
+
+ v, j, mj =   0   3   3
+
+   0  0.1160117E-20
+
+   1  0.2317243E-14
+
+   2  0.1164680E-13
+
+   3  0.4252332E-14
+
+   4  0.1871358E-14
+
+   5  0.3228156E-15
+
+   6  0.3850348E-15
+
+   7  0.7489636E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.9818759E-12
+
+   1  0.7460197E-11
+
+   2  0.1224221E-11
+
+   3  0.3947347E-14
+
+   4  0.7230005E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.1718286E-18
+
+   1  0.1385572E-12
+
+   2  0.5417276E-14
+
+   3  0.2346664E-17
+
+   4  0.9757777E-19
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.1865315E-18
+
+   1  0.3775718E-12
+
+   2  0.8978647E-13
+
+   3  0.3987868E-15
+
+   4  0.6805343E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.7562375E-14
+
+   3  0.2660586E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2742965E-15
+
+   3  0.8952748E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.9116553E-15
+
+   3  0.7102190E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1396202E-16
+
+   3  0.1600066E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1589956E-15
+
+   3  0.6381897E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1552614E-15
+
+   3  0.8283483E-17
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2574567E-14
+
+   3  0.9962508E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000114
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999886D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38323218D+01
+ trans energy =  0.62000000D+00
+ trans energy in z =  0.52000000D+00
+ total momentum =  0.12939509D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1281452E-04  0.1000001E+00  0.1481959E-01
+
+   1  0.1169268E-10  0.7129289E-01  0.1493162E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1281451E-04
+
+  0    5     1    0  0.1311204E-12
+
+  0    7     1    1  0.6539478E-12
+
+  0    1     3   -3  0.1739602E-11
+
+  0    2     3   -2  0.3613895E-12
+
+  0    4     3   -1  0.1334974E-11
+
+  0    6     3    0  0.9061714E-13
+
+  0    8     3    1  0.9774131E-13
+
+  0    9     3    2  0.1904910E-14
+
+  0   10     3    3  0.2240328E-13
+
+  1    3     1   -1  0.1099486E-10
+
+  1    5     1    0  0.1618269E-12
+
+  1    7     1    1  0.5181418E-12
+
+  1    1     3   -3  0.1146921E-13
+
+  1    2     3   -2  0.4149803E-15
+
+  1    4     3   -1  0.1439692E-14
+
+  1    6     3    0  0.4389746E-16
+
+  1    8     3    1  0.3264391E-15
+
+  1    9     3    2  0.2396049E-15
+
+  1   10     3    3  0.3917881E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1281449E-04
+
+   1  0.2348843E-10
+
+   2  0.3831499E-12
+
+   3  0.6055013E-14
+
+   4  0.1465805E-14
+
+   5  0.4027241E-15
+
+   6  0.2270317E-15
+
+   7  0.6310804E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.1278583E-18
+
+   1  0.1175058E-12
+
+   2  0.1313437E-13
+
+   3  0.4228298E-15
+
+   4  0.3071598E-16
+
+   5  0.9090132E-17
+
+   6  0.3038969E-17
+
+   7  0.1445156E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.8516127E-18
+
+   1  0.4072271E-12
+
+   2  0.2233027E-12
+
+   3  0.1917303E-13
+
+   4  0.2301642E-14
+
+   5  0.6047629E-15
+
+   6  0.2726141E-15
+
+   7  0.1065016E-14
+
+ v, j, mj =   0   3  -3
+
+   0  0.4575006E-18
+
+   1  0.8537096E-12
+
+   2  0.8402631E-12
+
+   3  0.4011266E-13
+
+   4  0.2880922E-14
+
+   5  0.7993118E-15
+
+   6  0.5180473E-15
+
+   7  0.1317903E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1077480E-17
+
+   1  0.3084731E-12
+
+   2  0.5230109E-13
+
+   3  0.5859829E-15
+
+   4  0.1439845E-16
+
+   5  0.4486447E-17
+
+   6  0.2836203E-17
+
+   7  0.6470154E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.7984518E-12
+
+   1  0.3255902E-12
+
+   2  0.1996087E-12
+
+   3  0.1014622E-13
+
+   4  0.6040234E-15
+
+   5  0.1952826E-15
+
+   6  0.9368407E-16
+
+   7  0.2837627E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.2622022E-18
+
+   1  0.8159051E-13
+
+   2  0.9011410E-14
+
+   3  0.9286015E-18
+
+   4  0.7327159E-17
+
+   5  0.2513830E-17
+
+   6  0.4231896E-18
+
+   7  0.3763008E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.2849123E-19
+
+   1  0.5245585E-13
+
+   2  0.4426425E-13
+
+   3  0.9830124E-15
+
+   4  0.2129940E-16
+
+   5  0.3264707E-17
+
+   6  0.5649590E-17
+
+   7  0.7961001E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.3127404E-22
+
+   1  0.5031782E-15
+
+   2  0.1123503E-14
+
+   3  0.2321002E-15
+
+   4  0.2259708E-16
+
+   5  0.9361737E-17
+
+   6  0.1917417E-17
+
+   7  0.1225187E-16
+
+ v, j, mj =   0   3   3
+
+   0  0.1304964E-20
+
+   1  0.2136204E-14
+
+   2  0.1206262E-13
+
+   3  0.4829011E-14
+
+   4  0.1855980E-14
+
+   5  0.2942593E-15
+
+   6  0.3268675E-15
+
+   7  0.8983434E-15
+
+ v, j, mj =   1   1  -1
+
+   0  0.1438518E-11
+
+   1  0.8337135E-11
+
+   2  0.1215619E-11
+
+   3  0.3589870E-14
+
+   4  0.1059247E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.2517411E-18
+
+   1  0.1563699E-12
+
+   2  0.5454407E-14
+
+   3  0.2194617E-17
+
+   4  0.1429584E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.2732819E-18
+
+   1  0.4272728E-12
+
+   2  0.9049497E-13
+
+   3  0.3637651E-15
+
+   4  0.9970311E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1107942E-13
+
+   3  0.3897948E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.4018639E-15
+
+   3  0.1311641E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.1335640E-14
+
+   3  0.1040521E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2045536E-16
+
+   3  0.2344210E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2329398E-15
+
+   3  0.9349933E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.2274690E-15
+
+   3  0.1213589E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.0000000E+00
+
+   2  0.3771923E-14
+
+   3  0.1459578E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000128
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999872D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38223218D+01
+ trans energy =  0.63000000D+00
+ trans energy in z =  0.53000000D+00
+ total momentum =  0.13043443D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1429163E-04  0.1000001E+00  0.1481958E-01
+
+   1  0.1311818E-10  0.7487521E-01  0.1498495E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1429162E-04
+
+  0    5     1    0  0.1139533E-12
+
+  0    7     1    1  0.5736923E-12
+
+  0    1     3   -3  0.1672030E-11
+
+  0    2     3   -2  0.3330851E-12
+
+  0    4     3   -1  0.1293951E-11
+
+  0    6     3    0  0.8306730E-13
+
+  0    8     3    1  0.9325393E-13
+
+  0    9     3    2  0.1912085E-14
+
+  0   10     3    3  0.2312110E-13
+
+  1    3     1   -1  0.1234593E-10
+
+  1    5     1    0  0.1783022E-12
+
+  1    7     1    1  0.5643825E-12
+
+  1    1     3   -3  0.1805106E-13
+
+  1    2     3   -2  0.1920078E-14
+
+  1    4     3   -1  0.3197697E-14
+
+  1    6     3    0  0.3319547E-15
+
+  1    8     3    1  0.5794065E-15
+
+  1    9     3    2  0.3344201E-15
+
+  1   10     3    3  0.5144856E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1429160E-04
+
+   1  0.2019340E-10
+
+   2  0.3368001E-12
+
+   3  0.6542087E-14
+
+   4  0.1695160E-14
+
+   5  0.4633523E-15
+
+   6  0.2327455E-15
+
+   7  0.5566887E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.1446622E-18
+
+   1  0.1018540E-12
+
+   2  0.1157593E-13
+
+   3  0.4612021E-15
+
+   4  0.3559226E-16
+
+   5  0.1046966E-16
+
+   6  0.3118364E-17
+
+   7  0.1278964E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.9364042E-18
+
+   1  0.3530364E-12
+
+   2  0.1951253E-12
+
+   3  0.2090885E-13
+
+   4  0.2668099E-14
+
+   5  0.6960939E-15
+
+   6  0.2780006E-15
+
+   7  0.9787038E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.4921100E-18
+
+   1  0.7717349E-12
+
+   2  0.8485732E-12
+
+   3  0.4599639E-13
+
+   4  0.2916281E-14
+
+   5  0.7659531E-15
+
+   6  0.4744586E-15
+
+   7  0.1568430E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1221716E-17
+
+   1  0.2796440E-12
+
+   2  0.5273826E-13
+
+   3  0.6722515E-15
+
+   4  0.1462276E-16
+
+   5  0.4290258E-17
+
+   6  0.2654739E-17
+
+   7  0.7747309E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.7845125E-12
+
+   1  0.2949540E-12
+
+   2  0.2016076E-12
+
+   3  0.1165384E-13
+
+   4  0.6094371E-15
+
+   5  0.1863410E-15
+
+   6  0.8749328E-16
+
+   7  0.3394421E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.2973453E-18
+
+   1  0.7398417E-13
+
+   2  0.9067089E-14
+
+   3  0.1056580E-17
+
+   4  0.7387354E-17
+
+   5  0.2418133E-17
+
+   6  0.3871066E-18
+
+   7  0.4491205E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.3075844E-19
+
+   1  0.4741603E-13
+
+   2  0.4467392E-13
+
+   3  0.1124932E-14
+
+   4  0.2160697E-16
+
+   5  0.3128112E-17
+
+   6  0.4992517E-17
+
+   7  0.9291980E-17
+
+ v, j, mj =   0   3   2
+
+   0  0.3550969E-22
+
+   1  0.4561632E-15
+
+   2  0.1140142E-14
+
+   3  0.2678429E-15
+
+   4  0.2244782E-16
+
+   5  0.8773577E-17
+
+   6  0.1909173E-17
+
+   7  0.1480626E-16
+
+ v, j, mj =   0   3   3
+
+   0  0.1465481E-20
+
+   1  0.1936251E-14
+
+   2  0.1233507E-13
+
+   3  0.5382300E-14
+
+   4  0.1876214E-14
+
+   5  0.2716054E-15
+
+   6  0.2713948E-15
+
+   7  0.1048271E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.1980836E-11
+
+   1  0.9158815E-11
+
+   2  0.1203019E-11
+
+   3  0.3259929E-14
+
+   4  0.1412346E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.3338232E-18
+
+   1  0.1728337E-12
+
+   2  0.5465852E-14
+
+   3  0.2050728E-17
+
+   4  0.1867725E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.3533749E-18
+
+   1  0.4732648E-12
+
+   2  0.9077462E-13
+
+   3  0.3297043E-15
+
+   4  0.1307419E-16
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.2937858E-14
+
+   2  0.1460579E-13
+
+   3  0.5074118E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.1372752E-14
+
+   2  0.5302308E-15
+
+   3  0.1709601E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.1299081E-14
+
+   2  0.1763085E-14
+
+   3  0.1355316E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.2743536E-15
+
+   2  0.2707610E-16
+
+   3  0.3052493E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.1507967E-15
+
+   2  0.3068262E-15
+
+   3  0.1217836E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.1761259E-16
+
+   2  0.3010170E-15
+
+   3  0.1579043E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.4297258E-16
+
+   2  0.4911791E-14
+
+   3  0.1900925E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000143
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999857D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38123218D+01
+ trans energy =  0.64000000D+00
+ trans energy in z =  0.54000000D+00
+ total momentum =  0.13146555D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1673969E-04  0.1000000E+00  0.1481958E-01
+
+   1  0.1485648E-10  0.8425079E-01  0.1536950E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1673969E-04
+
+  0    5     1    0  0.8866943E-13
+
+  0    7     1    1  0.4504297E-12
+
+  0    1     3   -3  0.1405279E-11
+
+  0    2     3   -2  0.2657465E-12
+
+  0    4     3   -1  0.1075021E-11
+
+  0    6     3    0  0.6585709E-13
+
+  0    8     3    1  0.7753880E-13
+
+  0    9     3    2  0.1715296E-14
+
+  0   10     3    3  0.2220495E-13
+
+  1    3     1   -1  0.1400368E-10
+
+  1    5     1    0  0.1788386E-12
+
+  1    7     1    1  0.5626534E-12
+
+  1    1     3   -3  0.5873625E-13
+
+  1    2     3   -2  0.1935014E-13
+
+  1    4     3   -1  0.2004142E-13
+
+  1    6     3    0  0.3798616E-14
+
+  1    8     3    1  0.2564087E-14
+
+  1    9     3    2  0.6467124E-15
+
+  1   10     3    3  0.6178011E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1673967E-04
+
+   1  0.1558209E-10
+
+   2  0.2634108E-12
+
+   3  0.6288131E-14
+
+   4  0.1880889E-14
+
+   5  0.5380361E-15
+
+   6  0.2846677E-15
+
+   7  0.5544505E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.1766335E-18
+
+   1  0.7897453E-13
+
+   2  0.9176264E-14
+
+   3  0.4502104E-15
+
+   4  0.3950775E-16
+
+   5  0.1216043E-16
+
+   6  0.3824913E-17
+
+   7  0.1275619E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1138203E-17
+
+   1  0.2727821E-12
+
+   2  0.1523112E-12
+
+   3  0.2023348E-13
+
+   4  0.2963122E-14
+
+   5  0.8101364E-15
+
+   6  0.3452704E-15
+
+   7  0.9833440E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.5789710E-18
+
+   1  0.6038553E-12
+
+   2  0.7436307E-12
+
+   3  0.5125928E-13
+
+   4  0.3532692E-14
+
+   5  0.8877804E-15
+
+   6  0.4693033E-15
+
+   7  0.1643543E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1498760E-17
+
+   1  0.2189445E-12
+
+   2  0.4601833E-13
+
+   3  0.7489585E-15
+
+   4  0.1772012E-16
+
+   5  0.4979539E-17
+
+   6  0.2667291E-17
+
+   7  0.7869931E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.6514492E-12
+
+   1  0.2324619E-12
+
+   2  0.1766863E-12
+
+   3  0.1303653E-13
+
+   4  0.7367144E-15
+
+   5  0.2159164E-15
+
+   6  0.8771345E-16
+
+   7  0.3463489E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.3649116E-18
+
+   1  0.5794984E-13
+
+   2  0.7888946E-14
+
+   3  0.1187813E-17
+
+   4  0.8924680E-17
+
+   5  0.2798359E-17
+
+   6  0.3835259E-18
+
+   7  0.4636001E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.3325909E-19
+
+   1  0.3710554E-13
+
+   2  0.3914066E-13
+
+   3  0.1247218E-14
+
+   4  0.2624962E-16
+
+   5  0.3621111E-17
+
+   6  0.4812247E-17
+
+   7  0.1066861E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.4356294E-22
+
+   1  0.3570947E-15
+
+   2  0.1002903E-14
+
+   3  0.3016143E-15
+
+   4  0.2717958E-16
+
+   5  0.1022662E-16
+
+   6  0.1997596E-17
+
+   7  0.1428073E-16
+
+ v, j, mj =   0   3   3
+
+   0  0.1807701E-20
+
+   1  0.1516973E-14
+
+   2  0.1094514E-13
+
+   3  0.5664355E-14
+
+   4  0.2309382E-14
+
+   5  0.3173930E-15
+
+   6  0.2471669E-15
+
+   7  0.1204545E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.3516609E-11
+
+   1  0.9339750E-11
+
+   2  0.1144068E-11
+
+   3  0.3249291E-14
+
+   4  0.1960852E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.4410621E-18
+
+   1  0.1736564E-12
+
+   2  0.5179468E-14
+
+   3  0.2001440E-17
+
+   4  0.2124229E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.3562718E-18
+
+   1  0.4762493E-12
+
+   2  0.8608141E-13
+
+   3  0.3067865E-15
+
+   4  0.1546971E-16
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.3994183E-13
+
+   2  0.1824035E-13
+
+   3  0.5540742E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.1866333E-13
+
+   2  0.6678679E-15
+
+   3  0.1894122E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.1766173E-13
+
+   2  0.2230654E-14
+
+   3  0.1490293E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.3729992E-14
+
+   2  0.3517425E-16
+
+   3  0.3344934E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.2050167E-14
+
+   2  0.3800412E-15
+
+   3  0.1338790E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.2394531E-15
+
+   2  0.3901087E-15
+
+   3  0.1715057E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.5842365E-15
+
+   2  0.5385035E-14
+
+   3  0.2087392E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000167
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999833D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.38023218D+01
+ trans energy =  0.65000000D+00
+ trans energy in z =  0.55000000D+00
+ total momentum =  0.13248864D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.1918775E-04  0.1000000E+00  0.1481957E-01
+
+   1  0.1659479E-10  0.9166218E-01  0.1567349E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.1918775E-04
+
+  0    5     1    0  0.6338558E-13
+
+  0    7     1    1  0.3271671E-12
+
+  0    1     3   -3  0.1138528E-11
+
+  0    2     3   -2  0.1984080E-12
+
+  0    4     3   -1  0.8560906E-12
+
+  0    6     3    0  0.4864687E-13
+
+  0    8     3    1  0.6182368E-13
+
+  0    9     3    2  0.1518507E-14
+
+  0   10     3    3  0.2128881E-13
+
+  1    3     1   -1  0.1566142E-10
+
+  1    5     1    0  0.1793750E-12
+
+  1    7     1    1  0.5609242E-12
+
+  1    1     3   -3  0.9942145E-13
+
+  1    2     3   -2  0.3678021E-13
+
+  1    4     3   -1  0.3688514E-13
+
+  1    6     3    0  0.7265277E-14
+
+  1    8     3    1  0.4548768E-14
+
+  1    9     3    2  0.9590048E-15
+
+  1   10     3    3  0.7211166E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.1918774E-04
+
+   1  0.1097079E-10
+
+   2  0.1900215E-12
+
+   3  0.6034175E-14
+
+   4  0.2066618E-14
+
+   5  0.6127199E-15
+
+   6  0.3365899E-15
+
+   7  0.5522123E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2086047E-18
+
+   1  0.5609502E-13
+
+   2  0.6776600E-14
+
+   3  0.4392187E-15
+
+   4  0.4342323E-16
+
+   5  0.1385120E-16
+
+   6  0.4531463E-17
+
+   7  0.1272274E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1340001E-17
+
+   1  0.1925277E-12
+
+   2  0.1094971E-12
+
+   3  0.1955811E-13
+
+   4  0.3258145E-14
+
+   5  0.9241790E-15
+
+   6  0.4125402E-15
+
+   7  0.9879842E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.6658320E-18
+
+   1  0.4359757E-12
+
+   2  0.6386883E-12
+
+   3  0.5652217E-13
+
+   4  0.4149104E-14
+
+   5  0.1009608E-14
+
+   6  0.4641479E-15
+
+   7  0.1718656E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.1775804E-17
+
+   1  0.1582450E-12
+
+   2  0.3929840E-13
+
+   3  0.8256654E-15
+
+   4  0.2081748E-16
+
+   5  0.5668820E-17
+
+   6  0.2679842E-17
+
+   7  0.7992553E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.5183858E-12
+
+   1  0.1699698E-12
+
+   2  0.1517650E-12
+
+   3  0.1441923E-13
+
+   4  0.8639917E-15
+
+   5  0.2454918E-15
+
+   6  0.8793362E-16
+
+   7  0.3532557E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.4324780E-18
+
+   1  0.4191551E-13
+
+   2  0.6710803E-14
+
+   3  0.1319047E-17
+
+   4  0.1046200E-16
+
+   5  0.3178585E-17
+
+   6  0.3799451E-18
+
+   7  0.4780798E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.3575975E-19
+
+   1  0.2679506E-13
+
+   2  0.3360740E-13
+
+   3  0.1369504E-14
+
+   4  0.3089226E-16
+
+   5  0.4114110E-17
+
+   6  0.4631977E-17
+
+   7  0.1204525E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.5161619E-22
+
+   1  0.2580261E-15
+
+   2  0.8656630E-15
+
+   3  0.3353857E-15
+
+   4  0.3191134E-16
+
+   5  0.1167965E-16
+
+   6  0.2086020E-17
+
+   7  0.1375520E-16
+
+ v, j, mj =   0   3   3
+
+   0  0.2149920E-20
+
+   1  0.1097695E-14
+
+   2  0.9555211E-14
+
+   3  0.5946410E-14
+
+   4  0.2742550E-14
+
+   5  0.3631806E-15
+
+   6  0.2229390E-15
+
+   7  0.1360820E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.5052382E-11
+
+   1  0.9520685E-11
+
+   2  0.1085117E-11
+
+   3  0.3238654E-14
+
+   4  0.2509359E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.5483011E-18
+
+   1  0.1744791E-12
+
+   2  0.4893084E-14
+
+   3  0.1952153E-17
+
+   4  0.2380734E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.3591688E-18
+
+   1  0.4792339E-12
+
+   2  0.8138821E-13
+
+   3  0.2838686E-15
+
+   4  0.1786522E-16
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.7694580E-13
+
+   2  0.2187491E-13
+
+   3  0.6007366E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.3595392E-13
+
+   2  0.8055050E-15
+
+   3  0.2078643E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.3402439E-13
+
+   2  0.2698223E-14
+
+   3  0.1625269E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.7185631E-14
+
+   2  0.4327239E-16
+
+   3  0.3637375E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.3949537E-14
+
+   2  0.4532562E-15
+
+   3  0.1459744E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.4612937E-15
+
+   2  0.4792004E-15
+
+   3  0.1851071E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.1125500E-14
+
+   2  0.5858280E-14
+
+   3  0.2273858E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000192
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999808D+00
+
+
+
+
+
+
+
+
+
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ total energy = -0.37923218D+01
+ trans energy =  0.66000000D+00
+ trans energy in z =  0.56000000D+00
+ total momentum =  0.13350389D+02
+
+ $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+ ************************************
+ rotation-diffraction summed probabilities
+ ************************************
+
+ v    probability         av edif         av erot
+
+   0  0.2163582E-04  0.1000000E+00  0.1481957E-01
+
+   1  0.1833310E-10  0.9766810E-01  0.1591984E-01
+
+
+ ************************************
+ diffraction summed probabilities
+ ************************************
+
+  v   irot   j   m  probability
+
+  0    3     1   -1  0.2163581E-04
+
+  0    5     1    0  0.3810173E-13
+
+  0    7     1    1  0.2039045E-12
+
+  0    1     3   -3  0.8717775E-12
+
+  0    2     3   -2  0.1310694E-12
+
+  0    4     3   -1  0.6371605E-12
+
+  0    6     3    0  0.3143665E-13
+
+  0    8     3    1  0.4610855E-13
+
+  0    9     3    2  0.1321718E-14
+
+  0   10     3    3  0.2037266E-13
+
+  1    3     1   -1  0.1731917E-10
+
+  1    5     1    0  0.1799114E-12
+
+  1    7     1    1  0.5591950E-12
+
+  1    1     3   -3  0.1401066E-12
+
+  1    2     3   -2  0.5421027E-13
+
+  1    4     3   -1  0.5372886E-13
+
+  1    6     3    0  0.1073194E-13
+
+  1    8     3    1  0.6533448E-14
+
+  1    9     3    2  0.1271297E-14
+
+  1   10     3    3  0.8244322E-14
+
+
+ ************************************
+ probabilities as function of diffraction order
+ ************************************
+
+ v, j, mj =   0   1  -1
+
+   0  0.2163581E-04
+
+   1  0.6359487E-11
+
+   2  0.1166322E-12
+
+   3  0.5780219E-14
+
+   4  0.2252347E-14
+
+   5  0.6874037E-15
+
+   6  0.3885121E-15
+
+   7  0.5499740E-15
+
+ v, j, mj =   0   1   0
+
+   0  0.2405760E-18
+
+   1  0.3321552E-13
+
+   2  0.4376937E-14
+
+   3  0.4282270E-15
+
+   4  0.4733871E-16
+
+   5  0.1554197E-16
+
+   6  0.5238013E-17
+
+   7  0.1268929E-16
+
+ v, j, mj =   0   1   1
+
+   0  0.1541800E-17
+
+   1  0.1122734E-12
+
+   2  0.6668306E-13
+
+   3  0.1888274E-13
+
+   4  0.3553168E-14
+
+   5  0.1038221E-14
+
+   6  0.4798100E-15
+
+   7  0.9926244E-15
+
+ v, j, mj =   0   3  -3
+
+   0  0.7526930E-18
+
+   1  0.2680962E-12
+
+   2  0.5337458E-12
+
+   3  0.6178506E-13
+
+   4  0.4765516E-14
+
+   5  0.1131435E-14
+
+   6  0.4589926E-15
+
+   7  0.1793768E-14
+
+ v, j, mj =   0   3  -2
+
+   0  0.2052848E-17
+
+   1  0.9754547E-13
+
+   2  0.3257847E-13
+
+   3  0.9023723E-15
+
+   4  0.2391485E-16
+
+   5  0.6358101E-17
+
+   6  0.2692394E-17
+
+   7  0.8115176E-17
+
+ v, j, mj =   0   3  -1
+
+   0  0.3853225E-12
+
+   1  0.1074777E-12
+
+   2  0.1268437E-12
+
+   3  0.1580192E-13
+
+   4  0.9912690E-15
+
+   5  0.2750673E-15
+
+   6  0.8815378E-16
+
+   7  0.3601625E-15
+
+ v, j, mj =   0   3   0
+
+   0  0.5000443E-18
+
+   1  0.2588118E-13
+
+   2  0.5532660E-14
+
+   3  0.1450280E-17
+
+   4  0.1199933E-16
+
+   5  0.3558812E-17
+
+   6  0.3763643E-18
+
+   7  0.4925594E-17
+
+ v, j, mj =   0   3   1
+
+   0  0.3826040E-19
+
+   1  0.1648457E-13
+
+   2  0.2807414E-13
+
+   3  0.1491789E-14
+
+   4  0.3553490E-16
+
+   5  0.4607110E-17
+
+   6  0.4451707E-17
+
+   7  0.1342188E-16
+
+ v, j, mj =   0   3   2
+
+   0  0.5966944E-22
+
+   1  0.1589576E-15
+
+   2  0.7284234E-15
+
+   3  0.3691572E-15
+
+   4  0.3664311E-16
+
+   5  0.1313269E-16
+
+   6  0.2174443E-17
+
+   7  0.1322967E-16
+
+ v, j, mj =   0   3   3
+
+   0  0.2492139E-20
+
+   1  0.6784173E-15
+
+   2  0.8165284E-14
+
+   3  0.6228465E-14
+
+   4  0.3175718E-14
+
+   5  0.4089682E-15
+
+   6  0.1987112E-15
+
+   7  0.1517095E-14
+
+ v, j, mj =   1   1  -1
+
+   0  0.6588155E-11
+
+   1  0.9701620E-11
+
+   2  0.1026165E-11
+
+   3  0.3228016E-14
+
+   4  0.3057865E-17
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   0
+
+   0  0.6555400E-18
+
+   1  0.1753018E-12
+
+   2  0.4606700E-14
+
+   3  0.1902865E-17
+
+   4  0.2637238E-18
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   1   1
+
+   0  0.3620657E-18
+
+   1  0.4822184E-12
+
+   2  0.7669501E-13
+
+   3  0.2609508E-15
+
+   4  0.2026074E-16
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -3
+
+   0  0.0000000E+00
+
+   1  0.1139498E-12
+
+   2  0.2550947E-13
+
+   3  0.6473990E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -2
+
+   0  0.0000000E+00
+
+   1  0.5324450E-13
+
+   2  0.9431422E-15
+
+   3  0.2263165E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3  -1
+
+   0  0.0000000E+00
+
+   1  0.5038704E-13
+
+   2  0.3165792E-14
+
+   3  0.1760245E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   0
+
+   0  0.0000000E+00
+
+   1  0.1064127E-13
+
+   2  0.5137053E-16
+
+   3  0.3929817E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   1
+
+   0  0.0000000E+00
+
+   1  0.5848907E-14
+
+   2  0.5264713E-15
+
+   3  0.1580698E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   2
+
+   0  0.0000000E+00
+
+   1  0.6831342E-15
+
+   2  0.5682921E-15
+
+   3  0.1987085E-16
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ v, j, mj =   1   3   3
+
+   0  0.0000000E+00
+
+   1  0.1666764E-14
+
+   2  0.6331525E-14
+
+   3  0.2460325E-15
+
+   4  0.0000000E+00
+
+   5  0.0000000E+00
+
+   6  0.0000000E+00
+
+   7  0.0000000E+00
+
+ sum of the probabilities =  0.0000216
+
+ average vibrational energy (ev) =     0.000000
+
+ average rotational  energy (ev) =     0.014820
+
+ average diffraction energy (ev) =     0.100000
+
+ the reaction probability =  0.9999784D+00
+
+
+
+
+
+
+
+
+ etrans(icomin)=                                       0.203541
+ etrans(icomax)=                                       0.569914
+ etrans=                                               0.570000
+
+ etrans(icomin)=                                       0.203541
+ etrans(icomax)=                                       0.569914
+ etrans=                                               0.580000
+
+ etrans(icomin)=                                       0.203541
+ etrans(icomax)=                                       0.569914
+ etrans=                                               0.590000
+
+ etrans(icomin)=                                       0.203541
+ etrans(icomax)=                                       0.569914
+ etrans=                                               0.600000
+
+ CPU TIMES 
+
+ Total computation                           0.1478 (a)
+
+               ...
+
+ Propagating the wavefunction                0.0000 (b)
+
+ Setup time                                  0.0838
+
+ Saving the wave function for rerun          0.0000
+
+ Calculating averages                        0.0000
+
+ Calculating and saving BK-coeffs            0.0000
+
+ Asymptotic analysis                         0.0640
+
+ Saving the flux coefficients                0.0000
+
+ Flux analysis                               0.0000
+
+-----------------------------------------------------
+
+ Sum                                         0.1478 (a)
+
+               ...
+
+ FFTs along X and Y                          0.0000
+
+ Kinetic energy operation along Z            0.0000
+
+ Kinetic energy operation along r            0.0000
+
+ Potential energy multiplication             0.0000
+
+ Legengre transforms                         0.0000
+
+ Shifting the wavefunction                   0.0000
+
+ Kinetic energy multiplications (xy)         0.0000
+
+ Absorbing the wavefunction                  0.0000
+
+ Projection formalism                        0.0000
+
+ Operations on specular grid                 0.0000
+
+-----------------------------------------------------
+
+ Sum                                         0.0000 (b)
+
+               ...
+
+ Potential initialisation time               0.0000
+
+ Potential setup time                        0.0000
+
+ FFTs along X                                0.0000
+
+ FFTs along Y                                0.0000
+
+ Time spent on FGH for asympwf               0.0218
+

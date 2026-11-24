@@ -92,8 +92,9 @@ derived from exactly the same parameters.
      (`SPODVR_FAST_MATH`) failed the V(r) table by 1.6e-14 (at r index 5); since NaN and inf are kept
      (`-fno-finite-math-only`, 2026-11-15) `build-fast` passes it, as the default build does.
    - Corrugated Cu(111) cases (`tests/test_regression_pes.cpp`, gates 1 and 2):
-     cu111_dailight_small (with switching 6..8), cu111_persson_small and cu111_dailight_short_sym (the Fortran symmetric .pes,
-     expanded through symmetryIndex by extract_pes.py, vs the C++ gather): all pass, vasy ≤ 9e-16,
+     cu111_dailight_small (with switching 6..8), cu111_persson_small, cu111_dailight_short_sym (the Fortran symmetric .pes,
+     expanded through symmetryIndex by extract_pes.py, vs the C++ gather) and cu111_dailight_oblique (JMax 3, odd j:
+     the odd-parity angular grid; 6D 1.7e-14): all pass, vasy ≤ 9e-16,
      6D ≤ 3.6e-14 of max(|V|, 1 eV); computed (x, y) points 10 = 10 (C6v triangle 1).
    - The same gates for the CRP library (SystemID `CRPlibrary`) on the synthetic data sets of its
      tests (pairwise model; `tests/crplib/reference/<sym>_pairwise/dataset`):
@@ -163,7 +164,13 @@ derived from exactly the same parameters.
    analytic unit tests (test_angular, test_propagation). Corrugated cases (60° cell, C6v):
    `cu111_dailight_short` (1000 steps, default), `cu111_dailight_short_sym` (C6v UseSymmetry,
    nPhisOptimal: nφ 12), `cu111_dailight_small` (7000 steps, long; also fine analysis, gate 5
-   `Gate5DaiLight`). Status: all pass (gates 3, 4, 5). Full Dai–Light run (7000 steps): averages
+   `Gate5DaiLight`). Oblique incidence with J > 0: `cu111_dailight_oblique` (default, CPU and GPU; gates 1–5) is
+   `cu111_dailight_short` with JIn 1, MJIn −1, JMax = MJMax = 3 (10 rotational states, the odd-parity angular
+   grid, mJ ≠ 0), EParallel 0.1 eV and PhiParallel 17° (the momentum shift and the oblique channels), and tEnd
+   2100 a.u. (1050 steps): its specular line fixes at Z = 10.88 at t = 1610 a.u. in both codes, so the run is a
+   code test, not a converged S matrix (a missing reference file fails its tests). Every case also compares where
+   the specular analysis line becomes fixed with the Fortran's printed "fixed at Z" (half a printed unit; never
+   fixed in hardwall_short, in both codes). Status: all pass (gates 3, 4, 5). Full Dai–Light run (7000 steps): averages
    worst 0.986583 of half a printed unit, BK (1400 records) 6.41e-13 of max|c| = 0.265,
    probabilities within half a unit (worst 0.989415) except the reaction probability (see gate 4).
    The 1000-step Dai–Light cases: BK 6.25e-12 (short) and 6.288e-12 (short_sym) of the scale,
@@ -210,8 +217,8 @@ derived from exactly the same parameters.
    P(v) rows, nviba · nana P(v, j, mJ), one order header per (v, j, mJ) with E ≥ E(v, j) and mdifa + 1 rows
    under it. An average energy is a ratio of two sums of \|S\|²: it is compared where the printed
    probability it divides by (P(v), or the sum of the printed P(v) for the three totals) exceeds 5e-15, 1e3
-   times the largest \|P_C++(v) − P_F(v)\| measured where P(v) < 1e-10 (4.96e-18, cu111_dailight_short_sym,
-   over every gate-4 and gate-5 case, 2026-11-24); below, both codes print ratios of rounding noise
+   times the largest \|P_C++(v) − P_F(v)\| measured where P(v) < 1e-10, rounded up (4.99e-18,
+   cu111_dailight_oblique in gate 5, over every gate-4 and gate-5 case, 2026-11-24); below, both codes print ratios of rounding noise
    (hardwall_short: P(v) ≤ 9.4e-30, av erot 4.4 % apart). Skipped rows are counted. The analysis limits the
    Fortran prints (`jana`, `nviba`, `nana`, `nstata`, `inchna`) equal the C++ analysis basis.
    Since the reference is r1727 (2026-11-24) also every S-matrix row of the Fortran's on-the-fly
@@ -224,7 +231,8 @@ derived from exactly the same parameters.
    - P: within its printed half unit plus the code term's effect on \|S\|²;
    - the phase: within its printed half unit plus code term / \|S\| (the Fortran prints the phase of its
      unrounded S), compared where that bound is at most 1e-3 rad, i.e. \|S\| ≳ 1e3 times the code term (31624
-     of the 41536 rows of cu111_dailight_short, 36534 of cu111_dailight_small, none in hardwall_short); a C++
+     of the 41536 rows of cu111_dailight_short, 36534 of cu111_dailight_small, 20353 of the 35264 of
+     cu111_dailight_oblique, none in hardwall_short); a C++
      phase must be finite on every row;
    - each block's printed total energy.
 
@@ -232,7 +240,8 @@ derived from exactly the same parameters.
    difference beyond the printed digits is 5.99e-12 of max(S_scale, 1e-3), in hardwall_short with the fast-math
    CPU build (its elements are all rounding noise, \|S\| ≤ 2.4e-15, so the floor 1e-3 binds); 1.1e-12 in the
    Dai–Light cases with fast-math, at most 2.1e-13 with the default builds. c = 1e-10 is the smallest power of 10
-   with a margin of 10 over 5.99e-12. Where \|S\| is large (cu111_dailight_small, scm_cu111_srp48_small) the
+   with a margin of 10 over 5.99e-12. cu111_dailight_oblique, added later, was measured with the default builds
+   only: 4.0e-14 (CPU) and 4.5e-14 (GPU). Where \|S\| is large (cu111_dailight_small, scm_cu111_srp48_small) the
    printed digits bind on every row. Counts: the rows read equal the Fortran's print rule (the open channels,
    E_total > E(v, j)) applied to the C++ run and an independent count of the file's row lines; every row matches
    an open C++ state of its block's diffraction order; the number of phases compared is pinned per case. A run with
@@ -249,7 +258,8 @@ derived from exactly the same parameters.
    own BK file (hardwall_small `fortran_fort21.bin`); Fortran reference from unmodified
    onlyAnalysis runs (`tools/fortran_reference/run_fine_analysis_reference.sh`, variants full,
    truncated (tEnd 13860), small (tEnd 800), empty (tEnd 100, nen95 = 0) in
-   `hardwall_small/fine_<variant>/`). The variant with NrOfEs −95 (analysis energies on fine-grid points) was
+   `hardwall_small/fine_<variant>/`; full also on the BK files of cu111_dailight_small (`Gate5DaiLight`) and
+   cu111_dailight_oblique (`Gate5DaiLightOblique`: 210 records, 10 energies)). The variant with NrOfEs −95 (analysis energies on fine-grid points) was
    removed with r1719, which makes −95 an input error; no Fortran-compared case has its energies on grid points
    any more, and the on-grid interpolation is covered by unit tests (`LocateOnGrid.NeighboursAndClamps`,
    `InterpolateSMatrix.GridPointsAndLinearProbability`). Compared to half a printed unit: AsympInfo numbers,
@@ -260,8 +270,9 @@ derived from exactly the same parameters.
    rules (`expected_fine_counts`, tests/fine_analysis_reference.hpp; e.g. `Gate5Full`: 12545 fil10 values,
    31200 of unit 3, 9904 fort.25 rows). Re S, Im S and the phase of a fort.25 row are skipped where both grid
    elements around its energy are below 1e-8 of the largest \|S\| (pinned per variant: 9856 of 9904 rows in
-   full and truncated, 7629 of 7728 in small, 4131 of 39232 in `Gate5DaiLight`; the hard wall populates few
-   states) or the sign of the interpolated Re S or Im S is undecidable (0 in every variant). A fallback to the
+   full and truncated, 7629 of 7728 in small, 4131 of 39232 in `Gate5DaiLight`, 8066 of 29504 in
+   `Gate5DaiLightOblique`; the hard wall populates few states) or the sign of the interpolated Re S or Im S is
+   undecidable (22 in `Gate5DaiLightOblique`, all elements below 9e-8 on both grid points; 0 in the others). A fallback to the
    neighbouring interval's emulation for energies on a grid point matched better 0 times on every variant
    (2026-11-24) and was removed. The committed variants require their files: a missing one fails
    (`RegressionFineAnalysis.MissingRequiredReferenceFails`). The gate analyses

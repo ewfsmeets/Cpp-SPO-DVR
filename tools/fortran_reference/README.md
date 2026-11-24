@@ -227,7 +227,8 @@ list of reference cases: a new case adds its step in the commit that adds the ca
 directories of all runs stay in one new `mktemp -d` directory, printed at the start. The whole
 run takes about 45 min with the r1713 install on 4 threads: 2381–2538 s (2026-11-12) before the
 case cu111_dailight_short_lowz was added, whose run takes 158 s (2026-11-12), and the SCM cases
-scm_cu111_srp48_small* (8 + 9 s setup, 137 s propagation; 2026-11-15); the
+scm_cu111_srp48_small* (8 + 9 s setup, 137 s propagation; 2026-11-15) and cu111_dailight_oblique (2 s setup,
+114 s propagation, under 1 s fine analysis; r1727 install, 2026-11-24); the
 longest case, cu111_dailight_small with 7000 steps, took 1570 s when run alone (measured
 2026-11-11).
 Then compare the regenerated tree with the committed one ([below](#comparing-two-reference-trees)).

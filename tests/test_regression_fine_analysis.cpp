@@ -179,6 +179,8 @@ const std::map<std::string, Fort25Skips>& fort25_skips() {
       {"hardwall_small/truncated", {9856, 0}},
       {"hardwall_small/small", {7629, 0}},
       {"cu111_dailight_small/full", {4131, 0}},
+      // The undecidable rows: elements below 9e-8 (2e-5 of the largest |S|) on both grid points (2026-11-24).
+      {"cu111_dailight_oblique/full", {8066, 22}},
   };
   return skips;
 }
@@ -366,6 +368,8 @@ TEST(RegressionFineAnalysis, Gate5Small) { run_gate("hardwall_small", "small", R
 TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("hardwall_small", "empty", References::required); }
 // The corrugated C6v case (60 deg cell): on the BK file of the full Dai-Light Fortran run.
 TEST(RegressionFineAnalysis, Gate5DaiLight) { run_gate("cu111_dailight_small", "full", References::required); }
+// Oblique incidence with J > 0 (cu111_dailight_oblique): on the BK file of its Fortran run.
+TEST(RegressionFineAnalysis, Gate5DaiLightOblique) { run_gate("cu111_dailight_oblique", "full", References::required); }
 
 // A required case whose reference files are missing fails (once, naming them) instead of skipping.
 TEST(RegressionFineAnalysis, MissingRequiredReferenceFails) {

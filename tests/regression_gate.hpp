@@ -22,7 +22,8 @@ inline constexpr double bk_gate_tolerance = 1e-10;
 // smallest power of 10 at least 10 times the largest difference measured over every case with the CPU, the GPU and
 // their fast-math builds (2026-11-24, as a fraction of max(|S|, s_floor = 1e-3)): 5.99e-12 in hardwall_short, whose
 // elements are all rounding noise (|S| <= 2.4e-15; 6.0e-15 absolute), with the fast-math CPU build; 1.1e-12 in the
-// Dai-Light cases with fast-math; at most 2.1e-13 with the default builds.
+// Dai-Light cases with fast-math; at most 2.1e-13 with the default builds (cu111_dailight_oblique, added later: the
+// default builds only, at most 4.5e-14).
 inline constexpr double fort25_code_difference = 1e-10;
 
 // The counts gate 4 must reach per case with that tolerance (measured; the same with every build): the rows whose
@@ -38,6 +39,7 @@ inline const std::map<std::string, Fort25Pins>& fort25_pins() {
       {"cu111_dailight_short_lowz", {31621, 50}},
       {"cu111_dailight_small", {36534, 50}},
       {"scm_cu111_srp48_small", {9486, 21}},
+      {"cu111_dailight_oblique", {20353, 50}},
   };
   return pins;
 }
@@ -85,6 +87,7 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
   ASSERT_FALSE(ref->averages.empty()) << "no averages found in fortran_averages.out";
   const PropagationRun cpp = run_cpp_propagation(dir / "input.json", backend);
   compare_with_fortran(cpp, *ref);  // gate 3
+  expect_fixed_line(cpp.specular_line, read_fortran_fixed_line(stdout_file));
 
   // Gate 4: the analysis limits, the per-energy blocks, and the BK coefficients of every analysis step.
   expect_analysis_limits(

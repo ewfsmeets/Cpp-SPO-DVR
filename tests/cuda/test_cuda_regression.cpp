@@ -1,6 +1,6 @@
 // Regression gates 3 and 4 (docs/validation.md) with the GPU backend: the same Fortran references and
 // tolerances as test_regression_propagation.cpp. Skipped without a GPU or without the references,
-// except the SCM case, which fails without its references.
+// except the SCM case and cu111_dailight_oblique, which fail without their references.
 #include <cstdlib>
 
 #include "cuda/cuda_backend.hpp"
@@ -28,6 +28,13 @@ TEST(CudaRegressionPropagation, Gate3DaiLightShortSymmetric) {
 TEST(CudaRegressionPropagation, Gate3DaiLightShortLowZ) {
   SPODVR_REQUIRE_GPU();
   run_gate("cu111_dailight_short_lowz", cuda::make_cuda_backend);
+}
+
+// Oblique incidence with J > 0 (test_regression_propagation.cpp Gate3DaiLightOblique); a missing reference file
+// fails it.
+TEST(CudaRegressionPropagation, Gate3DaiLightOblique) {
+  SPODVR_REQUIRE_GPU();
+  run_gate("cu111_dailight_oblique", cuda::make_cuda_backend, References::required);
 }
 
 // The SCM case (test_regression_propagation.cpp Gate3ScmShort); a missing reference file fails it.

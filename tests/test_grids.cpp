@@ -219,7 +219,7 @@ TEST(SpatialGrids, RepositoryInputsHaveNoGridPointWarnings) {
   for (const std::filesystem::path& dir : {reference, root / "inputs"})
     for (const auto& entry : std::filesystem::directory_iterator(dir))
       if (std::filesystem::exists(entry.path() / "input.json")) inputs.push_back(entry.path() / "input.json");
-  EXPECT_EQ(inputs.size(), 18u);  // 13 reference cases and 5 example inputs: update when one is added
+  EXPECT_EQ(inputs.size(), 19u);  // 14 reference cases and 5 example inputs: update when one is added
   for (const std::filesystem::path& input : inputs) {
     std::ifstream file(input);
     const nlohmann::json json = nlohmann::json::parse(file, nullptr, true, /*ignore_comments=*/true);

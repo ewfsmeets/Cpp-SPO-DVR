@@ -603,6 +603,24 @@ TEST(GateComparisons, AnalysisLimitsMismatchFails) {
   EXPECT_NONFATAL_FAILURE(expect_analysis_limits(not_compared, limits_of_a_run), "analysis limits compared");
 }
 
+// The fixed specular line (gate 3): equal to half a printed unit (e15.8 of 10.88: 5e-7, with the 1 % margin 5.05e-7)
+// passes; just beyond it, a NaN, a line fixed in only one code, a line printed twice or an unreadable value fails
+// once; a line fixed in neither passes.
+TEST(GateComparisons, FixedLineMismatchFails) {
+  const std::vector<std::string> printed = {"0.10880000E+02"};
+  expect_fixed_line(10.88, printed);
+  expect_fixed_line(10.88 + 4.9e-7, printed);
+  expect_fixed_line(std::nullopt, {});
+  EXPECT_NONFATAL_FAILURE(expect_fixed_line(10.88 + 5.2e-7, printed), "fixed specular line: C++ Z");
+  EXPECT_NONFATAL_FAILURE(expect_fixed_line(std::numeric_limits<double>::quiet_NaN(), printed),
+                          "fixed specular line: C++ Z");
+  EXPECT_NONFATAL_FAILURE(expect_fixed_line(std::nullopt, printed), "specular line fixed: C++ no, Fortran yes");
+  EXPECT_NONFATAL_FAILURE(expect_fixed_line(10.88, {}), "specular line fixed: C++ yes, Fortran no");
+  EXPECT_NONFATAL_FAILURE(expect_fixed_line(10.88, {printed[0], printed[0]}),
+                          "printed its fixed specular line 2 times");
+  EXPECT_NONFATAL_FAILURE(expect_fixed_line(10.88, {"***************"}), "is not a finite number");
+}
+
 // The reader of the limits: the two print formats, a name inside another word not taken.
 TEST(GateComparisons, AnalysisLimitsReader) {
   const std::filesystem::path path = std::filesystem::path(::testing::TempDir()) / "limits_synthetic.txt";

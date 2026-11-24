@@ -4,7 +4,8 @@
 //   pes_reference.txt         6D subsample of the potential and the angular grid (gate 1)
 //   debug_asyp.dat            rovibrational energies and eigenvectors (gate 2)
 //   fortran_setup_stdout.txt  the analysis limits nana, nstata, inchna (gate 2, with the gas phase)
-// Tests are skipped when a reference file is missing, except those of the SCM cases, which fail.
+// Tests are skipped when a reference file is missing, except those of the SCM cases and cu111_dailight_oblique,
+// which fail.
 // ctest runs this program as two tests, RegressionPes and RegressionPesScmNegative, each in one
 // process so that a case's calculation is computed once (calculation()); a skipped case fails
 // them (tests/CMakeLists.txt). The SCM cases also have the tests behind their looser gate 1b (the
@@ -88,8 +89,9 @@ bool with_symmetry(const std::string& name) { return name.ends_with("+UseSymmetr
 // The SCM cases (SystemID CRPDistrtSurface).
 const std::set<std::string> scm_cases = {"scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"};
 // The cases whose reference files must exist: a missing file fails their tests where the other cases'
-// tests skip. The SCM cases were committed together with their reference files and tests.
-const std::set<std::string> required_reference_cases = {"scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off"};
+// tests skip. These cases were committed together with their reference files and tests.
+const std::set<std::string> required_reference_cases = {"scm_cu111_srp48_small", "scm_cu111_srp48_small_rescaling_off",
+                                                        "cu111_dailight_oblique"};
 bool references_required(const std::string& name) { return required_reference_cases.contains(directory_of(name)); }
 
 // The 6D tolerance of a case. The real CRP data set (crp_cu111_srp48_small) holds total energies
@@ -237,7 +239,8 @@ TEST_P(RegressionPes, Gate2AnalysisLimits) {
 // stores the reduced potential and symmetryIndex, expanded by extract_pes.py, and the C++
 // potential is gathered through its own maps: the first Fortran gate of the symmetry maps.
 INSTANTIATE_TEST_SUITE_P(Cu111, RegressionPes,
-                         ::testing::Values("cu111_dailight_small", "cu111_persson_small", "cu111_dailight_short_sym"));
+                         ::testing::Values("cu111_dailight_small", "cu111_persson_small", "cu111_dailight_short_sym",
+                                           "cu111_dailight_oblique"));
 
 // The CRP library (SystemID CRPlibrary) on the synthetic data sets of its tests (pairwise model,
 // tests/crplib/reference/<sym>_pairwise/dataset); r and Z partly outside the data (clamped).

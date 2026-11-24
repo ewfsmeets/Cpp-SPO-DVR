@@ -4,7 +4,7 @@
 // tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
 // SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing, except the
-// SCM case scm_cu111_srp48_small, which fails.
+// SCM case scm_cu111_srp48_small and cu111_dailight_oblique, which fail.
 // LowZGateFailsWithoutTheScatteringAbsorberLong and ScmGateFailsWithoutTheCorrectionLong (also
 // SPODVR_LONG_TESTS=1) are the negative tests of the low-Z and the SCM case. RegressionHarness: the data-file paths of
 // a case's input (reference_case_input.hpp).
@@ -40,6 +40,12 @@ TEST(RegressionPropagation, Gate3DaiLightFullRunLong) {
 // The low-Z absorbers of upstream 5.24: cu111_dailight_short with ZOptLow… (energy form) and
 // ZSpOptLow… (factor form), both from ZStart to Zana.
 TEST(RegressionPropagation, Gate3DaiLightShortLowZ) { run_gate("cu111_dailight_short_lowz"); }
+
+// Oblique incidence with J > 0: cu111_dailight_short with JIn 1, MJIn -1 (the odd-parity angular grid, mJ != 0),
+// JMax 3, EParallel 0.1 eV and PhiParallel 17 deg (the momentum shift, the oblique channels); 1050 steps.
+TEST(RegressionPropagation, Gate3DaiLightOblique) {
+  run_gate("cu111_dailight_oblique", make_cpu_backend, References::required);
+}
 
 // Negative test of that gate: the C++ run without the scattering low-Z absorber must fail gates 3
 // and 4 by at least 100 times their tolerance, so the gate sees that absorber. It is the weaker of

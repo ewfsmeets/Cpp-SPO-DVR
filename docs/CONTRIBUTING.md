@@ -177,8 +177,9 @@ The regular expression selects the names that end in `Long` (or whose suite does
 ### Skipped regression tests and reference data
 
 - A regression test skips (it does not fail) when its Fortran reference file is missing; the tests
-  of the SCM cases `scm_cu111_srp48_small*` fail instead, and so do the PES gates, which ctest runs
-  as one test that fails on a skip ([Suites run as one test](#selecting-tests)). A missing optional
+  of the SCM cases `scm_cu111_srp48_small*`, of `cu111_dailight_oblique` and of the fine-analysis variants
+  (gate 5) fail instead, and so do the PES gates, which ctest runs as one test that fails on a skip
+  ([Suites run as one test](#selecting-tests)). A missing optional
   file (the BK file, the restart output) only drops that comparison.
 - The scripts in `tools/fortran_reference/` regenerate the files; they need a Fortran reference
   install ([tools/fortran_reference/README.md](../tools/fortran_reference/README.md); how to get the
@@ -187,8 +188,8 @@ The regular expression selects the names that end in `Long` (or whose suite does
 - `ctest -R ReferenceManifest` fails when a file listed in a case's `MANIFEST.tsv` is missing or
   edited, or a case has no `MANIFEST.tsv` ([MANIFEST.tsv](../tools/fortran_reference/README.md#manifesttsv)).
 - The test cases in `tests/reference/` include `hardwall_small` (also in `inputs/`), the calculation
-  of `inputs/scm_example` (`scm_cu111_srp48_small`), the corrugated cases (`cu111_dailight_*`,
-  `cu111_persson_small`) and the CRP cases (`crp_*`). Their `input.json` files run like any input
+  of `inputs/scm_example` (`scm_cu111_srp48_small`), the corrugated cases (`cu111_dailight_*`, among them
+  `cu111_dailight_oblique` with oblique incidence and J > 0, and `cu111_persson_small`) and the CRP cases (`crp_*`). Their `input.json` files run like any input
   ([README: Inputs](../README.md#inputs)).
 
 ### Other build variants

@@ -117,6 +117,7 @@ python3 -I -B "${tools_dir}/refdata.py" manifest delete "${manifests[@]%/MANIFES
 setup hardwall_small
 setup cu111_dailight_short_sym
 setup cu111_dailight_small
+setup cu111_dailight_oblique
 setup cu111_persson_small
 setup crp_c3v_synthetic_small
 setup crp_c4v_synthetic_small
@@ -139,6 +140,7 @@ propagation cu111_dailight_short
 propagation cu111_dailight_short_sym
 propagation cu111_dailight_short_lowz
 propagation cu111_dailight_small
+propagation cu111_dailight_oblique
 propagation scm_cu111_srp48_small
 
 # 4. The Fortran restart (hardwall_small in two parts).
@@ -147,6 +149,7 @@ restart
 # 5. Fine analysis of the regenerated BK coefficients.
 fine hardwall_small full truncated small empty
 fine cu111_dailight_small full
+fine cu111_dailight_oblique full
 
 # 6. The CRP library driver on the committed point lists and data sets.
 driver kernels

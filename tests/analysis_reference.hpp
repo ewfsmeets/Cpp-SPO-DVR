@@ -248,9 +248,9 @@ inline std::vector<FortranEnergyBlock> read_fortran_energy_blocks(const std::fil
 // where the printed probability it divides by exceeds this; below, both codes print ratios of rounding noise
 // (hardwall_short, whose |S| are all <= 2.4e-15: P(v) <= 9.4e-30, av erot differs by up to 4.4 % between the codes).
 // 1e3 times the largest |P_C++(v) - P_Fortran(v)| where P(v) < 1e-10, measured on every gate-4 case (both Long ones
-// and the restart run included) and gate-5 case (2026-11-24): 4.96e-18 (cu111_dailight_short_sym), the noise level
-// of a probability. Above it every average compared passes (largest 0.99 half printed units, scm_cu111_srp48_small);
-// the smallest P(v) compared is 3.6e-13 (the three short Dai-Light cases).
+// and the restart run included) and gate-5 case (2026-11-24), rounded up: 4.99e-18 (cu111_dailight_oblique, gate 5;
+// 4.96e-18 in cu111_dailight_short_sym), the noise level of a probability. Above it every average compared passes
+// (largest 0.99 half printed units); the smallest P(v) compared is 2.8e-14 (cu111_dailight_oblique, gate 5).
 inline constexpr double average_energy_noise_threshold = 5e-15;
 
 // The counts of one section: rows (values) read and those the Fortran's print rule gives for the C++ run (summed
@@ -532,6 +532,34 @@ inline void compare_bk_with_fortran(const PropagationRun& cpp,
   EXPECT_LE(d.worst, tolerance * d.scale);
   std::cout << "  " << ref.size() << " BK records compared; max|c| = " << d.largest
             << ", largest |C++ - Fortran| = " << d.worst << " (" << d.worst / d.scale << " of the reference scale)\n";
+}
+
+// The specular analysis line as the Fortran stdout prints it when the line becomes fixed (Analyzor.f90
+// FindNewAnalysisPoint, 5.19 :254 and :263: '==> ZAnalysis on specular channel fixed at Z = ', e15.8): the printed
+// value of every such line.
+inline std::vector<std::string> read_fortran_fixed_line(const std::filesystem::path& stdout_file) {
+  std::ifstream file(stdout_file);
+  if (!file) throw std::runtime_error("cannot open " + stdout_file.string());
+  std::vector<std::string> printed;
+  std::string line;
+  while (std::getline(file, line))
+    if (line.find("ZAnalysis on specular channel fixed at Z =") != std::string::npos)
+      printed.push_back(last_token(line));
+  return printed;
+}
+
+// Gate 3: the C++ specular analysis line becomes fixed exactly when the Fortran's does (printed at most once), at
+// the same Z to half a printed unit (a line that never fixes, as in hardwall_short, is absent in both).
+inline void expect_fixed_line(const std::optional<double>& cpp_line, const std::vector<std::string>& printed) {
+  EXPECT_LE(printed.size(), 1u) << "the Fortran printed its fixed specular line " << printed.size() << " times";
+  EXPECT_EQ(cpp_line.has_value(), !printed.empty())
+      << "specular line fixed: C++ " << (cpp_line ? "yes" : "no") << ", Fortran " << (printed.empty() ? "no" : "yes");
+  if (printed.size() != 1 || !cpp_line) return;
+  const std::optional<double> fortran = fortran_number(printed[0]);
+  EXPECT_TRUE(fortran.has_value()) << "Fortran fixed line '" << printed[0] << "' is not a finite number";
+  if (!fortran) return;
+  EXPECT_LE(std::abs(*cpp_line - *fortran), printed_text_tolerance(printed[0]))
+      << "fixed specular line: C++ Z = " << *cpp_line << ", Fortran " << printed[0];
 }
 
 }  // namespace spodvr::testing
