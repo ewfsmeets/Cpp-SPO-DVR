@@ -90,8 +90,8 @@ def test_check_draws_the_figure(work: Path) -> None:
 def new_window(path: Path = DZ_INPUT) -> DesignerWindow:
     """The window on an input, on a figure of the Agg backend that skips idle redraws: Agg redraws the whole
     figure at once on every `draw_idle` (about 0.4 s), and every `Slider.set_val` asks for one, also with events
-    off (16 when the window opens, 16 per Reset or Suggest). The tests check the artists, and draw the states they
-    check with draw_window."""
+    off (on the DZ input: 16 when the window opens or on Reset, 15 on Suggest). The tests check the artists, and
+    draw the states they check with draw_window."""
     input_file = load_input_file(path)
     apply_style()
     parameters = parse_input(input_file.values).parameters

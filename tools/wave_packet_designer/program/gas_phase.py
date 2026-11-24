@@ -5,9 +5,10 @@ src/gasphase/gas_phase.cpp (solve_rovibrational_states, count_open_vibrational_l
 highest_open_rotational_level, compute_gas_phase)
 
 The program diagonalises the Fourier grid Hamiltonian (FGH) of V(r) + j(j+1)/(2 mu r^2) for j = 0 .. JMax,
-with V(r) the potential's gas-phase curve on the input's r grid. The designer evaluates no potential: it
-gets a curve on its own grid (GasPhaseCurve, e.g. dz_gas_phase.py) and solves on that grid. The energies
-come from numpy's LAPACK, the program's from oneMKL or the system LAPACK: equal to rounding.
+with V(r) the potential's gas-phase curve on the input's r grid. This module evaluates no potential: it
+gets a curve (GasPhaseCurve: the copied potential of gas_phase_potentials.py on the input's r grid, or the
+DZ curve of dz_gas_phase.py as a stand-in for other potentials) and solves on the curve's grid. The
+energies come from numpy's LAPACK, the program's from oneMKL or the system LAPACK: equal to rounding.
 """
 
 from dataclasses import dataclass

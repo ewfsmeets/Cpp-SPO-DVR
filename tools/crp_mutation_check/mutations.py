@@ -1,4 +1,5 @@
-# Mutations of the CRP library (docs/crp_library.md "Mutation check"): each must make a CrpLib test fail.
+# Mutations of the CRP library (docs/crp_library.md "Mutation check"): each must make a CrpLib or FortranText test
+# fail, except those marked [SAFETY MARGIN].
 # Usage: python3 -I mutations.py <tree> <index>   (applies mutation <index> to <tree>; prints its name)
 #        python3 -I mutations.py list
 import sys

@@ -18,7 +18,7 @@ from program.unit_conversion import ev_to_hartree
 
 LOWEST_CHANNEL_ENERGY = 0.05  # eV: the scattering absorber's range in section 7 ("R + T <= 4e-5 for 0.05-1.0 eV")
 ENERGY_POINTS = 8  # energies per absorber, evenly spaced on a log scale
-SLICE = 0.002  # bohr: halving it changes R + T of the DZ absorbers by at most 1.1e-4 relative (0.03-1.5 eV)
+SLICE = 0.002  # bohr: halving it changes R + T of the DZ absorbers by at most 1.4e-4 relative (0.03-1.5 eV)
 
 
 @dataclass(frozen=True, kw_only=True)

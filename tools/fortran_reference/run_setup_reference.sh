@@ -2,7 +2,8 @@
 # Generates the Fortran reference data for the setup / potential / gas-phase gates.
 #
 # Runs the reference executable (reference_config.sh) in potential-only mode (nread = 6: stops
-# right after SetupAsympWF) with DoDump enabled, in a scratch directory, and copies the results
+# after SetupAsympWF and the rot-dif basis, momentum-shift and absorber set-ups) with DoDump
+# enabled, in a scratch directory, and copies the results
 # into tests/reference/<case>/:
 #   fortran_setup_stdout.txt  stdout of the run (vasy table, grid info, e(v,j) table)
 #   debug_asyp.dat            full-precision rovibrational energies and eigenvectors

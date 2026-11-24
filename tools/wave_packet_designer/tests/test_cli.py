@@ -25,7 +25,8 @@ def run_cli(*arguments: str) -> subprocess.CompletedProcess:
 
 
 def test_repository_inputs_are_accepted() -> None:
-    """The four inputs of inputs/ pass (exit 0); the SCM example with its data set's Z_asymptotic and group."""
+    """Four inputs of inputs/ pass (exit 0): thesis_fig5_3_dz, thesis_fig5_3_er, hardwall_small, and the SCM example
+    with its data set's Z_asymptotic and group."""
     for name in ("thesis_fig5_3_dz", "thesis_fig5_3_er", "hardwall_small"):
         result = run_check(str(REPOSITORY / "inputs" / name / "input.json"))
         check(result.returncode == 0 and "spodvr accepts" in result.stdout, f"{name}: {result.stdout}{result.stderr}")

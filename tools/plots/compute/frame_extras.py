@@ -19,7 +19,9 @@ from readers.frames import Frames
 # A packet designed by inputs/README.md section 4 keeps its momenta well inside; the FFT folds momenta beyond the
 # grid over to the other side, and what approaches the edge is the warning sign. The same band of orders in (x, y).
 NYQUIST_FRACTION = 0.8
-MAX_ORDERS = 6  # the diffraction panels draw the six largest orders, the rest summed: six line styles stay legible
+# The diffraction panels draw the six largest orders, the rest summed: seven lines stay legible (each its own colour
+# and marker; the four line styles repeat).
+MAX_ORDERS = 6
 ISOTROPIC_PER_SR = 1.0 / (4.0 * np.pi)  # an isotropic distribution of the axis, per steradian
 
 
@@ -196,8 +198,8 @@ def momentum_edges(frames: Frames, reference: float) -> list[EdgeSeries]:
     """Per record, the probability that the run brings to the edges of its momentum grids, relative to the initial
     norm (reference): the rise above the first record's share (as for the grid edges; an initial state that is not
     smooth on its grid, e.g. a gas-phase state reaching the r grid's ends, has a share there of its own) at |k| above
-    edge_per_bohr in r and in Z of chi (momentum), and in the orders with |n| or |m| above NYQUIST_FRACTION of the
-    largest, nX / 2 or nY / 2 (diffraction)."""
+    edge_per_bohr in r and in Z of chi (momentum), and in the orders with |n| or |m| at or above NYQUIST_FRACTION of
+    the largest, nX / 2 or nY / 2 (diffraction)."""
     arrays = frames.series.arrays
     shares = []
     if "momentum" in frames.extras.names:

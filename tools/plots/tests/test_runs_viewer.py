@@ -140,8 +140,8 @@ def test_window_sets_the_map(fixture_runs: Path) -> None:
 
 def test_trace_follows_the_point_and_the_window(fixture_runs: Path) -> None:
     """The time trace holds the probability in the window above the picked point at every frame and the window's
-    total over the 4 x 4 grid points (recomputed here from prob_zrxy, with einsum), and marks the shown frame;
-    exactly the values below the scale's lower end are left out (log scale here)."""
+    mean per grid point over the 4 x 4 grid points (recomputed here from prob_zrxy, with einsum), and marks the shown
+    frame; exactly the values below the scale's lower end are left out (log scale here)."""
     window = new_viewer(fixture_runs)
     times, z, r = window.frames.series.times_au, window.frames.z_bohr, window.frames.r_bohr
     window.time_slider.set_val(times[30])

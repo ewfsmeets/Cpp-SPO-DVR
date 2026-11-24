@@ -5,7 +5,7 @@
 # (onlyAnalysis, nread = 2) on the BK coefficients of the full Fortran run
 # (tests/reference/<case>/fortran_fort21.bin, copied to fort.22). Only DVR.inp is changed: its
 # data-file paths (reference_config.sh stage_inputs), onlyAnalysis and writeSMatrix switched on,
-# and in some variants tEnd / nStep / NrOfEs:
+# and in some variants tEnd / nStep:
 #   full       tEnd unchanged (1400 records; ndused = 1386 < ndatol)
 #   truncated  tEnd 13860, nStep 6930 (only the first 1386 records are used; ndused = ndatol)
 #   small      tEnd 800, nStep 400 (80 records, a few energies; coefficients are still noise)

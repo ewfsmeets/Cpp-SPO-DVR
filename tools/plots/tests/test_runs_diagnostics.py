@@ -88,9 +88,9 @@ def test_absorber_reflection_values(fixture_runs: Path, run: str, segments: list
 
 
 def test_absorber_reflection_of_one_open_channel(fixture_runs: Path) -> None:
-    """hardwall_tiny at 0.22 eV has one open channel, the elastic one (the other rows carry P <= 1.4e-26): its
-    error is 2 a P direct plus 2 sqrt(P a^2 P) = 2 a P re-scattered, 4 a P in all, with a of ZSpOpt at the row's
-    outgoing normal energy (compute/absorber_reflection.py)."""
+    """hardwall_tiny at 0.22 eV has one populated channel, the elastic one (its other 23 open channels carry
+    P <= 1.4e-26): its error is 2 a P direct plus 2 sqrt(P a^2 P) = 2 a P re-scattered, 4 a P in all, with a of
+    ZSpOpt at the row's outgoing normal energy (compute/absorber_reflection.py)."""
     run = fixture_runs / "hardwall_tiny"
     info = read_run_info(run)
     rows = s_matrix_rows(run, info, read_bk_coefficients(run / "bk_coefficients.bin"))

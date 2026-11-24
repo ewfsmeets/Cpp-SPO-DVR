@@ -20,7 +20,8 @@ import json
 import math
 import sys
 
-KEYS = ("x2DPES", "y2DPES", "theta2DPES", "phi2DPES")  # the coordinates a cut may set (InputNew.f90:446-449)
+# The coordinates a cut may set (InputNew.f90:402-405; r1727: 446-449).
+KEYS = ("x2DPES", "y2DPES", "theta2DPES", "phi2DPES")
 APPENDED = ("write2DPES", *KEYS)  # what the script appends to DVR.inp: a second line of a key would be ambiguous
 
 

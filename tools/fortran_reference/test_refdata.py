@@ -1,9 +1,10 @@
 """Tests of refdata.py compare with expected/r1713.tsv (ctest FortranReference.Compare*), and of the
 copies of refdata.py's lists (ctest FortranReference.ReferenceListsAgree).
 
-Each test builds an OLD tree in the 5.19 style and a NEW tree in the 5.24 style in its scratch
-directory `work`, at the paths of real reference cases (small synthetic files), runs compare as a
-program and checks its exit status and the FAIL line it prints:
+Most tests build an OLD tree in the 5.19 style and a NEW tree in the 5.24 style (test_initial_phase_*
+and test_nproj_label: r1713 and r1727 style) in their scratch directory `work`, at the paths of real
+reference cases (small synthetic files), run compare as a program and check its exit status and the
+FAIL line it prints:
   test_expected_file         the repository against itself: r1727.tsv is valid, every row matches a
                              file (a removed row may match none: its files are gone after the
                              switch)
@@ -324,7 +325,9 @@ INITIAL_PHASE_STDOUT = """\
 # The initial rows (v, S) and a row of another state (m1, m2) = (1, 0) of v = 0, as OLD prints them.
 INITIAL_PHASE_ROWS = ((0, complex(-0.470660e-03, -0.850680e-03)), (1, complex(0.212345e-02, -0.123456e-02)))
 OTHER_ROW = complex(0.100000e-02, 0.200000e-02)
-TRANS_ENERGY = 0.7  # eV; all six fixed-line cases have EParallel 0, so the block's momentum is k_z of v = VIn
+# eV; the six fixed-line cases of the r1727 switch have EParallel 0 (class initial_phase refuses EParallel /= 0),
+# so the block's momentum is k_z of v = VIn
+TRANS_ENERGY = 0.7
 MASS = 1822.89 * (1.0078 + 1.0078)
 CHAEV = 27.2114
 

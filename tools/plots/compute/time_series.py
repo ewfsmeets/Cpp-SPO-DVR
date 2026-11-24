@@ -117,7 +117,7 @@ def time_delays(info: RunInfo, bk: BkCoefficients, lines_bohr: np.ndarray) -> Ti
     """tau_f(E) = Re[sum t c_f e^{iEt} / sum c_f e^{iEt}] - M Z_f / k_f - M Z0 / k0 (a.u.): the derivative
     d arg S_f / dE of the S phase referred to Z_f, the line where channel f is analysed (lines_bohr), i.e. the
     delay relative to a reflection at Z = 0. s_matrix.tsv refers each phase to that same line, so its phase
-    derivative is tau + M Z_f / k_f + M Z0 / k0."""
+    derivative is tau itself; that of the raw time sums is the arrival time tau + M Z_f / k_f + M Z0 / k0."""
     energies = analysis_energies(info)
     n_times, n_v, n_states = bk.coefficients.shape
     coefficients = bk.coefficients.reshape(n_times, n_v * n_states)

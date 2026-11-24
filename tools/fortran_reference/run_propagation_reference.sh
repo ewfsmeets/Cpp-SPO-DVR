@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generates the Fortran reference data for the propagation gate (gate 3).
+# Generates the Fortran reference data for the propagation and on-the-fly analysis gates (gates 3 and 4).
 #
 # Runs the reference executable (reference_config.sh) on tests/reference/<case>/DVR.inp, unchanged
 # except the data-file paths (reference_config.sh stage_inputs), as a full new run (setup,

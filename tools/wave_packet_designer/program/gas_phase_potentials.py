@@ -9,9 +9,10 @@ converted to hartree) and clips it at VMin/VMax when those are imposed. There:
 - Dai-Light (H2Cu111DaiLight) is the H-H pair term of its LEPS form, U_M + A_M: with the Sato parameter it adds
   up to a Morse potential D (e^(-2 alpha (r - r0)) - 2 e^(-alpha (r - r0)));
 - the hard wall (HardWallPES) is its Rydberg-type gas-phase function.
-The expressions and the order of operations are the C++'s, so the values are bitwise the program's (checked
-against the program's printed table in tests/test_gas_phase.py). Not copied: the Persson potential (its gas
-phase is the full LEPS at Z = 8 bohr) and the CRP data sets; for them gas_phase_potential returns None.
+The expressions and the order of operations are the C++'s, so the values are bitwise the program's
+(tests/test_gas_phase.py checks Dai-Light bitwise against the program's printed table, the hard wall against
+the Fortran's printed table within 1e-14 relative). Not copied: the Persson potential (its gas phase is the
+full LEPS at Z = 8 bohr) and the CRP data sets; for them gas_phase_potential returns None.
 """
 
 import math

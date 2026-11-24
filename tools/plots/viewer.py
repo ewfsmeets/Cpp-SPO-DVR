@@ -7,7 +7,8 @@ window in bohr; hovering shows the explanation of a panel or control (explanatio
 them over the panels, the key s saves the window as a PNG. Times in a.u. with fs beside them.
 
 The window holds the state and wires the widgets to the panels of panels/frames.py; the numbers come from compute/
-(the window picks frames, points, windows and scales). The only module of the tool that uses pyplot.
+(the window picks frames, points, windows and scales). The only module of the tool (besides its tests) that uses
+pyplot.
 """
 
 import textwrap
@@ -75,7 +76,9 @@ from style import DENSITY_FLOOR, INK, INK_2, MUTED, SURFACE, apply_style, densit
 PLAY_INTERVAL_MS = 300  # between two frames while playing (explanations.CONTROLS["Play"] says "about three a second")
 HELP_WIDTH = 60  # characters per line in the help box
 EXPLAIN_WIDTH = 70  # characters per line of an explanation laid over a panel
-EMPTY_WINDOW = 1e-8  # a window holding less than this share of the initial norm is shown as empty (heuristic)
+# A window holding less than this share of the first frame's probability on the scattering grid is shown as empty
+# (heuristic).
+EMPTY_WINDOW = 1e-8
 HELP_PROMPT = "Hover over a panel, a slider or a button for its explanation; click the cell map to pick a point."
 SAVE_KEY = "s"
 
@@ -259,7 +262,8 @@ class FrameViewer:
 
     def draw_map(self) -> None:
         """The probability over the cell in the (Z, r) window at the current frame, the picked point marked; a
-        window that holds less than EMPTY_WINDOW of the initial norm is drawn empty and says so."""
+        window that holds less than EMPTY_WINDOW of the first frame's probability on the scattering grid is drawn
+        empty and says so."""
         z_slice, r_slice = self.windows()
         area_bohr2 = float(self.info.data["grids"]["xy_volume_element"])
         values = density_per_volume(xy_probability(self.frames, self.record(), z_slice, r_slice), area_bohr2)

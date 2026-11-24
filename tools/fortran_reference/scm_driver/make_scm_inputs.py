@@ -19,7 +19,7 @@ V_asy points (0, 0, zasymp, r, pi/2, 0); random points in the cell; and, last, 2
 from the surface: 14 with Z in [8, zasymp) and 6 on the plane Z = zasymp at general (u, v), where
 the correction is tiny but not always zero. Every real value of a point
 list is written as its 16 hexadecimal IEEE digits, so the C++ tests read exactly the driver's input.
-Only +, -, *, /, sqrt and random() are used: the output does not depend on the C library.
+Only +, -, *, /, sqrt, nextafter and random() are used: the output does not depend on the C library.
 
 Usage: python3 -I -B make_scm_inputs.py example|synthetic CASE_DIR EXAMPLE_DIR
   CASE_DIR     the case directory to write (created if needed)
@@ -169,7 +169,8 @@ def slab_v3(seed):
 
 def slab_v2(seed):
     """Version 2: 13 atoms per configuration (layer 1: the origin and its 6 neighbours; three each
-    of layers 2 and 3, which the correction skips), layers interleaved; three configurations."""
+    each of layers 2 and 3; the correction skips those of layer 3), layers interleaved; three
+    configurations."""
     rng = random.Random(seed)
     layer1 = [(0, 0), (1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]
     below = [(0, 0), (-1, 0), (0, -1)]

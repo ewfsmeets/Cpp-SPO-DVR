@@ -6,7 +6,8 @@ The C++ builds each group from its generators (rotations and mirrors in steps of
 and takes phi_points_multiple = 12 / gcd(12, the angles of all its operations): then every operation maps
 the phi grid onto itself. An operation of angle b maps phi to b + phi (rotation) or b - phi (mirror); a mirror
 of angle b reflects in the line at b/2, so C3v's mirror 6 is the program's "mirror at 90 deg". The designer
-needs only the results, worked out here from the generators (surface_operation.hpp):
+needs only the results, worked out here from the generators (point_group.cpp) and the composition rule
+(surface_operation.hpp):
 
 | group | rotations (twelfths) | mirrors (twelfths) | gcd | multiple | operations |
 |-------|----------------------|--------------------|-----|----------|------------|

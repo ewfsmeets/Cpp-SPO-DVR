@@ -63,9 +63,9 @@ An install is a directory (`SPODVR_FORTRAN_REF_DIR`, by default `<id>` in the re
 | Path | Content |
 |---|---|
 | `bin/spodvr.x` | The executable |
-| `OBJS/` | Its objects and modules (`*.o`, `*.mod`), linked into the CRP driver |
+| `OBJS/` | Its objects and modules (`*.o`, `*.mod`), linked into the CRP and SCM drivers |
 | `BUILDINFO.tsv` | Provenance (below) |
-| `SHA256SUMS` | sha256 of the files above (`sha256sum -c` in the install) |
+| `SHA256SUMS` | sha256 of the other files (`sha256sum -c` in the install) |
 | `build.log`, `sources.tar` | The DoBuild log and the exact sources (installs made by the build script) |
 
 `v5.19` is the 5.19 archive (symlinks into the unmodified 5.19 distribution; it must never be
@@ -154,7 +154,7 @@ recorded, rows sorted by path. Hashes other than the file's own are shortened to
 | `sha256` | Its sha256 |
 | `script` | The script that generated it |
 | `commit` | `git describe --always` of this repository, with `-dirty` when a tracked file outside the reference trees (`tests/**/reference/`) differs from it: those change in every regeneration |
-| `fortran_ref` | The install id (`BUILDINFO.tsv`) and `<program>:<sha256>` of the program that ran: `spodvr.x`, or the CRP driver linked against the install's objects |
+| `fortran_ref` | The install id (`BUILDINFO.tsv`) and `<program>:<sha256>` of the program that ran: `spodvr.x`, or the CRP or SCM driver linked against the install's objects |
 | `input_sha` | `<input>:<sha256>` of each input as run, comma-separated: the `DVR.inp` with the script's changes, the staged data files (a CRP data set `dataset`, hashed as a tree: the sha256 of its sorted `sha256sum` lines; the SCM files `params.dat`, `slab.dat`), the fine analysis's `fort.22` (equal to the case's `fortran_fort21.bin`), the driver's `*.in` |
 | `runtime_drift` | The run-time packages whose installed version differs from `BUILDINFO.tsv` (`package=version`), when `SPODVR_FORTRAN_ALLOW_RUNTIME_DRIFT=1` let the run go ahead |
 | `cpu` | The CPU model and `flags:<sha256>` of its feature flags (libm picks code by CPU feature) |

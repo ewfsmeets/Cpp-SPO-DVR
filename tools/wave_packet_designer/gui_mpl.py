@@ -153,7 +153,7 @@ class DesignerWindow:
         self.update()
 
     def add_slider(self, index: int, spec: SliderSpec) -> Slider:
-        """A slider in one of two columns below the panels; its black tick marks the input's value."""
+        """A slider in one of three columns below the panels; its black tick marks the input's value."""
         column, row = divmod(index, SLIDER_ROWS)
         ax = self.figure.add_axes((0.11 + 0.225 * column, 0.385 - 0.05 * row, 0.115, 0.024))
         widget = Slider(

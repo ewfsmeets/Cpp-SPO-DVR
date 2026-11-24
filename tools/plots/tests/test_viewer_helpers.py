@@ -60,7 +60,7 @@ def image_fractions(fraction_x: float, fraction_y: float, lattice: Lattice, grou
 
 def test_site_images_by_hand() -> None:
     """The points of the cell (its outline included) equivalent to a site: on the 60-degree cell (C6v) top at the
-    four corners, a bridge at the three edge midpoints and the long diagonal's middle (five with the copies on the
+    four corners, a bridge at two edge midpoints and the long diagonal's middle (five with the copies on the
     far edges), the two hollows; on a square cell (C4v) the point (0.25, 0) at its four images, all on edges, eight with their copies; C3v (p3m1:
     a mirror at 90 degrees) splits the hollows; "none" keeps the site alone. The site's own position comes first.
     Rotations alone for C6v (a slip: the mirrors left out) give (0.2, 0.1) 6 images instead of 12."""

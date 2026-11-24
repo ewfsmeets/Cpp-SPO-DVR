@@ -13,7 +13,7 @@ from readers.binary import read_bk_coefficients
 from readers.run_info import read_run_info
 from readers.tables import read_asymptotic_potential, read_gas_phase_states, read_s_matrix, read_scattering_summary
 
-SUM_TOLERANCE = 1e-13  # relative: the C++ and numpy add the same few hundred terms in other orders
+SUM_TOLERANCE = 1e-13  # relative: the C++ and numpy add the same terms (at most 137) in other orders
 S_TOLERANCE = 1e-12  # relative: as tests/test_runs_s_matrix.py
 
 

@@ -142,7 +142,7 @@ class BasisEdges:
     scattering grid must not look like one that reaches the edge)."""
 
     times_au: np.ndarray
-    top_j: np.ndarray | None  # the top J of the basis (JMax, or JMax - 1 for a homonuclear basis of odd parity)
+    top_j: np.ndarray | None  # the top J of the basis (JMax: a homonuclear JMax must have JIn's parity)
     top_mj: np.ndarray | None  # |mJ| = the basis's largest |mJ| (the effective MJMax)
     first_r: np.ndarray  # the first EDGE_POINTS r points, both grids
     last_r: np.ndarray  # the last EDGE_POINTS r points, both grids

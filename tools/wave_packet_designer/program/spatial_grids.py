@@ -6,7 +6,7 @@ absorber_split_points), src/grids/uniform_grid.hpp (UniformGrid), src/grids/mome
 Grid points are `start + i * spacing` in double precision, as in the C++. The Fortran computes them in quad
 precision and rounds once, so a point can differ by one ulp; `fortran_grid_point` emulates that with exact
 fractions to find the points that the two programs put on different sides of an absorber's strongest end
-(inputs/README.md, "The grid-point trap").
+(inputs/README.md, "Low-Z absorbers and the grid-point trap").
 """
 
 from collections.abc import Callable

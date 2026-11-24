@@ -3,4 +3,4 @@
 # the finding line or of the offending source line), reason. Rows sorted by check, file, match.
 # A row that is the only match of no finding fails the check: delete rows that are no longer needed.
 check	file	match	reason
-links	docs/validation_thesis_fig5_3_dz/scripts/tables/verdict.md	(stages.md#item-	generated fragment that the record's scripts embed in its README.md and stages.md, so no relative link resolves in all three places; the record changes only through its scripts
+links	docs/validation_thesis_fig5_3_dz/scripts/tables/verdict.md	(stages.md#item-	generated fragment that the record's scripts embed in its README.md, where its links to stages.md resolve; in the fragment's own directory (scripts/tables/) they cannot; the record changes only through its scripts

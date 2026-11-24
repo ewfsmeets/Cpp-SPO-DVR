@@ -16,7 +16,7 @@
 # Exit status: 0 within the bounds, 1 slower or more memory (or a run failed), 2 bad arguments.
 # Environment: none read. Run time: CPU about 10 x 40 s, GPU about 10 x 2 min (measured with R = 5).
 # Disk: each run writes its checkpoint (DZ: about 6 GiB) into a scratch directory under /var/tmp (on disk; /tmp
-#   may be a RAM-backed tmpfs too small for it), removed after the run's log is read.
+#   may be a RAM-backed tmpfs too small for it), removed right after the run (the log is kept elsewhere).
 # Docs: docs/CONTRIBUTING.md, section "Additions to the time loop".
 set -euo pipefail
 

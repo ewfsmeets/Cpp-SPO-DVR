@@ -91,7 +91,8 @@ REQUIRED_KEYS = (
     InputKey("TolSp", REAL, "tol_specular"),
 )
 
-# In the order of read_optional_keys; absent keys keep the InputParameters default.
+# In the order of read_optional_keys, except that FrameExtras comes before NormBudget here; absent keys keep the
+# InputParameters default.
 OPTIONAL_KEYS = (
     InputKey("MJMax", INTEGER, "mj_max"),
     InputKey("onlyAnalysis", LOGICAL, "only_analysis"),

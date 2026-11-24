@@ -81,7 +81,7 @@ def test_s_matrix_from_the_bk_file(fixture_runs: Path, run: str) -> None:
 def test_a_porting_slip_fails_at_every_energy(fixture_runs: Path, slip: str) -> None:
     """Negative tests, three realistic slips: E_coll instead of E_tot in exp(i E t); the skewed kx, ky taken as
     Cartesian in k0 (the oblique fixture has kx 5.7 and ky 4.4 bohr^-1 on the 60 degree cell); the initial state's
-    phase referred to Zana as in the Fortran (the fixture's specular line is fixed; measured: all 41 energies fail,
-    the smallest by 0.022 of the largest |S|)."""
+    phase referred to Zana, as in the Fortran's fine analysis and its on-the-fly analysis up to r1719 (the fixture's
+    specular line is fixed; measured: all 41 energies fail, the smallest by 0.022 of the largest |S|)."""
     relative = worst_relative_difference(fixture_runs / "dailight_oblique", slip)
     assert np.sum(relative > TOLERANCE) == len(relative)

@@ -50,7 +50,7 @@ The window shows six panels, a verdict and a help box:
   for tEnd; E_n,min (0.03 eV by default) sets what tEnd needs for the slow inelastic and diffractive
   channels.
 
-The verdict (the eighth panel) says what `spodvr` would do with the input, then each recommendation of
+The verdict (the panel at the bottom right) says what `spodvr` would do with the input, then each recommendation of
 inputs/README.md it misses, worst first (the run fails, the results suffer, it costs more), with its
 value, limit and what to change; then the grid sizes, the absorbers as placed and tEnd, and what nothing
 here checks. Hovering over a panel, a slider or a button explains it in the help box; **Explain** lays the
@@ -342,5 +342,5 @@ check (`draw_window` in `tests/test_plots.py`).
     but does not model the plot data;
   - the checks of `make_angular_grid` (`src/grids/angular_grid.cpp`): those on JIn, JMax, MJIn and MJMax
     repeat checks of `validate_input`, and the two on the number of φ points hold by construction (it is
-    the nearest valid FFT size ≥ 2·MJMax+1).
+    `nearest_fft_size(2·MJMax+1)` for the φ multiple of the point group).
 - |ψ(k)| comes from numpy's FFT, the program's from FFTW or oneMKL: equal to rounding.

@@ -130,8 +130,8 @@ def test_sums_give_back_the_s_matrix(fixture_runs: Path) -> None:
 @pytest.mark.parametrize("slip", ["no shift", "transposed", "missing step"])
 def test_a_slip_in_the_projection_fails_at_both_energies(fixture_runs: Path, slip: str) -> None:
     """Negative tests: the incident parallel momentum left in (oblique incidence: kx 5.7, ky 4.4 bohr^-1), the sites'
-    grid points transposed (the 60 degree cell is not symmetric under the swap), and one analysis step (of 1400)
-    missing from the sums."""
+    grid points transposed (the swap is a mirror of the C6v cell, but the incident parallel momentum at 17 degrees
+    is not symmetric under it), and one analysis step (of 1400) missing from the sums."""
     relative = s_differences(fixture_runs / "dailight_rho_e", slip)
     assert np.sum(relative > S_TOLERANCE) == 2
 
@@ -213,14 +213,14 @@ def stationary_s_differences(run: Path, slip: str = "") -> np.ndarray:
 
 
 # The phase drift of the split operator's propagated momentum against k_f over the checked Z range: delta / v =
-# 6.65e-7 hartree x M / k ~ 2.3e-4 bohr^-1 (dtStep 2) over at most 1.2 bohr of Z, rounded up.
+# 6.9e-7 hartree x M / k = 2.3-2.6e-4 bohr^-1 (dtStep 2) over at most 1.2 bohr of Z, rounded up.
 SPLIT_OPERATOR_DRIFT = 3e-4
 
 
 def test_stationary_channels_hold_the_s_matrix_at_every_z(fixture_runs: Path) -> None:
     """dailight_rho_e at both energies: S_f(Z) of the plot tool's psi_E equals s_matrix.tsv's S_f at every Z between
     zasymp (8.0) and the valid region's top (9.2 bohr) for every open non-initial channel, within the truncation
-    indicator of the same quantity (the partial sums against the final ones: 2.7e-3, 1.4e-3 of max |S|) plus
+    indicator of the same quantity (the partial sums against the final ones: 2.2e-3, 9.3e-4 of max |S|) plus
     SPLIT_OPERATOR_DRIFT; measured 1.1e-3, 7.1e-4 (2026-11-20). The only check of psi_E at oblique incidence (k0 from
     the parallel momentum, the weight) and of the valid region's top."""
     run = fixture_runs / "dailight_rho_e"
@@ -243,7 +243,7 @@ def test_a_slip_in_the_stationary_channels_fails_at_both_energies(fixture_runs: 
 # --- the hard-wall gate -----------------------------------------------------------------------------------------
 
 WALL_Z_MAX, WALL_Z_MIN = 7.0, 0.1778  # the hard wall's cosine switch (src/potential/hard_wall_potential.cpp)
-NUMEROV_START_BOHR = 0.3  # inside the wall (V_z ~ 120 eV): the solution starts at 0 there
+NUMEROV_START_BOHR = 0.3  # inside the wall (V_z ~ 110 eV): the solution starts at 0 there
 NUMEROV_REFINE = 32  # Numerov steps per scattering-grid step (its error ~ h^4: negligible)
 
 
@@ -386,8 +386,8 @@ def test_hard_wall_stationary_state_is_the_exact_one(fixture_runs: Path, energy:
 @pytest.mark.parametrize("slip", ["no k0", "total", "no delta", "scale"])
 def test_a_slip_in_the_stationary_state_fails_at_every_energy(fixture_runs: Path, slip: str) -> None:
     """Negative tests: psi_E without its k0 factor, the Numerov energy E_tot instead of E_n, the Strang shift delta
-    left out (its phase (k0 - k') Z0 = 2.8e-3 rad gives 5e-3 at |F| = 2.4), and F 1.001 times too large each fail at
-    all three energies (in F or in |A|)."""
+    left out (its phase (k0 - k') Z0 = 2.4-3.1e-3 rad gives max |F - F_exact| = 5.4-7.6e-3 at |F| = 2.4), and F 1.001
+    times too large each fail at all three energies (in F or in |A|)."""
     run = fixture_runs / "hardwall_long"
     checks = [wall_check(run, e, slip) for e in range(3)]
     failing = [error > tolerance or incoming > bound for error, tolerance, incoming, bound in checks]

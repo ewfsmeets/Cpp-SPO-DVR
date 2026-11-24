@@ -72,7 +72,7 @@ OUTSIDE_REFERENCE_TREES = ":(exclude,glob)tests/**/reference/**"
 # The committed inputs of a case (see is_input) and the directories of the reference trees that
 # hold no Fortran output (fortran_unformatted/: hand-made gfortran test records).
 CASE_INPUT_FILES = ("DVR.inp", "input.json", "pes_cuts.json")  # pes_cuts.json: the write2DPES cuts (gate 1c)
-CASE_INPUT_SUFFIX = ".in"  # the CRP driver's point lists
+CASE_INPUT_SUFFIX = ".in"  # the CRP and SCM drivers' inputs (point lists, SCM parameter and slab files)
 CASE_INPUT_DIR = "dataset"  # a CRP data set
 NOT_A_CASE = ("fortran_unformatted",)
 # The reference trees, one directory per case. Copies: reference_config.sh FORTRAN_REFERENCE_TREES,
@@ -144,8 +144,9 @@ def checked_field(name, value):
 
 def is_input(path):
     """True for a committed input of a case (never generated, never deleted): the case's DVR.inp,
-    input.json and pes_cuts.json, the CRP point lists (*.in) and data set (dataset/). Everything else
-    in a case directory is generated, including fine_<variant>/DVR.inp."""
+    input.json and pes_cuts.json, the driver inputs (*.in: CRP and SCM point lists, SCM parameter and
+    slab files) and the CRP data set (dataset/). Everything else in a case directory is generated,
+    including fine_<variant>/DVR.inp."""
     parts = PurePosixPath(path).parts
     at_top = len(parts) == 1
     return (
@@ -195,7 +196,7 @@ def repository_commit():
 
 def fortran_ref(install, binary):
     """'<install id> <program>:<sha256, 12 digits>': the install (BUILDINFO.tsv `id`) and the
-    program that ran (its executable, or the CRP driver linked against its objects)."""
+    program that ran (its executable, or the CRP or SCM driver linked against its objects)."""
     buildinfo = Path(install) / "BUILDINFO.tsv"
     if not buildinfo.is_file():
         raise Refusal(f"{buildinfo} not found; point --install at a reference install")

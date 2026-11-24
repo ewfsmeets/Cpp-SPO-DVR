@@ -19,7 +19,7 @@ class AngularGrid:
     """The (theta, phi) grid sizes and the J range of the rotational basis (AngularGrid)."""
 
     n_theta: int  # Gauss-Legendre points (half of them for a homonuclear molecule)
-    n_phi: int  # equidistant points: a valid FFT size >= 2 MJMax + 1
+    n_phi: int  # equidistant points: nearest_fft_size(2 MJMax + 1) for the phi multiple (valid when the multiple is 1)
     j_min: int  # J range of the basis, after the parity rule of a homonuclear molecule
     j_max: int
     delta_j: int  # 2 for a homonuclear molecule (only J of JIn's parity), else 1

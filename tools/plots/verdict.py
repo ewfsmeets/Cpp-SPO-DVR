@@ -95,8 +95,8 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
 
 def norm_budget_finding(runs: list[Path]) -> Finding | None:
     """The norm budget (norm_budget/, NormBudget) before any NaN or inf: a warning where its residual exceeds its
-    error estimate; nothing without norm_budget/, a "not checked" when it cannot be read or holds no finite
-    record."""
+    error estimate by more than BUDGET_LIMIT of the initial norm; nothing without norm_budget/, a "not checked" when
+    it cannot be read or holds no finite record."""
     if not (runs[-1] / BUDGET / "manifest.json").is_file():
         return None
     try:

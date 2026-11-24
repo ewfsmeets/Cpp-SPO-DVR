@@ -42,8 +42,9 @@ def test_hardwall_by_hand() -> None:
 
 def test_dz_matches_the_program() -> None:
     """The blocks GRIDS (theta and phi points), ROTATIONAL BASIS, MEMORY ESTIMATE and GPU MEMORY ESTIMATE of
-    spodvr for the DZ input (provenance: helpers.DZ_INPUT; 8 threads, 19 of 144 (x, y) points with C6v's 12
-    operations): every row's values and printed size, and the totals."""
+    spodvr for the DZ input (provenance: helpers.DZ_INPUT, except the work arrays: the committed log prints 194400
+    values, the current program 25600 (expected_cases.json, case dz); 8 threads, 19 of 144 (x, y) points with
+    C6v's 12 operations): every row's values and printed size, and the totals."""
     r = resources_of(DZ_INPUT, Settings(threads=8, representatives=19))
     check_equal((r.angular.n_theta, r.angular.n_phi, r.rotational_basis_size), (15, 60, 435), "angular sizes")
     cpu = [

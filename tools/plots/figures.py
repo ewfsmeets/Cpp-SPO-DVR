@@ -601,7 +601,8 @@ def potential_with_reference(runs: list[Path]) -> tuple[PotentialData, float] | 
 
 
 def figure_frame_movie(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """The density over (Z, r) above each site (or the cell's origin) against time, as movies, with V_min's contours."""
+    """The density over (Z, r) above each of the first MAX_FRAME_SITES sites (or the cell's origin) against time, as
+    movies, with V_min's contours."""
     frames, notes = usable_frames(runs)
     records = evenly_spaced_records(len(frames.series.times_au), MOVIE_FRAMES)
     k_surface = most_at_surface(frames, int(info.data["grids"]["nz_potential"]))
@@ -916,7 +917,7 @@ def figure_momentum(runs: list[Path], info: RunInfo, options: argparse.Namespace
 FINE_ANALYSIS_FILES = ["fine_analysis/scattering_summary.tsv", "fine_analysis/spectrum/scattering_summary.tsv"]
 
 MAX_SUM_ENERGIES = 3  # the energy_resolved figure shows the first this many energies (one row each)
-MAX_SUM_SITES = 6  # ... and the profiles of the first this many sites (six line styles stay legible)
+MAX_SUM_SITES = 6  # ... and the profiles of the first this many sites (six lines stay legible: own colour and marker)
 DENSITY_NOT_PROBABILITY = "A rho_E: a stationary density per unit-cell area, not a reaction probability"
 
 
@@ -931,8 +932,8 @@ def sum_figure_notes(sums: EnergyResolved, rows: int, sites: range) -> tuple[str
 
 
 def figure_energy_resolved(runs: list[Path], info: RunInfo, options: argparse.Namespace) -> Figures:
-    """The stationary scattering state at each energy of the sums: A rho_E(Z, r) at the first site and its r integral
-    against Z at every site, in the valid region."""
+    """The stationary scattering state at the first MAX_SUM_ENERGIES energies of the sums: A rho_E(Z, r) at the
+    first site and its r integral against Z at the first MAX_SUM_SITES sites, in the valid region."""
     sums = read_energy_resolved(runs[-1])
     region = valid_region(info)
     rows = min(len(sums.collision_ev), MAX_SUM_ENERGIES)

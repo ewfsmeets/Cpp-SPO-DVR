@@ -96,7 +96,7 @@ judgement); `verdict.py` reads the run's files for them.
 | absorber reflection | warning above 1e-3, else information | the error of each channel's P from the waves the Z absorbers return to the analysis line, to first order at the worst phase: 2·a·P (direct) + 2·√(P·Q) (re-scattered at the surface), a = √R + T of `ZSpOpt` (every v of the initial channel) or `ZOpt` (the others) at the channel's outgoing normal energy, Q = Σ min(a, 1)²·P over the analysed channels at that energy (`compute/absorber_reflection.py`); also quotes the largest direct relative error 2a where P ≥ 1e-2. Not estimated: channels with R above 0.1 (near a threshold, where first order fails; counted, with their largest P, and a warning when 2·P exceeds 1e-3 there: their error can be of order P), `ROpt`, the low-Z absorbers (named when on), unanalysed channels, the √TolSp tail, multiple reflections (inputs/README.md section 8). "not checked" without bk_coefficients.bin or s_matrix.tsv, or for an absorber power other than 2; an absorber that is off (strength 0) returns a = 1, is named in the value and warns |
 | flux at the edge of the basis | warning | more than 1e-3 of P_scattered in j′ = JMax, or in the outermost analysed diffraction channels (s_matrix.tsv) |
 | packet at the edge of the basis: a grid edge | warning | in some frame (frames/), more than 1e-6 of the initial norm beyond the first frame's at the first or last 2 r points (both grids) or the first 2 Z points (the FFT wraps the packet around) |
-| packet at the edge of the basis: … (momentum grid, above the first frame's) | warning | in some frame, the probability at \|k\| above 0.8 of a momentum grid's largest (k_r of ψ_full, k_Z of the specular wave χ; `FrameExtras` `momentum`) or in the orders with \|n\| or \|m\| above 0.8 of the largest (`diffraction`) rises by more than 1e-6 of the initial norm above the first frame's: the FFT folds larger momenta over (the 0.8: `NYQUIST_FRACTION` in `compute/frame_extras.py`) |
+| packet at the edge of the basis: … (momentum grid, above the first frame's) | warning | in some frame, the probability at \|k\| above 0.8 of a momentum grid's largest (k_r of ψ_full, k_Z of the specular wave χ; `FrameExtras` `momentum`) or in the orders with \|n\| or \|m\| at or above 0.8 of the largest (`diffraction`) rises by more than 1e-6 of the initial norm above the first frame's: the FFT folds larger momenta over (the 0.8: `NYQUIST_FRACTION` in `compute/frame_extras.py`) |
 | packet at the edge of the basis: top J or \|mJ\| | information | in some frame, more than 1e-6 of the initial norm in the top J, or in the top \|mJ\| when it is below the top J: normal while the packet is at the surface; the j′ check of the S matrix decides whether the basis is large enough |
 | norm budget does not close | warning | the norm that left the grids minus the absorbers' summed losses exceeds its error estimate by more than 1e-4 of the initial norm (norm_budget/) at some window end |
 | gas-phase states reach the ends of the r grid | warning | \|ψ_v,j\| at either end of the r grid above 1e-3 of its maximum, for the analysed levels (gas_phase_states.dat); the advice names the end: a smaller RStart (the first point) or a longer r grid (the last) |
@@ -121,15 +121,15 @@ uv run tools/plots/view.py <run directory>... --self-test DIR    # drives it, sa
 probability over the unit cell below zasymp with V_min's corrugation as contours, rho(Z, r) above the bridge site,
 and the probability above it against time](images/viewer.png)
 
-- Left: the probability per area over the unit cell (drawn skewed as it is), summed over a window of Z and r (the
-  two range sliders, in bohr; it opens on the points below zasymp), with the probability in the window in the
-  title; a window holding less than 1e-8 of the initial norm is left empty. The sites are marked where PlotSites
-  puts them (filled, labelled) and at their symmetry-equivalent points (open: the run's point group and the
-  lattice; also in `xy_maps` and `potential_maps`). A click picks the grid point whose drawn cell holds it. Its
-  colour scale is the frame's own, or (the Scale button) one over all frames; linear, or log over eight decades
-  (the Map button). The V_min button lays V_min(x, y) over it as contours in meV above its lowest value over the
-  cell, at the (Z, r) of the window that holds the most probability in the frame (the corrugation the packet meets
-  there; none beyond zasymp, where V no longer depends on x and y).
+- Left: the probability per area over the unit cell (drawn skewed as it is), summed over a window of Z and r (the two
+  range sliders, in bohr; it opens on the points below zasymp), with the probability in the window in the title; a
+  window holding less than 1e-8 of the first frame's probability on the scattering grid is left empty. The sites are
+  marked where PlotSites puts them (filled, labelled) and at their symmetry-equivalent points (open: the run's point
+  group and the lattice; also in `xy_maps` and `potential_maps`). A click picks the grid point whose drawn cell holds
+  it. Its colour scale is the frame's own, or (the Scale button) one over all frames; linear, or log over eight decades
+  (the Map button). The V_min button lays V_min(x, y) over it as contours in meV above its lowest value over the cell,
+  at the (Z, r) of the window that holds the most probability in the frame (the corrugation the packet meets there; none
+  beyond zasymp, where V no longer depends on x and y).
 - Right: ρ(Z, r) above the picked point (the first site of PlotSites at the start), one log colour scale over all
   frames, with V_min's contours, Zana, the end of the scattering grid and where the absorbers start. Below it the
   probability in the (Z, r) window above the point against time, beside the window's mean per grid point (above
@@ -176,7 +176,7 @@ flowchart LR
 | `readers/densities.py` | densities/: its directory name, datasets and grids (`DensityGrids`); read and joined through `readers/arrays.py` and `readers/segments.py` | `src/report/densities_files.cpp` |
 | `readers/segments.py` | restart segments in time order; records of averages.dat and of series joined (a repeated record must equal the kept one to 1e-12 of its largest value) | — |
 | `compute/analysis.py` | a run's analysis energies, analysis time step and S-matrix factors (run_info.json); the BK channel of each s_matrix.tsv row | — |
-| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; Cartesian positions and periodic cells of the (x, y) grid, the grid point nearest a Cartesian point (the viewer's click); the r absorber's first point; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
+| `compute/grids.py` | the Cartesian parallel momentum K of a diffraction channel on the skewed lattice; Cartesian positions and periodic cells of the (x, y) grid, the grid point whose drawn cell holds a Cartesian point (the viewer's click); the r absorber's first point; a probability per cell as a density per volume | `src/input/process.cpp` (in its docstring) |
 | `compute/states.py` | P(v', j'), P(mJ'), the alignment A0(2) and its limits, the (v', j') map | — |
 | `compute/diffraction.py` | P per channel and order, in and out of plane, the scattering angles (summed over mJ') | — |
 | `compute/results.py` | probabilities, mean energies and the unitarity error against energy | — |
@@ -198,7 +198,7 @@ flowchart LR
 | `figures.py` | one `figure_<name>(runs, info, options)` per entry, and `PLOTS`, the only list of entries | — |
 | `report.py` | report.md with the verdict first; the overwrite guard of `plot` and `report` | — |
 | `spodvr_plot.py` | the command line | — |
-| `viewer.py` | the viewer's window (`FrameViewer`: the state, the widgets wired to the panels of frames/), its self-test; the only module that uses pyplot | — |
+| `viewer.py` | the viewer's window (`FrameViewer`: the state, the widgets wired to the panels of frames/), its self-test; the only module that uses pyplot (its tests aside) | — |
 | `view.py` | the viewer's entry (PEP 723 header: numpy, matplotlib, PyQt6) | — |
 
 To change… edit:
@@ -220,7 +220,8 @@ To change… edit:
   with a unit suffix on every dimensioned value (`_ev`, `_hartree`, `_bohr`, `_au`, `_per_bohr`; none =
   dimensionless); unit factors from `RunInfo`, never module constants.
 - Readers, `copies/` and `compute/` never print or draw; panels never compute; figures are
-  `matplotlib.figure.Figure` objects (no pyplot; only `viewer.py`, the window, uses it). These are kept by review.
+  `matplotlib.figure.Figure` objects (no pyplot; only `viewer.py`, the window, uses it, its tests aside). These are
+  kept by review.
 - Dataclasses are `@dataclass(frozen=True, kw_only=True)`: immutable (a changed copy through
   `dataclasses.replace`) and built with keywords; older ones follow when a change touches them.
 - `tests/test_structure.py` checks: the layers; numpy only in layers 0–2 and matplotlib from layer 3 up (no
@@ -276,8 +277,8 @@ unless `still=k` names another (`figure_frame_movie`: the frame when most of the
 pytest, one ctest per test module, registered by a glob in the repository's `tests/CMakeLists.txt`: the file
 name decides how. `tests/test_runs_<name>.py` becomes `PlotRuns.<name>`: it reads the fixture runs, which the
 C++ test `PlotRuns.Fixtures` ([tests/test_plot_fixtures.cpp](../../tests/test_plot_fixtures.cpp)) writes with
-the current program into `build/tests/plot_fixtures` (about 280 s at 8 threads; ctest runs it first), and gets
-`--fixture-runs`. Any other `tests/test_<name>.py` becomes `Plots.<name>` and runs without them.
+the current program into `build/tests/plot_fixtures` (about 280 s at 8 threads, measured 2026-11-20; ctest runs it
+first), and gets `--fixture-runs`. Any other `tests/test_<name>.py` becomes `Plots.<name>` and runs without them.
 `tests/conftest.py` also makes runs that stopped early from one fixture. Helpers shared by test modules live in
 modules without the `test_` prefix (`tests/frame_helpers.py`, `tests/absorber_profiles.py`), imported as
 `tests.<module>` (tests/ has no `__init__.py`). The `PlotRuns.*` tests are not in the

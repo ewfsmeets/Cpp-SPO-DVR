@@ -124,10 +124,10 @@ def draw_carpet(
 def draw_region_norms(
     ax: Axes, legend_ax: Axes, times_au: np.ndarray, regions: RegionNorms, starts_au: list[float]
 ) -> None:
-    """The norm in each region (together the norm) and 1 - norm against time, in black by line style and marker;
-    the probability inside each absorber (overlapping the regions) as thin lines in its grid's colour. y log when
-    they span more than 1e3, values below its lower limit not drawn. The legend goes into legend_ax (its axis
-    turned off), since the curves fill the panel."""
+    """The norm in each region (together the norm) and 1 - norm against time, each in its own colour
+    (style.SERIES_COLORS), line style and marker; the probability inside each absorber (overlapping the regions) as
+    thin lines in its grid's colour. y log when they span more than 1e3, values below its lower limit not drawn.
+    The legend goes into legend_ax (its axis turned off), since the curves fill the panel."""
     series = {**regions.regions, "1 - norm (removed)": regions.removed}
     scale = scale_and_limits([*series.values(), *regions.absorbers.values()])
     for k, (label, values) in enumerate(series.items()):

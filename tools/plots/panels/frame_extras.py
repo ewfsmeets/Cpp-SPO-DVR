@@ -42,8 +42,8 @@ SQUARE_FRACTION = 0.6  # a node's square spans this fraction of the smallest nod
 
 
 def node_squares(theta_deg: np.ndarray, phi_deg: np.ndarray) -> tuple[np.ndarray, float, float]:
-    """The squares drawn at the nodes: their corners (ntheta * nphi, 4, 2) as (phi, theta) in degrees, theta fastest
-    in phi order (as per_sr.ravel() of (ntheta, nphi)), and their half width in phi and half height in theta, both a
+    """The squares drawn at the nodes: their corners (ntheta * nphi, 4, 2) as (phi, theta) in degrees, phi fastest
+    (as per_sr.ravel() of (ntheta, nphi)), and their half width in phi and half height in theta, both a
     SQUARE_FRACTION of the smallest spacing, so the squares shrink as the grid grows."""
     half_phi = 0.5 * SQUARE_FRACTION * 360.0 / len(phi_deg)
     spacing = np.diff(theta_deg)

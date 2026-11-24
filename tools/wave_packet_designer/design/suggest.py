@@ -1,4 +1,4 @@
-"""Suggested Z grids, packet position and Z absorbers: the recipe of inputs/README.md, section 2, steps 3-10.
+"""Suggested Z grids, packet position and Z absorbers: the recipe of inputs/README.md, section 2, steps 3-11.
 
 The energy range, the masses, ZStart and Z_asymptotic come from the input; the rest follows:
 - dZ: the input's, if it holds the momenta ((k_grid - k0)/sigma_k >= 6, section 4); else the largest step

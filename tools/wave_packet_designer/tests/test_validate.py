@@ -19,9 +19,10 @@ DZ_SYSTEM = ANALYTIC_SYSTEMS["H2Cu111DaiLight"]  # Z_asymptotic 15.0, C6v
 # The keys of the flux-analysis block of validate.cpp, which the designer does not copy (not ported).
 FLUX_KEYS = {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"}
 
-# (InputParameters changes, expected key, part of the expected message), in the order of validate.py. Where a
-# row changes more than one key, the other changes keep the input valid in every other respect that matters
-# for the targeted check; the comment says which.
+# (InputParameters changes, expected key, part of the expected message), in the order of validate.py, except the
+# JIn > JMax row (next to JIn >= JMax) and the analysis D4 rows (at the end). Where a row changes more than one
+# key, the other changes keep the input valid in every other respect that matters for the targeted check; the
+# comment says which.
 VIOLATIONS = [
     ({"system_id": "H2Cu100"}, "SystemID", "Unknown system ID"),
     ({"z_dof": False}, "ZDoF", "6D"),

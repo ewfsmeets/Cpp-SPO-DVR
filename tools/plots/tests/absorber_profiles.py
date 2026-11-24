@@ -1,5 +1,6 @@
 """The absorbers' factors per time step at the grid points, from run_info.json alone: the independent input of the
-numpy checks that need them (test_runs_norm_budget, test_runs_frame_extras). Not a test module."""
+numpy checks that need them (test_runs_norm_budget, test_runs_frame_extras, test_runs_energy_resolved). Not a test
+module."""
 
 import numpy as np
 

@@ -1,7 +1,8 @@
 // Per-operator and per-kernel timing of the GPU backend for an input file: the specular grid,
 // the kinetic stage T, a whole analysis step (as the program runs it), the potential stage kernel
 // by kernel, and the per-step copies to the host.
-// Every call is followed by cudaDeviceSynchronize, so the times are those of the GPU work.
+// The warm-up call and the loop of timed repetitions each end with cudaDeviceSynchronize, so the
+// times are those of the GPU work.
 // Usage: spodvr_cuda_operator_timing <input.json> [repetitions]
 #include <cuda_runtime_api.h>
 

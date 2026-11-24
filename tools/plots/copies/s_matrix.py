@@ -76,7 +76,8 @@ def channel_factors(
 
     total_energy_ev, k0_per_bohr: (n_energies,); channel_energy_hartree, z_measured_bohr (the line Z_f where each
     channel is measured): (n_channels,).
-    Returns: (n_energies, n_channels) complex, in bohr^1/2 (the time sums are in bohr^-1/2).
+    Returns: (n_energies, n_channels) complex, in bohr^1/2 per a.u. of time (the time sums are in bohr^-1/2 times
+    a.u. of time), so S is dimensionless.
     """
     k0 = k0_per_bohr[:, None]
     weight = packet_weight(k0, kz_per_bohr, alpha_per_bohr2)
