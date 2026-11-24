@@ -2,8 +2,8 @@
 
 A plane wave of energy E meets V = -i A (3/2) ((q - start)/L)^2 on [start, start + L]: R is what comes back,
 T what passes the end (and wraps around on the periodic grid). Transfer matrix through thin slices with
-constant V, integrated backwards from the transmitted wave, as tools/wave_packet_check.py does; here with the
-program's strength A. A low-Z absorber is the mirror image for a wave from the other side: same R and T.
+constant V, integrated backwards from the transmitted wave, with the program's strength A. A low-Z absorber is
+the mirror image for a wave from the other side: same R and T.
 """
 
 import cmath

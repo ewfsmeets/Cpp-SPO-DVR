@@ -2,12 +2,13 @@
 
 How to choose the Z-direction parameters of a new input (`dZ`, `nZ`, `nZSpecular`, `Zana`, `Z0`,
 `EMinWP`/`EMaxWP`, the absorbers, `tEnd`). Section 2 is the recipe; the sections after it explain
-each rule. `tools/wave_packet_check.py` checks an input against all of them. The wave-packet designer
-([tools/wave_packet_designer](../tools/wave_packet_designer/README.md)) applies them interactively: it
-runs the program's input checks, shows the grids, the packet, the absorbers and the memory, and has
-sliders for the recipe's knobs. The two worked cases are `thesis_fig5_3_dz/` and `thesis_fig5_3_er/`
-(their READMEs give the numbers). Atomic units throughout (energies converted with 1 Ha = 27.2114 eV,
-masses with 1 amu = 1822.89 mₑ); M is the total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
+each rule. The wave-packet designer ([tools/wave_packet_designer](../tools/wave_packet_designer/README.md))
+checks an input against them (`check`; not JMax, nX/nY and dtStep: see the "Not checked" line of its
+window) and applies them interactively: it runs the program's input checks, shows the grids, the
+packet, the absorbers and the memory, and has sliders for the recipe's knobs. The two worked cases
+are `thesis_fig5_3_dz/` and `thesis_fig5_3_er/` (their READMEs give the numbers). Atomic units
+throughout (energies converted with 1 Ha = 27.2114 eV, masses with 1 amu = 1822.89 mₑ); M is the
+total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
 
 ## 1. Terms
 
@@ -100,7 +101,8 @@ Worked example in brackets: H₂, 0.40–0.95 eV, Z_asymp = 15.0 (`thesis_fig5_3
 9. **End each absorber on the last grid point** (`ZOptEnd`, `ZSpOptEnd`). Starts need not be grid
    points. [15.0–19.08, 22.08–30.60]
 10. **Targets** `ZOptEnergy` ~0.2 eV, `ZSpOptEnergy` ≈ `EMinWP`, `ROptEnergy` ~0.3 eV; check R and
-    T with `tools/wave_packet_check.py` (or the designer's absorber panel) and adjust.
+    T with the designer's `check` (section "ABSORBERS: REFLECTION + TRANSMISSION") or its absorber
+    panel and adjust.
 11. **`tEnd`** from section 8. [25 000; the DZ input uses 17 500]
 12. **Memory** (section 9), then a **test run** to t ≈ 500 (section 10).
 
@@ -187,8 +189,8 @@ waves, a high one reflects slow ones.
 - **r absorber**: only prevents wrap-around in r (reaction is 1 − Σ reflection, not a flux in r).
   `ROptStart` beyond the barrier region and beyond the extent of the bound states up to the
   analysed v and j_max; target ~0.3 eV.
-- `tools/wave_packet_check.py` computes R and T (1D transfer matrix through the exact −iV_opt) and
-  L/λ for all three.
+- The designer's `check` computes R and T (1D transfer matrix through the exact −iV_opt) and L/λ
+  for all three.
 
 ### Low-Z absorbers and the grid-point trap
 
@@ -267,10 +269,9 @@ wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and with the line fixe
 
 ## 10. Verifying a new input
 
-1. `uv run -q python -I tools/wave_packet_check.py input.json --zasymp <Z_asymp>`:
-   all margins met, absorbers inside the table, R + T small over the relevant energies. Or
-   `uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check input.json`, which also
-   runs the program's input checks.
+1. `uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check input.json`
+   (`--zasymp Z --point-group G` for CRP data sets): the program's input checks pass, all margins
+   met, absorbers inside the table, R + T small over the relevant energies.
 2. Run to t ≈ 500 a.u.: the total norm drops by ≲ 1e-7 (DZ: 1 − 4.7e-8; with dZ 0.15 it was
    1 − 3.3e-6), and no "fixed at" message appears before the packet reaches `Zana`.
 3. At the end: the norm not yet analysed, and a second run with a longer `tEnd` (section 8).

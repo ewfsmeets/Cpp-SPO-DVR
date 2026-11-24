@@ -24,11 +24,14 @@ so its N_Z is the scattering grid. Here N_tot = 435 × 160·40·12·12 = 400.9 m
 
 ## Z grid: why ΔZ = 0.12 instead of 0.15
 
-General rules: `../README.md`; check with `tools/wave_packet_check.py`. The packet width is not an input: it follows from `EMinWP`/`EMaxWP` (α = (k₀ − k_min)²/4, Fortran
-`getAlphaCoeffWavePacket`), so its momentum spread σ_k = √α is fixed by the energy range. A grid
-only holds momenta up to π/ΔZ. Whatever lies above wraps around in the FFT to large *outward*
-momentum: it runs into the specular absorber, and it stops the dynamical specular analysis line
-(`DynamZSpAna`) at once, because that line is fixed as soon as norm moves outward past it.
+General rules: `../README.md`; check with
+`uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_dz/input.json`
+(from the repository root). The packet width is not an input: it follows from `EMinWP`/`EMaxWP`
+(α = (k₀ − k_min)²/4, Fortran `getAlphaCoeffWavePacket`), so its momentum spread σ_k = √α is fixed
+by the energy range. A grid only holds momenta up to π/ΔZ. Whatever lies above wraps around in the
+FFT to large *outward* momentum: it runs into the specular absorber, and it stops the dynamical
+specular analysis line (`DynamZSpAna`) at once, because that line is fixed as soon as norm moves
+outward past it.
 
 | ΔZ | Energy range (eV) | σ_Z (a₀) | k_max = π/ΔZ | Norm wrapped to outward momentum |
 |---|---|---|---|---|
@@ -62,19 +65,19 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
   fast part of the wave transmitted through the absorber, and the FFT grid then wraps it around to
   Z = 0. A high target reflects the slow part. The absorbers end on the last grid point (the
   absorbing potential is zero beyond its end). 1D reflection R and transmission T, computed for
-  these exact absorbers:
+  these exact absorbers by the designer's `check`:
 
-  | Absorber | Range (a₀) | Target | R + T | R at 0.02 eV |
-  |---|---|---|---|---|
-  | Z, scattering | 15.0–19.08 | 0.2 eV | ≤ 4e-5 for 0.05–0.95 eV (8e-6 at 0.95) | 2e-2 |
-  | Z, specular | 22.08–30.60 | 0.4 eV | ≤ 4e-9 for 0.2–0.95 eV; 2e-8 at 1.2 eV | 1e-4 |
-  | r | 4.1–8.3 | 0.3 eV | ≤ 2e-5 above 0.2 eV; 1e-3 at 0.1 eV | 0.13 |
+  | Absorber | Range (a₀) | Target | Energies `check` uses | R + T | R at the lowest energy |
+  |---|---|---|---|---|---|
+  | Z, scattering | 15.0–19.08 | 0.2 eV | 0.05–0.95 eV | ≤ 4.2e-5 (largest at 0.05 eV; 8.3e-6 at 0.95 eV) | 4.2e-5 |
+  | Z, specular | 22.08–30.60 | 0.4 eV | 0.40–0.95 eV | ≤ 2.7e-9 (largest at 0.95 eV) | 2.7e-10 |
+  | r | 4.1–8.3 | 0.3 eV | 0.05–3.655 eV | ≤ 2.3e-5 for 0.17–1.07 eV; 2.3e-2 at 0.05 eV, 2.5e-3 at 3.655 eV | 2.3e-2 |
 
   The scattering absorber sees every channel, down to the thresholds (hence the low target). The
   specular grid carries only the initial channel, elastically reflected at the packet energies,
-  so its absorber is tuned higher. Waves below ~0.03 eV normal energy (diffraction or rotational
-  channels just above threshold) are reflected whatever the choice, but they move slowly and
-  barely return within T.
+  so its absorber is tuned higher. Below the 0.05 eV where `check` starts (channels just above
+  threshold) R grows towards 1 whatever the choice, but those waves move slowly and barely return
+  within T.
 
 ## Cost (this machine)
 

@@ -31,6 +31,7 @@ from design.rules import (
     DesignInput,
     analysed_bound_states,
     design_checks,
+    gaussian_tail,
     memory_fits,
     norm_beyond,
 )
@@ -77,13 +78,15 @@ class AbsorberSummary:
     strength: float  # hartree (0: off)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PacketSummary:
     """The initial wave packet in the terms of inputs/README.md, sections 3 and 4 (atomic units)."""
 
     sigma_k: float  # 1/bohr: sqrt(alpha), the width of |psi(k)|^2
     sigma_z: float  # bohr: 1 / (2 sigma_k), the width of |psi(Z)|^2
     grid_momentum_limit: float  # 1/bohr: k_grid = pi / dZ, the largest |k| the Z grids hold
+    outward_tail: float  # the Gaussian tail of |psi(k)|^2 at k > 0: the part moving outward (section 3)
+    wrapped_tail: float  # its tail beyond k_grid, which wraps round to outward motion (section 4)
     # From the sampled packet; None in the run modes that build none (onlyAnalysis, Potential).
     norm_outside: float | None  # norm - norm inside: the part of the packet outside the allowed region
     tolsp_measure: float | None  # 1 - norm inside: what the program compares with TolSp
@@ -468,17 +471,31 @@ def absorber_summaries(p: InputParameters, d: DerivedParameters, g: SpatialGrids
 
 
 def packet_summary(p: InputParameters, d: DerivedParameters, packet: InitialWavePacket | None) -> PacketSummary:
-    """The packet's widths and momentum limit, and with a sampled packet its norms and |psi(k)| at the edge."""
+    """The packet's widths, momentum limit and momentum tails, and with a sampled packet its norms and |psi(k)|
+    at the edge."""
     sigma_k = math.sqrt(d.wave_packet_alpha)
     sigma_z = 1.0 / (2.0 * sigma_k)
     grid_momentum_limit = math.pi / p.dz
+    outward_tail = gaussian_tail(d.kz / sigma_k)
+    wrapped_tail = gaussian_tail((grid_momentum_limit - d.kz) / sigma_k)
     if packet is None:
-        return PacketSummary(sigma_k, sigma_z, grid_momentum_limit, None, None, None)
+        return PacketSummary(
+            sigma_k=sigma_k,
+            sigma_z=sigma_z,
+            grid_momentum_limit=grid_momentum_limit,
+            outward_tail=outward_tail,
+            wrapped_tail=wrapped_tail,
+            norm_outside=None,
+            tolsp_measure=None,
+            edge_to_maximum=None,
+        )
     info = packet.info
     return PacketSummary(
-        sigma_k,
-        sigma_z,
-        grid_momentum_limit,
+        sigma_k=sigma_k,
+        sigma_z=sigma_z,
+        grid_momentum_limit=grid_momentum_limit,
+        outward_tail=outward_tail,
+        wrapped_tail=wrapped_tail,
         norm_outside=info.norm - info.norm_inside,
         tolsp_measure=1.0 - info.norm_inside,
         edge_to_maximum=info.k_space_at_edge / info.k_space_maximum,

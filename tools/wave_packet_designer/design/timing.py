@@ -24,11 +24,12 @@ class PathZ:
     z: tuple[float, ...]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TimeBudget:
     """The times (a.u.) the slow parts of the packet need, and the paths of the time panel."""
 
     z_turn: float  # bohr
+    time_per_bohr_slowest: float  # a.u. per bohr: M / k_min, the slowest analysed part (EMinWP) at its speed
     lowest_outgoing_energy: float  # eV: E_n,min
     t_elastic: float  # the slowest analysed part (EMinWP), reflected elastically, back at Zana
     t_needed: float  # an outgoing wave of normal energy E_n,min, from the slowest part's reflection, at Zana
@@ -50,4 +51,12 @@ def time_budget(c: DesignInput) -> TimeBudget:
     t_elastic = t_turn + (z_analysis - z_turn) * mass / k_slow
     t_needed = t_end_for(z0, z_analysis, mass, k_slow, c.e_n_min, z_turn)
     paths.append(PathZ(f"E_n = {c.e_n_min:g} eV out", (t_turn, t_needed), (z_turn, z_analysis)))
-    return TimeBudget(z_turn, c.e_n_min, t_elastic, t_needed, c.p.t_end, tuple(paths))
+    return TimeBudget(
+        z_turn=z_turn,
+        time_per_bohr_slowest=mass / k_slow,
+        lowest_outgoing_energy=c.e_n_min,
+        t_elastic=t_elastic,
+        t_needed=t_needed,
+        t_end=c.p.t_end,
+        paths=tuple(paths),
+    )

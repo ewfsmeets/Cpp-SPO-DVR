@@ -3,7 +3,9 @@
 The solid curve of Figure 5.3: the ER PES is M. Persson et al., J. Chem. Phys. 110, 2240 (1999),
 Fortran module `PESForCu111Persson` (SystemID `H2Cu111Persson`, a = 2.5173 Å = 4.757 a₀,
 Z_asymptotic = 8.0 a₀). The reasoning (why ΔZ = 0.12, the wave-packet width, the absorbers) is in
-`../thesis_fig5_3_dz/README.md`; this case follows the same rules (`../README.md`; check with `tools/wave_packet_check.py`).
+`../thesis_fig5_3_dz/README.md`; this case follows the same rules (`../README.md`; check with
+`uv run python -I -B tools/wave_packet_designer/wave_packet_designer.py check inputs/thesis_fig5_3_er/input.json`
+from the repository root).
 
 ## Taken from Table 5.1 (column "ER PES, H₂")
 
@@ -20,13 +22,14 @@ README). Here N_tot = 435 × 112·32·16·16 = 399 million.
 - Z grids (ΔZ 0.12, Z from 0.0): scattering 112 points (to 13.32 a₀), specular 210 points
   (to 25.08 a₀).
 - `Zana` 8.04 (first grid point at or beyond Z_asymptotic).
-- Absorbers (1D R + T for these exact absorbers):
+- Absorbers (1D reflection R and transmission T for these exact absorbers, computed by the
+  designer's `check`):
 
-  | Absorber | Range (a₀) | Target | R + T | R at 0.02 eV |
-  |---|---|---|---|---|
-  | Z, scattering | 8.04–13.32 | 0.2 eV | ≤ 7e-6 for 0.05–0.95 eV (4e-6 at 0.95) | 4e-3 |
-  | Z, specular | 16.08–25.08 (L/λ = 14.9) | 0.4 eV | ≤ 3e-9 for 0.2–1.0 eV; 2e-8 at 1.2 eV | 4e-5 |
-  | r | 4.0–8.25 | 0.3 eV | ≤ 2e-5 above 0.2 eV; 1e-3 at 0.1 eV | 0.13 |
+  | Absorber | Range (a₀) | Target | Energies `check` uses | R + T | R at the lowest energy |
+  |---|---|---|---|---|---|
+  | Z, scattering | 8.04–13.32 | 0.2 eV | 0.05–0.95 eV | ≤ 6.5e-6 (largest at 0.05 eV; 4.2e-6 at 0.95 eV) | 6.5e-6 |
+  | Z, specular | 16.08–25.08 (L/λ = 14.9) | 0.4 eV | 0.40–0.95 eV | ≤ 2.0e-9 (largest at 0.95 eV) | 2.0e-10 |
+  | r | 4.0–8.25 | 0.3 eV | 0.05–2.339 eV | ≤ 6.1e-6 for 0.15–0.78 eV; 2.2e-2 at 0.05 eV, 5.4e-4 at 2.339 eV | 2.2e-2 |
 
 - No `UseSymmetry`: the Persson PES is not periodic on the grid (it converts coordinates with
   0.529167 Å/bohr but the lattice constant with 0.529177), so the symmetry self-check fails.

@@ -33,6 +33,36 @@ def test_repository_inputs_are_accepted() -> None:
     check(result.returncode == 0, f"scm_example: {result.stdout}{result.stderr}")
 
 
+def test_check_prints_r_t_time_and_tails() -> None:
+    """`check` on the DZ input prints R and T of each absorber besides R + T, the TIME section (the slowest
+    analysed part's a.u. per bohr and the times it needs) and the packet's two momentum tails: the quantities
+    inputs/README.md and inputs/thesis_fig5_3_dz/README.md quote."""
+    result = run_check(str(DZ_INPUT))
+    check(result.returncode == 0, f"{result.returncode}: {result.stdout}{result.stderr}")
+    lines = result.stdout.splitlines()
+
+    def table_row(absorber: str, label: str) -> list[str]:
+        """The values of one row (R, T or R + T) of an absorber in ABSORBERS: REFLECTION + TRANSMISSION."""
+        start = next(i for i, line in enumerate(lines) if line.split()[:2] == [absorber, "E"])
+        for line in lines[start + 1 : start + 4]:
+            if line[13:21].strip() == label:
+                return line[21:].split()
+        raise AssertionError(f"{absorber}: no {label} row")
+
+    check_equal(table_row("ZOpt", "R")[0], "4.2e-05", "ZOpt R at the lowest energy")
+    check_equal(table_row("ZOpt", "T")[-1], "8.3e-06", "ZOpt T at the highest energy")
+    check_equal(table_row("ZSpOpt", "R + T")[-1], "2.7e-09", "ZSpOpt R + T at the highest energy")
+    for text in (
+        "TIME (inputs/README.md section 8)",
+        "354 a.u. per bohr",
+        "after 10252 a.u.",
+        "needs 22438",
+        "Packet moving outward, k > 0 ................. 2.9e-21",
+        "Wrapped to outward motion, beyond k_grid ..... 1.4e-20",
+    ):
+        check(text in result.stdout, f"{text!r} missing: {result.stdout}")
+
+
 def test_rejected_input_exits_with_1(work: Path) -> None:
     """Z0 too close to Zana: the report names the TolSp error and the exit status is 1."""
     values = json.loads(DZ_INPUT.read_text()) | {"Z0": 16.78}

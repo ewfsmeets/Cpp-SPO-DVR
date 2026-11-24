@@ -9,6 +9,7 @@ Presentation layer (README, "Architecture"): formats what evaluate() computed an
 import textwrap
 
 from design.rules import CONSEQUENCES, DesignCheck
+from design.timing import TimeBudget
 from evaluation import SETTINGS_STAGE, SYMMETRY_GIVEN, SYMMETRY_NOT_GIVEN, Evaluation, Suggestion
 from program.findings import Finding, Severity
 from program.json_input import key_of_field
@@ -30,6 +31,7 @@ def format_check_report(e: Evaluation, source: str, reading_findings: list[Findi
         lines += r_grid_section(e)
         lines += gas_phase_section(e)
         lines += design_section(e)
+        lines += time_section(e)
         lines += absorber_response_section(e)
     return "\n".join(lines) + "\n"
 
@@ -127,6 +129,7 @@ def wave_packet_section(e: Evaluation) -> list[str]:
     lines.append(row("Width in k, sigma_k = sqrt(alpha)", f"{s.sigma_k:.4f}", "1/bohr"))
     lines.append(row("Width in Z, sigma_Z = 1/(2 sigma_k)", f"{s.sigma_z:.4f}", "bohr"))
     lines.append(row("Centre Z0", f"{p.z0:g}", "bohr"))
+    lines.append(row("Packet moving outward, k > 0", f"{s.outward_tail:.1e}"))
     if e.packet is None:
         lines.append("  (no wave packet: none in this run mode, or the program stops before building it)")
         return lines
@@ -149,6 +152,7 @@ def z_grids_section(e: Evaluation) -> list[str]:
     )
     lines.append(row("Specular grid (nZSpecular)", f"{zsp.size} points, {zsp.start:.4f} .. {zsp.last:.4f}", "bohr"))
     lines.append(row("Largest momentum k_grid = pi/dZ", f"{e.packet_summary.grid_momentum_limit:.4f}", "1/bohr"))
+    lines.append(row("Wrapped to outward motion, beyond k_grid", f"{e.packet_summary.wrapped_tail:.1e}"))
     lines.append(row("Kinetic energy at k_grid", f"{hartree_to_ev(g.kz_scattering.max_kinetic_energy):.4f}", "eV"))
     lines.append(row("Interaction region nzpot, Z < Z_asymptotic", f"{g.nz_potential} points"))
     lines.append(row("Analysis line Zana (index)", f"{g.z_analysis:.4f} ({g.iz_analysis})", "bohr"))
@@ -257,6 +261,17 @@ def design_section(e: Evaluation) -> list[str]:
     return lines
 
 
+def time_section(e: Evaluation) -> list[str]:
+    """The time budget of section 8: the slowest analysed part's time per bohr, and the times it needs."""
+    b = e.time_budget
+    if b is None:
+        return []
+    lines = section("TIME (inputs/README.md section 8)")
+    lines.append(row("Slowest analysed part (EMinWP), M / k_min", f"{b.time_per_bohr_slowest:.0f}", "a.u. per bohr"))
+    lines.append(textwrap.fill(time_line(b), TEXT_WIDTH, initial_indent="  ", subsequent_indent="  "))
+    return lines
+
+
 def absorber_response_section(e: Evaluation) -> list[str]:
     lines = section("ABSORBERS: REFLECTION + TRANSMISSION (1D, inputs/README.md section 7)")
     lines.append(
@@ -266,6 +281,8 @@ def absorber_response_section(e: Evaluation) -> list[str]:
     for r in e.absorber_responses:
         lines.append(f"  {r.name:10} E (eV)  " + " ".join(f"{x:8.3f}" for x in r.energies))
         lines.append(f"  {'':10} R + T   " + " ".join(f"{x:8.1e}" for x in r.total))
+        lines.append(f"  {'':10} R       " + " ".join(f"{x:8.1e}" for x in r.reflection))
+        lines.append(f"  {'':10} T       " + " ".join(f"{x:8.1e}" for x in r.transmission))
     return lines
 
 
@@ -351,15 +368,19 @@ def key_numbers(e: Evaluation) -> list[str]:
             f"Memory: WORST CASE without the symmetry reduction ({', '.join(sizes)}): the input uses UseSymmetry "
             "but the number of representatives is not given (--representatives)."
         )
-    b = e.time_budget
-    if b is not None:
-        lines.append(
-            f"Time: the slowest analysed part, reflected elastically at Z_turn {b.z_turn:g}, is back at Zana after "
-            f"{b.t_elastic:.0f} a.u. (a lower bound); outgoing E_n >= {b.lowest_outgoing_energy:g} eV needs "
-            f"{b.t_needed:.0f}; tEnd {b.t_end:.0f}."
-        )
+    if e.time_budget is not None:
+        lines.append(time_line(e.time_budget))
     placed = []
     for a in e.absorbers:
         reduced = f", L/lambda {a.reduced_length:.1f}" if a.reduced_length is not None else ", tuned by its factor"
         placed.append(f"{a.name} {a.start:g}-{a.end:g} ({a.end - a.start:.2f} bohr{reduced})")
     return lines + ["Absorbers: " + "; ".join(placed) + "."]
+
+
+def time_line(b: TimeBudget) -> str:
+    """The time budget in one sentence: when the slowest analysed part is back at Zana, and what tEnd needs."""
+    return (
+        f"Time: the slowest analysed part, reflected elastically at Z_turn {b.z_turn:g}, is back at Zana after "
+        f"{b.t_elastic:.0f} a.u. (a lower bound); outgoing E_n >= {b.lowest_outgoing_energy:g} eV needs "
+        f"{b.t_needed:.0f}; tEnd {b.t_end:.0f}."
+    )

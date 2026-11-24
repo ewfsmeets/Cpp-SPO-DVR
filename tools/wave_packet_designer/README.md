@@ -69,7 +69,7 @@ budget; 2 by default, ZStart for the worst case).
 
 | Command | What it does |
 |---|---|
-| `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers, the r grid, the gas-phase channels, the design checks of inputs/README.md and the absorbers' R + T. |
+| `check <input.json>` | Runs the program's input checks and set-up stages on the input and prints the packet, the Z grids, the absorbers, the r grid, the gas-phase channels, the design checks of inputs/README.md, the time budget and the absorbers' R and T. |
 | `check <input.json> --png figure.png` | The same, and the window's figure in a PNG file. |
 | `check <input.json> --zasymp Z --point-group G` | The same for a CRP data set (SystemID `CRPlibrary`, `CRPDistrtSurface`), whose Z_asymptotic and point group come from the data set (the program's set-up output prints both). |
 | `memory <input.json> [--threads N]` | The sizes that set the memory (θ and φ points, rotational basis, grid points) and the program's CPU and GPU memory estimates, array by array. `--threads` (default 8): the run's OpenMP threads, each with its own work arrays. |
@@ -90,11 +90,12 @@ that raises it. Where `spodvr` stops at the first error, the tool lists every er
 Warnings the set-up prints (an absorber outside the strength table, a grid point the Fortran puts on the
 other side of an absorber's end) are listed too.
 
-**The input as the program sees it.** The packet (mean momentum kz, widths σ_k and σ_Z, the allowed
-region, the norm and the part of it outside the region, |ψ(k)| at the grid edge), the Z grids (sizes,
-k_grid = π/dZ, the interaction region nzpot, the analysis line), each absorber (grid indices, target
-energy, L/λ, strength), the r grid, and the gas phase: the open vibrational levels and the highest open
-j, which set the analysed channels. An excerpt for the DZ input:
+**The input as the program sees it.** The packet (mean momentum kz, widths σ_k and σ_Z, the part
+moving outward (the Gaussian tail of |ψ(k)|² at k > 0), the allowed region, the norm and the part of it
+outside the region, |ψ(k)| at the grid edge), the Z grids (sizes, k_grid = π/dZ and the tail beyond it,
+which wraps round to outward motion, the interaction region nzpot, the analysis line), each absorber
+(grid indices, target energy, L/λ, strength), the r grid, and the gas phase: the open vibrational levels
+and the highest open j, which set the analysed channels. An excerpt for the DZ input:
 
 ```text
 INITIAL WAVE PACKET (Z)
@@ -104,6 +105,7 @@ INITIAL WAVE PACKET (Z)
   Width in k, sigma_k = sqrt(alpha) ............ 1.4060 1/bohr
   Width in Z, sigma_Z = 1/(2 sigma_k) .......... 0.3556 bohr
   Centre Z0 .................................... 18 bohr
+  Packet moving outward, k > 0 ................. 2.9e-21
   Allowed region (specular indices) ............ 125 .. 183
   Allowed region (Z) ........................... 15.0000 .. 21.9600 bohr
   Norm on the specular grid .................... 0.9999999999999998
@@ -126,9 +128,12 @@ and the report marks the states as indicative.
 with its value, the recommended limit and the README section: the momentum margins of the packet and of
 dZ, Zana on the first grid point, Z0 and the packet's outer tail, the absorber lengths and ends, the r
 absorber beyond the analysed bound states; for information, the lowest outgoing energy converged by tEnd
-and the energy resolution. Then R + T of each absorber over the energies it must absorb (1D transfer
-matrix, as `tools/wave_packet_check.py`, with the program's strengths). These are advice: they never
-change the exit status.
+and the energy resolution. Then the time budget (section 8 of inputs/README.md, "TIME"): the time per
+bohr of the slowest analysed part (the momentum of EMinWP, M / k_min), when that part, reflected
+elastically, is back at Zana, and the tEnd that converges the lowest outgoing normal energy. Last R + T,
+R and T of each absorber over the energies it must absorb (1D transfer matrix through the exact −iV_opt,
+with the program's strengths; from 0.05 eV or EMinWP up). These are advice: they never change the exit
+status.
 
 ## What `memory` reports
 
