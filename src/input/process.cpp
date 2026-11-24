@@ -96,8 +96,8 @@ void process_input(const InputParameters& p, DerivedParameters& d) {
   d.analysis_energy_start = p.e_min_wave_packet + p.e_parallel;
   d.analysis_energy_step = (p.e_max_wave_packet - p.e_min_wave_packet) / (p.n_energies - 1);
 
-  d.steps_per_analysis = static_cast<int>(p.dt_analysis / p.time_step);
-  d.analyses_per_average = static_cast<int>(p.dt_averages / p.dt_analysis);
+  d.steps_per_analysis = steps_per_analysis(p);
+  d.analyses_per_average = analyses_per_average(p);
   // Rounded, not truncated as the counts above: dtFrames must be a whole multiple of dtAna (validate_outputs.cpp).
   d.analyses_per_frame = p.dt_frames ? static_cast<int>(std::lround(*p.dt_frames / p.dt_analysis)) : 0;
 
@@ -167,5 +167,11 @@ Config build_config(const InputParameters& input, const Potential& potential) {
   validate_output_keys(config);
   return config;
 }
+
+// Fortran: InputNew.f90 ProcessInput, nanspo = INT(dtAnalysis/dtlan)
+int steps_per_analysis(const InputParameters& p) { return static_cast<int>(p.dt_analysis / p.time_step); }
+
+// Fortran: InputNew.f90 ProcessInput, nave = INT(dtAverages/dtAnalysis)
+int analyses_per_average(const InputParameters& p) { return static_cast<int>(p.dt_averages / p.dt_analysis); }
 
 }  // namespace spodvr

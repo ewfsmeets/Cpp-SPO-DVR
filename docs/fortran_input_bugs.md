@@ -12,8 +12,8 @@ ValidateInput, and the grid checks of `Setup.f90`; see [input_schema.md](input_s
 The short entries are in [fortran_deviations.md](fortran_deviations.md), under the same IDs.
 The sections cover the flux analysis checks (flux Q1, flux Q2), the default strength that the
 Fortran keeps for an absorber energy of 0 (absorber D1), the optical potentials at the low end
-of the Z grid that upstream 5.24 added (low-Z D1–D4), and the number of analysis energies
-(analysis D1).
+of the Z grid that upstream 5.24 added (low-Z D1–D4), the number of analysis energies
+(analysis D1), and dtAna or dtAve just below a multiple of dtStep or dtAna (analysis D4, open in the Fortran).
 
 **Status (2026-11-23):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
 analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
@@ -521,3 +521,80 @@ times, and no fort.25 is written.
   code 0.
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD1NrOfEsZero`,
   `AnalysisD1NrOfEsOne` and `NrOfEsNen95`, `Input.NrOfEsTwoIsValid`).
+
+## analysis D4: dtAna or dtAve just below a multiple
+
+**Status:** open in the Fortran (5.19, r1713 and r1727, the reference). The C++ rejects these inputs since
+2026-11-24 (a deviation: [fortran_deviations.md](fortran_deviations.md#analysis-d4)).
+
+### The Fortran code
+
+`InputNew.f90 ValidateInput` compares the time intervals with the tolerant operators of `MyOperators.f90`
+(absolute tolerance 1e-12; lines 566–580 in 5.19, 636–650 at r1727):
+
+```fortran
+    CALL ERROR( dtAnalysis .RLT. dtlan, 'dtAna < dtlan.' )
+    ...
+    Test = (NINT(FLOAT(nstep)*dtlan/dtAnalysis)*dtAnalysis) .RNE. (FLOAT(nstep)*dtlan)
+    CALL ERROR( Test, 'Propagation time must be an integer times dtAna.' )
+    CALL ERROR( dtAverages .RLT. dtAnalysis, 'dtAve < dtAna.' )
+    Test = (NINT(dtAverages/dtAnalysis)*dtAnalysis) .RNE. dtAverages
+    CALL ERROR( Test, 'dtAve must be an integer times dtAna.' )
+```
+
+`ProcessInput` then truncates the two ratios (lines 915–916 in 5.19, 990–991 at r1727):
+
+```fortran
+    nanspo = INT(dtAnalysis/dtlan)
+    nave = INT(dtAverages/dtAnalysis)
+```
+
+### What goes wrong
+
+A value up to 1e-12 below a multiple passes the tolerant checks and truncates to one less:
+
+- **dtAna just below dtStep:** nanspo = 0. The Fortran stops with SIGFPE (the build traps no floating-point
+  exception, so this is an integer division by zero) in `ndatnw = nstep / nanspo` (`AsympInfo.f90
+  ReadOrWriteAsympInfo`, line 85 in 5.19, 97 at r1727), before it propagates. The C++ looped forever:
+  `for (step = n; step <= nStep; step += n)` with n = 0 propagates one time step and appends a BK record on every
+  pass, so the disk fills.
+- **dtAve just below dtAna:** nave = 0. `mod(countPropSteps, nave)` (`Main.f90`, line 405 in 5.19, 418 at
+  r1727) divides by zero after the first analysis step: SIGFPE in both codes.
+- **dtAna just below k·dtStep (k ≥ 2):** nanspo = k − 1. The analysis stays consistent (both codes use nanspo ·
+  dtStep as the interval of the BK coefficients and the S matrix), but when nStep is not a multiple of k − 1 the
+  time loop (`DO propStep = nanspo, nstep, nanspo`) stops before tEnd. The C++ checkpoint is then labelled tEnd,
+  and the Fortran's restart file stores no time (a restart takes tStart from its input), so a restart continues
+  from the wrong time in both codes.
+- **dtAve just below m·dtAna (m ≥ 2):** m − 1 analyses per average. Harmless: the averages carry their real times.
+
+### Demonstration
+
+`tests/reference/hardwall_small/DVR.inp` (tStart 0) with the lines of each case replaced; the C++ of 2026-11-24
+before the check from `input.json` with the same values, 1 thread. Each run under `timeout 120` with a 1 GiB file
+size limit. 5.19 and r1727 behave identically in every case (the same exit status, and the same averages where they print any).
+
+| Case | Keys | Fortran 5.19 and r1727 | C++ before the check |
+| --- | --- | --- | --- |
+| (k) | dtStep 2.0, nStep 1, tEnd 2.0, dtAna = dtAve = 1.9999999999995 | exit 136 (SIGFPE) right after the analysis set-up ("Maximum diffraction order in analysis"), before the propagation | exit 124 (stopped by `timeout`): the printed time stays 0.00 while ⟨Z⟩ keeps falling; `bk_coefficients.bin` 5.6 MB after 120 s |
+| (l) | dtStep 2.0, nStep 5, tEnd 10.0, dtAna 10.0, dtAve 9.9999999999995 | exit 136 (SIGFPE) after the averages at t = 0 | exit 136 (SIGFPE) |
+| (m) | dtStep 0.8, nStep 3, tEnd 2.4, dtAna 2.4, dtAve 2.4 (2.4 / 0.8 = 2.9999999999999996) | exit 0; the last averages at t = 0.16000000E+01, not 2.4 | exit 0; "Steps (total / per analysis) 3 / 2", the last averages at t = 1.60, `checkpoint.bin` labelled t = 2.4 |
+
+### The C++ behaviour
+
+- `src/input/validate.cpp` (`validate_input`) adds three exact checks after the tolerant ones, with the run's own
+  truncation (`steps_per_analysis`, `analyses_per_average`, `src/input/process.cpp`). Each case above is an input
+  error (exit code 2):
+
+  ```text
+  Input error: dtAna: dtAna = 1.9999999999995 lies within the 1e-12 tolerance below dtStep = 2, so dtAna / dtStep truncates to 0 time steps per analysis; use dtAna >= dtStep.
+  Input error: dtAve: dtAve = 9.9999999999995 lies within the 1e-12 tolerance below dtAna = 10, so dtAve / dtAna truncates to 0 analyses per average; use dtAve >= dtAna.
+  Input error: dtAna: nStep = 3 is not a multiple of the 2 time steps per analysis that dtAna / dtStep truncates to; the run would stop before tEnd.
+  ```
+
+- Still allowed, as in the Fortran: dtAna just below k·dtStep when nStep is a multiple of k − 1 (the run reaches
+  tEnd, with the analysis interval (k − 1)·dtStep throughout), and dtAve just below m·dtAna.
+- The wave-packet designer has the same checks (`tools/wave_packet_designer/program/validate.py`).
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD4DtAnaTruncatesToZeroSteps`,
+  `AnalysisD4DtAveTruncatesToZeroAnalyses`, `AnalysisD4NStepNotAMultipleOfTheTruncatedSteps`,
+  `AnalysisD4DtAnaBelowTheBand`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`); the designer's `tests/test_validate.py`.

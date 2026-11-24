@@ -635,6 +635,24 @@ TEST(Input, FluxDeltaEJustAboveZeroIsValid) {
   EXPECT_NO_THROW((void)make_spatial_grids(build(json)));
 }
 
+// analysis D4: dtAna = dtStep is the smallest valid dtAna (one step per analysis).
+TEST(Input, AnalysisD4DtAnaEqualToDtStepIsAccepted) {
+  Json json = reference_json();
+  json["dtAna"] = 2.0;
+  const Config config = build(json);
+  EXPECT_EQ(config.derived.steps_per_analysis, 1);
+}
+
+// analysis D4: dtAve 5e-13 below 10 dtAna passes every check and truncates to 9 analyses per average (allowed: the
+// averages carry their real times).
+TEST(Input, AnalysisD4DtAveJustBelowAMultipleIsAccepted) {
+  Json json = reference_json();
+  ASSERT_EQ(json["dtAna"].get<double>(), 10.0);
+  json["dtAve"] = 100.0 - 5e-13;
+  const Config config = build(json);
+  EXPECT_EQ(config.derived.analyses_per_average, 9);
+}
+
 // analysis D3: VIn = nR-2 (no VAna) is valid; VIn = nR-1 is the violation row AnalysisD3VInIsTheLastLevel.
 TEST(Input, AnalysisD3VInBelowTheLastLevelIsValid) {
   Json json = reference_json();
@@ -1004,6 +1022,11 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
         Violation{"JInEqJAna", [](Json& j) { j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
         // analysis D3: the initial level must be analysed, and at most nR-1 levels are (nR 56).
+        // analysis D4: dtAna or dtAve that truncate (hardwall_small: tStart 0, dtStep 2).
+        Violation{"AnalysisD4DtAnaTruncatesToZeroSteps", [](Json& j) { j["nStep"] = 1; j["tEnd"] = 2.0; j["dtAna"] = 1.9999999999995; j["dtAve"] = 1.9999999999995; }, "dtAna", "truncates to 0 time steps per analysis; use dtAna >= dtStep."},
+        Violation{"AnalysisD4DtAveTruncatesToZeroAnalyses", [](Json& j) { j["nStep"] = 5; j["tEnd"] = 10.0; j["dtAna"] = 10.0; j["dtAve"] = 9.9999999999995; }, "dtAve", "0 analyses per average; use dtAve >= dtAna."},
+        Violation{"AnalysisD4NStepNotAMultipleOfTheTruncatedSteps", [](Json& j) { j["dtStep"] = 0.8; j["nStep"] = 3; j["tEnd"] = 2.4; j["dtAna"] = 2.4; j["dtAve"] = 2.4; }, "dtAna", "truncates to; the run would stop before tEnd."},
+        Violation{"AnalysisD4DtAnaBelowTheBand", [](Json& j) { j["dtAna"] = 2.0 - 2e-12; }, "dtAna", "dtAna < dtStep."},
         Violation{"AnalysisD3VInIsTheLastLevel", [](Json& j) { j["VIn"] = 55; }, "VIn", "so the initial level would not be analysed"},
         Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin", "VMin > VMax."},
         Violation{"ZOptOrder", [](Json& j) { j["ZOptEnd"] = 8.5; }, "ZOptStart", "ZOptStart > ZOptEnd."},

@@ -12,6 +12,7 @@
 #include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fft_sizes.hpp"
+#include "input/process.hpp"
 #include "input/validation_helpers.hpp"
 #include "potential/potential_factory.hpp"
 
@@ -104,6 +105,12 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   // --- analysis ---------------------------------------------------------------------------
   check(rle(p.dt_analysis, 0.0), "dtAna", "dtAna <= 0.");
   check(rlt(p.dt_analysis, p.time_step), "dtAna", "dtAna < dtStep.");
+  // analysis D4 (C++ only): the tolerant test above lets dtAna lie up to 1e-12 below dtStep, where the program's
+  // dtAna / dtStep truncates to 0 time steps per analysis (the time loop would never end).
+  check(steps_per_analysis(p) < 1, "dtAna",
+        std::format("dtAna = {} lies within the 1e-12 tolerance below dtStep = {}, so dtAna / dtStep truncates to 0 "
+                    "time steps per analysis; use dtAna >= dtStep.",
+                    p.dt_analysis, p.time_step));
   check(rle(p.dt_averages, 0.0), "dtAve", "dtAve <= 0.");
   check(rlt(p.dt_averages, p.time_step), "dtAve", "dtAve < dtStep.");
 
@@ -118,9 +125,21 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step), "dtAna",
         "Propagation time must be an integer times dtAna.");
+  // analysis D4: a ratio just below k truncates to k - 1 steps per analysis; unless nStep is a multiple of that, the
+  // time loop stops before tEnd while the checkpoint is labelled tEnd.
+  check(p.n_steps % steps_per_analysis(p) != 0, "dtAna",
+        std::format("nStep = {} is not a multiple of the {} time steps per analysis that dtAna / dtStep truncates "
+                    "to; the run would stop before tEnd.",
+                    p.n_steps, steps_per_analysis(p)));
   check(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.");
   check(rne(nint(p.dt_averages / p.dt_analysis) * p.dt_analysis, p.dt_averages), "dtAve",
         "dtAve must be an integer times dtAna.");
+  // analysis D4: dtAve up to 1e-12 below dtAna truncates to 0 analyses per average (a division by zero in the time
+  // loop). dtAve just below m dtAna (m - 1 analyses per average) stays allowed: the averages carry their real times.
+  check(analyses_per_average(p) < 1, "dtAve",
+        std::format("dtAve = {} lies within the 1e-12 tolerance below dtAna = {}, so dtAve / dtAna truncates to 0 "
+                    "analyses per average; use dtAve >= dtAna.",
+                    p.dt_averages, p.dt_analysis));
 
   check(rlt(p.z_analysis, zasymp), "Zana", "ZAna < ZAsymptotic.");
   check(rne(nint((p.z_analysis - p.z_start) / p.dz) * p.dz, p.z_analysis - p.z_start), "Zana",

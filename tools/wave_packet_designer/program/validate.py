@@ -97,6 +97,16 @@ def check_rotational_basis(p: InputParameters, checks: FindingList) -> None:
     checks.error_if(p.projection_operator not in (0, 1, 2), "ProjOp", "ProjOp must be 0, 1 or 2.")
 
 
+def steps_per_analysis(p: InputParameters) -> int:
+    """Time steps per analysis, truncated as the Fortran INT (nanspo). Shadows: src/input/process.cpp."""
+    return int(p.dt_analysis / p.time_step)
+
+
+def analyses_per_average(p: InputParameters) -> int:
+    """Analyses per average, truncated as the Fortran INT (nave). Shadows: src/input/process.cpp."""
+    return int(p.dt_averages / p.dt_analysis)
+
+
 def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, checks: FindingList) -> None:
     # --- split operator propagation ---
     n_steps = float(p.n_steps)
@@ -130,6 +140,14 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     # --- analysis ---
     checks.error_if(rle(p.dt_analysis, 0.0), "dtAna", "dtAna <= 0.")
     checks.error_if(rlt(p.dt_analysis, p.time_step), "dtAna", "dtAna < dtStep.")
+    # analysis D4: the truncated counts of process_input (Fortran INT: nanspo, nave), guarded where the C++ stopped.
+    steps = steps_per_analysis(p) if p.time_step > 0.0 and p.dt_analysis > 0.0 else None
+    checks.error_if(
+        steps is not None and steps < 1,
+        "dtAna",
+        f"dtAna = {p.dt_analysis} lies within the 1e-12 tolerance below dtStep = {p.time_step}, so dtAna / dtStep "
+        "truncates to 0 time steps per analysis; use dtAna >= dtStep.",
+    )
     checks.error_if(rle(p.dt_averages, 0.0), "dtAve", "dtAve <= 0.")
     checks.error_if(rlt(p.dt_averages, p.time_step), "dtAve", "dtAve < dtStep.")
     if p.j_analysis is not None:
@@ -153,11 +171,24 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         "dtAna",
         "Propagation time must be an integer times dtAna.",
     )
+    checks.error_if(
+        steps is not None and steps >= 1 and p.n_steps % steps != 0,
+        "dtAna",
+        f"nStep = {p.n_steps} is not a multiple of the {steps} time steps per analysis that dtAna / dtStep truncates "
+        "to; the run would stop before tEnd.",
+    )
     checks.error_if(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.")
     checks.error_if(
         rne(nint(p.dt_averages / p.dt_analysis) * p.dt_analysis, p.dt_averages),
         "dtAve",
         "dtAve must be an integer times dtAna.",
+    )
+    averages = analyses_per_average(p) if p.dt_analysis > 0.0 else None
+    checks.error_if(
+        averages is not None and averages < 1,
+        "dtAve",
+        f"dtAve = {p.dt_averages} lies within the 1e-12 tolerance below dtAna = {p.dt_analysis}, so dtAve / dtAna "
+        "truncates to 0 analyses per average; use dtAve >= dtAna.",
     )
 
     checks.error_if(rlt(p.z_analysis, z_asymptotic), "Zana", "ZAna < ZAsymptotic.")

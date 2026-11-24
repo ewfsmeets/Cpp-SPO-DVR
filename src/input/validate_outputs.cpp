@@ -8,6 +8,7 @@
 #include <set>
 
 #include "core/real_compare.hpp"
+#include "input/process.hpp"
 #include "input/validation_helpers.hpp"
 
 namespace spodvr {
@@ -50,7 +51,7 @@ bool whole_multiple(double t, double dt, double tolerance) {
 void check_whole_analysis_steps(const InputParameters& p, const std::string& key) {
   using validation::nint;
   const double steps = p.dt_analysis / p.time_step;
-  check(static_cast<int>(steps) != nint(steps) || static_cast<int>(steps) < 1, "dtAna",
+  check(steps_per_analysis(p) != nint(steps) || steps_per_analysis(p) < 1, "dtAna",
         "dtAna / dtStep is not a whole number with " + key +
             " (the program truncates it, so its records would come at other times than dtAna says)");
 }

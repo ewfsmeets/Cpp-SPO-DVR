@@ -128,6 +128,14 @@ VIOLATIONS = [
     ({"write_2d_pes": True, "theta_2d_pes": 361.0}, "theta2DPES", "theta2DPES > 360."),
     ({"write_2d_pes": True, "phi_2d_pes": -1.0}, "phi2DPES", "phi2DPES < 0."),
     ({"write_2d_pes": True, "phi_2d_pes": 361.0}, "phi2DPES", "phi2DPES > 360."),
+    # analysis D4, on the DZ input (dtStep 2.5, dtAna 20, dtAve 500, nStep 7000)
+    ({"dt_analysis": 2.4999999999995}, "dtAna", "truncates to 0 time steps per analysis"),
+    (
+        {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 24.0, "n_steps": 3, "t_end": 2.4},
+        "dtAna",
+        "time steps per analysis that dtAna / dtStep truncates to",
+    ),
+    ({"dt_averages": 19.9999999999995}, "dtAve", "0 analyses per average"),
 ]
 
 
