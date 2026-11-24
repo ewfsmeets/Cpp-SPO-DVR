@@ -653,6 +653,19 @@ TEST(Input, AnalysisD4DtAveJustBelowAMultipleIsAccepted) {
   EXPECT_EQ(config.derived.analyses_per_average, 9);
 }
 
+// analysis D4: dtAna / dtStep = 2.4 / 0.8 truncates to 2, and nStep 6 is a multiple of 2: the run reaches tEnd.
+TEST(Input, AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple) {
+  Json json = reference_json();
+  json["dtStep"] = 0.8;
+  json["nStep"] = 6;
+  json["tEnd"] = 4.8;
+  json["dtAna"] = 2.4;
+  json["dtAve"] = 2.4;
+  const Config config = build(json);
+  EXPECT_EQ(config.derived.steps_per_analysis, 2);
+  EXPECT_EQ(config.derived.analyses_per_average, 1);
+}
+
 // analysis D3: VIn = nR-2 (no VAna) is valid; VIn = nR-1 is the violation row AnalysisD3VInIsTheLastLevel.
 TEST(Input, AnalysisD3VInBelowTheLastLevelIsValid) {
   Json json = reference_json();
@@ -1022,12 +1035,16 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"JInGtJAna", [](Json& j) { j["JIn"] = 2; j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
         Violation{"JInEqJAna", [](Json& j) { j["JAna"] = 0; }, "JIn", "JIn >= JAna."},
         // analysis D3: the initial level must be analysed, and at most nR-1 levels are (nR 56).
+        Violation{"AnalysisD3VInIsTheLastLevel", [](Json& j) { j["VIn"] = 55; }, "VIn", "so the initial level would not be analysed"},
         // analysis D4: dtAna or dtAve that truncate (hardwall_small: tStart 0, dtStep 2).
         Violation{"AnalysisD4DtAnaTruncatesToZeroSteps", [](Json& j) { j["nStep"] = 1; j["tEnd"] = 2.0; j["dtAna"] = 1.9999999999995; j["dtAve"] = 1.9999999999995; }, "dtAna", "truncates to 0 time steps per analysis; use dtAna >= dtStep."},
         Violation{"AnalysisD4DtAveTruncatesToZeroAnalyses", [](Json& j) { j["nStep"] = 5; j["tEnd"] = 10.0; j["dtAna"] = 10.0; j["dtAve"] = 9.9999999999995; }, "dtAve", "0 analyses per average; use dtAve >= dtAna."},
         Violation{"AnalysisD4NStepNotAMultipleOfTheTruncatedSteps", [](Json& j) { j["dtStep"] = 0.8; j["nStep"] = 3; j["tEnd"] = 2.4; j["dtAna"] = 2.4; j["dtAve"] = 2.4; }, "dtAna", "truncates to; the run would stop before tEnd."},
         Violation{"AnalysisD4DtAnaBelowTheBand", [](Json& j) { j["dtAna"] = 2.0 - 2e-12; }, "dtAna", "dtAna < dtStep."},
-        Violation{"AnalysisD3VInIsTheLastLevel", [](Json& j) { j["VIn"] = 55; }, "VIn", "so the initial level would not be analysed"},
+        Violation{"AnalysisD4DecimalRatioTruncates", [](Json& j) { j["dtStep"] = 0.1; j["nStep"] = 120; j["tEnd"] = 12.0; j["dtAna"] = 1.2; j["dtAve"] = 1.2; }, "dtAna", "dtAna / dtStep = 11.999999999999998 truncates to"},
+        Violation{"AnalysisD4RatioNotWhole", [](Json& j) { j["dtAna"] = 5.0; j["nStep"] = 2805; j["tEnd"] = 5610.0; }, "dtAna", "nStep = 2805 is not a multiple of the 2 time steps per analysis"},
+        // A ratio of 5e9 (beyond int) reaches the propagation-time check, not an overflowed D4 check.
+        Violation{"AnalysisD4HugeRatioDoesNotOverflow", [](Json& j) { j["dtAna"] = 1e10; j["dtAve"] = 1e10; }, "dtAna", "Propagation time must be an integer times dtAna."},
         Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin", "VMin > VMax."},
         Violation{"ZOptOrder", [](Json& j) { j["ZOptEnd"] = 8.5; }, "ZOptStart", "ZOptStart > ZOptEnd."},
         Violation{"ZOptEnd", [](Json& j) { j["ZOptEnd"] = 13.0; }, "ZOptEnd", "ZOptEnd is too big for the scattering grid in Z."},

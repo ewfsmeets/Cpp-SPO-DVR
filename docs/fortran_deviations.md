@@ -207,13 +207,14 @@ differences are in [validation.md](validation.md).
 - analysis D4<a id="analysis-d4"></a>: dtAna or dtAve just below a multiple is an input error when the program's
   truncation (Fortran `nanspo = INT(dtAnalysis/dtlan)`, `nave = INT(dtAverages/dtAnalysis)`) would break the run.
   The Fortran's checks are tolerant (1e-12), so dtAna in the band below dtStep gives nanspo = 0 (the Fortran stops
-  with SIGFPE, the C++ looped forever), dtAve in the band below dtAna gives nave = 0 (SIGFPE in both), and a ratio
-  just below k ≥ 2 truncates to k − 1, which stops the run before tEnd unless nStep is a multiple of k − 1. The C++
-  rejects these three cases (`validate_input`, with the run's own truncation `steps_per_analysis`,
-  `analyses_per_average`); dtAve just below m·dtAna (m − 1 analyses per average) stays allowed. Details and
+  with SIGFPE, the C++ looped forever), dtAve in the band below dtAna gives nave = 0 (SIGFPE in both), and any
+  dtAna / dtStep that truncates (just below k ≥ 2, a decimal such as 1.2 / 0.1 = 11.999999999999998, or a ratio
+  that is not whole) stops the run before tEnd unless nStep is a multiple of the truncated count. The C++ rejects
+  these three cases (`validate_input`, comparing the ratios themselves); a truncated count with nStep a multiple of
+  it, and dtAve just below m·dtAna (m − 1 analyses per average), stay allowed. Details and
   demonstration runs: [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d4-dtana-or-dtave-just-below-a-multiple).
   Tests: `Checks/InputViolation.IsRejected/AnalysisD4*`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
-  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`.
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple`.
 - <a id="projop-1"></a>ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
   option); the input reader rejects it.
 - Kept on purpose (`Analyzor.f90 FindNewAnalysisPoint`): the clamp of `izanlySpecChan` to `nschmi`

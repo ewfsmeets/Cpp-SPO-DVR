@@ -250,6 +250,7 @@ TEST(CrpPotential, Summary) {
 // report_potential prints the data set of a plain CRP PES, and nothing of the SCM.
 TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
+  ASSERT_TRUE(s.pes->crp_potential());
   const CrpPotential& pes = s.pes->crp_potential()->get();
   EXPECT_FALSE(s.config.derived.scm);
   std::ostringstream out;
@@ -262,6 +263,7 @@ TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
 // Z = -2 + 0.125 k below Zmin = 0.5 (+1e-12) for k <= 20 (21 clamped of the 80 6D points).
 TEST(CrpPotential, RangeReportAndSetupReport) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
+  ASSERT_TRUE(s.pes->crp_potential());
   const CrpPotential& pes = s.pes->crp_potential()->get();
   const auto z_6d = s.grids.z_scattering.points().first(s.grids.nz_potential);
   const CrpRangeReport range = pes.range_report(z_6d, s.grids.r.points());
@@ -314,6 +316,7 @@ TEST(CrpPotential, EvaluationErrorNamesTheKeyAndThePoint) {
 // threads.
 TEST(CrpPotentialGrid, IndependentOfThreadCount) {
   const RunSetup s(small_json(pairwise_data_set(Symmetry::c6v)));
+  ASSERT_TRUE(s.pes->crp_potential());
   const CrpPotential& pes = s.pes->crp_potential()->get();
   omp_set_num_threads(1);
   const PotentialGrid serial = compute_potential_grid(pes, s.config, s.grids, s.angular);
@@ -328,6 +331,7 @@ TEST(CrpPotentialGrid, IndependentOfThreadCount) {
 TEST(CrpPotentialGrid, ErrorIsDeterministic) {
   TemporaryDirectory dir("crp_potential");
   const RunSetup s(small_json(write_shallow_atom_data_set(dir.path())));
+  ASSERT_TRUE(s.pes->crp_potential());
   const CrpPotential& pes = s.pes->crp_potential()->get();
   omp_set_num_threads(1);
   const std::string serial = error_message([&] { (void)compute_potential_grid(pes, s.config, s.grids, s.angular); });

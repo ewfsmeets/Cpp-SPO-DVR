@@ -51,6 +51,7 @@ bool whole_multiple(double t, double dt, double tolerance) {
 void check_whole_analysis_steps(const InputParameters& p, const std::string& key) {
   using validation::nint;
   const double steps = p.dt_analysis / p.time_step;
+  // (< 1 is rejected by validate_input before, analysis D4; kept as a guard.)
   check(steps_per_analysis(p) != nint(steps) || steps_per_analysis(p) < 1, "dtAna",
         "dtAna / dtStep is not a whole number with " + key +
             " (the program truncates it, so its records would come at other times than dtAna says)");

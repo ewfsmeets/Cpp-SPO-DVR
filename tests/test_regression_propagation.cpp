@@ -182,14 +182,16 @@ TEST(RegressionHarness, DataPathsResolveAgainstTheRepositoryRoot) {
 }
 
 // An SCM case whose input.json names the CRP data set and both SCM files relative to the repository
-// root (the SCM example) builds through the harness of the gates (case_config, used by
+// root (the SCM example) builds through the harness of the gates (case_setup, used by
 // run_cpp_propagation and so by run_gate): its potential reads all three from the resolved paths.
 TEST(RegressionHarness, ScmCaseInputBuildsWithRepositoryRelativePaths) {
   nlohmann::json json = test_support::scm_example_json(test_support::scm_example_directory / "examplePosfile.dat");
   for (const std::string key : {"CRPlibDataSet", "SCMParFilepath", "PosFilepath"})
     json[key] = fs::relative(json[key].get<std::string>(), repository_root()).string();
   ASSERT_EQ(json["SCMParFilepath"], "potentials/H2Cu111SRP_C3v.dir/params.dat");
-  const Config config = case_config(json);
+  const CaseSetup setup = case_setup(json);
+  const Config& config = setup.config;
+  EXPECT_TRUE(setup.pes->scm_potential());
   EXPECT_EQ(config.input.crp_dataset, (repository_root() / "potentials/H2Cu111SRP_C3v.dir/H2Cu111SRP_C3v").string());
   EXPECT_EQ(config.input.scm.parameter_file, (repository_root() / "potentials/H2Cu111SRP_C3v.dir/params.dat").string());
   EXPECT_EQ(config.input.scm.position_file,

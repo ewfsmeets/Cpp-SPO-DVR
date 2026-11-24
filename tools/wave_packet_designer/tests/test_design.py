@@ -25,6 +25,7 @@ from evaluation import Evaluation, evaluate, suggest
 from program.potential_systems import ANALYTIC_SYSTEMS
 from program.process import build_derived
 from program.unit_conversion import ev_to_hartree
+from program.validate import validate_input
 from report import verdict_lines
 from settings import Settings
 from tests.helpers import DZ_INPUT, ER_INPUT, HARDWALL_INPUT, check, check_equal, load_parameters
@@ -85,6 +86,16 @@ def test_time_is_fitted_to_whole_averaging_intervals() -> None:
         fitted = fit_time(p, requested)
         check_equal((fitted["t_end"], fitted["n_steps"]), expected, f"tEnd {requested}")
         check(evaluate(replace(p, **fitted), Settings()).accepted, f"tEnd {requested} accepted")
+
+
+def test_time_fit_keeps_whole_truncated_analysis_steps() -> None:
+    """dtStep 0.1 with dtAna = dtAve = 1.2: the program counts INT(1.2 / 0.1) = 11 time steps per analysis
+    (analysis D4), so nStep is fitted to multiples of lcm(12, 11) = 132 steps, which its time checks accept."""
+    p = replace(load_parameters(DZ_INPUT), time_step=0.1, dt_analysis=1.2, dt_averages=1.2)
+    fitted = fit_time(p, 100.0)
+    check_equal((fitted["n_steps"] % 132, fitted["n_steps"]), (0, 1056), "nStep")
+    findings = validate_input(replace(p, **fitted), DAI_LIGHT_SYSTEM, 15.0)
+    check([f for f in findings if f.key in ("dtAna", "dtAve", "tEnd")] == [], f"time findings: {findings}")
 
 
 def test_memory_must_fit() -> None:

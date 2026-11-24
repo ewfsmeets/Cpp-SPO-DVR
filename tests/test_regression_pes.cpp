@@ -309,7 +309,7 @@ Config cut_config(const std::string& name, int k) {
   for (const auto& [key, value] : cut.items()) json[key] = value;
   InputParameters input = parse_input(json);
   resolve_repository_paths(input);
-  return build_config(input);
+  return build_config(input, *calculation(name).pes);  // the case's PES (the same data set), built once
 }
 
 // How a C++ cut compares with a Fortran one: the largest deviation of V and of r, Z in units of its

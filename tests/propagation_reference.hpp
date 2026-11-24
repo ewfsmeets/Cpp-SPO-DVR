@@ -192,7 +192,7 @@ inline PropagationRun run_cpp_propagation(const Config& config, const Potential&
   return run;
 }
 
-// The C++ run of the JSON input (a reference case's: case_config, reference_case_input.hpp), with
+// The C++ run of the JSON input (a reference case's: case_setup, reference_case_input.hpp), with
 // its own PES.
 inline PropagationRun run_cpp_propagation(const nlohmann::json& input,
                                           const BackendFactory& backend = make_cpu_backend) {

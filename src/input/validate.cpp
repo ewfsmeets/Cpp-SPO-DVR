@@ -106,8 +106,9 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(rle(p.dt_analysis, 0.0), "dtAna", "dtAna <= 0.");
   check(rlt(p.dt_analysis, p.time_step), "dtAna", "dtAna < dtStep.");
   // analysis D4 (C++ only): the tolerant test above lets dtAna lie up to 1e-12 below dtStep, where the program's
-  // dtAna / dtStep truncates to 0 time steps per analysis (the time loop would never end).
-  check(steps_per_analysis(p) < 1, "dtAna",
+  // dtAna / dtStep truncates to 0 time steps per analysis (the time loop would never end). The ratio itself is
+  // compared, not its int: a huge ratio must not overflow the conversion.
+  check(p.dt_analysis / p.time_step < 1.0, "dtAna",
         std::format("dtAna = {} lies within the 1e-12 tolerance below dtStep = {}, so dtAna / dtStep truncates to 0 "
                     "time steps per analysis; use dtAna >= dtStep.",
                     p.dt_analysis, p.time_step));
@@ -125,18 +126,22 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
 
   check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step), "dtAna",
         "Propagation time must be an integer times dtAna.");
-  // analysis D4: a ratio just below k truncates to k - 1 steps per analysis; unless nStep is a multiple of that, the
-  // time loop stops before tEnd while the checkpoint is labelled tEnd.
-  check(p.n_steps % steps_per_analysis(p) != 0, "dtAna",
-        std::format("nStep = {} is not a multiple of the {} time steps per analysis that dtAna / dtStep truncates "
-                    "to; the run would stop before tEnd.",
-                    p.n_steps, steps_per_analysis(p)));
+  // analysis D4: dtAna / dtStep truncates (a ratio just below k, a decimal such as 1.2 / 0.1 = 11.999999999999998, or
+  // a ratio that is not whole) and nStep is not a whole number of the truncated steps: the time loop would stop
+  // before tEnd. A ratio above nStep leaves no whole analysis step (then only nStep = 0 is a multiple); at most nStep,
+  // the conversion to int cannot overflow.
+  const double analysis_ratio = p.dt_analysis / p.time_step;
+  check(analysis_ratio > p.n_steps ? p.n_steps != 0 : p.n_steps % static_cast<int>(analysis_ratio) != 0, "dtAna",
+        std::format("nStep = {} is not a multiple of the {} time steps per analysis that dtAna / dtStep = {} "
+                    "truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in "
+                    "binary, e.g. dtStep 0.125 or 0.25.",
+                    p.n_steps, std::floor(analysis_ratio), analysis_ratio));
   check(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.");
   check(rne(nint(p.dt_averages / p.dt_analysis) * p.dt_analysis, p.dt_averages), "dtAve",
         "dtAve must be an integer times dtAna.");
   // analysis D4: dtAve up to 1e-12 below dtAna truncates to 0 analyses per average (a division by zero in the time
   // loop). dtAve just below m dtAna (m - 1 analyses per average) stays allowed: the averages carry their real times.
-  check(analyses_per_average(p) < 1, "dtAve",
+  check(p.dt_averages / p.dt_analysis < 1.0, "dtAve",
         std::format("dtAve = {} lies within the 1e-12 tolerance below dtAna = {}, so dtAve / dtAna truncates to 0 "
                     "analyses per average; use dtAve >= dtAna.",
                     p.dt_averages, p.dt_analysis));

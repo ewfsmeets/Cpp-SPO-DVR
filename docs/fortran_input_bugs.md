@@ -542,7 +542,7 @@ times, and no fort.25 is written.
     CALL ERROR( Test, 'dtAve must be an integer times dtAna.' )
 ```
 
-`ProcessInput` then truncates the two ratios (lines 915–916 in 5.19, 990–991 at r1727):
+`ProcessInput` then truncates the two ratios (lines 916–917 in 5.19, 990–991 at r1727):
 
 ```fortran
     nanspo = INT(dtAnalysis/dtlan)
@@ -551,7 +551,11 @@ times, and no fort.25 is written.
 
 ### What goes wrong
 
-A value up to 1e-12 below a multiple passes the tolerant checks and truncates to one less:
+The ratios are truncated. A value up to 1e-12 below a multiple passes the tolerant checks and counts one less, and
+so does an ordinary decimal ratio that is not exact in binary: 1.2 / 0.1 = 11.999999999999998 gives 11 time steps
+per analysis (likewise 0.3 / 0.1, 0.6 / 0.2, 2.4 / 0.2). Neither code checks that dtAna is a whole multiple of
+dtStep at all (dtAna 5 with dtStep 2 gives 2 steps per analysis). The sites of the two SIGFPEs below are identified
+from where the output stops and the code (the backtraces carry no symbols).
 
 - **dtAna just below dtStep:** nanspo = 0. The Fortran stops with SIGFPE (the build traps no floating-point
   exception, so this is an integer division by zero) in `ndatnw = nstep / nanspo` (`AsympInfo.f90
@@ -560,11 +564,14 @@ A value up to 1e-12 below a multiple passes the tolerant checks and truncates to
   pass, so the disk fills.
 - **dtAve just below dtAna:** nave = 0. `mod(countPropSteps, nave)` (`Main.f90`, line 405 in 5.19, 418 at
   r1727) divides by zero after the first analysis step: SIGFPE in both codes.
-- **dtAna just below k·dtStep (k ≥ 2):** nanspo = k − 1. The analysis stays consistent (both codes use nanspo ·
-  dtStep as the interval of the BK coefficients and the S matrix), but when nStep is not a multiple of k − 1 the
-  time loop (`DO propStep = nanspo, nstep, nanspo`) stops before tEnd. The C++ checkpoint is then labelled tEnd,
-  and the Fortran's restart file stores no time (a restart takes tStart from its input), so a restart continues
-  from the wrong time in both codes.
+- **A ratio that truncates (just below k·dtStep, a decimal, or not whole):** nanspo is the truncated count. The
+  analysis stays consistent (both codes use nanspo · dtStep as the interval of the BK coefficients and the S
+  matrix), but when nStep is not a multiple of nanspo the time loop (`DO propStep = nanspo, nstep, nanspo`) stops
+  before tEnd. The C++ checkpoint is then labelled tEnd, but the C++ refuses to restart from it (the BK file ends
+  at the real time, and with Fortran files that time is compared with tStart: `src/app/run.cpp`). The Fortran's
+  restart file stores no time, so its restart continues from tStart of the next input (from the code; not run).
+  When nStep is a multiple of nanspo the run reaches tEnd, with analyses every nanspo · dtStep instead of dtAna
+  (1.1 a.u. instead of 1.2 in the decimal example).
 - **dtAve just below m·dtAna (m ≥ 2):** m − 1 analyses per average. Harmless: the averages carry their real times.
 
 ### Demonstration
@@ -588,13 +595,21 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
   ```text
   Input error: dtAna: dtAna = 1.9999999999995 lies within the 1e-12 tolerance below dtStep = 2, so dtAna / dtStep truncates to 0 time steps per analysis; use dtAna >= dtStep.
   Input error: dtAve: dtAve = 9.9999999999995 lies within the 1e-12 tolerance below dtAna = 10, so dtAve / dtAna truncates to 0 analyses per average; use dtAve >= dtAna.
-  Input error: dtAna: nStep = 3 is not a multiple of the 2 time steps per analysis that dtAna / dtStep truncates to; the run would stop before tEnd.
+  Input error: dtAna: nStep = 3 is not a multiple of the 2 time steps per analysis that dtAna / dtStep = 2.9999999999999996 truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in binary, e.g. dtStep 0.125 or 0.25.
   ```
 
-- Still allowed, as in the Fortran: dtAna just below k·dtStep when nStep is a multiple of k − 1 (the run reaches
-  tEnd, with the analysis interval (k − 1)·dtStep throughout), and dtAve just below m·dtAna.
-- The wave-packet designer has the same checks (`tools/wave_packet_designer/program/validate.py`).
+  The same check stops the decimal example (dtStep 0.1, dtAna 1.2, nStep 120): "nStep = 120 is not a multiple of
+  the 11 time steps per analysis that dtAna / dtStep = 11.999999999999998 truncates to; …". The checks compare the
+  ratios themselves, so a huge ratio cannot overflow the conversion to int.
+
+- Still allowed, as in the Fortran: a truncated dtAna / dtStep when nStep is a multiple of the truncated count
+  (the run reaches tEnd, with the analysis interval nanspo · dtStep throughout, printed as "Steps (total / per
+  analysis)"), and dtAve just below m·dtAna.
+- The wave-packet designer has the same checks (`tools/wave_packet_designer/program/validate.py`), and its
+  suggested nStep is a whole number of the truncated steps per analysis too (`design/suggest.py fit_time`).
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD4DtAnaTruncatesToZeroSteps`,
   `AnalysisD4DtAveTruncatesToZeroAnalyses`, `AnalysisD4NStepNotAMultipleOfTheTruncatedSteps`,
-  `AnalysisD4DtAnaBelowTheBand`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
-  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`); the designer's `tests/test_validate.py`.
+  `AnalysisD4DtAnaBelowTheBand`, `AnalysisD4DecimalRatioTruncates`, `AnalysisD4RatioNotWhole`,
+  `AnalysisD4HugeRatioDoesNotOverflow`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple`);
+  the designer's `tests/test_validate.py` and `tests/test_design.py`.

@@ -27,7 +27,7 @@ Fortran default.
 | `JMax` | int | jmaxw | maximum J of the rotational basis |
 | `ProjOp` | int | nproj | must be 2 (0 and 1 are rejected; 1 is a legacy option that is not ported) |
 | `tStart` `tEnd` `dtStep` `nStep` | real×3, int | starttime, tottym, dtlan, nstep | propagation |
-| `dtAna` `dtAve` | real | dtAnalysis, dtAverages | analysis / averages interval; dtAna / dtStep and dtAve / dtAna are truncated (Fortran INT), so a value within the 1e-12 tolerance below a multiple counts one step (or analysis) less: refused where that gives 0, or where nStep is not a multiple of the truncated steps per analysis (fortran_deviations.md, analysis D4) |
+| `dtAna` `dtAve` | real | dtAnalysis, dtAverages | analysis / averages interval; dtAna / dtStep and dtAve / dtAna are truncated (Fortran INT), so a value within the 1e-12 tolerance below a multiple, or a decimal ratio that is not exact in binary (1.2 / 0.1 = 11.999999999999998), counts one step (or analysis) less: refused where that gives 0, or where nStep is not a multiple of the truncated steps per analysis (fortran_deviations.md, analysis D4) |
 | `DynamZSpAna` | bool | dynamicalZSpAna | dynamical analysis surface on the specular grid |
 | `Zana` | real | ZAnalysis | analysis line (on the Z grid) |
 | `NrOfEs` | int | nenrgy | number of analysis energies, at least 2 (NrOfEs < 2 is an input error, as the Fortran since r1719: analysis D1; the former −95 choice is an error too) |

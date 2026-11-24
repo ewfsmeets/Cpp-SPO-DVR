@@ -9,6 +9,8 @@ evaluation.py). One difference in a check: the write2DPES bounds x2DPES <= alat 
 when the lattice is unknown here (a CRP data set; with CRPDistrtSurface, the slab snapshot's lattice).
 """
 
+import math
+
 from program.config import InputParameters
 from program.fft_sizes import is_valid_fft_size
 from program.findings import Finding, FindingList
@@ -102,11 +104,6 @@ def steps_per_analysis(p: InputParameters) -> int:
     return int(p.dt_analysis / p.time_step)
 
 
-def analyses_per_average(p: InputParameters) -> int:
-    """Analyses per average, truncated as the Fortran INT (nave). Shadows: src/input/process.cpp."""
-    return int(p.dt_averages / p.dt_analysis)
-
-
 def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, checks: FindingList) -> None:
     # --- split operator propagation ---
     n_steps = float(p.n_steps)
@@ -140,10 +137,16 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     # --- analysis ---
     checks.error_if(rle(p.dt_analysis, 0.0), "dtAna", "dtAna <= 0.")
     checks.error_if(rlt(p.dt_analysis, p.time_step), "dtAna", "dtAna < dtStep.")
-    # analysis D4: the truncated counts of process_input (Fortran INT: nanspo, nave), guarded where the C++ stopped.
-    steps = steps_per_analysis(p) if p.time_step > 0.0 and p.dt_analysis > 0.0 else None
+    # analysis D4 (as validate.cpp, with the ratios themselves), only where the C++ gets that far: it stops at the
+    # first error, so after "dtAna < dtStep." it never reports the band below dtStep.
+    analysis_ratio = (
+        p.dt_analysis / p.time_step
+        if not rle(p.time_step, 0.0) and not rle(p.dt_analysis, 0.0) and not rlt(p.dt_analysis, p.time_step)
+        else None
+    )
+    analysis_steps = math.floor(analysis_ratio) if analysis_ratio is not None else None
     checks.error_if(
-        steps is not None and steps < 1,
+        analysis_ratio is not None and analysis_ratio < 1.0,
         "dtAna",
         f"dtAna = {p.dt_analysis} lies within the 1e-12 tolerance below dtStep = {p.time_step}, so dtAna / dtStep "
         "truncates to 0 time steps per analysis; use dtAna >= dtStep.",
@@ -172,10 +175,13 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         "Propagation time must be an integer times dtAna.",
     )
     checks.error_if(
-        steps is not None and steps >= 1 and p.n_steps % steps != 0,
+        analysis_ratio is not None
+        and analysis_ratio >= 1.0
+        and (p.n_steps != 0 if analysis_ratio > p.n_steps else p.n_steps % math.floor(analysis_ratio) != 0),
         "dtAna",
-        f"nStep = {p.n_steps} is not a multiple of the {steps} time steps per analysis that dtAna / dtStep truncates "
-        "to; the run would stop before tEnd.",
+        f"nStep = {p.n_steps} is not a multiple of the {analysis_steps} time steps per analysis that dtAna / dtStep = "
+        f"{analysis_ratio} truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in "
+        "binary, e.g. dtStep 0.125 or 0.25.",
     )
     checks.error_if(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.")
     checks.error_if(
@@ -183,9 +189,9 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         "dtAve",
         "dtAve must be an integer times dtAna.",
     )
-    averages = analyses_per_average(p) if p.dt_analysis > 0.0 else None
+    average_ratio = p.dt_averages / p.dt_analysis if not rlt(p.dt_averages, p.dt_analysis) else None
     checks.error_if(
-        averages is not None and averages < 1,
+        average_ratio is not None and average_ratio < 1.0,
         "dtAve",
         f"dtAve = {p.dt_averages} lies within the 1e-12 tolerance below dtAna = {p.dt_analysis}, so dtAve / dtAna "
         "truncates to 0 analyses per average; use dtAve >= dtAna.",

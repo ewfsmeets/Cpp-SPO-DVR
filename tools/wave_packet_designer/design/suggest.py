@@ -26,6 +26,7 @@ from program.config import DerivedParameters, InputParameters
 from program.fft_sizes import is_valid_fft_size, nearest_fft_size
 from program.real_compare import req, rge
 from program.unit_conversion import PI, ev_to_hartree
+from program.validate import steps_per_analysis
 
 DZ_STEP = 0.01  # bohr: a suggested dZ is rounded down to a multiple of this
 Z0_STEP = 0.1  # bohr: Z0 is rounded up to a multiple of this
@@ -107,9 +108,10 @@ def suggested_keys(
 def fit_time(p: InputParameters, t_end: float) -> dict[str, float | int]:
     """tEnd and nStep for a propagation of at least `t_end` (a.u.): whole averaging intervals dtAve after
     tStart, so tEnd = tStart + nStep dtStep and the propagation time is a whole multiple of dtAna and dtAve
-    (the program's checks)."""
-    steps_per_average = round(p.dt_averages / p.time_step)
-    intervals = max(1, math.ceil((t_end - p.t_start) / p.dt_averages - 1e-9))
+    (the program's checks), in whole multiples of the program's truncated time steps per analysis too (a decimal
+    dtAna / dtStep such as 1.2 / 0.1 truncates to 11: docs/fortran_deviations.md, analysis D4)."""
+    steps_per_average = math.lcm(round(p.dt_averages / p.time_step), steps_per_analysis(p))
+    intervals = max(1, math.ceil((t_end - p.t_start) / (steps_per_average * p.time_step) - 1e-9))
     n_steps = intervals * steps_per_average
     return {"t_end": p.t_start + n_steps * p.time_step, "n_steps": n_steps}
 

@@ -37,13 +37,6 @@ inline void resolve_repository_paths(InputParameters& input) {
   resolve_repository_path(input.scm.position_file);
 }
 
-// The configuration of a reference case's JSON input, with its data-file paths resolved.
-inline Config case_config(const nlohmann::json& input) {
-  InputParameters parameters = parse_input(input);
-  resolve_repository_paths(parameters);
-  return build_config(parameters);
-}
-
 // A reference case's PES and configuration, the PES built once (as the program does) from the resolved input.
 struct CaseSetup {
   std::unique_ptr<Potential> pes;
@@ -56,5 +49,8 @@ inline CaseSetup case_setup(const nlohmann::json& input) {
   Config config = build_config(parameters, *pes);
   return {std::move(pes), std::move(config)};
 }
+
+// The configuration of a reference case's JSON input, with its data-file paths resolved (case_setup's).
+inline Config case_config(const nlohmann::json& input) { return case_setup(input).config; }
 
 }  // namespace spodvr::testing

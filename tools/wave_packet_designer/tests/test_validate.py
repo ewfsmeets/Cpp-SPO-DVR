@@ -133,7 +133,12 @@ VIOLATIONS = [
     (
         {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 24.0, "n_steps": 3, "t_end": 2.4},
         "dtAna",
-        "time steps per analysis that dtAna / dtStep truncates to",
+        "time steps per analysis that dtAna / dtStep = 2.9999999999999996 truncates to",
+    ),
+    (
+        {"time_step": 0.1, "dt_analysis": 1.2, "dt_averages": 1.2, "n_steps": 120, "t_end": 12.0},
+        "dtAna",
+        "dtAna / dtStep = 11.999999999999998 truncates to",
     ),
     ({"dt_averages": 19.9999999999995}, "dtAve", "0 analyses per average"),
 ]
@@ -152,6 +157,17 @@ def test_limits_just_inside_are_valid() -> None:
     """The analysis limits (r1726: JIn < JMax, VIn < VAna, JIn < JAna; analysis D3: VIn < nR-1) just inside."""
     for changes in ({"j_in": 26}, {"v_in": 0, "v_analysis": 1}, {"j_in": 0, "j_analysis": 2}, {"v_in": 38}):
         check_equal(findings_of(changes), [], f"findings of {changes}")
+    # analysis D4: dtAna / dtStep truncates to 2, and nStep is a multiple of 2: the run reaches tEnd.
+    allowed = {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 2.4, "n_steps": 6, "t_end": 4.8}
+    check_equal(findings_of(allowed), [], f"findings of {allowed}")
+
+
+def test_d4_findings_only_where_the_cpp_gets_that_far() -> None:
+    """dtAna below dtStep and dtAve below dtAna are errors of their own; the analysis D4 messages ("lies within the
+    1e-12 tolerance") would be false there, and the C++ stops at the first error."""
+    for changes in ({"dt_analysis": 1.0}, {"dt_averages": 10.0}):
+        band = [f for f in findings_of(changes) if "lies within the 1e-12 tolerance" in f.message]
+        check_equal(band, [], f"analysis D4 findings of {changes}")
 
 
 def test_each_violation_is_found() -> None:
