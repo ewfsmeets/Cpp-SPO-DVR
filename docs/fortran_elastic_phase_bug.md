@@ -70,8 +70,8 @@ The coefficient is taken at Z_sp, but the phase is removed at `Zana`.
 
 ### Fortran
 
-- 5.19 `Analyzor.f90`; upstream master (dce0ecc) line numbers in brackets.
-- `BalintKurtiCoeffs`, `Analyzor.f90` lines 380–389 [393–401]:
+- 5.19 `Analyzor.f90`; upstream r1713 (dce0ecc) line numbers in brackets.
+- `BalintKurtiCoeffs`, `Analyzor.f90` lines 381–390 [393–402]:
 
   ```fortran
   if ( FixedZAnalysisSpec .AND. (nproj == 2) ) then

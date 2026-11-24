@@ -322,7 +322,7 @@ reference in the case `scm_cu111_srp48_small`, on the CPU and the GPU ([validati
 How to use it: [scm.md](scm.md). Values and atoms read from the example files
 and from synthetic multi-configuration files, and ΔV at every point of the four reference runs (the
 example slab with rescaling on and off, synthetic slabs of versions 3 and 2), are bitwise equal to
-the reference's (the r1713-dce0ecc objects driven by `tools/fortran_reference/scm_driver/`; tests
+the reference's (the r1727-3d00331 objects driven by `tools/fortran_reference/scm_driver/`; tests
 `tests/scm/`), also in the fast-math build. ΔV has no deviation from the Fortran. On the example
 runs (768 points), the system parameters are bitwise the Fortran's, V is the Fortran's within the
 CRP's tolerance (the few-ulp difference of the CRP library, scalar cos against libmvec, see "CRP

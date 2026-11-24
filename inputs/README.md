@@ -15,8 +15,8 @@ total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
 - **Scattering grid**: the full 6D grid (Z, r, x, y, θ, φ). Points `Z_i = ZStart + i·dZ`,
   i = 0 … `nZ`−1; the last point is `ZStart + (nZ−1)·dZ`.
 - **Specular grid**: a (Z, r) grid with the same `ZStart` and `dZ` but `nZSpecular` points,
-  reaching further out. It holds the initial channel only (incident v, j and the specular
-  diffraction order); that is why it is cheap. The packet starts here; below `Z_asymp` it is coupled
+  reaching further out. It holds the initial channel only (the incident j, m_j and the specular
+  diffraction order, every v); that is why it is cheap. The packet starts here; below `Z_asymp` it is coupled
   into the scattering grid.
 - **Z_asymp**: beyond it the PES is replaced by its asymptotic form V(r). Fixed by the PES (DZ 15.0,
   ER 8.0 bohr); the setup output prints it. `nzpot` (derived, not an input) = number of grid points
@@ -148,7 +148,7 @@ At fixed dZ the only other knob is a narrower energy range. Two further limits:
 
 ## 5. Z0
 
-- **≥ `Zana` + 8σ_Z.** The input check only needs the norm below `Zana` < `TolSp` (~5.5σ_Z); the
+- **≥ `Zana` + 8σ_Z.** The input check only needs the norm below `Zana` < `TolSp` (~5.2σ_Z for 1e-7); the
   extra margin keeps the overlap with Z < Z_asymp, where the specular wave is coupled into the
   scattering grid, negligible (~1e-15).
 - **Outer tail** (Z0 + 5.2σ_Z, the 1e-7 point) at least ~2 bohr below `ZSpOptStart`.

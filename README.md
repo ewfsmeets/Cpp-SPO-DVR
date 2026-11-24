@@ -508,7 +508,8 @@ from, upstream SPO-DVR 5.24 (svn r1727) built with `-O3`, on small grids:
 1. the potential (the gas-phase curve and the 6D grid);
 2. the gas-phase rovibrational states;
 3. the propagation: the norms and averages during the run;
-4. the on-the-fly analysis: the probabilities, the BK coefficients and a restarted run;
+4. the on-the-fly analysis: the probabilities, the S-matrix elements, the analysis limits, the BK
+   coefficients and a restarted run;
 5. the fine analysis.
 
 - Values the Fortran prints are compared to half a unit in their last printed digit.
@@ -582,11 +583,11 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
     probabilities are the same, the S-matrix elements and phases differ
     ([docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md));
   - a restart carries over the whole state of the specular analysis line; the Fortran does not save
-    one part of it, `anlyTol` ([restart bug](docs/fortran_deviations.md#fortran-restart-bug));
+    two parts of it, `anlyTol` and `oldValZanly` ([restart bug](docs/fortran_deviations.md#fortran-restart-bug));
   - the phase of the S-matrix elements of the initial rotational and diffraction state (elastic and
     vibrationally inelastic) refers to the specular analysis line where they are measured; the
-    Fortran refers it to `ZAnalysis`, several radians off (the probabilities are the same)
-    ([analysis D2](docs/fortran_deviations.md#analysis-d2));
+    Fortran's fine analysis refers it to `ZAnalysis`, several radians off (the probabilities are the same;
+    its on-the-fly analysis does as the C++ since r1720) ([analysis D2](docs/fortran_deviations.md#analysis-d2));
   - the surface symmetry is also used for C2v and C4v.
 - **Flux analysis:** not ported. With `ProjOp` 2 the Fortran's flux leaves out the initial channel
   on the specular grid ([findings](docs/flux_analysis_findings.md)).

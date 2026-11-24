@@ -70,8 +70,9 @@ also with `SPODVR_FAST_MATH` (CMake `spodvr_crplib_fp`, `spodvr_strict_objects`)
     fixture runs: the cut's Z grid points differ by an ulp from those of `potential/` (both computed
     as ZStart + i·dZ, compiled differently), and the hard wall's V misses its formula by more than
     1e-15 of (d + |V_Z|). Full ctest of `build-fast` on 2026-11-20 (at the commit that adds the
-    frames): of 873 tests 857 passed, these 10 failed and 6 were skipped; `build-cuda-fast`'s 30 GPU
-    tests (`-R Cuda`) pass, the 2 long ones skipped.
+    frames): of 873 tests 857 passed, 10 failed (all of the above but
+    `EnergyResolved.AccumulatorEqualsTheSumByHand`, which was added later that day) and 6 were skipped;
+    `build-cuda-fast`'s 30 GPU tests (`-R Cuda`) pass, the 2 long ones skipped.
   - With plain `-ffast-math` 21 tests failed (2026-11-15, the same sources in another build
     tree): the NaN tests (GCC folded `std::isnan` to false), most of the above, and
     `RegressionHardWall.Gate1AsymptoticPotentialTable` and

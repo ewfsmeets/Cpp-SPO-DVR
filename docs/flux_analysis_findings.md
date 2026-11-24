@@ -10,9 +10,10 @@ tried, as the basis for deciding what a flux analysis should compute. The physic
 (sections 1–3), the record of the port after (sections 4–8), the open questions last (section 9).
 
 Fortran line numbers refer to the 5.19 sources (`procfiles.dir/SOURCES.dir`, the same as upstream
-commit `601d833`). Every routine cited is the same in the reference 5.24 r1713 apart from OpenMP
-`SCHEDULE` clauses and line offsets (`git diff -w 601d833 dce0ecc` in the upstream repository,
-checked 2026-11-14).
+commit `601d833`). Every routine cited is the same in 5.24 r1713 apart from OpenMP `SCHEDULE` clauses
+and line offsets (`git diff -w 601d833 dce0ecc` in the upstream repository, checked 2026-11-14), and
+r1714–r1727 change none of the cited lines (`git diff -w dce0ecc 3d00331`), so the same holds for the
+reference r1727.
 
 ## 1. Status (2026-11-14)
 

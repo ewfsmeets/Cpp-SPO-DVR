@@ -97,8 +97,8 @@ The reference data comes from the unmodified Fortran binary. It runs as an analy
 the BK coefficients of its own full hardwall_small run:
 `tools/fortran_reference/run_fine_analysis_reference.sh`, variants `full`, `truncated`, `small` and
 `empty` (until 2026-11-23 also `nen95`, NrOfEs −95, which upstream r1719 made an input error), and of its
-cu111_dailight_small run (variant `full`). The C++ analyses the same file, so both programs start from identical
-input.
+cu111_dailight_small and cu111_dailight_oblique runs (variant `full`). The C++ analyses the same file, so both
+programs start from identical input.
 
 1. **The fine-grid S agrees with the Fortran, and the bug model is what the Fortran does**
    (`tests/test_regression_fine_analysis.cpp`, gate 5).

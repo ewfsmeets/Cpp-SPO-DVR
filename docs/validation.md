@@ -130,8 +130,8 @@ derived from exactly the same parameters.
      decimals) checked against the cut it should be: every V within half a
      printed unit of the e15.8 value plus `potential_tolerance_of(case)` × max(|V|, 1 eV) (the printed
      half unit binds: the worst points are at 0.989–0.990 of the tolerance, i.e. the C++ agrees with all
-     8 printed digits); r and Z within half a printed unit plus 1e-14 bohr (the Fortran's Z = 0 is
-     4.4e-16 in the C++). Measured 2026-11-20. Negative tests (`RegressionPesCutChecks`): one Fortran
+     8 printed digits); r and Z within half a printed unit plus 1e-14 bohr (the Fortran's Z = 0 point,
+     rounded from quad precision, is printed 0.41633363E-16, where the C++ has exactly 0). Measured 2026-11-20. Negative tests (`RegressionPesCutChecks`): one Fortran
      value moved by one printed unit away from the C++ value fails at exactly that point, a NaN at exactly
      that point, and the angles handed to the PES in degrees (a porting slip) fail at most points of the
      Dai–Light cut 2. Gate 1c checks V to its 8 printed digits; the tight check is this C++-only one: a

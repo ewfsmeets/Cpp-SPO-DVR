@@ -1,9 +1,10 @@
 # Thesis Figure 5.3 (DZ PES) with every plot switched on
 
 The production calculation of [`../thesis_fig5_3_dz/`](../thesis_fig5_3_dz/README.md) (H₂(v = 0,
-j = 0) on Cu(111), Dai–Zhang PES, the grid of Somers' thesis, Table 5.1), with every key that
-writes plot data. It is the run behind the **[analysis gallery](../../docs/analysis_gallery.md)**:
-23 figures and 4 movies, each with what it shows, why it matters and the take-away.
+j = 0) on Cu(111), Dai–Zhang PES, the grid of Somers' thesis, Table 5.1, with ΔZ = 0.12 instead of
+0.15), with every key that writes plot data. It is the run behind the
+**[analysis gallery](../../docs/analysis_gallery.md)**: 23 figures and 4 movies, each with what it shows, why it
+matters and the take-away.
 
 [![The wave packet above the bridge site](../../docs/analysis_gallery/frame_movie_site2.gif)](../../docs/analysis_gallery.md)
 

@@ -95,8 +95,9 @@ gives the status of each of the others.
   - Keys: `ZOptLowStart`, `ZOptLowEnd`, and `ZOptLowEnergy` or `ZOptLowFactor`; the same four as
     `ZSpOptLow…` for the specular grid. They are not pre-registered, so a `DVR.inp` needs
     `Name : REAL : value;`.
-  - Switched on only when Start and End are both given with Start ≤ End; then Start ≥ ZStart,
-    End ≤ ZAna, Energy or Factor, and Energy ≥ 0 are required.
+  - Switched on only when Start and End are both given with Start < End (Start ≤ End up to r1716);
+    then Start ≥ ZStart, End ≤ ZAna and Energy or Factor are required, with `ZOptLowEnergy` ≥ 0 (to
+    1e-12, `.RLT.`) and `ZSpOptLowEnergy` > 0 (exact, since r1718).
   - At the same Z the low-end value overwrites a high-end absorber value instead of adding to it.
 - **PES morphing** (`Potential.f90 MorphPotential`, examples in upstream `tools.dir/morphing`).
   - It scales or shifts FBR coefficients (J, mJ, n, m) with Gaussians in Z and r, after V is

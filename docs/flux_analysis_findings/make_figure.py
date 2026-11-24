@@ -54,7 +54,8 @@ def plot_case(ax, data, title):
     ax.plot(
         energy, reference, color=REFERENCE_INK, linewidth=1.5, linestyle=(0, (4, 2)), label="1 - ΣR (S-matrix analysis)"
     )
-    # P_total underneath and wider: at r_c = 4.1 bohr it lies within 9 % of P_scat.
+    # P_total underneath and wider: at r_c = 4.1 bohr it lies within 9 % of P_scat from 0.32 eV on (below, both are
+    # under 5e-12 in magnitude).
     for key, label, color in SERIES:
         wide = key == "P_total"
         ax.plot(

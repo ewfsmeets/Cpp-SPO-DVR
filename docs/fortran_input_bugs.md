@@ -355,7 +355,7 @@ a positive length:
 
 - **low-Z D1:** with Start > End the condition `zsplmilow <= zsplmalow` is false: the absorber
   stays off, and no message says so.
-- **low-Z D2** (up to r1713): with Start = End the absorber is switched on with length 0. The strength is not
+- **low-Z D2** (up to r1716): with Start = End the absorber is switched on with length 0. The strength is not
   computed (the length is not positive), so it is the factor or the default 0. A grid point equal
   to Start gets `0 * (0/0)**2` = NaN in `vimag`, so its absorption factor `exp(-ima*vimag*dtlan)`
   is NaN too; the first time step spreads the NaN over the whole wave function (also where it is 0,
