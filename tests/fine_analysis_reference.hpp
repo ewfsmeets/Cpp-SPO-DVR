@@ -1,12 +1,12 @@
 // Readers for the Fortran fine-analysis output (gate 5): the stdout of ReadOrWriteAsympInfo and
-// probaf, fil10 (fort.10), unit 3 (fort.3) and fort.25. Values are kept as printed text, so they
-// can be compared to half a unit in the last printed digit (printed_text_tolerance).
+// probaf, fil10 (fort.10) and unit 3 (fort.3) (fort.25: fort25_reference.hpp), and the counts gate 5
+// must reach. Values are kept as printed text, so they can be compared to half a unit in the last
+// printed digit (printed_text_tolerance).
 #pragma once
 
 #include <gtest/gtest.h>
 
 #include <cctype>
-#include <complex>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "analysis_reference.hpp"
+#include "fort25_reference.hpp"
 
 namespace spodvr::testing {
 
@@ -224,35 +225,35 @@ inline std::map<std::tuple<int, int, int, int, int, int>, std::vector<std::strin
   return states;
 }
 
-// fort.25 (smatrix_combine): per energy block the S-matrix element, probability and phase of
-// every printed state (open rovibrational channels), (v, j, mJ, n, m) -> (Re S, Im S, P, phase).
-struct Fort25Entry {
-  std::string re, im, p, phase;
-};
-struct Fort25Block {
-  std::string total_energy;
-  std::map<std::tuple<int, int, int, int, int>, Fort25Entry> states;
+// The values gate 5 compares in each Fortran output: fil10 (fort.10), unit 3 (fort.3), the probabilities of fort.25
+// and its Re S, Im S and phases.
+struct FineCounts {
+  int f10 = 0;
+  int u3 = 0;
+  int p25 = 0;
+  int s25 = 0;
 };
 
-inline std::vector<Fort25Block> read_fortran_fort25(const std::filesystem::path& path) {
-  std::ifstream in(path);
-  if (!in) throw std::runtime_error("cannot open " + path.string());
-  std::vector<Fort25Block> blocks;
-  std::string line;
-  int v = 0, j = 0, mj = 0;
-  while (std::getline(in, line)) {
-    const std::vector<std::string> t = split(line);
-    if (line.find("total energy =") != std::string::npos) {
-      blocks.push_back({t.back(), {}});
-    } else if (line.find("v j mj dif.order are:") != std::string::npos) {
-      v = std::stoi(t[t.size() - 4]);
-      j = std::stoi(t[t.size() - 3]);
-      mj = std::stoi(t[t.size() - 2]);
-    } else if (t.size() == 6 && is_number(t[0]) && is_number(t[2]) && !blocks.empty()) {
-      blocks.back().states[{v, j, mj, std::stoi(t[0]), std::stoi(t[1])}] = {t[2], t[3], t[4], t[5]};
-    }
-  }
-  return blocks;
+// The counts the Fortran's write rules give for the fine analysis of a run (Analyzor.f90 probaf, smatrix_combine),
+// whose labels and interpolated results are in `run` (set_analysis_labels), on nen95 grid energies; s_skipped: the
+// fort.25 rows whose S and phase are skipped (with a named reason, counted by the gate).
+// fil10 per energy: the energy, P and phase of the initial state, P_reaction, the three average energies, P(v),
+// av edif and av erot per v, P(v, j, mJ) and, with writeRDProbs, P(v, j, mJ, order). Unit 3: every state.
+// fort.25: the print rule's rows, three values (Re S, Im S, phase) of those not skipped.
+inline FineCounts expected_fine_counts(const PropagationRun& run, int nen95, int s_skipped) {
+  const int n_rot = static_cast<int>(run.rotation_labels.size());
+  const int orders = run.order_block_printed ? run.n_orders : 0;
+  const int fort25_rows = fort25_print_rule_rows(run);
+  return {nen95 * (7 + 3 * run.n_v + run.n_v * n_rot * (1 + orders)), nen95 * run.n_states * run.n_v, fort25_rows,
+          3 * (fort25_rows - s_skipped)};
+}
+
+// Gate 5's assertion on its counts: each output compared in full.
+inline void expect_fine_counts(const FineCounts& measured, const FineCounts& expected) {
+  EXPECT_EQ(measured.f10, expected.f10) << "fil10 values compared vs the Fortran's write rule";
+  EXPECT_EQ(measured.u3, expected.u3) << "unit 3 values compared vs the Fortran's write rule";
+  EXPECT_EQ(measured.p25, expected.p25) << "fort.25 probabilities compared vs the Fortran's print rule";
+  EXPECT_EQ(measured.s25, expected.s25) << "fort.25 S and phases compared vs the rows not skipped";
 }
 
 }  // namespace spodvr::testing

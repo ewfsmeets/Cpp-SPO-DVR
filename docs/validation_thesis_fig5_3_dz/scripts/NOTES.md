@@ -17,8 +17,8 @@ under "Additions" at the end.
 - **fort.25** (writeProbs): per energy a header, then per (v, j, mJ, order) rows `n m ReS ImS
   |S|² phase` (d13.6/f10.6), v printed as iv−1. Rows exist only for open rovibrational channels,
   including their closed diffraction channels (S = 0), which `s_matrix.tsv` omits. Parser:
-  `tests/fine_analysis_reference.hpp` `read_fortran_fort25`. The on-the-fly fort.25 has never been
-  compared in a gate (gate 5 uses the fine-analysis one).
+  `tests/fort25_reference.hpp` `read_fortran_fort25_rows` (gate 4 compares the on-the-fly fort.25 since the
+  r1727 reference, gate 5 the fine-analysis one).
 - **Full-precision Fortran data:** `.pes` (V in hartree before the −dt factor, symmetry-reduced;
   record layout as in `tools/fortran_reference/extract_pes.py`, whose loader needs ~8 GB here:
   memory-map instead; symmetryIndex is a header record, then one record per (Z, r) block);

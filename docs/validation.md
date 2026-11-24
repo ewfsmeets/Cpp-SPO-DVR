@@ -145,6 +145,9 @@ derived from exactly the same parameters.
    (2026-11-15): 1.3e-14 and 8.7e-15. The 6-digit printed table (e.g. e(0,0) = 0.258378 eV,
    e(1,0) = 0.762842 eV) is checked by the unit test `GasPhase.ReferenceCaseSixDigitValues`.
    The other cases of gate 1 run the same comparison (`RegressionPes.Gate2RovibrationalStates`).
+   The analysis limits the Fortran set-up prints (`nana`, `nstata`, `inchna`; RotDifBasis.f90) equal the C++
+   analysis basis built on that gas phase (`RegressionPes.Gate2AnalysisLimits`, every case with a
+   `fortran_setup_stdout.txt`); gates 4 and 5 compare all five limits (`jana` and `nviba` too) of every run.
 3. **Propagation** (`tests/test_regression_propagation.cpp`): initial wave-packet block
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
@@ -190,17 +193,27 @@ derived from exactly the same parameters.
    5.1e-13 of the scale 0.075. Negative test (Long suite) `ScmGateFailsWithoutTheCorrectionLong`:
    with the CRP term alone (ΔV removed, the lattice kept) the C++ misses the Fortran by 7.8e9 half
    units and 1.4e10 BK tolerances (2026-11-15).
-4. **On-the-fly analysis** (same test as gate 3, same runs): every probability printed in the
-   Fortran per-energy blocks (total energy, sum, reaction probability, P(v), P(v, j, mJ); 1435
-   values) to half a unit in the last printed digit (values below 1e-20 are noise and compared
-   absolutely), every BK coefficient of every analysis step (`fortran_fort21.bin`) to 1e-10 of
+4. **On-the-fly analysis** (same test as gate 3, same runs): every value printed in the
+   Fortran per-energy blocks (`Analyzor.f90` smatrix_combine: total energy, sum, reaction probability, the
+   three average energies, P(v) with av edif and av erot, P(v, j, mJ) and, with writeRDProbs, P per
+   diffraction order; tests/analysis_reference.hpp) to half a unit in the last printed digit (values below
+   1e-20 are noise and compared absolutely), every BK coefficient of every analysis step (`fortran_fort21.bin`) to 1e-10 of
    max(max|c|, 1e-4) (exception: the reaction probability = 1 − sum is compared to
    max(half a printed unit, 1e-11) absolute, the accuracy of the sum it is derived from; decided
    after cu111_dailight_small: 2.9e-6 printed to 7 digits differed by 3.6e-13; floor
    raised from 1e-12 to 1e-11 for the fast-math build (5.3e-12), see
    tests/analysis_reference.hpp), and
-   the probabilities of a Fortran run split by a restart
+   the blocks of a Fortran run split by a restart
    (`fortran_restart_stdout.txt`, tools/fortran_reference/run_restart_reference.sh).
+   Every row must match a C++ state (the rotation block's irot is the C++ rotational index + 1), and per
+   energy block the rows of each section number what the Fortran's print rule gives for the C++ run: nviba
+   P(v) rows, nviba · nana P(v, j, mJ), one order header per (v, j, mJ) with E ≥ E(v, j) and mdifa + 1 rows
+   under it. An average energy is a ratio of two sums of \|S\|²: it is compared where the printed
+   probability it divides by (P(v), or the sum of the printed P(v) for the three totals) exceeds 5e-15, 1e3
+   times the largest \|P_C++(v) − P_F(v)\| measured where P(v) < 1e-10 (4.96e-18, cu111_dailight_short_sym,
+   over every gate-4 and gate-5 case, 2026-11-24); below, both codes print ratios of rounding noise
+   (hardwall_short: P(v) ≤ 9.4e-30, av erot 4.4 % apart). Skipped rows are counted. The analysis limits the
+   Fortran prints (`jana`, `nviba`, `nana`, `nstata`, `inchna`) equal the C++ analysis basis.
    Since the reference is r1727 (2026-11-24) also every S-matrix row of the Fortran's on-the-fly
    `fortran_fort25.txt` (tests/fort25_reference.hpp; r1720 refers the initial state's phase to the specular
    analysis line, as the C++ does). The tolerances add the Fortran's printed digits and a code term
@@ -228,7 +241,7 @@ derived from exactly the same parameters.
    to r1719) fails exactly the rows r1720 changed (50 per Dai–Light case, 51 in hardwall_small, 21 in
    scm_cu111_srp48_small; none in hardwall_short, whose line never fixes); against the r1713 reference files the
    C++ fails exactly those rows and the Zana convention none (measured once, 2026-11-24).
-   Status: all pass. Full hard-wall run (hardwall_small, 7000 steps): probabilities worst 0.989451
+   Status: all pass. Full hard-wall run (hardwall_small, 7000 steps): energy blocks worst 0.989451
    of half a printed unit, BK (1400 records) 6.36e-13 of max|c| = 0.409; Fortran restart run
    worst 0.99. In hardwall_short all BK coefficients are
    rounding noise (≤ 2e-15, the packet has not reached Zana), hence the scale floor 1e-4.
@@ -242,7 +255,16 @@ derived from exactly the same parameters.
    `InterpolateSMatrix.GridPointsAndLinearProbability`). Compared to half a printed unit: AsympInfo numbers,
    probaf table, all of fil10 and unit 3 (spectrum), the interpolated per-energy blocks and
    fort.25 probabilities; fort.25 Re S / Im S / phase against an emulation of the reference's
-   interpolation, whose ATAN and sign bugs 5.24 keeps (see fortran_deviations.md). The gate analyses
+   interpolation, whose ATAN and sign bugs 5.24 keeps (see fortran_deviations.md), and the analysis limits.
+   Every value is compared or skipped with a named, counted reason, and the counts equal the Fortran's write
+   rules (`expected_fine_counts`, tests/fine_analysis_reference.hpp; e.g. `Gate5Full`: 12545 fil10 values,
+   31200 of unit 3, 9904 fort.25 rows). Re S, Im S and the phase of a fort.25 row are skipped where both grid
+   elements around its energy are below 1e-8 of the largest \|S\| (pinned per variant: 9856 of 9904 rows in
+   full and truncated, 7629 of 7728 in small, 4131 of 39232 in `Gate5DaiLight`; the hard wall populates few
+   states) or the sign of the interpolated Re S or Im S is undecidable (0 in every variant). A fallback to the
+   neighbouring interval's emulation for energies on a grid point matched better 0 times on every variant
+   (2026-11-24) and was removed. The committed variants require their files: a missing one fails
+   (`RegressionFineAnalysis.MissingRequiredReferenceFails`). The gate analyses
    the Fortran's BK file without a checkpoint, so every phase refers to Zana as in the Fortran
    (fortran_deviations.md, analysis D2). Status: all
    pass (worst 0.990127 of half a printed unit, in `Gate5DaiLight`).

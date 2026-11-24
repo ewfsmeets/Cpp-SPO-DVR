@@ -4,7 +4,8 @@
 // Fortran binary, onlyAnalysis runs), in hardwall_small/fine_<variant>/.
 // The Fortran interpolated S-matrix elements (fort.25) are compared with an emulation of the
 // Fortran interpolation including its bugs (docs/fortran_fine_analysis_bugs.md); everything
-// else with the C++ results directly.
+// else with the C++ results directly. Every value of fil10, unit 3 and fort.25 is compared, or
+// skipped with a named, counted reason; the counts are asserted against the Fortran's write rules.
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
@@ -13,8 +14,9 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <optional>
+#include <map>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -31,7 +33,6 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
-#include "symmetry/surface_lattice.hpp"
 
 namespace fs = std::filesystem;
 using namespace spodvr;
@@ -155,13 +156,46 @@ cplx fortran_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   return {sign(sreal, sreal_interpolated), sign(simag, simag_interpolated)};
 }
 
-bool have_reference(const std::string& case_name, const std::string& variant) {
-  return fs::exists(case_dir(case_name) / ("fine_" + variant) / "stdout.txt");
+// The Fortran files gate 5 reads for a variant: the case's BK file and the variant's outputs (an empty fine grid
+// writes no unit 3 and no fort.25, and the gate stops after the AsympInfo numbers and the analysis limits).
+std::vector<fs::path> reference_files(const std::string& case_name, const std::string& variant) {
+  const fs::path dir = case_dir(case_name) / ("fine_" + variant);
+  std::vector<fs::path> files = {case_dir(case_name) / "fortran_fort21.bin", dir / "stdout.txt"};
+  if (variant != "empty")
+    for (const std::string name : {"fort.10", "fort.3", "fort.25"}) files.push_back(dir / name);
+  return files;
 }
 
-void run_gate(const std::string& case_name, const std::string& variant) {
-  if (!have_reference(case_name, variant))
-    GTEST_SKIP() << "no Fortran reference; run tools/fortran_reference/run_fine_analysis_reference.sh " << case_name;
+// The fort.25 rows whose S and phase gate 5 skips, per reason (measured; the probability of every row is compared):
+// both grid elements around the energy below 1e-8 of the largest |S| (negligible), or the linear interpolation of
+// Re S or Im S within 1e-10 of the largest |S| of zero (its sign, which the Fortran copies, is undecidable).
+struct Fort25Skips {
+  int negligible;
+  int undecidable;
+};
+const std::map<std::string, Fort25Skips>& fort25_skips() {
+  static const std::map<std::string, Fort25Skips> skips = {
+      {"hardwall_small/full", {9856, 0}},
+      {"hardwall_small/truncated", {9856, 0}},
+      {"hardwall_small/small", {7629, 0}},
+      {"cu111_dailight_small/full", {4131, 0}},
+  };
+  return skips;
+}
+
+// Gate 5 for a variant of a case; references: whether a missing Fortran file fails the test or skips it.
+void run_gate(const std::string& case_name, const std::string& variant, References references) {
+  std::string missing;
+  for (const fs::path& file : reference_files(case_name, variant))
+    if (!fs::exists(file)) missing = missing + " " + file.string();
+  if (!missing.empty()) {
+    if (references == References::required) {
+      ADD_FAILURE() << "reference files missing:" << missing;
+      return;
+    }
+    GTEST_SKIP() << "no Fortran reference (" << missing
+                 << "); run tools/fortran_reference/run_fine_analysis_reference.sh " << case_name;
+  }
   const fs::path dir = case_dir(case_name) / ("fine_" + variant);
   const FineRun run(variant_input(case_name, variant));
   const FineAnalysisResults r = run.run();
@@ -171,7 +205,7 @@ void run_gate(const std::string& case_name, const std::string& variant) {
   const int n_rot = basis.n_rotation();
   const int n_orders = basis.max_order() + 1;
 
-  // 1. Asymptotic info.
+  // 1. Asymptotic info and the analysis limits.
   const FortranAsympInfo info = read_fortran_asymp_info(dir / "stdout.txt");
   EXPECT_EQ(g.n_records_available, info.n_records);
   EXPECT_EQ(g.n_records_used, info.n_used);
@@ -180,6 +214,9 @@ void run_gate(const std::string& case_name, const std::string& variant) {
   c.check(g.spectral_resolution * 1000.0, info.spres_mev, "spres");
   c.check(g.meaningful_min, info.emin, "emintr");
   c.check(g.meaningful_max, info.emax, "emaxtr");
+  expect_analysis_limits(compare_analysis_limits(analysis_limits(basis),
+                                                 read_fortran_analysis_limits(dir / "stdout.txt"), limits_of_a_run),
+                         limits_of_a_run);
   if (g.size() == 0) {
     EXPECT_TRUE(r.interpolated.energies.empty());
     return;
@@ -201,6 +238,20 @@ void run_gate(const std::string& case_name, const std::string& variant) {
   // 3. fil10.
   const FortranFil10 fil10 = read_fortran_fil10(dir / "fort.10", run.config.input.write_rd_probabilities);
   ASSERT_EQ(fil10.nen95, g.size());
+  // Every label of fil10 names a C++ level, rotational state and diffraction order.
+  const auto level = [&](int v) { return v >= 0 && v < basis.n_v(); };
+  for (const auto& [v, values] : fil10.p_v) ASSERT_TRUE(level(v)) << "fil10: no C++ level v = " << v;
+  for (const auto& [v, values] : fil10.e_dif_v) ASSERT_TRUE(level(v)) << "fil10: no C++ level v = " << v;
+  for (const auto& [key, values] : fil10.p_rovib) {
+    const auto& [v, j, mj] = key;
+    ASSERT_TRUE(level(v) && run.rotation(j, mj) >= 0)
+        << "fil10: no C++ state (v, j, mJ) = (" << v << ", " << j << ", " << mj << ")";
+  }
+  for (const auto& [key, values] : fil10.p_order) {
+    const auto& [order, v, j, mj] = key;
+    ASSERT_TRUE(level(v) && run.rotation(j, mj) >= 0 && order >= 0 && order < n_orders)
+        << "fil10: no C++ state (order, v, j, mJ) = (" << order << ", " << v << ", " << j << ", " << mj << ")";
+  }
   Comparison f10;
   for (int i = 0; i < g.size(); ++i) {
     const EnergyResult& e = r.spectrum.energies[i];
@@ -231,89 +282,95 @@ void run_gate(const std::string& case_name, const std::string& variant) {
   for (const auto& [key, values] : read_fortran_unit3(dir / "fort.3")) {
     const auto& [order, n, m, v, j, mj] = key;
     const int is = run.state(order, n, m, j, mj);
-    ASSERT_GE(is, 0);
+    ASSERT_TRUE(is >= 0 && level(v)) << "unit 3: no C++ state (order, n, m, v, j, mJ) = (" << order << ", " << n << ", "
+                                     << m << ", " << v << ", " << j << ", " << mj << ")";
     for (int i = 0; i < g.size(); ++i)
       u3.check(r.spectrum.energies[i].probability[is + n_states * v], values[i], "unit 3 P");
   }
   u3.report("unit 3 (all states, fine grid)");
 
-  // 5. The interpolated per-energy blocks of the stdout (probabilities: unaffected by the bugs).
+  // 5. The interpolated per-energy blocks of the stdout (probabilities and average energies: unaffected by the bugs).
   PropagationRun interpolated;
   interpolated.scattering = r.interpolated;
-  for (int irot = 0; irot < n_rot; ++irot)
-    interpolated.rotation_labels.emplace_back(basis.j(irot * basis.n_diffraction()),
-                                              basis.mj(irot * basis.n_diffraction()));
-  compare_probabilities_with_fortran(interpolated, read_fortran_probabilities(dir / "stdout.txt"));
+  set_analysis_labels(interpolated, run.config, basis, run.gas);
+  compare_energy_blocks_with_fortran(interpolated, read_fortran_energy_blocks(dir / "stdout.txt"));
   EXPECT_EQ(static_cast<int>(r.skipped.size()), info.n_skip_messages);
 
-  // 6. fort.25: probabilities against the C++; S and phase against the bug emulation.
-  const std::vector<Fort25Block> fort25 = read_fortran_fort25(dir / "fort.25");
-  ASSERT_EQ(fort25.size(), r.interpolated.energies.size());
+  // 6. fort.25: every row's probability against the C++; S and phase against the bug emulation, or skipped with
+  // a reason (fort25_skips).
+  const Fort25File fort25 = read_fortran_fort25_rows(dir / "fort.25");
+  for (const std::string& problem : fort25.problems) ADD_FAILURE() << "fort.25 " << problem;
+  ASSERT_EQ(fort25.total_energy.size(), r.interpolated.energies.size());
+  EXPECT_EQ(static_cast<int>(fort25.rows.size()), fort25.row_like_lines)
+      << "fort.25 rows read vs an independent count of the file";
   double s_max = 0.0;
   for (const EnergyResult& e : r.spectrum.energies)
     for (const cplx s : e.s_matrix) s_max = nan_aware_max(s_max, std::abs(s));
   Comparison p25;
   Comparison s25;
-  int n_undecidable = 0;
-  int n_other_interval = 0;
-  for (std::size_t ie = 0; ie < fort25.size(); ++ie) {
-    const EnergyResult& e = r.interpolated.energies[ie];
-    const auto [upper, f] = locate_on_grid(g, e.z_energy);
-    for (const auto& [key, entry] : fort25[ie].states) {
-      const auto& [v, j, mj, n, m] = key;
-      const int order = SurfaceLattice(run.config.derived.system).diffraction_order(n, m);
-      const int k = run.state(order, n, m, j, mj) + n_states * v;
-      p25.check(e.probability[k], entry.p, "fort.25 P");
-
-      const cplx s1 = r.spectrum.energies[upper - 1].s_matrix[k];
-      const cplx s2 = r.spectrum.energies[upper].s_matrix[k];
-      if (std::abs(s1) < 1e-8 * s_max && std::abs(s2) < 1e-8 * s_max) continue;
-      // Signs decided by a linear interpolation within rounding of zero cannot be compared.
-      const double re_lin = s1.real() + (s2.real() - s1.real()) * f;
-      // As the reference since 5.24 r1713 (5.19 had s1.real()).
-      const double im_lin = s1.imag() + (s2.imag() - s1.imag()) * f;
-      if (std::abs(re_lin) < 1e-10 * s_max || std::abs(im_lin) < 1e-10 * s_max) {
-        n_undecidable = n_undecidable + 1;
-        continue;
-      }
-      cplx emulated = fortran_interpolation_with_bugs(s1, s2, f);
-      // On a grid point (f = 0 or 1 to rounding) the Fortran may have chosen the neighbouring
-      // interval: its E_z (ensctr, quad precision) differs from the C++ one in the last bits.
-      // The emulation of that interval is used if it matches the Fortran value better.
-      // Measured with the former NrOfEs = -95 variant (energies on the fine grid; an input error since
-      // r1719): it passed with either emulation (5.19's s1_real or 5.24's s1_imag), because the typo term
-      // is multiplied by f, which is close to 0 there or, in this fallback, by f - 1, close to 0 too.
-      const cplx printed(parse_fortran_real(entry.re), parse_fortran_real(entry.im));
-      const int n_grid = g.size();
-      std::optional<cplx> other;
-      if (f > 1.0 - 1e-9 && upper + 1 < n_grid)
-        other = fortran_interpolation_with_bugs(s2, r.spectrum.energies[upper + 1].s_matrix[k], f - 1.0);
-      if (f < 1e-9 && upper >= 2)
-        other = fortran_interpolation_with_bugs(r.spectrum.energies[upper - 2].s_matrix[k], s1, f + 1.0);
-      if (other && std::abs(*other - printed) < std::abs(emulated - printed)) {
-        emulated = *other;
-        n_other_interval = n_other_interval + 1;
-      }
-      s25.check(emulated.real(), entry.re, "fort.25 Re S (emulated)");
-      s25.check(emulated.imag(), entry.im, "fort.25 Im S (emulated)");
-      const double phase = emulated.real() == 0.0 ? 0.0 : std::atan2(emulated.imag(), emulated.real());
-      s25.check(phase, entry.phase, "fort.25 phase (emulated)");
+  Fort25Skips skipped{0, 0};
+  for (const Fort25Row& row : fort25.rows) {
+    const EnergyResult& e = r.interpolated.energies[row.block];
+    const int is = run.state(row.order, row.n, row.m, row.j, row.mj);
+    if (is < 0 || row.v < 0 || row.v >= basis.n_v()) {
+      ADD_FAILURE() << "fort.25 line " << row.line << ": no C++ state";
+      continue;
     }
+    const int k = is + n_states * row.v;
+    p25.check(e.probability[k], row.p, "fort.25 P");
+
+    const auto [upper, f] = locate_on_grid(g, e.z_energy);
+    const cplx s1 = r.spectrum.energies[upper - 1].s_matrix[k];
+    const cplx s2 = r.spectrum.energies[upper].s_matrix[k];
+    if (std::abs(s1) < 1e-8 * s_max && std::abs(s2) < 1e-8 * s_max) {
+      skipped.negligible = skipped.negligible + 1;
+      continue;
+    }
+    // Signs decided by a linear interpolation within rounding of zero cannot be compared.
+    const double re_lin = s1.real() + (s2.real() - s1.real()) * f;
+    // As the reference since 5.24 r1713 (5.19 had s1.real()).
+    const double im_lin = s1.imag() + (s2.imag() - s1.imag()) * f;
+    if (std::abs(re_lin) < 1e-10 * s_max || std::abs(im_lin) < 1e-10 * s_max) {
+      skipped.undecidable = skipped.undecidable + 1;
+      continue;
+    }
+    // The interval located by the C++ is the Fortran's on every gate-5 case: a fallback to the neighbouring interval
+    // for an energy on a grid point (the Fortran's E_z is rounded from quad precision) matched better 0 times
+    // (measured 2026-11-24) and was removed; NrOfEs = -95 (energies on the grid) is an input error since r1719.
+    const cplx emulated = fortran_interpolation_with_bugs(s1, s2, f);
+    s25.check(emulated.real(), row.re, "fort.25 Re S (emulated)");
+    s25.check(emulated.imag(), row.im, "fort.25 Im S (emulated)");
+    const double phase = emulated.real() == 0.0 ? 0.0 : std::atan2(emulated.imag(), emulated.real());
+    s25.check(phase, row.phase, "fort.25 phase (emulated)");
   }
   p25.report("fort.25 probabilities");
   s25.report("fort.25 S-matrix and phases (Fortran interpolation emulated)");
-  std::cout << "  fort.25: " << n_undecidable << " values with an undecidable sign skipped, " << n_other_interval
-            << " on a grid point matched with the neighbouring interval\n";
+  std::cout << "  fort.25: " << fort25.rows.size() << " rows; S and phase skipped: " << skipped.negligible
+            << " negligible, " << skipped.undecidable << " with an undecidable sign\n";
+
+  // 7. The counts: every value of every output compared, every skip pinned.
+  const auto pin = fort25_skips().find(case_name + "/" + variant);
+  ASSERT_NE(pin, fort25_skips().end()) << "no pinned fort.25 skips for " << case_name << "/" << variant;
+  EXPECT_EQ(skipped.negligible, pin->second.negligible) << "fort.25 rows skipped as negligible vs the pin";
+  EXPECT_EQ(skipped.undecidable, pin->second.undecidable) << "fort.25 rows skipped as undecidable vs the pin";
+  expect_fine_counts({f10.n, u3.n, p25.n, s25.n},
+                     expected_fine_counts(interpolated, g.size(), skipped.negligible + skipped.undecidable));
 }
 
 }  // namespace
 
-TEST(RegressionFineAnalysis, Gate5Full) { run_gate("hardwall_small", "full"); }
-TEST(RegressionFineAnalysis, Gate5Truncated) { run_gate("hardwall_small", "truncated"); }
-TEST(RegressionFineAnalysis, Gate5Small) { run_gate("hardwall_small", "small"); }
-TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("hardwall_small", "empty"); }
+// The committed variants: a missing reference file fails them.
+TEST(RegressionFineAnalysis, Gate5Full) { run_gate("hardwall_small", "full", References::required); }
+TEST(RegressionFineAnalysis, Gate5Truncated) { run_gate("hardwall_small", "truncated", References::required); }
+TEST(RegressionFineAnalysis, Gate5Small) { run_gate("hardwall_small", "small", References::required); }
+TEST(RegressionFineAnalysis, Gate5Empty) { run_gate("hardwall_small", "empty", References::required); }
 // The corrugated C6v case (60 deg cell): on the BK file of the full Dai-Light Fortran run.
-TEST(RegressionFineAnalysis, Gate5DaiLight) { run_gate("cu111_dailight_small", "full"); }
+TEST(RegressionFineAnalysis, Gate5DaiLight) { run_gate("cu111_dailight_small", "full", References::required); }
+
+// A required case whose reference files are missing fails (once, naming them) instead of skipping.
+TEST(RegressionFineAnalysis, MissingRequiredReferenceFails) {
+  EXPECT_NONFATAL_FAILURE(run_gate("no_such_case", "full", References::required), "reference files missing");
+}
 
 // A NaN on either side of a printed value fails its check, and the reported largest deviation is NaN.
 TEST(RegressionFineAnalysis, PrintedValueCheckFailsOnNaN) {

@@ -119,7 +119,8 @@ input.
    - In the nen95 variant (removed 2026-11-23, see above) the analysis energies fell on grid points (f = 0 or
      1). There the
      Fortran's quad-precision `ensctr` picks the neighbouring interval for 7 values; the test
-     accepts either interval.
+     accepted either interval (that fallback matched better 0 times on the remaining variants and was removed
+     on 2026-11-24).
    - All probabilities agree with the fixed C++ directly, to within half a printed unit:
      - full: 1365 printed in the per-energy blocks, 9904 in fort.25;
      - plus every value of the spectrum (fil10, unit 3, probaf table).

@@ -1,7 +1,8 @@
 // Tests: the NaN-aware maximum of tests/comparison.hpp (std::max bit for bit on finite values) and
 // the gates built on it: a NaN on either side fails gate 1b (the 6D potential, pes_gate.hpp), gate 3
-// (averages) and gate 4 (printed probabilities, BK coefficients), and gate 4's comparison of the S-matrix elements
-// with the Fortran's fort.25 (fort25_reference.hpp) on synthetic files.
+// (averages) and gate 4 (the per-energy blocks, BK coefficients); gate 4's comparisons of the per-energy blocks
+// and the analysis limits (analysis_reference.hpp) and of the S-matrix elements with the Fortran's fort.25
+// (fort25_reference.hpp), and gate 5's counts (fine_analysis_reference.hpp), on synthetic data with exact counts.
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
@@ -13,6 +14,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <numbers>
 #include <optional>
@@ -22,6 +24,7 @@
 #include "analysis_reference.hpp"
 #include "comparison.hpp"
 #include "core/unit_conversion.hpp"
+#include "fine_analysis_reference.hpp"
 #include "fort25_reference.hpp"
 #include "pes_gate.hpp"
 #include "propagation_reference.hpp"
@@ -65,22 +68,56 @@ FortranPropagationReference fortran_reference() {
   return ref;
 }
 
-// One energy with the printed total energy, sum of probabilities and reaction probability.
-PropagationRun run_with_probabilities() {
-  EnergyResult e{};
-  e.total_energy = 0.45837825;
-  e.p_total = 0.95;
-  e.p_reaction = 0.05;
+// A mini analysis basis: rotational states (j, mJ) = (0, 0), (2, 0), diffraction channels (n, m) = (0, 0) of order
+// 0 and (1, 0) of order 1, levels v = 0, 1, so 4 states per level; one energy at which v = 0 is open and v = 1
+// closed. Per state |S|^2 0.5, 0.1, 0.2, 0.05 in v = 0 (sum 0.85) with E_dif = 0.17 eV of order 1 and E_rot = 0.0442
+// eV of j = 2: av edif = 0.17 * 0.15 / 0.85 = 0.03 eV and av erot = 0.0442 * 0.25 / 0.85 = 0.013 eV.
+PropagationRun run_with_energy_block() {
   PropagationRun run;
+  run.rotation_labels = {{0, 0}, {2, 0}};
+  run.states = {{0, 0, 0, 0, 0}, {0, 0, 1, 1, 0}, {2, 0, 0, 0, 0}, {2, 0, 1, 1, 0}};
+  run.n_states = 4;
+  run.n_v = 2;
+  run.n_orders = 2;
+  run.order_block_printed = true;
+  run.level_energy_ev = {{-4.467141, -4.46, -4.45}, {-3.9, -3.89, -3.88}};  // E(v, j), j <= 2
+  run.limits = {2, 2, 2, 4, 1};                                               // jana, nviba, nana, nstata, inchna
+  EnergyResult e{};
+  e.total_energy = -4.267141;
+  e.p_vibration = {0.85, 0.0};
+  e.e_diffraction_v = {0.03, 0.0};
+  e.e_rotation_v = {0.013, 0.0};
+  e.p_rotation = {0.6, 0.25, 0.0, 0.0};                         // irotana + nana * v
+  e.p_order = {0.5, 0.1, 0.2, 0.05, 0.0, 0.0, 0.0, 0.0};        // order + n_orders * (irotana + nana * v)
+  e.p_total = 0.85;
+  e.p_reaction = 0.15;
+  e.e_vibration = 0.0;
+  e.e_rotation = 0.013;
+  e.e_diffraction = 0.03;
   run.scattering.energies = {e};
   return run;
 }
 
-std::vector<FortranEnergyBlock> fortran_probabilities() {
+// The block the Fortran prints for run_with_energy_block() (irot 1-based; the order block for v = 0 only).
+std::vector<FortranEnergyBlock> fortran_energy_block() {
   FortranEnergyBlock block;
-  block.total_energy = "0.45837825D+00";
-  block.p_total = "0.9500000D+00";
-  block.p_reaction = "0.5000000D-01";
+  block.total_energy = "-0.42671410D+01";
+  block.vibration = {{0, "0.8500000E+00", "0.3000000E-01", "0.1300000E-01"},
+                     {1, "0.0000000E+00", "0.0000000E+00", "0.0000000E+00"}};
+  block.rotation = {{0, 1, 0, 0, "0.6000000E+00"},
+                    {0, 2, 2, 0, "0.2500000E+00"},
+                    {1, 1, 0, 0, "0.0000000E+00"},
+                    {1, 2, 2, 0, "0.0000000E+00"}};
+  block.order_headers = 2;
+  block.order = {{0, 0, 0, 0, "0.5000000E+00"},
+                 {0, 0, 0, 1, "0.1000000E+00"},
+                 {0, 2, 0, 0, "0.2000000E+00"},
+                 {0, 2, 0, 1, "0.5000000E-01"}};
+  block.p_total = "0.8500000";
+  block.e_vibration = "0.000000";
+  block.e_rotation = "0.013000";
+  block.e_diffraction = "0.030000";
+  block.p_reaction = "0.1500000D+00";
   return {block};
 }
 
@@ -304,23 +341,356 @@ TEST(GateComparisons, MomentumValueFailsOnAFortranNaN) {
   EXPECT_NONFATAL_FAILURE(compare_with_fortran(run_with_averages(), ref), "k_space_at_edge");
 }
 
-// --- gate 4: printed probabilities --------------------------------------------------------------
+// --- gate 4: the per-energy blocks and the analysis limits -------------------------------------------------------
 
+// Every section compared in full, the averages of the closed level (P(v) = 0) skipped.
 TEST(GateComparisons, ProbabilitiesPassWhenEqual) {
-  compare_probabilities_with_fortran(run_with_probabilities(), fortran_probabilities());
+  const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), fortran_energy_block());
+  EXPECT_EQ(c.failed, 0);
+  EXPECT_EQ(c.blocks, 1);
+  EXPECT_EQ(c.scalars.compared, 3);
+  EXPECT_EQ(c.averages.compared, 3);
+  EXPECT_EQ(c.vibration.compared, 2);
+  EXPECT_EQ(c.vibration_means.compared, 1);
+  EXPECT_EQ(c.vibration_means.skipped, 1);
+  EXPECT_EQ(c.rotation.compared, 4);
+  EXPECT_EQ(c.order_headers.expected, 2);
+  EXPECT_EQ(c.order.compared, 4);
+  EXPECT_EQ(c.order.expected, 4);
+  compare_energy_blocks_with_fortran(run_with_energy_block(), fortran_energy_block());
 }
 
 TEST(GateComparisons, ProbabilitiesFailOnACppNaN) {
-  PropagationRun run = run_with_probabilities();
+  PropagationRun run = run_with_energy_block();
   run.scattering.energies[0].p_total = not_a_number;
-  EXPECT_NONFATAL_FAILURE(compare_probabilities_with_fortran(run, fortran_probabilities()), "sum of the probabilities");
+  EXPECT_NONFATAL_FAILURE(compare_energy_blocks_with_fortran(run, fortran_energy_block()), "sum of the probabilities");
+  EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 1);
 }
 
 // gfortran prints a NaN as "NaN".
 TEST(GateComparisons, ProbabilitiesFailOnAFortranNaN) {
-  std::vector<FortranEnergyBlock> ref = fortran_probabilities();
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
   ref[0].p_reaction = "NaN";
-  EXPECT_NONFATAL_FAILURE(compare_probabilities_with_fortran(run_with_probabilities(), ref), "reaction probability");
+  EXPECT_NONFATAL_FAILURE(compare_energy_blocks_with_fortran(run_with_energy_block(), ref), "reaction probability");
+  EXPECT_TRUE(std::isnan(compare_energy_blocks(run_with_energy_block(), ref).worst));
+}
+
+// A NaN in a new section fails it once, also where it would decide a skip: a NaN P(v) does not skip its averages.
+TEST(GateComparisons, EnergyBlockNaNFailsEverySection) {
+  const auto failed_with = [](const std::function<void(PropagationRun&, FortranEnergyBlock&)>& plant) {
+    PropagationRun run = run_with_energy_block();
+    std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+    plant(run, ref[0]);
+    return compare_energy_blocks(run, ref).failed;
+  };
+  EXPECT_EQ(
+      failed_with([](PropagationRun& r, FortranEnergyBlock&) { r.scattering.energies[0].p_order[1] = not_a_number; }),
+      1);
+  EXPECT_EQ(failed_with([](PropagationRun&, FortranEnergyBlock& f) { f.order[1].p = "NaN"; }), 1);
+  EXPECT_EQ(failed_with([](PropagationRun& r, FortranEnergyBlock&) {
+              r.scattering.energies[0].e_rotation_v[0] = not_a_number;
+            }),
+            1);
+  EXPECT_EQ(failed_with([](PropagationRun&, FortranEnergyBlock& f) { f.vibration[0].e_diffraction = "NaN"; }), 1);
+  EXPECT_EQ(
+      failed_with([](PropagationRun& r, FortranEnergyBlock&) { r.scattering.energies[0].e_vibration = not_a_number; }),
+      1);
+  EXPECT_EQ(failed_with([](PropagationRun&, FortranEnergyBlock& f) { f.e_rotation = "NaN"; }), 1);
+  // P(v) of the closed level printed NaN: P(v) fails, and its averages (0 and 0) are compared, not skipped.
+  PropagationRun run = run_with_energy_block();
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+  ref[0].vibration[1].p = "NaN";
+  const EnergyBlockComparison c = compare_energy_blocks(run, ref);
+  EXPECT_EQ(c.failed, 1);
+  EXPECT_EQ(c.vibration_means.compared, 2);
+  EXPECT_EQ(c.vibration_means.skipped, 0);
+}
+
+// P(v = 0, j = 0, mJ = 0, order 1) = 0.1000000E+00: half a printed unit 5.05e-8; 6e-8 off fails once, 4e-8 passes.
+TEST(GateComparisons, DiffractionOrderJustAboveToleranceFailsOnce) {
+  PropagationRun run = run_with_energy_block();
+  run.scattering.energies[0].p_order[1] = 0.1 + 6e-8;
+  const EnergyBlockComparison c = compare_energy_blocks(run, fortran_energy_block());
+  EXPECT_EQ(c.failed, 1);
+  EXPECT_EQ(c.order.compared, 4);
+  ASSERT_EQ(c.failures.size(), 1u);
+  EXPECT_NE(c.failures[0].find("(v, j, mJ, order) = (0, 0, 0, 1)"), std::string::npos) << c.failures[0];
+  run.scattering.energies[0].p_order[1] = 0.1 + 4e-8;
+  EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 0);
+  // An order row of a closed level (v = 1 lies above the total energy) fails, and so does its block's count.
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+  ref[0].order.push_back({1, 0, 0, 0, "0.0000000E+00"});
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 2);
+}
+
+// av edif of v = 0 = 0.3000000E-01: half a printed unit 5.05e-9; 6e-9 off fails once, 4e-9 passes. The averages of
+// v = 1 (P(v) = 0, noise) are skipped: any value there passes.
+TEST(GateComparisons, MeanEnergyJustAboveToleranceFailsOnce) {
+  PropagationRun run = run_with_energy_block();
+  run.scattering.energies[0].e_diffraction_v[0] = 0.03 + 6e-9;
+  const EnergyBlockComparison c = compare_energy_blocks(run, fortran_energy_block());
+  EXPECT_EQ(c.failed, 1);
+  ASSERT_EQ(c.failures.size(), 1u);
+  EXPECT_NE(c.failures[0].find("v = 0 av edif"), std::string::npos) << c.failures[0];
+  run.scattering.energies[0].e_diffraction_v[0] = 0.03 + 4e-9;
+  EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 0);
+  run = run_with_energy_block();
+  run.scattering.energies[0].e_rotation_v[0] = 0.013 + 6e-9;  // half a unit of 0.1300000E-01: 5.05e-9
+  EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 1);
+  run = run_with_energy_block();
+  run.scattering.energies[0].e_rotation_v[1] = 1.0;
+  const EnergyBlockComparison skipped = compare_energy_blocks(run, fortran_energy_block());
+  EXPECT_EQ(skipped.failed, 0);
+  EXPECT_EQ(skipped.vibration_means.skipped, 1);
+  // Above the noise threshold the same row is compared: P(v = 1) printed as 2 thresholds fails its average (and
+  // its P(v)).
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+  ref[0].vibration[1].p = std::format("{:.7E}", 2.0 * average_energy_noise_threshold);
+  const EnergyBlockComparison compared = compare_energy_blocks(run, ref);
+  EXPECT_EQ(compared.vibration_means.skipped, 0);
+  EXPECT_EQ(compared.failed, 2);
+}
+
+// The three averages (f12.6: half a unit 5.05e-7): 6e-7 off fails once each, 4e-7 passes; where the printed P(v)
+// add up to noise they are skipped (and so are the averages of each v).
+TEST(GateComparisons, AverageEnergiesJustAboveToleranceFailOnce) {
+  for (double EnergyResult::* average :
+       {&EnergyResult::e_vibration, &EnergyResult::e_rotation, &EnergyResult::e_diffraction}) {
+    PropagationRun run = run_with_energy_block();
+    EnergyResult& e = run.scattering.energies[0];
+    e.*average = e.*average + 6e-7;
+    EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 1);
+    e.*average = e.*average - 2e-7;
+    EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 0);
+  }
+  // The probabilities of hardwall_short (~1e-29), whose sum prints as 0.0000000: the averages (0.5 eV against the
+  // printed 0.013) are skipped, the three totals and those of v = 0.
+  PropagationRun run = run_with_energy_block();
+  EnergyResult& e = run.scattering.energies[0];
+  e.p_vibration[0] = 1e-29;
+  e.p_total = 1e-29;
+  e.p_reaction = 1.0;
+  e.e_rotation = 0.5;
+  e.e_rotation_v[0] = 0.5;
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+  ref[0].vibration[0].p = "0.1000000E-28";
+  ref[0].p_total = "0.0000000";
+  ref[0].p_reaction = "0.1000000D+01";
+  EnergyBlockComparison c = compare_energy_blocks(run, ref);
+  EXPECT_EQ(c.failed, 0);
+  EXPECT_EQ(c.averages.skipped, 3);
+  EXPECT_EQ(c.averages.compared, 0);
+  EXPECT_EQ(c.vibration_means.skipped, 2);
+  // P(v = 0) twice the threshold: both averages of 0.5 eV are compared and fail, the total and that of v = 0.
+  ref[0].vibration[0].p = std::format("{:.7E}", 2.0 * average_energy_noise_threshold);
+  e.p_vibration[0] = 2.0 * average_energy_noise_threshold;
+  c = compare_energy_blocks(run, ref);
+  EXPECT_EQ(c.averages.compared, 3);
+  EXPECT_EQ(c.vibration_means.skipped, 1);
+  EXPECT_EQ(c.failed, 2);
+}
+
+// A rotation row whose (irot, j, mJ) is not a C++ rotational state fails, once; an order header with an unknown
+// (j, mJ) fails each of its rows.
+TEST(GateComparisons, UnmatchedRotationLabelFails) {
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+  ref[0].rotation[1].j = 4;  // irot 2 is (2, 0)
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 1);
+  ref = fortran_energy_block();
+  ref[0].rotation[1].irot = 1;  // (2, 0) is irot 2, not 1
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 1);
+  ref = fortran_energy_block();
+  ref[0].order[2].mj = 1;
+  ref[0].order[3].mj = 1;  // the header (0, 2, 1): no such state
+  const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), ref);
+  EXPECT_EQ(c.failed, 2);
+  EXPECT_EQ(c.order.compared, 2);
+  ref = fortran_energy_block();
+  ref[0].vibration[1].v = 2;  // no level v = 2
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 1);
+}
+
+// A section left empty (or a row missing) fails the block's count once, and the gate's count of the section.
+TEST(GateComparisons, EmptySectionFailsTheCount) {
+  const std::vector<std::string> sections = {"P(v)", "P(v, j, mJ)", "P(v, j, mJ, order)"};
+  for (const std::string& section : sections) {
+    std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+    if (section == "P(v)") ref[0].vibration.clear();
+    if (section == "P(v, j, mJ)") ref[0].rotation.clear();
+    if (section == "P(v, j, mJ, order)") ref[0].order.clear();
+    const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), ref);
+    EXPECT_EQ(c.failed, 1) << section;
+    ASSERT_EQ(c.failures.size(), 1u) << section;
+    EXPECT_NE(c.failures[0].find("0 " + section + " rows read, the print rule gives"), std::string::npos)
+        << c.failures[0];
+  }
+  std::vector<FortranEnergyBlock> ref = fortran_energy_block();
+  ref[0].order_headers = 1;
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 1);
+  ref = fortran_energy_block();
+  ref[0].e_diffraction.clear();  // an average not printed: the count and the value
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 2);
+  ref = fortran_energy_block();
+  ref[0].rotation.push_back(ref[0].rotation[0]);  // a repeated row
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 1);
+  // Without writeRDProbs the Fortran prints no order block: the rows of one fail the count.
+  PropagationRun run = run_with_energy_block();
+  run.order_block_printed = false;
+  EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 2);  // the headers and the rows
+  ref = fortran_energy_block();
+  ref[0].order.clear();
+  ref[0].order_headers = 0;
+  EXPECT_EQ(compare_energy_blocks(run, ref).failed, 0);
+  // An energy block missing.
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), {}).failed, 1);
+}
+
+// The gate's assertions (expect_energy_blocks_gate), each failing alone.
+TEST(GateComparisons, EnergyBlocksGateAssertsItsCounts) {
+  const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), fortran_energy_block());
+  expect_energy_blocks_gate(c);
+  EnergyBlockComparison failed = c;
+  failed.failed = 1;
+  EXPECT_NONFATAL_FAILURE(expect_energy_blocks_gate(failed), "failed values, rows or counts");
+  EnergyBlockComparison short_read = c;
+  short_read.rotation.read = 3;
+  short_read.rotation.compared = 3;
+  EXPECT_NONFATAL_FAILURE(expect_energy_blocks_gate(short_read), "P(v, j, mJ) rows read vs the print rule");
+  EnergyBlockComparison not_compared = c;
+  not_compared.order.compared = 3;
+  EXPECT_NONFATAL_FAILURE(expect_energy_blocks_gate(not_compared), "P(v, j, mJ, order) rows compared or skipped");
+  EnergyBlockComparison not_skipped = c;
+  not_skipped.vibration_means.skipped = 0;
+  EXPECT_NONFATAL_FAILURE(expect_energy_blocks_gate(not_skipped), "av edif / av erot rows compared or skipped");
+  EnergyBlockComparison headers = c;
+  headers.order_headers.read = 1;
+  EXPECT_NONFATAL_FAILURE(expect_energy_blocks_gate(headers), "order headers read vs the print rule");
+  EnergyBlockComparison empty = c;
+  empty.blocks = 0;
+  EXPECT_NONFATAL_FAILURE(expect_energy_blocks_gate(empty), "no energy block read");
+}
+
+// The limits each against the C++ basis: one wrong value fails once; a limit not printed, printed twice or printed
+// where the stdout must not print it fails once too.
+TEST(GateComparisons, AnalysisLimitsMismatchFails) {
+  const AnalysisLimits cpp = run_with_energy_block().limits;
+  const FortranAnalysisLimits printed = {
+      {"jana", {"2"}}, {"nviba", {"2"}}, {"nana", {"2"}}, {"nstata", {"4"}}, {"inchna", {"1"}}};
+  const LimitsComparison equal = compare_analysis_limits(cpp, printed, limits_of_a_run);
+  EXPECT_EQ(equal.failed, 0);
+  EXPECT_EQ(equal.compared, 5);
+  expect_analysis_limits(equal, limits_of_a_run);
+  for (const auto& [name, values] : printed) {
+    FortranAnalysisLimits wrong = printed;
+    wrong[name] = {"3"};
+    EXPECT_EQ(compare_analysis_limits(cpp, wrong, limits_of_a_run).failed, 1) << name;
+    FortranAnalysisLimits missing = printed;
+    missing.erase(name);
+    EXPECT_EQ(compare_analysis_limits(cpp, missing, limits_of_a_run).failed, 1) << name;
+    FortranAnalysisLimits twice = printed;
+    twice[name].push_back(values[0]);
+    EXPECT_EQ(compare_analysis_limits(cpp, twice, limits_of_a_run).failed, 1) << name;
+  }
+  // A set-up stdout prints nana, nstata and inchna only.
+  EXPECT_EQ(compare_analysis_limits(cpp, printed, limits_of_a_setup).failed, 2);
+  FortranAnalysisLimits unreadable = printed;
+  unreadable["nana"] = {"***"};
+  const LimitsComparison c = compare_analysis_limits(cpp, unreadable, limits_of_a_run);
+  EXPECT_EQ(c.failed, 1);
+  EXPECT_NONFATAL_FAILURE(expect_analysis_limits(c, limits_of_a_run), "nana: C++ 2, Fortran ***");
+  LimitsComparison not_compared = equal;
+  not_compared.compared = 4;
+  EXPECT_NONFATAL_FAILURE(expect_analysis_limits(not_compared, limits_of_a_run), "analysis limits compared");
+}
+
+// The reader of the limits: the two print formats, a name inside another word not taken.
+TEST(GateComparisons, AnalysisLimitsReader) {
+  const std::filesystem::path path = std::filesystem::path(::testing::TempDir()) / "limits_synthetic.txt";
+  std::ofstream(path) << " * number of rotational states analysed, nana =              15\n"
+                         " * Number of rotation-diffraction analysed, nstata =              240\n"
+                         " * Index of initial rot-dif channel in basis, inchna =             97\n"
+                         " * Maximum j in analysis:                        jana =   4\n"
+                         " * Maximum v in analysis:                        nviba =   2\n"
+                         " xnana = 3\n";
+  const FortranAnalysisLimits printed = read_fortran_analysis_limits(path);
+  const FortranAnalysisLimits expected = {
+      {"jana", {"4"}}, {"nviba", {"2"}}, {"nana", {"15"}}, {"nstata", {"240"}}, {"inchna", {"97"}}};
+  EXPECT_EQ(printed, expected);
+}
+
+// The reader of the energy blocks on the Fortran's formats (Analyzor.f90 smatrix_combine) gives the fixture.
+TEST(GateComparisons, EnergyBlockReader) {
+  const std::filesystem::path path = std::filesystem::path(::testing::TempDir()) / "energy_block_synthetic.txt";
+  std::ofstream(path)
+      << "   0  0.1  0.2  0.3\n"  // before the first block: not read
+      << "\n total energy = -0.42671410D+01\n trans energy =  0.20000000D+00\n\n"
+      << " ************************************\n rotation-diffraction summed probabilities\n"
+      << " ************************************\n\n v    probability         av edif         av erot\n\n"
+      << "   0  0.8500000E+00  0.3000000E-01  0.1300000E-01\n\n"
+      << "   1  0.0000000E+00  0.0000000E+00  0.0000000E+00\n\n"
+      << " ************************************\n diffraction summed probabilities\n"
+      << " ************************************\n\n  v   irot   j   m  probability\n\n"
+      << "  0    1     0    0  0.6000000E+00\n\n  0    2     2    0  0.2500000E+00\n\n"
+      << "  1    1     0    0  0.0000000E+00\n\n  1    2     2    0  0.0000000E+00\n\n"
+      << " ************************************\n probabilities as function of diffraction order\n"
+      << " ************************************\n\n v, j, mj =   0   0   0\n\n"
+      << "   0  0.5000000E+00\n\n   1  0.1000000E+00\n\n v, j, mj =   0   2   0\n\n"
+      << "   0  0.2000000E+00\n\n   1  0.5000000E-01\n\n"
+      << " sum of the probabilities = 0.8500000\n\n"
+      << " average vibrational energy (ev) =     0.000000\n\n"
+      << " average rotational  energy (ev) =     0.013000\n\n"
+      << " average diffraction energy (ev) =     0.030000\n\n"
+      << " the reaction probability =  0.1500000D+00\n\n"
+      << "   1  0.2\n";  // after the tables: not an order row
+  const std::vector<FortranEnergyBlock> blocks = read_fortran_energy_blocks(path);
+  ASSERT_EQ(blocks.size(), 1u);
+  EXPECT_TRUE(blocks[0].problems.empty());
+  const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), blocks);
+  EXPECT_EQ(c.failed, 0);
+  EXPECT_EQ(c.order.compared, 4);
+  EXPECT_EQ(c.rotation.compared, 4);
+  EXPECT_EQ(c.vibration.compared, 2);
+  EXPECT_EQ(c.averages.compared, 3);
+  // Lines the reader cannot use are problems, each one failure: an order row before its header, an unreadable
+  // header (its row has no header either) and an unreadable rotation label.
+  std::ofstream(path) << " total energy = -0.42671410D+01\n probabilities as function of diffraction order\n"
+                      << "   0  0.5000000E+00\n v, j, mj =   0   *   0\n   1  0.1000000E+00\n"
+                      << " diffraction summed probabilities\n  0    1     x    0  0.6000000E+00\n";
+  const std::vector<FortranEnergyBlock> faulty = read_fortran_energy_blocks(path);
+  ASSERT_EQ(faulty.size(), 1u);
+  EXPECT_EQ(faulty[0].problems.size(), 4u);
+  EXPECT_EQ(faulty[0].order_headers, 1);
+  EXPECT_TRUE(faulty[0].order.empty());
+}
+
+// --- gate 5: the counts -----------------------------------------------------------------------------------------
+
+// The counts of the Fortran's write rules on the mini basis with nen95 = 3: fil10 3 * (7 + 3 * 2 + 2 * 2 * (1 + 2))
+// = 75 values, unit 3 3 * 4 * 2 = 24, fort.25 the 4 open states of v = 0, three values of each not skipped (1 here);
+// each count one short fails once.
+TEST(GateComparisons, FineCountsFailWhenShort) {
+  const FineCounts expected = expected_fine_counts(run_with_energy_block(), 3, 1);
+  EXPECT_EQ(expected.f10, 75);
+  EXPECT_EQ(expected.u3, 24);
+  EXPECT_EQ(expected.p25, 4);
+  EXPECT_EQ(expected.s25, 9);
+  expect_fine_counts(expected, expected);
+  FineCounts f10 = expected;
+  f10.f10 = f10.f10 - 1;
+  EXPECT_NONFATAL_FAILURE(expect_fine_counts(f10, expected), "fil10 values compared");
+  FineCounts u3 = expected;
+  u3.u3 = u3.u3 - 1;
+  EXPECT_NONFATAL_FAILURE(expect_fine_counts(u3, expected), "unit 3 values compared");
+  FineCounts p25 = expected;
+  p25.p25 = p25.p25 - 1;
+  EXPECT_NONFATAL_FAILURE(expect_fine_counts(p25, expected), "fort.25 probabilities compared");
+  FineCounts s25 = expected;
+  s25.s25 = s25.s25 - 1;
+  EXPECT_NONFATAL_FAILURE(expect_fine_counts(s25, expected), "fort.25 S and phases compared");
+  // Without writeRDProbs fil10 has no P per diffraction order: 3 * (7 + 6 + 4) = 51.
+  PropagationRun run = run_with_energy_block();
+  run.order_block_printed = false;
+  EXPECT_EQ(expected_fine_counts(run, 3, 1).f10, 51);
 }
 
 // --- gate 4: BK coefficients --------------------------------------------------------------------

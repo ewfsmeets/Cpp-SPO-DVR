@@ -45,31 +45,6 @@ struct Fort25File {
   std::vector<std::string> problems;
 };
 
-// A printed Fortran real with an E exponent: D becomes E, and a three-digit exponent without its letter (gfortran
-// writes 0.100000-119) gets it back, so that printed_text_tolerance reads its exponent.
-inline std::string fortran_text_with_e(const std::string& text) {
-  static const std::regex no_letter(R"(([-+]?\d*\.\d*)([-+]\d{3}))");
-  std::string t = text;
-  for (char& c : t)
-    if (c == 'D' || c == 'd') c = 'E';
-  std::smatch parts;
-  if (std::regex_match(t, parts, no_letter)) t = parts[1].str() + "E" + parts[2].str();
-  return t;
-}
-
-// The value of a printed Fortran real, or nothing if the text is not a finite number (NaN, Infinity, ****).
-inline std::optional<double> fortran_number(const std::string& text) {
-  static const std::regex number(R"([-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?)");
-  const std::string t = fortran_text_with_e(text);
-  if (!std::regex_match(t, number)) return std::nullopt;
-  try {
-    const double x = std::stod(t);
-    return std::isfinite(x) ? std::optional<double>(x) : std::nullopt;
-  } catch (const std::out_of_range&) {
-    return std::nullopt;
-  }
-}
-
 inline Fort25File read_fortran_fort25_rows(const std::filesystem::path& path) {
   std::ifstream in(path);
   if (!in) throw std::runtime_error("cannot open " + path.string());
@@ -163,6 +138,17 @@ struct Fort25Comparison {
   std::vector<std::string> failures;
 };
 
+// The rows the Fortran prints into fort.25 for the run (Analyzor.f90 smatrix_combine): every state of every open
+// channel, E_total > E(v, j), at every energy.
+inline int fort25_print_rule_rows(const PropagationRun& cpp) {
+  int rows = 0;
+  for (const EnergyResult& e : cpp.scattering.energies)
+    for (int v = 0; v < cpp.n_v; ++v)
+      for (int is = 0; is < cpp.n_states; ++is)
+        if (e.total_energy > cpp.level_energy_ev[v][cpp.states[is].j]) rows = rows + 1;
+  return rows;
+}
+
 // Compares the C++ run with a read fort.25. A NaN on either side fails its row (the comparisons are written so).
 inline Fort25Comparison compare_fort25(const PropagationRun& cpp, const Fort25File& file,
                                        const Fort25Tolerance& tolerance) {
@@ -177,10 +163,7 @@ inline Fort25Comparison compare_fort25(const PropagationRun& cpp, const Fort25Fi
   if (file.total_energy.size() != cpp.scattering.energies.size())
     fail("the file has " + std::to_string(file.total_energy.size()) + " energy blocks, the run " +
          std::to_string(cpp.scattering.energies.size()));
-  for (const EnergyResult& e : cpp.scattering.energies)
-    for (int v = 0; v < cpp.n_v; ++v)
-      for (int is = 0; is < cpp.n_states; ++is)
-        if (e.total_energy > cpp.level_energy_ev[v][cpp.states[is].j]) c.expected_rows = c.expected_rows + 1;
+  c.expected_rows = fort25_print_rule_rows(cpp);
   for (const Fort25Row& r : file.rows)
     if (const auto re = fortran_number(r.re), im = fortran_number(r.im); re && im)
       c.s_scale = nan_aware_max(c.s_scale, std::abs(std::complex<double>(*re, *im)));

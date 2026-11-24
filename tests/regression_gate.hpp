@@ -18,10 +18,6 @@ namespace spodvr::testing {
 // Gate 4 tolerance of the BK coefficients, as a fraction of the reference scale (compare_bk_with_fortran).
 inline constexpr double bk_gate_tolerance = 1e-10;
 
-// Whether a case's Fortran files may be missing: without them the gates of an optional case skip
-// (without fort21 they leave out the BK comparison), those of a required case fail.
-enum class References { optional, required };
-
 // Gate 4, the S-matrix elements: the code-difference term of the tolerance (Fort25Tolerance::s_scale_fraction), the
 // smallest power of 10 at least 10 times the largest difference measured over every case with the CPU, the GPU and
 // their fast-math builds (2026-11-24, as a fraction of max(|S|, s_floor = 1e-3)): 5.99e-12 in hardwall_short, whose
@@ -90,8 +86,10 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
   const PropagationRun cpp = run_cpp_propagation(dir / "input.json", backend);
   compare_with_fortran(cpp, *ref);  // gate 3
 
-  // Gate 4: the printed probabilities, and the BK coefficients of every analysis step.
-  compare_probabilities_with_fortran(cpp, read_fortran_probabilities(stdout_file));
+  // Gate 4: the analysis limits, the per-energy blocks, and the BK coefficients of every analysis step.
+  expect_analysis_limits(
+      compare_analysis_limits(cpp.limits, read_fortran_analysis_limits(stdout_file), limits_of_a_run), limits_of_a_run);
+  compare_energy_blocks_with_fortran(cpp, read_fortran_energy_blocks(stdout_file));
   if (fs::exists(bk_file))
     compare_bk_with_fortran(cpp, read_fortran_bk_records(bk_file), bk_gate_tolerance);
   else
@@ -100,9 +98,15 @@ inline void run_gate(const std::string& case_name, const BackendFactory& backend
   ASSERT_TRUE(fs::exists(fort25_file)) << "reference file " << fort25_file << " missing";
   compare_fort25_with_fortran(cpp, read_fortran_fort25_rows(fort25_file), case_name);
 
-  // Restart gate: a Fortran run split by a restart gives the probabilities of the unsplit run
-  // (tools/fortran_reference/run_restart_reference.sh). The C++ restart is bitwise exact (test_restart).
-  if (fs::exists(restart_file)) compare_probabilities_with_fortran(cpp, read_fortran_probabilities(restart_file));
+  // Restart gate: a Fortran run split by a restart prints the blocks of the unsplit run
+  // (tools/fortran_reference/run_restart_reference.sh). The C++ restart is bitwise exact (test_restart), so the
+  // run above is compared.
+  if (fs::exists(restart_file)) {
+    expect_analysis_limits(
+        compare_analysis_limits(cpp.limits, read_fortran_analysis_limits(restart_file), limits_of_a_run),
+        limits_of_a_run);
+    compare_energy_blocks_with_fortran(cpp, read_fortran_energy_blocks(restart_file));
+  }
 }
 
 }  // namespace spodvr::testing

@@ -3,6 +3,7 @@
 //   fortran_setup_stdout.txt  vasy table (gate 1)
 //   pes_reference.txt         6D subsample of the potential and the angular grid (gate 1)
 //   debug_asyp.dat            rovibrational energies and eigenvectors (gate 2)
+//   fortran_setup_stdout.txt  the analysis limits nana, nstata, inchna (gate 2, with the gas phase)
 // Tests are skipped when a reference file is missing, except those of the SCM cases, which fail.
 // ctest runs this program as two tests, RegressionPes and RegressionPesScmNegative, each in one
 // process so that a case's calculation is computed once (calculation()); a skipped case fails
@@ -30,6 +31,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "analysis_reference.hpp"
+#include "app/fine_analysis_run.hpp"
 #include "comparison.hpp"
 #include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
@@ -216,6 +219,18 @@ TEST_P(RegressionPes, Gate2RovibrationalStates) {
     // Higher levels: LAPACK vs Jacobi; only a loose check.
     EXPECT_LE(relative_difference(e, ref.energy), 1e-10) << "v = " << v << ", j = " << j;
   }
+}
+
+// Gate 2: the analysis limits the Fortran set-up prints (RotDifBasis.f90: nana, nstata, inchna; a potential-only run
+// stops before jana and nviba, which gate 4 compares) against the C++ analysis basis built on the gas phase.
+TEST_P(RegressionPes, Gate2AnalysisLimits) {
+  REQUIRE_REFERENCE("fortran_setup_stdout.txt");
+  const Calculation& c = calculation(GetParam());
+  const AnalysisSetup setup(c.config, c.angular, c.gas);
+  expect_analysis_limits(
+      compare_analysis_limits(analysis_limits(setup.basis),
+                              read_fortran_analysis_limits(reference("fortran_setup_stdout.txt")), limits_of_a_setup),
+      limits_of_a_setup);
 }
 
 // cu111_dailight_short_sym: C6v surface symmetry (UseSymmetry, nPhisOptimal); the Fortran .pes

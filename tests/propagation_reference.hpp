@@ -12,7 +12,9 @@
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <regex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -69,6 +71,31 @@ inline double parse_fortran_real(std::string token) {
   if (const auto sign = token.find_first_of("+-", 1); token.find('E') == std::string::npos && sign != std::string::npos)
     token.insert(sign, "E");
   return std::stod(token);
+}
+
+// A printed Fortran real with an E exponent: D becomes E, and a three-digit exponent without its letter (gfortran
+// writes 0.100000-119) gets it back, so that printed_text_tolerance reads its exponent.
+inline std::string fortran_text_with_e(const std::string& text) {
+  static const std::regex no_letter(R"(([-+]?\d*\.\d*)([-+]\d{3}))");
+  std::string t = text;
+  for (char& c : t)
+    if (c == 'D' || c == 'd') c = 'E';
+  std::smatch parts;
+  if (std::regex_match(t, parts, no_letter)) t = parts[1].str() + "E" + parts[2].str();
+  return t;
+}
+
+// The value of a printed Fortran real, or nothing if the text is not a finite number (NaN, Infinity, ****).
+inline std::optional<double> fortran_number(const std::string& text) {
+  static const std::regex number(R"([-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?)");
+  const std::string t = fortran_text_with_e(text);
+  if (!std::regex_match(t, number)) return std::nullopt;
+  try {
+    const double x = std::stod(t);
+    return std::isfinite(x) ? std::optional<double>(x) : std::nullopt;
+  } catch (const std::out_of_range&) {
+    return std::nullopt;
+  }
 }
 
 // Last whitespace-separated token of a line.
@@ -133,10 +160,28 @@ inline std::optional<FortranPropagationReference> read_fortran_reference(const s
   return ref;
 }
 
+// Whether a case's Fortran files may be missing: without them the gates of an optional case skip
+// (without fort21 gate 4 leaves out the BK comparison), those of a required case fail.
+enum class References { optional, required };
+
 // The labels of one analysed rotation-diffraction state: (j, mJ) and the diffraction channel's order and (n, m).
 struct StateLabel {
   int j = 0, mj = 0, order = 0, n = 0, m = 0;
 };
+
+// The analysis limits the Fortran prints in its set-up (RotDifBasis.f90: nana, nstata, inchna; Analyzor.f90
+// SetupAnalysis: jana, nviba), here of the C++ analysis basis. inchna is 1-based.
+struct AnalysisLimits {
+  int jana = 0;    // the largest analysed J
+  int nviba = 0;   // the analysed vibrational levels
+  int nana = 0;    // the analysed rotational states
+  int nstata = 0;  // the analysed rotation-diffraction states
+  int inchna = 0;  // the initial state's index in the analysis basis, 1-based
+};
+
+inline AnalysisLimits analysis_limits(const AnalysisBasis& basis) {
+  return {basis.j_max(), basis.n_v(), basis.n_rotation(), basis.n_states(), basis.initial_state() + 1};
+}
 
 // The C++ run of a reference case, up to tEnd.
 struct PropagationRun {
@@ -152,7 +197,37 @@ struct PropagationRun {
   int n_v = 0;                                        // analysed vibrational levels
   std::vector<std::vector<double>> level_energy_ev;   // E(v, j) of the gas phase (eV), v < n_v, j <= JMax
   ScatteringResults scattering_zana;                  // the same S-matrix with every phase referred to Zana
+  AnalysisLimits limits;                              // jana, nviba, nana, nstata, inchna
+  int n_orders = 0;                                   // diffraction orders 0..mdifa
+  bool order_block_printed = false;                   // writeRDProbs: the Fortran prints P per diffraction order
 };
+
+// The labels and limits of the analysis basis in a run (everything but the results), as the C++ run of a case
+// and the fine analysis (gate 5) have them.
+inline void set_analysis_labels(PropagationRun& run, const Config& config, const AnalysisBasis& basis,
+                                const GasPhase& gas) {
+  run.initial_state = basis.initial_state();
+  run.n_states = basis.n_states();
+  run.n_v = basis.n_v();
+  run.states.clear();
+  for (int is = 0; is < basis.n_states(); ++is) {
+    const DiffractionChannel& c = basis.channel(is);
+    run.states.push_back({basis.j(is), basis.mj(is), c.order, c.n, c.m});
+  }
+  const double chaev = units::legacy.energy_factor();
+  run.level_energy_ev.clear();
+  for (int v = 0; v < basis.n_v(); ++v) {
+    run.level_energy_ev.emplace_back();
+    for (int j = 0; j <= config.input.j_max; ++j) run.level_energy_ev.back().push_back(gas.states.energy(v, j) * chaev);
+  }
+  run.rotation_labels.clear();
+  for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
+    run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
+                                     basis.mj(irotana * basis.n_diffraction()));
+  run.limits = analysis_limits(basis);
+  run.n_orders = basis.max_order() + 1;
+  run.order_block_printed = config.input.write_rd_probabilities;
+}
 
 // The C++ run of a configuration with the PES pes in place of its own (a negative test's modified
 // potential); backend: the propagation backend (CPU by default; the GPU tests pass the CUDA backend).
@@ -173,22 +248,7 @@ inline PropagationRun run_cpp_propagation(const Config& config, const Potential&
   run.scattering = propagation.scattering_results();
   run.scattering_zana = propagation.scattering_results(std::nullopt);
   run.specular_line = propagation.analysis_surface().fixed_line();
-  const AnalysisBasis& basis = propagation.analysis_basis();
-  run.initial_state = basis.initial_state();
-  run.n_states = basis.n_states();
-  run.n_v = basis.n_v();
-  for (int is = 0; is < basis.n_states(); ++is) {
-    const DiffractionChannel& c = basis.channel(is);
-    run.states.push_back({basis.j(is), basis.mj(is), c.order, c.n, c.m});
-  }
-  const double chaev = units::legacy.energy_factor();
-  for (int v = 0; v < basis.n_v(); ++v) {
-    run.level_energy_ev.emplace_back();
-    for (int j = 0; j <= config.input.j_max; ++j) run.level_energy_ev.back().push_back(gas.states.energy(v, j) * chaev);
-  }
-  for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
-    run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
-                                     basis.mj(irotana * basis.n_diffraction()));
+  set_analysis_labels(run, config, propagation.analysis_basis(), gas);
   return run;
 }
 
