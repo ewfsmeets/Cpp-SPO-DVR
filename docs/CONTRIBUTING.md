@@ -72,7 +72,7 @@ serially (no `-j`), with `OMP_NUM_THREADS` set to the number of physical cores; 
 side by side (`-j 8`): each runs with one thread (`OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS` and `MKL_NUM_THREADS` set
 to 1 by `add_pytest_test`, so numpy's BLAS does not start 8 threads in each) and its own matplotlib cache, and the
 plot fixtures' writer (`PlotRuns.Fixtures`, 8 threads, labelled `python` too) reserves 6 slots (`PROCESSORS 6`).
-Measured 2026-11-22: the 83 Python tests 462 s with `-j 8` (their single times add up to 754 s).
+Measured 2026-11-24: the 97 Python tests 474 s with `-j 8` (their single times add up to 766 s).
 
 - **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` (or in two parts:
   `-L python -E PlotRuns -j 8`, then `-LE python -E RegressionPropagation`) runs everything but
