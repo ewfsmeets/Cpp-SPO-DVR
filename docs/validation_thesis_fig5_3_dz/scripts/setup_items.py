@@ -55,7 +55,8 @@ ROWS = []
 
 
 def cpp_text_half_unit(text: str) -> float:
-    """Half unit of the last digit of a C++ printed value (0 if printed with >= 16 digits)."""
+    """Half unit of the last digit of a C++ printed value (0 in e-notation with >= 16 digits after the point,
+    and for text that is not a decimal number)."""
     t = text.strip()
     m = re.match(r"^[+-]?(\d*)\.(\d+)(?:e([+-]\d+))?$", t)
     if not m:

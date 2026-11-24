@@ -203,7 +203,8 @@ def energy_blocks(lines):
 
 def fort25(path):
     """fort.25 (writeProbs): per energy a header with 'total energy', then per (v, j, mJ, order)
-    rows 'n m ReS ImS |S|^2 phase'. v is printed as iv-1. Yields dicts."""
+    rows 'n m ReS ImS |S|^2 phase'. v is printed as iv-1. Yields tuples (energy index, v, j, mJ,
+    order, n, m, ReS, ImS, |S|^2, phase), the last four as the printed text."""
     energy_index = -1
     vjmo = None
     with open(path) as f:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""sha256 manifest of the raw files the report is based on (heavy: reads ~20 GB): every file of the
+"""sha256 manifest of the raw files the report is based on (heavy: reads ~28 GB): every file of the
 three run directories and of the strict-build GPU run, their raw logs (uncompressed;
 data/logs/*.log.gz hold them), the onlyAnalysis outputs, the executables and the thesis PDF. Writes data/sha256_manifest.txt."""
 
@@ -20,7 +20,7 @@ EXTRA = [
     Path.home() / "work/mf_somers_phd_thesis.pdf",
     REPO / "inputs/thesis_fig5_3_dz/input.json",
     REPO / "inputs/thesis_fig5_3_dz/DVR.inp",
-    # the reference executable's objects linked by the angular-matrix driver (2026-11-08)
+    # the objects of the Fortran 5.19 executable that ran, linked by the angular-matrix driver (2026-11-08)
     *[
         Path.home() / f"work/SPO-DVR_v5.19/procfiles.dir/OBJS.dir/{n}.o"
         for n in (

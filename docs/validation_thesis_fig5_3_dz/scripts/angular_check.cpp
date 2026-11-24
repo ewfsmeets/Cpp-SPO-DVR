@@ -53,7 +53,8 @@ int main(int argc, char** argv) {
   const Config config = build_config(read_input_file(argv[1]));
   const AngularGrid angular = make_angular_grid(config);
   const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
-  const int n_columns = config.input.nx * config.input.ny;  // as CpuBackend
+  // as CpuBackend at the runs' commit abc47f0 (since then it transforms cache-sized passes, columns_per_pass)
+  const int n_columns = config.input.nx * config.input.ny;
   const AngularTransform transform(angular, basis, FftwFft(), n_columns);
 
   write_binary(out_dir / "thetas.bin", angular.thetas());

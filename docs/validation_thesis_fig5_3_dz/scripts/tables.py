@@ -207,7 +207,7 @@ def main():
 
     bk = i13["bk"]
 
-    def pr(tally):  # "n_within+n_explained/n"
+    def pr(tally):  # "n_within/n within ½ unit, n_explained explained"
         return f"{tally['n_within_printed']}/{tally['n']} within ½ unit, {tally['n_explained']} explained"
 
     rows = [

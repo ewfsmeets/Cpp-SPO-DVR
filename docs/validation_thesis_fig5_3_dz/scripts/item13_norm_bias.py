@@ -30,7 +30,7 @@ def exact_round_trip(n, fwd, inv):
 def quad_sqrt_ratio(a, n):
     """sqrt(a / n) with a, n exact, correctly rounded to double (Fortran quad: dfloat)."""
     q = Fr(a) / n
-    # integer square root on a scaled fraction, then exact rounding to double
+    # double square root first (within an ulp of the exact root)
     x = math.sqrt(float(q))
     # refine: pick the double among neighbours whose square is closest to q
     cands = [x, math.nextafter(x, 0), math.nextafter(x, 2 * x + 1)]
@@ -86,7 +86,6 @@ def main():
     out["predicted_amplitude_ratio_minus_1"]["specular_grid"] = (
         float(((1 + cpp["specular"]) / (1 + fortran["specular"])) - 1) * n_blocks
     )
-    # observed (item18b): alpha from the replays, per energy
     out["note"] = (
         "IEEE double semantics for the C++ factors; the run used -ffast-math, which may evaluate "
         "divisions as multiplications by reciprocals (different last bits)"

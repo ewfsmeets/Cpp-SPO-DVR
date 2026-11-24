@@ -4,7 +4,7 @@
 Usage: build_helper.py <build dir name> <helper.cpp>   (e.g. build-fast potential_check.cpp)
 
 Compile flags: those of src/app/run.cpp in <build>/compile_commands.json (same defines,
-includes, -O3 -ffast-math -march=native, LTO). Link: the `spodvr` link line of
+includes, optimisation and floating-point flags, LTO; e.g. -O3 -ffast-math -march=native for build-fast). Link: the `spodvr` link line of
 <build>/build.ninja with main.cpp.o replaced by the helper object. The libraries hold slim LTO
 objects, so the machine code is generated at this link: same source and flags as the run, not
 the same machine code (hence the bitwise self-checks). Output (binary and object) goes to

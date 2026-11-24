@@ -13,8 +13,8 @@ outside that is 'explained' when the replay (item 18b) decomposes it into measur
 Fortran's own BK coefficients through the C++ analysis, replay(fort.21), reproduce the printed
 Fortran value within its half unit, and |C++ - replay(fort.21)| (the propagation difference at
 full precision) is within the full-precision criterion (1e-10 absolute). Without the replay
-files the predicted bound 2 sqrt(P) dS + dS^2 (dS = 1e-11, criteria.md) is used. Writes data/items/item14_16.json, data/reaction_probability.tsv and
-data/state_resolved_dP.tsv."""
+files the predicted bound 2 sqrt(P) dS + dS^2 (dS = 1e-11, criteria.md) is used. Writes
+data/items/item14_16.json and data/reaction_probability.tsv."""
 
 from __future__ import annotations
 

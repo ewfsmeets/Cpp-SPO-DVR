@@ -2,7 +2,8 @@
 printed-precision tolerances, statistics, and readers of the binary run files.
 
 Every number that appears in the report is computed by a script from the raw run files and
-stored in `scripts/results.json` (via `update_results`) or in a small extract under `data/`.
+stored in `data/items/*.json` (via `save_item`; `results.py` merges them into `scripts/results.json`)
+or in a small extract under `data/`.
 """
 
 from __future__ import annotations
@@ -97,7 +98,8 @@ def parse_fortran_real(text: str) -> float:
 
 
 def printed_half_unit(text: str, floor: float = 1e-20) -> float:
-    """1.01 x half a unit in the last printed digit of a Fortran E/D/F number (tests/analysis_reference.hpp)."""
+    """1.01 x half a unit in the last printed digit of a Fortran E/D/F number, at least floor (as
+    printed_text_tolerance in tests/analysis_reference.hpp)."""
     t = text.strip().replace("D", "E").replace("d", "E").replace("e", "E")
     m = re.match(r"^([+-]?\d*\.\d*)([+-]\d{3})$", t)
     if m:

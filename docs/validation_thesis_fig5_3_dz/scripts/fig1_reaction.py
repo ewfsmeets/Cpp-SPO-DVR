@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Figure 1: reaction probability against collision energy, the three runs, the strict-build GPU run
 (added 2026-11-08) and the thesis curve (top), and the differences between the codes on a log scale
-(bottom). Reads only data/ extracts and data/items/*.json."""
+(bottom). Reads the data/ extracts, data/items/*.json and inputs/thesis_fig5_3_dz/input.json."""
 
 from __future__ import annotations
 

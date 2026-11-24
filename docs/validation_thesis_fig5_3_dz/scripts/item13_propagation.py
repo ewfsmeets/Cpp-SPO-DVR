@@ -237,8 +237,9 @@ def bk_compare(bk, t_fix, tsv_path=DATA / "bk_error_vs_time.tsv", series_out=Non
                 "min_step_ratio": float(steps.min()),
             },
         }
-    # amplitude and phase parts of the difference per analysis step: c_a = c_F (1 + alpha + i beta)
-    # on average (|c_F|^2 weighted). A per-step norm bias gives alpha(t) proportional to t.
+    # amplitude and phase parts of the difference per analysis step: c_a = c_b (1 + alpha + i beta)
+    # on average (|c_b|^2 weighted; b = the Fortran, or the CPU run for GPU-CPU). A per-step norm bias gives
+    # alpha(t) proportional to t.
     amp = {}
     for a, b in PAIRS:
         ref = bk[b].reshape(len(t), -1)

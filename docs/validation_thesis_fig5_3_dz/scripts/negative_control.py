@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Negative control (heavy: writes 2 x 266 MB copies of fort.21 and runs the replay helper):
+"""Negative control (heavy: writes 3 x 266 MB copies of fort.21, one at a time, and runs the replay helper):
 inject a known error into one channel of the Fortran's BK coefficients, as if the propagation had
 a channel-local error, replay it through the same C++ analysis, and run the comparison of item 18b
 (per-energy uniform factor removed, per-channel residual) against replay(C++ CPU BK file).

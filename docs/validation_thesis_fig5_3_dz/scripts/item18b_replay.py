@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Item 18b: the replay. The helper `replay` (C++ on-the-fly analysis, SMatrixAccumulator, linked
-against the build that ran) re-accumulates the S-matrix from each run's BK file.
+"""Item 18b: the replay. The helper `replay` (C++ on-the-fly analysis, SMatrixAccumulator; the copy linked
+against build-fast, whose outputs are checked against those of the build-cuda-fast copy) re-accumulates the
+S-matrix from each run's BK file.
 
   self-check        run's own tables vs replay(run's own BK file)
   propagation-only  replay(fort.21) vs replay(C++ BK file), same helper binary: the only
@@ -453,10 +454,10 @@ def main():
             "n_raw_above_now_within": int((raw_bad & (r <= 1)).sum()),
             "worst_corrected_ratio_of_raw_outliers": float(r[raw_bad].max()) if raw_bad.any() else 0.0,
         }
-    # Bound for analysis-side differences (Fortran analysis vs C++ analysis of the same BK file):
-    # (1) the analysis energies' reference eviroi differs (LAPACK vs Jacobi, item 6) by dE, so the
-    #     phase factors exp(iEt) drift apart by dE t: |dS| <= |S| |dE| T;
-    # (2) the absolute rounding floor of the 875-term sum: 4 eps |factor| dt sum_t |c_t|.
+    # Bound for analysis-side differences (Fortran analysis vs C++ analysis of the same BK file), from
+    # analysis_rounding_bound: |factor| dt sum_t |c_t| (dE t + ulp(|E| t) + 4 eps) + |S| (Zana dkz + dkz/(2 kz)):
+    # the drift of the phase reference eviroi (LAPACK vs Jacobi, item 6, by dE), the rounding of the phase
+    # argument and of the 875-term sum, and the set-up factor through the channel momentum kz.
     bound = analysis_rounding_bound(M)
     res_rows = []
     for col, fcol, rcol in (("Re S", "ReS", "Re_S"), ("Im S", "ImS", "Im_S")):

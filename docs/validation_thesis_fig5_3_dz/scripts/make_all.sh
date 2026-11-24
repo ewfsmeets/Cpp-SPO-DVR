@@ -6,7 +6,7 @@
 #   make_all.sh --angular  first the angular-matrix test: helpers, Fortran driver, angular_matrices.py
 #                          (needs the extract and strict logs and the potential of the heavy pass; ~1 min)
 #   make_all.sh --heavy    also rebuild the C++ helpers and redo the potential, replay,
-#                          onlyAnalysis, final-psi, thesis-extraction and sha256 passes (~15 min;
+#                          onlyAnalysis, negative-control, final-psi, thesis-extraction and sha256 passes (~15 min;
 #                          needs the build directories, runs/, ~/work/SPO-DVR_v5.19, uv for pymupdf)
 # Python runs with -B (no __pycache__ in the docs folder). Run from anywhere.
 set -euo pipefail
@@ -92,7 +92,7 @@ if [[ "$mode" == "--angular" || "$mode" == "--heavy" ]]; then
     $PY build_helper.py "$b" angular_check.cpp
     OMP_NUM_THREADS=8 "$WORK/helpers/$b/angular_check" "$REPO/inputs/thesis_fig5_3_dz/input.json" "$WORK/angular/$b"
   done
-  O="$HOME/work/SPO-DVR_v5.19/procfiles.dir/OBJS.dir"     # the reference executable's objects (read only)
+  O="$HOME/work/SPO-DVR_v5.19/procfiles.dir/OBJS.dir"     # the objects of the Fortran 5.19 executable that ran (read only)
   F="$WORK/angular/fortran"
   mkdir -p "$F"
   gfortran -O3 -fopenmp -fdefault-real-8 -ffree-line-length-none -I"$O" -J"$F" -c angular_fortran.f90 -o "$F/angular_fortran.o"
@@ -108,7 +108,7 @@ $PY fig1_reaction.py
 $PY fig4_time.py
 $PY fig3_bk_growth.py
 $PY fig2_ladder.py
-$PY results.py            # fig4 writes the ladder extract
+$PY results.py            # fig2 writes the ladder extract
 $PY tables.py
 $PY fill_tables.py
 $PY check_markdown.py

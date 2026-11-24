@@ -115,8 +115,8 @@ def half_unit(written: str) -> float:
 
 
 def matches(x, written, vals, scale=1.0):
-    """x matches if some value (or its percentage / per-hour / ratio form) rounds to the written
-    text: |v - x| <= 0.51 x half a unit of the last written digit."""
+    """x matches if some value (or its absolute value, percentage, v/3600 or 1000 v form) rounds to the written
+    text: |v - x| <= 1.02 x half a unit (0.51 of a unit) of the last written digit, times scale."""
     if x in CONSTANTS or abs(x) in CONSTANTS:
         return True
     tol = 1.02 * half_unit(written) * scale

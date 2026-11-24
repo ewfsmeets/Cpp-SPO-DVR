@@ -7,7 +7,7 @@ exp(-iV dt) -> DVR -> FBR, after adding the specular wave to j = 0, (n, m) = (0,
 trip leaks from j = 0 into (J, mJ = 0) stays on the scattering grid, in the family's channels.
 
 Inputs (runs/thesis_fig5_3_dz_validation/angular/<code>/, make_all.sh --heavy):
-  fortran          angular_fortran.f90 linked against the reference executable's object files
+  fortran          angular_fortran.f90 linked against the object files of the Fortran 5.19 executable that ran
   build-cuda       angular_check.cpp linked against build-cuda (the strict GPU run)
   build-fast       ... build-fast (the fast CPU run)
   build-cuda-fast  ... build-cuda-fast (the fast GPU run)

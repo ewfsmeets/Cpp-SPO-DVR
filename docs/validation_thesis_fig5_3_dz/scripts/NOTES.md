@@ -26,9 +26,11 @@ under "Additions" at the end.
   `read_fortran_bk_file` (checks sizes, dt, labels; time = istep·dtAna); same element order as
   `bk_coefficients.bin`); `fort.9` (final ψ, one record per (Z, r) block, same (irot, ixy, izr)
   order as `checkpoint.bin`; record 3 = final analysis-surface state); the V_asy table on stdout.
-- **C++ 6D potential** is not written (`"Potential": true` writes only the gas-phase files):
-  compute it with a helper following `tests/test_regression_pes.cpp` (build_config →
-  make_spatial_grids → make_angular_grid → make_potential → compute_potential_grid; seconds).
+- **C++ 6D potential** is not written (at the runs' commit `e0c231b`, `"Potential": true` wrote only the gas-phase
+  files; since then also `run_info.json`, and `writePotential` adds `potential/`, still not the full 6D V):
+  compute it with a helper following `tests/test_regression_pes.cpp` (at `e0c231b`: build_config →
+  make_spatial_grids → make_angular_grid → make_potential → compute_potential_grid; since then make_potential
+  comes first and build_config takes the PES; seconds).
   V and exp(−iV dt) of the GPU run are computed on the host (`app/run.cpp`, `cuda/cuda_backend.cpp`).
 - **Helper build recipe:** `lib*.a` hold slim LTO objects (machine code is generated at the
   helper's link, so it shares source and flags with the run, not machine code). Compile with g++
@@ -49,7 +51,8 @@ under "Additions" at the end.
   `python3 -I -c 'import json,sys;j=json.load(open(sys.argv[1]));j.update(onlyAnalysis=True,RestartDir=sys.argv[2],RestartFormat=sys.argv[3]);json.dump(j,open(sys.argv[4],"w"),indent=1)' inputs/thesis_fig5_3_dz/input.json runs/thesis_fig5_3_dz_fortran fortran <scratch>/oa_fortran.json`,
   then `OMP_NUM_THREADS=8 build-fast/spodvr <scratch>/oa_fortran.json --threads 8 --output-dir runs/thesis_fig5_3_dz_oa_fortran`.
   C++ runs: their run directory with `native`. `fortran` reads fort.22, else fort.21; `native`
-  reads `bk_coefficients.bin`; neither needs ψ. Output: `fine_analysis/*.tsv` (interpolated to
+  reads `bk_coefficients.bin`; at `e0c231b` neither needed ψ (since then both also read the analysis surface,
+  from fort.8, else fort.9, or from `checkpoint.bin`, so that file must exist; ψ itself is not used). Output: `fine_analysis/*.tsv` (interpolated to
   the analysis energies; `spectrum/` has no `s_matrix.tsv` with writeSMatrix false). < 1 min each.
 - **Analysis line (DynamZSpAna):** the C++ log gives Z and t of the fixing, the Fortran only Z.
   Pin the Fortran step through `fort.21`: from then on the initial-channel coefficient is the

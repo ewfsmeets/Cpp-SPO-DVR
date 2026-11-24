@@ -111,7 +111,8 @@ def fortran_timing(lines: list[str]) -> dict:
 
 def main():
     res = {"generated": dt.datetime.now().astimezone().isoformat(timespec="seconds")}
-    # git: commit of the builds = last commit touching src/ before the binaries were linked
+    # git: commit of the builds, taken as the last commit touching src/ at HEAD (valid while no src/ commit
+    # follows the build; sources_newer_than_binary below checks the files)
     res["git_head"] = sh("git", "rev-parse", "--short", "HEAD")
     res["git_head_date"] = sh("git", "log", "-1", "--format=%ad", "--date=iso-strict")
     res["git_last_src_commit"] = sh("git", "log", "-1", "--format=%h", "--", "src/")

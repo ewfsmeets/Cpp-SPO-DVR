@@ -2,7 +2,8 @@
 // run (native bk_coefficients.bin or Fortran fort.21) through the C++ on-the-fly analysis
 // (SMatrixAccumulator) and writes the result tables, as the run writes them at its end.
 // Usage: replay <input.json> <BK file> <native|fortran> <output dir>
-// Self-check: replaying a C++ run's own file must reproduce its s_matrix.tsv bitwise.
+// Self-check: replaying a C++ run's own file reproduces its s_matrix.tsv bitwise in a strict build; in the
+// fast-math builds only to about 2e-14 in |S| (the analysis code is generated anew at each link).
 // Precedent: the restart path (app/run.cpp restore_from_checkpoint, add_earlier_analysis_step).
 #include <filesystem>
 #include <iostream>
@@ -43,9 +44,9 @@ int main(int argc, char** argv) {
   const auto pes = make_potential(config.input);
   const AngularGrid angular = make_angular_grid(config);
   const SpatialGrids grids = make_spatial_grids(config);
-  // V_asy as a propagation run obtains it (app/run.cpp: from the potential grid), not via
-  // compute_asymptotic_potential (the onlyAnalysis path): the gas-phase energies, and through
-  // them the phase factors exp(iEt) of the analysis, must be bitwise those of the run.
+  // V_asy as a propagation run obtains it (app/run.cpp: from the potential grid, which fills it with
+  // compute_asymptotic_potential, the function of the onlyAnalysis path too): the gas-phase energies, and
+  // through them the phase factors exp(iEt) of the analysis, must be bitwise those of the run.
   const RotationalBasis rotational_basis(angular, config.input.j_in, config.input.mj_in);
   const ScatteringShape shape{rotational_basis.size(), config.input.nx, config.input.ny, config.input.nr,
                               config.input.nz};

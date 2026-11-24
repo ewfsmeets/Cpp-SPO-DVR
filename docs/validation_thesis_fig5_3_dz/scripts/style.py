@@ -90,12 +90,12 @@ def setup():
             "legend.frameon": False,
             "savefig.dpi": 110,
             "font.family": "DejaVu Sans",
-            # reproducible PNGs: no timestamps / software tags in the metadata
             "savefig.bbox": "tight",
         }
     )
 
 
 def save(fig, path):
+    # reproducible PNGs: no timestamps / software tags in the metadata
     fig.savefig(path, metadata={"Software": None, "Creation Time": None}, pil_kwargs={"optimize": True})
     plt.close(fig)

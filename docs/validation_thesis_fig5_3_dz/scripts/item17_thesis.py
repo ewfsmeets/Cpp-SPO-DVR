@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Item 17: comparison with Figure 5.3 of M. F. Somers' thesis (dotted curve = DZ PES).
 
---digitise (extract mode; needs the output of thesis_extract.py): calibrate the axes on the tick
+--digitise (heavy mode, make_all.sh --heavy; needs the output of thesis_extract.py): calibrate the axes on the tick
 marks of the vector figure, take the dotted curve's dots (isolated small filled shapes inside the
 frame: connected components of at most 2.2 pt), and freeze them in
 data/thesis_fig5_3_dz_digitised.tsv plus the check image figures/thesis_digitisation_check.png

@@ -371,7 +371,9 @@ def verdicts(res):
 
 
 def ratios(res):
-    """Ratios quoted in the report: fast CPU run (item 18b) over strict GPU run, against the Fortran."""
+    """Ratios quoted in the report: mostly the fast CPU run (item 18b) over the strict GPU run, both against the
+    Fortran; also the strict run's j = 10 family over its outside-family residual, strict - F over fast GPU - CPU,
+    and the fast-math effect over its predicted 1e-12."""
     i18 = load_item("item18b")
     rp = res["replay"]
     fast_kappa = rp["cpu_fast-fortran"]["decomposition"]["kappa_median"]

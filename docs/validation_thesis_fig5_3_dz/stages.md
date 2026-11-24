@@ -8,7 +8,7 @@ in [README.md](README.md); criteria, prediction and their changes in
 **Notation.** (p) printed precision: a Fortran value as printed (e.g. `0.4661086D-03`, 7 digits)
 against the C++ value at full precision; the tolerance is 1.01 × ½ unit of the last printed digit.
 (f) full precision on both sides. Terms (BK coefficient, replay, specular grid, kinetic block):
-[README](README.md#verdict), "Terms used in this report". Verdict words: **identical** (bitwise or equal integers/text),
+[README](README.md), "Terms used in this report" (the box above "Verdict"). Verdict words: **identical** (bitwise or equal integers/text),
 **rounding** (full precision, within criterion), **printed** (within printed precision),
 **explained** (outside, with a quantitative explanation), **FINDING** (unexplained; none),
 **shared code** (CPU↔GPU rows that run the same host code), **n/a**. "C++" without qualifier is
@@ -147,8 +147,8 @@ writes the grids with `%.17e`); counts from both logs.
 
 ### 3. Is every line under "INFO FROM MISCELLANEOUS SETUP" the same?
 
-**Answer.** Yes: 8 integer lines are identical after the 0/1-based index conversion and 19 printed
-values agree within ½ printed unit; `nmoder` has no C++ counterpart. Verdict: **identical / printed**.
+**Answer.** Yes: 7 integer lines (indices, after the 0/1-based conversion) and the flux-analysis text
+line are identical, and 19 printed values agree within ½ printed unit; `nmoder` has no C++ counterpart. Verdict: **identical / printed**.
 
 **Compared.** Fortran F-format lines (6 decimals) against the C++ log (`%.16e` for the momentum
 steps, `%.6f` otherwise; when both sides are printed both half units count) and the C++ grid points.
@@ -345,7 +345,7 @@ C++ log and the labels and channel energies stored in `bk_coefficients.bin` (dou
 **Answer.** The same, with one explained exception: the CAP coefficients, the packet's norm,
 maximum |ψ(k)|, iLow/iHigh, the analysis tolerance and limits and all 111 analysis energies agree
 within ½ printed unit or are identical; k<sub>Z</sub>, α and the translational energy, which `fort.21`
-holds in double precision, differ by 3, 11 and 0 ulp. The two tails |ψ(k = 0)| and
+holds in double precision, differ by 3, 11 and 4 ulp. The two tails |ψ(k = 0)| and
 |ψ(k<sub>max</sub>)| (≈ 1e-10 of the peak) differ by 1.7e-15, 337 and 346 printed half units:
 **explained** below. Verdict: **printed / identical / rounding / explained**.
 
@@ -542,7 +542,8 @@ full precision the codes differ by at most 1.4e-11 in P_reaction (C++ vs Fortran
 and 1.9e-12 (GPU vs CPU). Verdict: **printed / explained**; full precision **rounding**
 (criterion 1e-10).
 
-**Compared.** Fortran stdout per-energy blocks (E14.7, D14.7) against `scattering_summary.tsv` and
+**Compared.** Fortran stdout per-energy blocks (E14.7; D14.7 for P_reaction, F10.7 for ΣP, F12.6 for the
+three average energies) against `scattering_summary.tsv` and
 `probabilities_rovib.tsv` (`%.16e`); full precision through the replay (item 18b).
 
 <!-- BEGIN table:item14 -->
@@ -610,8 +611,9 @@ within the criterion (1e-10) and ≥ 3.7× below the print resolution at every e
 ### 15. Are the diffraction probabilities the same?
 
 **Answer.** Yes: of 82488 printed probabilities per diffraction order, 82432 agree within ½ printed
-unit and 56 are explained (replay decomposition as in item 14: these are small values whose half
-unit is below the 1e-11-level propagation difference); GPU vs CPU at most 6.4e-13. Verdict:
+unit and 56 are explained (replay decomposition as in item 14: these are values near a rounding
+boundary of the print, where the replay of the Fortran's own BK coefficients already lies close to
+half a unit from the printed value and the propagation difference, at most 8.0e-19, adds the rest); GPU vs CPU at most 6.4e-13. Verdict:
 **printed / explained**; CPU↔GPU **rounding**.
 
 **Compared.** Fortran stdout "probabilities as function of diffraction order" (E14.7, only open
@@ -637,8 +639,8 @@ which `s_matrix.tsv` omits; no C++ row is missing in `fort.25`. All phases with 
 precision |ΔS| ≤ 1.7e-12 (C++ vs Fortran) and 5.5e-13 (GPU vs CPU). Verdict:
 **printed / explained / rounding**.
 
-**Compared.** `fort.25` (Re S, Im S, |S|² as D13.6, phase F10.6; parser as in
-`tests/fine_analysis_reference.hpp`) against `s_matrix.tsv` (`%.16e`).
+**Compared.** `fort.25` (Re S, Im S, |S|² as D13.6, phase F10.6; parser
+`read_fortran_fort25`, now in `tests/fort25_reference.hpp`) against `s_matrix.tsv` (`%.16e`).
 
 <!-- BEGIN table:item16 -->
 

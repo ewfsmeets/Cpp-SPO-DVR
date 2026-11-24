@@ -1,5 +1,5 @@
 // Validation helper (item 4 of docs/validation_thesis_fig5_3_dz): the C++ potential of a run,
-// computed with the library of the build that ran, on the full grid.
+// computed with the library of the build that ran, on the interaction region (Z < zasymp) of the grid.
 // Usage: potential_check <input.json> <output dir>
 // Writes into the output directory:
 //   asymptotic_potential.dat, gas_phase_states.dat  as the run writes them (self-check: bitwise
@@ -7,7 +7,7 @@
 //   grids.txt              Z, Z specular, r, x, y, theta (+ weights), phi, k grids (%.17e)
 //   v_stored.bin           V (hartree) as the run stores it: (itp, irep, izr), float64
 //   symmetry_maps.txt      per ixy: representative, operation; per operation: the phi map
-//   v_full.bin             V (hartree) evaluated at every full-grid point, no symmetry:
+//   v_full.bin             V (hartree) at every grid point of the interaction region, no symmetry:
 //                          (itp, ixy, izr), itp = iphi + nphi*itheta, ixy = iy + ny*ix
 #include <cstdio>
 #include <filesystem>
