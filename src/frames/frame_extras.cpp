@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 
+#include "core/aligned_vector.hpp"
 #include "core/array_index.hpp"
 
 namespace spodvr {
@@ -96,7 +97,8 @@ FrameExtraSizes frame_extra_sizes(const Config& config, const SpatialGrids& grid
 
 // The tables and transforms of the extras that are on.
 struct FrameExtras::Tables {
-  // angular: the FBR -> DVR transform of the nX nY columns of one (Z, r) point at once
+  // angular: the FBR -> DVR transform of one column pass (columns_per_pass of the nX nY columns of a (Z, r)
+  // point, as the potential step)
   std::unique_ptr<AngularTransform> angular;
   // diffraction: the x-y FFTs of the n_rot columns of one (Z, r) point (layout (irot, ix, iy)), the shift
   // exp(-i k_par . R) and the probability per |FFT value|^2: dZ dr dx dy sin(skew) / (nX nY)
@@ -137,7 +139,9 @@ FrameExtras::FrameExtras(const Config& config, const SpatialGrids& grids, const 
   const double dz = grids.z_scattering.spacing();
   const double dr = grids.r.spacing();
   Tables& t = *tables_;
-  if (on_.angular) t.angular = std::make_unique<AngularTransform>(angular, basis, fft, layout.nxy);
+  if (on_.angular)
+    t.angular = std::make_unique<AngularTransform>(
+        angular, basis, fft, AngularTransform::columns_per_pass(layout.nxy, angular.n_theta(), angular.n_phi()));
   if (on_.diffraction) {
     const FftLayout2D xy{.outer_length = p.nx,
                          .outer_stride = layout.n_rot * p.ny,
@@ -190,9 +194,10 @@ std::size_t FrameExtras::memory_values(const FrameLayout& layout, const AngularG
   const std::size_t threads = n_threads;
   std::size_t values = 0;
   if (on.any()) values += 2 * plane;  // the plane of psi_full (complex)
-  if (on.angular)  // dataset, per-r sums, a DVR block of every (x, y) point per thread
+  if (on.angular)  // dataset, per-r sums, the DVR blocks of one column pass per thread
     values += nz * nodes + nr * nodes +
-              threads * 2 * std::size_t(AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi())) * nxy;
+              threads * 2 * std::size_t(AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi())) *
+                  AngularTransform::columns_per_pass(layout.nxy, angular.n_theta(), angular.n_phi());
   if (on.diffraction)  // dataset, per-r sums, a (Z, r) block per thread
     values += nz * nxy + nr * nxy + threads * 2 * std::size_t(layout.n_rot) * nxy;
   if (on.vibration)  // dataset, phi_vJ dr, per-(x, y) sums
@@ -214,7 +219,8 @@ void FrameExtras::reduce_plane(int iz, std::span<const Complex> full_plane, Fram
   }
 }
 
-// Per (Z, r) point all nX nY columns to the DVR grid; |value|^2 summed over (x, y) per node, then over r in order.
+// Per (Z, r) point the nX nY columns to the DVR grid, in passes of transform.n_columns() columns (as the potential
+// step: a pass's DVR blocks stay in cache); |value|^2 summed over (x, y) per node, then over r in order.
 void FrameExtras::reduce_angular(int iz, std::span<const Complex> plane, FrameRecord& record) {
   ExtraTimer timer(seconds_, angular_extra);
   const AngularTransform& transform = *tables_->angular;
@@ -224,16 +230,20 @@ void FrameExtras::reduce_angular(int iz, std::span<const Complex> plane, FrameRe
   std::vector<double> per_r(std::size_t(layout_.nr) * nodes, 0.0);
 #pragma omp parallel
   {
-    std::vector<Complex> dvr(std::size_t(transform.dvr_block_size()) * layout_.nxy);
+    const int n_col = transform.n_columns();
+    ComplexVector dvr(std::size_t(transform.dvr_block_size()) * n_col);  // aligned: every pass runs the same plan
 #pragma omp for schedule(static)
-    for (int ir = 0; ir < layout_.nr; ++ir) {
-      transform.fbr_to_dvr(plane.subspan(column * ir, column), dvr);
-      for (int ixy = 0; ixy < layout_.nxy; ++ixy)
-        for (int it = 0; it < transform.n_theta(); ++it)
-          for (int ip = 0; ip < transform.n_phi(); ++ip)
-            per_r[std::size_t(ir) * nodes + ip + transform.n_phi() * it] +=
-                std::norm(dvr[std::size_t(transform.dvr_block_size()) * ixy + ip + ld * it]);
-    }
+    for (int ir = 0; ir < layout_.nr; ++ir)
+      for (int c0 = 0; c0 < layout_.nxy; c0 += n_col) {
+        transform.fbr_to_dvr(
+            plane.subspan(column * ir + std::size_t(layout_.n_rot) * c0, std::size_t(layout_.n_rot) * n_col), dvr);
+        // The same additions in the same order as one pass over all columns: ixy ascending per node.
+        for (int ixy = c0; ixy < c0 + n_col; ++ixy)
+          for (int it = 0; it < transform.n_theta(); ++it)
+            for (int ip = 0; ip < transform.n_phi(); ++ip)
+              per_r[std::size_t(ir) * nodes + ip + transform.n_phi() * it] +=
+                  std::norm(dvr[std::size_t(transform.dvr_block_size()) * (ixy - c0) + ip + ld * it]);
+      }
   }
   for (int node = 0; node < nodes; ++node) {
     double sum = 0.0;

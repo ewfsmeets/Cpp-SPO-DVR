@@ -4,8 +4,12 @@
 // checkpoints, restart joins) run on the plot fixtures (tools/plots/tests/test_runs_frames.py).
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cmath>
 #include <complex>
 #include <fstream>
+#include <memory>
+#include <span>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -14,8 +18,10 @@
 
 #include "comparison.hpp"
 #include "counting_backend.hpp"
+#include "fft/fftw_fft.hpp"
 #include "frames/frame_extras.hpp"
 #include "frames/frame_source.hpp"
+#include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
 #include "grids/associated_legendre.hpp"
 #include "grids/gauss_legendre.hpp"
@@ -24,8 +30,13 @@
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "io/binary_file.hpp"
+#include "linalg/symmetric_eigensolver.hpp"
+#include "potential/potential_factory.hpp"
+#include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
+#include "propagation/angular_transform.hpp"
 #include "propagation/memory_estimate.hpp"
+#include "propagation/propagation_tables.hpp"
 #include "report/frame_files.hpp"
 #include "temporary_directory.hpp"
 
@@ -283,6 +294,74 @@ TEST(FrameExtras, ThreadsSizeAndMemory) {
       EXPECT_EQ(item.values, expected);
     }
   EXPECT_EQ(found, 1);
+}
+
+// The angular extra transforms the nX nY columns of a (Z, r) point in passes of columns_per_pass, as the potential
+// step: on 4 x 4 (x, y) points with JMax 28 (n_theta 15, n_phi 60: 4 passes of 4 columns) its record equals, bitwise,
+// the reduction of all 16 columns in one pass written out below (the additions in the same order). Negative: one
+// plane value changed by 1e-12 of its modulus changes the record.
+TEST(FrameExtras, AngularPassesGiveTheBitsOfOnePass) {
+  nlohmann::json json = frames_input();
+  json["nX"] = 4;
+  json["nY"] = 4;
+  json["JMax"] = 28;
+  json["MJMax"] = 28;
+  json["FrameExtras"] = nlohmann::json::array({"angular"});
+  const InputParameters input = parse_input(json);
+  const std::unique_ptr<Potential> pes = make_potential(input);
+  const Config config = build_config(input, *pes);
+  const SpatialGrids grids = make_spatial_grids(config);
+  const AngularGrid angular = make_angular_grid(config);
+  const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+  ASSERT_EQ(AngularTransform::columns_per_pass(16, angular.n_theta(), angular.n_phi()), 4);
+  const std::vector<double> asymptotic = compute_asymptotic_potential(*pes, config, grids);
+  const PropagationTables tables = make_propagation_tables(config, grids, basis, asymptotic);
+  const FrameLayout layout = frame_layout(config, grids, basis, tables.specular_to_scattering);
+  const FftwFft fft;
+  const GasPhase gas = compute_gas_phase(config, grids, angular, asymptotic, fft, LapackEigensolver());
+  FrameExtras extras(config, grids, angular, basis, gas, tables, fft, layout);
+
+  // A plane of psi_full (layout (irot, ixy, ir)): cos and sin of the index.
+  const std::size_t column = std::size_t(layout.n_rot) * layout.nxy;
+  std::vector<std::complex<double>> plane(column * layout.nr);
+  for (std::size_t i = 0; i < plane.size(); ++i) plane[i] = {std::cos(0.1 * double(i)), std::sin(0.3 * double(i))};
+  const std::size_t nodes = std::size_t(angular.n_theta()) * angular.n_phi();
+  auto reduced = [&](const std::vector<std::complex<double>>& values) {
+    FrameRecord record = make_frame_record(layout);
+    record.prob_angle_z.assign(std::size_t(layout.nz) * nodes, 0.0);
+    extras.reduce_plane(0, values, record);
+    extras.reduce_plane(1, values, record);
+    return record.prob_angle_z;
+  };
+  const std::vector<double> record = reduced(plane);
+
+  // The reduction before the column passes: all nX nY columns in one transform, sums over ixy, then r, ascending.
+  const AngularTransform one_pass(angular, basis, fft, layout.nxy);
+  const int block = one_pass.dvr_block_size();
+  const int ld = one_pass.leading_dimension();
+  std::vector<std::complex<double>> dvr(std::size_t(block) * layout.nxy);
+  std::vector<double> per_r(std::size_t(layout.nr) * nodes, 0.0);
+  for (int ir = 0; ir < layout.nr; ++ir) {
+    one_pass.fbr_to_dvr(std::span<const std::complex<double>>(plane).subspan(column * ir, column), dvr);
+    for (int ixy = 0; ixy < layout.nxy; ++ixy)
+      for (int it = 0; it < angular.n_theta(); ++it)
+        for (int ip = 0; ip < angular.n_phi(); ++ip)
+          per_r[std::size_t(ir) * nodes + ip + angular.n_phi() * it] +=
+              std::norm(dvr[std::size_t(block) * ixy + ip + ld * it]);
+  }
+  std::vector<double> expected(nodes);
+  for (std::size_t node = 0; node < nodes; ++node) {
+    double sum = 0.0;
+    for (int ir = 0; ir < layout.nr; ++ir) sum += per_r[std::size_t(ir) * nodes + node];
+    expected[node] = sum * layout.cell_volume;
+  }
+  for (int iz = 0; iz < 2; ++iz)
+    EXPECT_TRUE(std::equal(expected.begin(), expected.end(), record.begin() + std::ptrdiff_t(iz * nodes)))
+        << "Z plane " << iz;
+
+  std::vector<std::complex<double>> changed = plane;
+  changed[5] *= 1.0 + 1e-12;
+  EXPECT_NE(reduced(changed), record);
 }
 
 // FrameExtras on a coupled case (cu111_dailight_small on 4 x 4 (x, y) points, JMax 2, to t = 3000 a.u., when the

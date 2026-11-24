@@ -16,8 +16,8 @@ namespace spodvr {
 // (RotationalBasis order) and the (theta, phi) DVR grid. A DVR block has the Fortran layout
 // (iphi, itheta) with leading dimension nphi + 1 (one padding element per theta). n_columns
 // columns are transformed together, so the phi FFTs of all of them are one batched call (the CPU
-// potential step: columns_per_pass of the (x, y) points of one (Z, r) point at a time; the frames:
-// all of them): column c is at fbr[n_rot * c ...] and dvr[dvr_block_size() * c ...].
+// potential step and the frames' angular extra: columns_per_pass of the (x, y) points of one (Z, r)
+// point at a time): column c is at fbr[n_rot * c ...] and dvr[dvr_block_size() * c ...].
 //   FBR -> DVR: psi(theta_t, phi_k) = sum_{J,m} sqrt(w_t / nphi) P_J^m(theta_t) exp(i m phi_k) c_{Jm}
 //   DVR -> FBR: the adjoint, so DVR -> FBR after FBR -> DVR is the identity.
 // Both directions may be called concurrently on different arrays.
