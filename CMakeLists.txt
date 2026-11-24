@@ -22,6 +22,7 @@ set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of th
 option(SPODVR_USE_CUDA "Build the GPU backend (--device cuda; docs/cuda.md)" OFF)
 option(SPODVR_CUDA_SYNC_DEBUG "Debug: wait for and check every CUDA kernel right after its launch" OFF)
 option(SPODVR_POISON_UNINITIALISED "Debug: fill new AlignedVector elements with NaN" OFF)
+set(SPODVR_SANITIZE "" CACHE STRING "Debug: -fsanitize= list, e.g. address,undefined (needs SPODVR_LTO=OFF)")
 option(SPODVR_WARNINGS_AS_ERRORS "Treat compiler warnings as errors (CI)" OFF)
 option(SPODVR_BUILD_TESTS "Build the unit and regression tests" ON)
 option(SPODVR_BUILD_TOOLS "Build the developer tools (operator timing, wave function dump/compare)" ON)
@@ -109,6 +110,17 @@ if(SPODVR_PGO STREQUAL "GENERATE")
   set(pgo_link_flags -fprofile-generate=${SPODVR_PGO_DIR})
 elseif(SPODVR_PGO STREQUAL "USE")
   list(APPEND fp_flags -fprofile-use=${SPODVR_PGO_DIR} -fprofile-correction -Wno-missing-profile)
+endif()
+
+# Sanitizers (SPODVR_SANITIZE; the build-asan variant, docs/CONTRIBUTING.md): every C++ file of the project and
+# its tests, with debug information and frame pointers for the reports; the first error stops the program.
+if(SPODVR_SANITIZE)
+  if(SPODVR_LTO OR SPODVR_USE_CUDA)
+    message(FATAL_ERROR "SPODVR_SANITIZE needs SPODVR_LTO=OFF and SPODVR_USE_CUDA=OFF")
+  endif()
+  add_compile_options(
+    "$<$<COMPILE_LANGUAGE:CXX>:-fsanitize=${SPODVR_SANITIZE};-fno-sanitize-recover=all;-fno-omit-frame-pointer;-g>")
+  add_link_options(-fsanitize=${SPODVR_SANITIZE})
 endif()
 
 # Every target of the project links these two (empty) libraries to get the flags above.

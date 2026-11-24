@@ -10,6 +10,7 @@
 | `SPODVR_PGO` | `OFF` | Profile-guided optimisation, see below. |
 | `SPODVR_FAST_MATH` | `OFF` | Experimental: `-ffast-math -fno-finite-math-only` instead of the flags below (FMA contraction, reassociation, reciprocals; NaN and inf keep their meaning). Changes results at ~1e-12 on the gate grids and by 7.8e-12 on the thesis grid; passes the gates with the reaction-probability floor of 1e-11 (with plain `-ffast-math` and GCC 15 the hard-wall V<sub>asy</sub> table failed by 1.6e-14 against 1e-14; since NaN and inf are kept it passes). Details and the known test failures: [below](#the-fast-math-build-spodvr_fast_math). Native restart files are not interchangeable with the default build (README "Continuing a run (restart)"). Speed experiments only. |
 | `SPODVR_POISON_UNINITIALISED` | `OFF` | Debug: fill uninitialised `AlignedVector` elements with NaN (any read before write then shows up as NaN). |
+| `SPODVR_SANITIZE` | empty | Debug: a `-fsanitize=` list for every C++ file and test, e.g. `address,undefined,float-cast-overflow` (the `build-asan` variant, [CONTRIBUTING.md](CONTRIBUTING.md#build-variants)); needs `SPODVR_LTO=OFF` and no CUDA. |
 | `SPODVR_LTO` | `ON` | Link-time optimisation (`-flto`) of the C++ code in Release builds. `OFF` for quicker links or sanitizer builds; the results stay the same (the hard-wall test case gives bitwise identical output files with and without, 2026-11-22). |
 | `CMAKE_BUILD_TYPE=Release` | | `-O3` plus link-time optimisation (unless `SPODVR_LTO` is `OFF`). |
 

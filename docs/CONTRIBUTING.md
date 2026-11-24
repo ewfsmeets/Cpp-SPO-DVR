@@ -20,6 +20,7 @@ when nvcc is found). It does not use PGO; for that, see
 | `build-fftw` | `SPODVR_FFT_LIBRARY=FFTW` | oneMKL LAPACK with the real FFTW |
 | `build-nomkl` | `SPODVR_USE_MKL=OFF` | system LAPACK + FFTW: the fallback that must keep working |
 | `build-poison` | `SPODVR_POISON_UNINITIALISED=ON` | NaN-fills new large arrays: finds reads before the first write |
+| `build-asan` | `SPODVR_SANITIZE=address,undefined,float-cast-overflow`, `SPODVR_USE_MKL=OFF`, `SPODVR_LTO=OFF`, `-D_GLIBCXX_ASSERTIONS` | AddressSanitizer with its leak check, UBSan (the first error stops the test) and libstdc++'s precondition checks; system LAPACK + FFTW (oneMKL is not instrumented) |
 | `build-fast` | `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fast CPU build (results differ at the 1e-12 to 1e-11 level; add PGO by hand for the fastest) |
 | `build-cuda` | `SPODVR_USE_CUDA=ON` | GPU backend, no FMA (results comparable with the CPU build) |
 | `build-cuda-fast` | `SPODVR_USE_CUDA=ON`, `SPODVR_FAST_MATH=ON`, `SPODVR_ARCH=native` | fastest GPU build (FMA in the kernels; no PGO) |
@@ -195,7 +196,11 @@ The regular expression selects the names that end in `Long` (or whose suite does
 ### Other build variants
 
 Run the same ctest command in their build directory ([Build variants](#build-variants)). Use
-`build-poison` after touching the uninitialised-memory code. The fast-math builds (`build-fast`,
+`build-poison` after touching the uninitialised-memory code. `build-asan` runs the C++ tests of the quick tier
+(`OMP_NUM_THREADS=8 ctest --test-dir build-asan -LE python -E 'RegressionPropagation|PlotRuns'`, about 15 min,
+2026-11-24) with `ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1`. Its compiler
+warnings are not errors: GCC reports false maybe-uninitialized warnings inside libstdc++'s `<regex>` under the
+sanitizers. The fast-math builds (`build-fast`,
 `build-cuda-fast`) are expected to fail a few tests that compare exact values; their gates pass. The
 list, with the reason for each: [performance.md](performance.md#the-fast-math-build-spodvr_fast_math).
 

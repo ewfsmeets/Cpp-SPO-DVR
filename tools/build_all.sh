@@ -15,11 +15,12 @@ declare -A options=(
   [build-fftw]="-DSPODVR_FFT_LIBRARY=FFTW"
   [build-nomkl]="-DSPODVR_USE_MKL=OFF"
   [build-poison]="-DSPODVR_POISON_UNINITIALISED=ON"
+  [build-asan]="-DSPODVR_USE_MKL=OFF -DSPODVR_LTO=OFF -DSPODVR_SANITIZE=address,undefined,float-cast-overflow -DCMAKE_CXX_FLAGS=-D_GLIBCXX_ASSERTIONS"
   [build-fast]="-DSPODVR_FAST_MATH=ON -DSPODVR_ARCH=native -DSPODVR_PGO=OFF"
   [build-cuda]="-DSPODVR_USE_CUDA=ON"
   [build-cuda-fast]="-DSPODVR_USE_CUDA=ON -DSPODVR_FAST_MATH=ON -DSPODVR_ARCH=native -DSPODVR_PGO=OFF"
 )
-order=(build build-fftw build-nomkl build-poison build-fast build-cuda build-cuda-fast)
+order=(build build-fftw build-nomkl build-poison build-asan build-fast build-cuda build-cuda-fast)
 
 variants=("$@")
 if [ ${#variants[@]} -eq 0 ]; then variants=("${order[@]}"); fi
