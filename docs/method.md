@@ -141,8 +141,8 @@ The scattering amplitude formalism of Balint-Kurti (thesis (2.37)–(2.43)):
   width parameter, Z_0 its start, w = exp(−(k_z,0 − k_0)² / 2α) the packet's weight at k_0, and Z_m
   the line where the coefficient was taken (`measurement_line`): Z_sp for the initial rotational and
   diffraction state once its line is fixed (and the run's checkpoint is at hand), `Zana` otherwise and
-  for all other channels. The Fortran uses `Zana` for every channel
-  ([analysis D2](fortran_deviations.md#analysis-d2)).
+  for all other channels. The Fortran's fine analysis uses `Zana` for every channel, as its on-the-fly analysis
+  did up to r1719 ([analysis D2](fortran_deviations.md#analysis-d2)).
 - **Probabilities.** P = |S|² (thesis (2.42)). The reaction probability is 1 − Σ P over the analysed
   open channels (thesis (2.43)), so it counts everything not scattered into an analysed channel:
   dissociation (taken out by the large-r absorber), flux into states outside the analysis basis,

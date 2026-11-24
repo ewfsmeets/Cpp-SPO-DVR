@@ -52,7 +52,8 @@ def s_matrix_factors(
     """prefactor * exp(i arg_f) * sqrt(k_f k0 / weight) of every analysis energy and channel (index
     i_state + n_states v): S = time sums * these. lines_bohr (n_channels,): the line where each channel is
     measured (compute/time_series.py analysis_lines_bohr, as s_matrix.tsv); None: every channel at Zana, the
-    Fortran's phases, enough where only |S| is used. Returns: (n_energies, n_channels) complex."""
+    phases of the Fortran's fine analysis (and its on-the-fly analysis up to r1719), enough where only |S| is
+    used. Returns: (n_energies, n_channels) complex."""
     packet = info.data["wave_packet"]
     z_ana = float(info.data["analysis"]["z_ana"])  # the grid point; the C++ uses the input ZAna (within 1e-12)
     n_channels = bk.channel_energy_hartree.size

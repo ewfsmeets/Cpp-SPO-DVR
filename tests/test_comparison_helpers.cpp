@@ -1,6 +1,7 @@
 // Tests: the NaN-aware maximum of tests/comparison.hpp (std::max bit for bit on finite values) and
 // the gates built on it: a NaN on either side fails gate 1b (the 6D potential, pes_gate.hpp), gate 3
-// (averages) and gate 4 (printed probabilities, BK coefficients).
+// (averages) and gate 4 (printed probabilities, BK coefficients), and gate 4's comparison of the S-matrix elements
+// with the Fortran's fort.25 (fort25_reference.hpp) on synthetic files.
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
@@ -9,13 +10,19 @@
 #include <cmath>
 #include <complex>
 #include <cstdint>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <limits>
+#include <numbers>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "analysis_reference.hpp"
 #include "comparison.hpp"
 #include "core/unit_conversion.hpp"
+#include "fort25_reference.hpp"
 #include "pes_gate.hpp"
 #include "propagation_reference.hpp"
 #include "setup_reference.hpp"
@@ -363,4 +370,193 @@ TEST(GateComparisons, BkDeviationGivesScaleAndLargestDifference) {
   EXPECT_NEAR(d.worst, 1e-6, 1e-15);
   run.bk[0][1] = {not_a_number, 0.0};
   EXPECT_TRUE(std::isnan(bk_deviation(run, bk_records()).worst));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Gate 4, the S-matrix elements (fort25_reference.hpp): a run of two states at one energy and the fort.25 the
+// Fortran prints for it, each fault planted on top.
+
+namespace {
+
+// x as the Fortran's D13.6 prints it (0.dddddd and the exponent).
+std::string fortran_d(double x) {
+  if (x == 0.0) return "0.000000D+00";
+  int exponent = static_cast<int>(std::floor(std::log10(std::abs(x)))) + 1;
+  double mantissa = std::round(x / std::pow(10.0, exponent) * 1e6) / 1e6;
+  if (std::abs(mantissa) >= 1.0) {
+    mantissa = mantissa / 10.0;
+    exponent = exponent + 1;
+  }
+  return std::format("{:.6f}D{}{:02d}", mantissa, exponent < 0 ? '-' : '+', std::abs(exponent));
+}
+
+// The run: states (j, mJ, order, n, m) = (0, 0, 0, 0, 0) and (0, 0, 1, 1, 0), one level E(0, 0) below the total
+// energy, so the print rule expects both rows.
+struct Fort25Fixture {
+  PropagationRun run;
+  std::vector<cplx> s = {cplx(-0.470660e-03, -0.850680e-03), cplx(0.100000e-01, 0.200000e-01)};
+
+  Fort25Fixture() {
+    run.n_states = 2;
+    run.n_v = 1;
+    run.states = {{0, 0, 0, 0, 0}, {0, 0, 1, 1, 0}};
+    run.level_energy_ev = {{-4.467141}};
+    EnergyResult e{};
+    e.total_energy = -4.267141;
+    run.scattering.energies = {e};
+    set_cpp(s);
+  }
+  // The C++ S, P and phase of the two states.
+  void set_cpp(const std::vector<cplx>& values) {
+    EnergyResult& e = run.scattering.energies[0];
+    e.s_matrix = values;
+    e.probability = {std::norm(values[0]), std::norm(values[1])};
+    e.phase = {std::arg(values[0]), std::arg(values[1])};
+  }
+  // The row the Fortran prints for state k (Re S, Im S, P and the phase from s[k]).
+  std::string row(int k, int n, int m) const {
+    return std::format("{:4d}{:4d}  {:>13} {:>13} {:>13} {:10.6f}", n, m, fortran_d(s[k].real()),
+                       fortran_d(s[k].imag()), fortran_d(std::norm(s[k])), std::arg(s[k]));
+  }
+  std::string text() const {
+    return " total energy = -0.42671410D+01\n"
+           " v j mj dif.order are:   0   0   0   0\n"
+           "  m1  m2        s-matrix element          prob          phase\n" +
+           row(0, 0, 0) +
+           "\n"
+           " v j mj dif.order are:   0   0   0   1\n"
+           "  m1  m2        s-matrix element          prob          phase\n" +
+           row(1, 1, 0) + "\n";
+  }
+};
+
+// The comparison of run with the file text, tolerance's code term s_scale_fraction.
+Fort25Comparison compare_text(const PropagationRun& run, const std::string& text, double s_scale_fraction = 1e-10) {
+  const std::filesystem::path path = std::filesystem::path(::testing::TempDir()) / "fort25_synthetic.txt";
+  std::ofstream(path) << text;
+  Fort25Tolerance tolerance;
+  tolerance.s_scale_fraction = s_scale_fraction;
+  return compare_fort25(run, read_fortran_fort25_rows(path), tolerance);
+}
+
+std::string replaced(std::string text, const std::string& old, const std::string& replacement) {
+  const auto at = text.find(old);
+  EXPECT_NE(at, std::string::npos) << old;
+  return at == std::string::npos ? text : text.replace(at, old.size(), replacement);
+}
+
+}  // namespace
+
+TEST(GateComparisons, Fort25PassesWhenEqual) {
+  const Fort25Fixture f;
+  const Fort25Comparison c = compare_text(f.run, f.text());
+  EXPECT_EQ(c.failed, 0);
+  EXPECT_EQ(c.rows, 2);
+  EXPECT_EQ(c.expected_rows, 2);
+  EXPECT_EQ(c.row_like_lines, 2);
+  EXPECT_EQ(c.compared, 2);
+  EXPECT_EQ(c.phase_compared, 2);
+}
+
+// Re S of the C++ off by 1e-9: above the printed half units (7.1e-10) plus the code term (1e-10 * 0.022).
+TEST(GateComparisons, Fort25ValueJustAboveToleranceFailsOnce) {
+  Fort25Fixture f;
+  const std::string text = f.text();
+  f.set_cpp({f.s[0] + cplx(1e-9, 0.0), f.s[1]});
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+TEST(GateComparisons, Fort25FailsOnACppNaN) {
+  Fort25Fixture f;
+  const std::string text = f.text();
+  f.set_cpp({cplx(not_a_number, 0.0), f.s[1]});
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+TEST(GateComparisons, Fort25FailsOnAFortranNaNToken) {
+  const Fort25Fixture f;
+  const Fort25Comparison c = compare_text(f.run, replaced(f.text(), "0.100000D-01", "NaN"));
+  EXPECT_EQ(c.failed, 1);
+  EXPECT_EQ(c.compared, 1);
+}
+
+TEST(GateComparisons, Fort25FailsOnAnInfinityOrAsteriskToken) {
+  const Fort25Fixture f;
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), "0.100000D-01", "Infinity")).failed, 1);
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), "0.100000D-01", "*************")).failed, 1);
+}
+
+TEST(GateComparisons, Fort25ReadsAThreeDigitExponent) {
+  EXPECT_EQ(fortran_number("0.100000-119"), 0.1e-119);
+  EXPECT_EQ(fortran_number("-0.250000+123"), -0.25e123);
+  EXPECT_EQ(fortran_number("0.500000D+00"), 0.5);
+  EXPECT_FALSE(fortran_number("NaN"));
+  EXPECT_FALSE(fortran_number("Infinity"));
+  EXPECT_FALSE(fortran_number("*********"));
+  EXPECT_EQ(parse_fortran_real("0.100000-119"), 0.1e-119);
+  // The printed digits of such a value: half a unit of its 6th digit, not of an exponent 0.
+  EXPECT_EQ(fortran_text_with_e("0.100000-119"), "0.100000E-119");
+  EXPECT_EQ(printed_text_tolerance(fortran_text_with_e("0.100000-119"), 0.0), 1.01 * 0.5 * std::pow(10.0, -125));
+}
+
+// The second block's header with diffraction order 2: its row matches no C++ state of that order.
+TEST(GateComparisons, Fort25WrongOrderHeaderFails) {
+  const Fort25Fixture f;
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), "   0   0   0   1", "   0   0   0   2")).failed, 1);
+}
+
+TEST(GateComparisons, Fort25DuplicateKeyFails) {
+  const Fort25Fixture f;
+  const std::string text = f.text() + f.row(1, 1, 0) + "\n";
+  const Fort25Comparison c = compare_text(f.run, text);
+  EXPECT_EQ(c.failed, 1);
+  EXPECT_EQ(c.rows, 3);
+  EXPECT_NE(c.rows, c.expected_rows);
+}
+
+TEST(GateComparisons, Fort25UnmatchedRowFails) {
+  const Fort25Fixture f;
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), f.row(1, 1, 0), f.row(1, 2, 0))).failed, 1);
+}
+
+TEST(GateComparisons, Fort25MissingRowsFailTheCount) {
+  const Fort25Fixture f;
+  const Fort25Comparison c = compare_text(f.run, replaced(f.text(), f.row(1, 1, 0) + "\n", ""));
+  EXPECT_EQ(c.rows, 1);
+  EXPECT_NE(c.rows, c.expected_rows);
+}
+
+// Without the second header its row belongs to the first block (order 0), where the C++ has no such state.
+TEST(GateComparisons, Fort25CollapsedHeaderFails) {
+  const Fort25Fixture f;
+  const std::string header =
+      " v j mj dif.order are:   0   0   0   1\n  m1  m2        s-matrix element          prob          phase\n";
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), header, "")).failed, 1);
+}
+
+// arg S of the C++ just below pi, the Fortran's printed phase just above -pi: the same angle.
+TEST(GateComparisons, Fort25PhaseWrapsAround) {
+  Fort25Fixture f;
+  f.s = {cplx(-0.01, 1e-12), f.s[1]};
+  f.set_cpp(f.s);
+  std::string text = f.text();
+  text = replaced(text, "0.100000D-11", "-0.100000D-11");
+  text = replaced(text, std::format("{:10.6f}", std::arg(f.s[0])), std::format("{:10.6f}", -std::numbers::pi));
+  EXPECT_EQ(compare_text(f.run, text, 1e-9).failed, 0);
+}
+
+// The Fortran prints open channels only: a row of a state whose level lies above the total energy fails.
+TEST(GateComparisons, Fort25ClosedChannelRowFails) {
+  Fort25Fixture f;
+  const std::string text = f.text();
+  f.run.level_energy_ev = {{-4.0}};  // E(0, 0) above the total energy -4.267141 eV
+  const Fort25Comparison c = compare_text(f.run, text);
+  EXPECT_EQ(c.expected_rows, 0);
+  EXPECT_EQ(c.failed, 2);
+}
+
+// A block's printed total energy one unit of its 8th digit away from the C++ energy fails once.
+TEST(GateComparisons, Fort25WrongTotalEnergyFails) {
+  const Fort25Fixture f;
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), "-0.42671410D+01", "-0.42671411D+01")).failed, 1);
 }

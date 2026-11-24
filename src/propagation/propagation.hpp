@@ -98,6 +98,11 @@ class WavePacketPropagation {
 
   // S-matrix and probabilities from the analysis steps done so far.
   [[nodiscard]] ScatteringResults scattering_results() const { return s_matrix_.results(surface_.fixed_line()); }
+  // The same with the initial state's phase referred to specular_line instead (nothing: to Zana, as the Fortran
+  // did for every state up to r1719); gate 4's negative check compares that convention with the reference.
+  [[nodiscard]] ScatteringResults scattering_results(std::optional<double> specular_line) const {
+    return s_matrix_.results(specular_line);
+  }
 
  private:
   // The averages at `time` for the observer (and the densities they come from, when it asks for them), from

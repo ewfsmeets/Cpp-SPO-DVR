@@ -183,14 +183,16 @@ differences are in [validation.md](validation.md).
   [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d1-nrofes--0-and-1-pass-the-check).
 - analysis D2<a id="analysis-d2"></a>: the phase of the initial state's S-matrix elements (the elastic element and
   the vibrationally inelastic specular ones) is referred to the line where those coefficients are measured, the
-  specular analysis line Z_sp once it is fixed, not to Zana. The Fortran removes the free outgoing phase at
-  `ZAnalysis` for every channel (`Analyzor.f90 smatrix_calc`, `probaf`), so its elements of that state carry an
-  extra e^{ik(Z_sp − Zana)}: several radians in every reference case, and run-dependent with the dynamic line.
-  |S| and every probability are the same in both codes. The C++ fix: `measurement_line`
+  specular analysis line Z_sp once it is fixed, not to Zana. The Fortran's fine analysis removes the free outgoing
+  phase at `ZAnalysis` for every channel (`Analyzor.f90 probaf`), as its on-the-fly analysis (`smatrix_calc`) did
+  up to r1719, so its elements of that state carry an extra e^{ik(Z_sp − Zana)}: several radians in every
+  reference case, and run-dependent with the dynamic line. Upstream r1720 refers the on-the-fly elements to Z_sp
+  as the C++ does; the reference is r1727, and gate 4 compares them, phases included. So the deviation remains in
+  the fine analysis only. |S| and every probability are the same in both codes. The C++ fix: `measurement_line`
   (`src/analysis/s_matrix.cpp`), used by the on-the-fly and the fine analysis; an analysis-only run reads Z_sp
   from the checkpoint in RestartDir. Gate 5 analyses the Fortran's BK file without a checkpoint, i.e. with the
   Fortran's convention, to compare with its fort.25. Tests: `ElasticPhase.HardWallElasticElementIsTheExactReflection`
-  (the hard-wall elastic element against the exact 1D reflection, with the Fortran phase as negative test),
+  (the hard-wall elastic element against the exact 1D reflection, with the phase referred to Zana as negative test),
   `SMatrix.InitialStatePhaseRefersToTheSpecularLine`. Details: [fortran_elastic_phase_bug.md](fortran_elastic_phase_bug.md).
 - analysis D3<a id="analysis-d3"></a>: VIn = nR − 1 is an input error. Without VAna the gas phase analyses at most
   nR − 1 vibrational levels (v = 0 to nR − 2: `GasPhase.f90 SetupAsympWF` stops the open-level search at

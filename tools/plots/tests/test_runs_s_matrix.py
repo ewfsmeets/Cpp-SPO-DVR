@@ -22,7 +22,8 @@ def rebuilt_s_matrix(run: Path, slip: str = "") -> tuple[np.ndarray, np.ndarray]
     """S (n_energies, n_v, n_states) of a run from its BK file, and the BK file's state labels. The slips of
     the negative tests: "collision energy" puts E_coll instead of E_tot into the time phase; "cartesian"
     takes the skewed reciprocal-axis components kx, ky as Cartesian in k0; "zana" refers every phase to Zana
-    (the Fortran's convention: the initial state is measured at the specular line)."""
+    (the convention of the Fortran's fine analysis, and its on-the-fly analysis up to r1719: the initial state is
+    measured at the specular line)."""
     info = read_run_info(run)
     bk = read_bk_coefficients(run / "bk_coefficients.bin")
     energies = analysis_energies(info)

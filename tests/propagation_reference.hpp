@@ -21,6 +21,7 @@
 #include <nlohmann/json.hpp>
 
 #include "comparison.hpp"
+#include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
 #include "gasphase/gas_phase.hpp"
 #include "grids/angular_grid.hpp"
@@ -64,6 +65,9 @@ struct FortranPropagationReference {
 inline double parse_fortran_real(std::string token) {
   for (char& c : token)
     if (c == 'D' || c == 'd') c = 'E';
+  // gfortran drops the letter of a three-digit exponent (0.100000-119): put it back, else std::stod stops there.
+  if (const auto sign = token.find_first_of("+-", 1); token.find('E') == std::string::npos && sign != std::string::npos)
+    token.insert(sign, "E");
   return std::stod(token);
 }
 
@@ -129,6 +133,11 @@ inline std::optional<FortranPropagationReference> read_fortran_reference(const s
   return ref;
 }
 
+// The labels of one analysed rotation-diffraction state: (j, mJ) and the diffraction channel's order and (n, m).
+struct StateLabel {
+  int j = 0, mj = 0, order = 0, n = 0, m = 0;
+};
+
 // The C++ run of a reference case, up to tEnd.
 struct PropagationRun {
   InitialWavePacketInfo initial;
@@ -139,6 +148,10 @@ struct PropagationRun {
   int initial_state = 0;                              // index is of the initial state in the analysis basis
   int n_states = 0;                                   // analysed states (the s_matrix layout is + n_states * v)
   std::optional<double> specular_line;                // Z of the fixed specular analysis line, if it became fixed
+  std::vector<StateLabel> states;                     // per analysed state is
+  int n_v = 0;                                        // analysed vibrational levels
+  std::vector<std::vector<double>> level_energy_ev;   // E(v, j) of the gas phase (eV), v < n_v, j <= JMax
+  ScatteringResults scattering_zana;                  // the same S-matrix with every phase referred to Zana
 };
 
 // The C++ run of a configuration with the PES pes in place of its own (a negative test's modified
@@ -158,10 +171,21 @@ inline PropagationRun run_cpp_propagation(const Config& config, const Potential&
   observer.on_analysis_step = [&](double, const BkCoefficients& bk) { run.bk.push_back(bk.values); };
   propagation.run(observer);
   run.scattering = propagation.scattering_results();
+  run.scattering_zana = propagation.scattering_results(std::nullopt);
   run.specular_line = propagation.analysis_surface().fixed_line();
   const AnalysisBasis& basis = propagation.analysis_basis();
   run.initial_state = basis.initial_state();
   run.n_states = basis.n_states();
+  run.n_v = basis.n_v();
+  for (int is = 0; is < basis.n_states(); ++is) {
+    const DiffractionChannel& c = basis.channel(is);
+    run.states.push_back({basis.j(is), basis.mj(is), c.order, c.n, c.m});
+  }
+  const double chaev = units::legacy.energy_factor();
+  for (int v = 0; v < basis.n_v(); ++v) {
+    run.level_energy_ev.emplace_back();
+    for (int j = 0; j <= config.input.j_max; ++j) run.level_energy_ev.back().push_back(gas.states.energy(v, j) * chaev);
+  }
   for (int irotana = 0; irotana < basis.n_rotation(); ++irotana)
     run.rotation_labels.emplace_back(basis.j(irotana * basis.n_diffraction()),
                                      basis.mj(irotana * basis.n_diffraction()));

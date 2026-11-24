@@ -201,6 +201,21 @@ derived from exactly the same parameters.
    tests/analysis_reference.hpp), and
    the probabilities of a Fortran run split by a restart
    (`fortran_restart_stdout.txt`, tools/fortran_reference/run_restart_reference.sh).
+   Since the reference is r1727 (2026-11-24) also every S-matrix row of the Fortran's on-the-fly
+   `fortran_fort25.txt` (tests/fort25_reference.hpp; r1720 refers the initial state's phase to the specular
+   analysis line, as the C++ does): Re S and Im S within the printed half units plus 1e-9 · max(S_scale, 1e-4),
+   S_scale the case's largest \|S\|; P within its printed half unit plus the effect of that term; the phase where
+   the printed digits fix it within 1e-3 rad (19769 of the 41536 rows of cu111_dailight_short, 36065 of
+   cu111_dailight_small); and each block's total energy. The code term was measured on every case with the CPU, the
+   GPU and both fast-math builds: largest 5.99e-11 of the scale, in hardwall_short with fast-math, whose elements
+   are all rounding noise (\|S\| ≤ 2.4e-15, so the floor 1e-4 binds, as for its BK coefficients); at most 2.1e-12
+   with the default builds; 1e-9 is the smallest power of 10 with a margin of 10 over that. Where \|S\| is large
+   (cu111_dailight_small, scm_cu111_srp48_small) the printed digits bind on every row. Counts: the rows read equal
+   the Fortran's print rule (the open channels, E_total > E(v, j)) applied to the C++ run and an independent count
+   of the file's row lines; every row matches an open C++ state of its block's diffraction order; the number of
+   phases compared is pinned per case. Negative check on the same run: the initial state's phase referred to Zana
+   (the Fortran's convention up to r1719) fails exactly the rows r1720 changed (50 per Dai–Light case, 51 in
+   hardwall_small, 21 in scm_cu111_srp48_small; none in hardwall_short, whose line never fixes).
    Status: all pass. Full hard-wall run (hardwall_small, 7000 steps): probabilities worst 0.989451
    of half a printed unit, BK (1400 records) 6.36e-13 of max|c| = 0.409; Fortran restart run
    worst 0.99. In hardwall_short all BK coefficients are
@@ -223,7 +238,8 @@ derived from exactly the same parameters.
    elastic element of a hard-wall run (hardwall_small with one rotational state and 2 × 2 (x, y)
    points, 7000 steps, ≈ 13 s at 8 threads) with the exact 1D reflection amplitude (Numerov) at
    0.25–0.55 eV: phase within 1e-2 rad, \|S\| within 4e-3 (measured 6.24e-3 rad and 1.85e-3: the time-step
-   error and the norm not yet across the line at tEnd); the Fortran's phase fails at all 31 energies.
+   error and the norm not yet across the line at tEnd); the phase referred to Zana (the Fortran's fine analysis,
+   and its on-the-fly analysis up to r1719) fails at all 31 energies.
    Note: the associated Gauss-Legendre quadrature for |mJ| > 0 is dead code in the Fortran
    (`setupdvr.f90` forces `SymmetryInPhi = .FALSE.`, so only mJ = 0 is used). The rotational
    basis uses `legendre.f90 AssociatedLegendre` instead (C++ `associated_legendre`), tested

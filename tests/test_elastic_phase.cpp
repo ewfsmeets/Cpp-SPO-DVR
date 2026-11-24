@@ -77,8 +77,9 @@ double wrapped(double phase) { return std::remainder(phase, 2.0 * Constants::pi)
 // The program's convention makes S = -R for a pure reflection. Between 0.25 and 0.55 eV (inside the packet's
 // 0.2-0.6 eV) the phase of the elastic element agrees with arg(-R) to 1e-2 rad and |S| with 1 to 4e-3; the
 // residuals measured at dt = 2 were 6.2e-3 rad and 1.8e-3 (the time-step error, O(dt^2), and the norm not yet
-// across the line at tEnd). Negative test: the Fortran's phase, referred to Zana although the initial state is
-// measured at the specular line Z_sp = 8.64, i.e. S e^{ik(Z_sp - Zana)}, fails at every energy.
+// across the line at tEnd). Negative test: the phase referred to Zana although the initial state is measured at the
+// specular line Z_sp = 8.64 (the Fortran's fine analysis, and its on-the-fly analysis up to r1719), i.e.
+// S e^{ik(Z_sp - Zana)}, fails at every energy.
 TEST(ElasticPhase, HardWallElasticElementIsTheExactReflection) {
   const spodvr::Config config = spodvr::testing::case_config(reduced_hard_wall());
   const auto pes = spodvr::make_potential(config.input);

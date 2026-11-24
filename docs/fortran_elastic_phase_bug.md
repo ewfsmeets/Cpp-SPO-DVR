@@ -1,9 +1,12 @@
 # Bug: the phase of the specular S-matrix elements is referred to the wrong Z
 
 **Status:** fixed in the C++ on 2026-11-21 (a deviation from the Fortran: [fortran_deviations.md](fortran_deviations.md),
-analysis D2; see [The C++ fix](#the-c-fix)); open in the Fortran (5.19, 5.24 and upstream master). The C++ port
-reproduced the bug until then. It was found in a code review on 2026-11-20 and verified on the hard-wall case against
-the exact answer.
+analysis D2; see [The C++ fix](#the-c-fix)). Fixed upstream for the on-the-fly analysis in r1720 (`smatrix_calc`,
+2026-11-21, the patch of [Proposed fix: Fortran](#proposed-fix-fortran)); the reference is r1727 since 2026-11-23,
+and gate 4 compares those elements, phases included ([validation.md](validation.md)). Still open in the Fortran's
+fine analysis (`probaf`, `Analyzor.f90` line 1406 at r1727), and in 5.19 and 5.24. The C++ port reproduced the bug
+until 2026-11-21. It was found in a code review on 2026-11-20 and verified on the hard-wall case against the exact
+answer.
 
 **In one paragraph.** With two grids (`ProjOp = 2`), the S-matrix elements of every channel are extracted from
 Balint-Kurti (BK) coefficients taken at the analysis line `Zana`. The exception is the initial rotational-diffraction
@@ -113,9 +116,9 @@ and not the total momentum: the oblique-incidence run below tells these apart.
 - **Wrong:**
   - Re S, Im S and `phase` of every element of the initial rotational-diffraction state: the elastic element and the
     vibrationally inelastic specular elements (v ≠ v_in, same j, mJ and diffraction order).
-  - Where they are written: Fortran stdout and fort.25 (on-the-fly and fine analysis); before the fix also the C++
-    `s_matrix.tsv` (on-the-fly and `fine_analysis/`) and the elastic phase column of the printed fine-analysis
-    spectrum.
+  - Where they are written: Fortran stdout and fort.25 (the fine analysis; the on-the-fly analysis up to r1719);
+    before the fix also the C++ `s_matrix.tsv` (on-the-fly and `fine_analysis/`) and the elastic phase column of
+    the printed fine-analysis spectrum.
 - **Size:** k_f (Z_sp − Zana) radians.
 
   | Case (Fortran reference) | `Zana` (bohr) | Z_sp (bohr) | Offset per unit k_f | At 0.4 eV normal incidence (k ≈ 10.4 a.u.) |
@@ -139,7 +142,9 @@ and not the total momentum: the oblique-incidence run below tells these apart.
 - **Not affected:**
   - |S|, all probabilities, their sums and averages, the reaction probability;
   - the BK coefficients themselves (`bk_coefficients.bin`, fort.21): they are correct coefficients at their own lines;
-  - gates 1–4 (gate 4 compares probabilities and BK coefficients, no phases);
+  - gates 1–4 as they were then (gate 4 compared probabilities and BK coefficients, no phases; since the reference
+    is r1727 it also compares the on-the-fly S elements, phases included, which r1720 refers to Z_sp as the C++
+    does);
   - the plot tool's time delays (`tools/plots/compute/time_series.py` `time_delays`). They are computed from the BK
     coefficients with each channel's own line Z_f, so they are already right.
 - **Gate 5 compares phases.** It compares fort.25 Re S / Im S / phase with the C++. Before the fix both carried the
@@ -155,10 +160,11 @@ coupling, so the elastic element is exactly the 1D reflection amplitude of V_Z: 
 no other channel is open (ΣP(other) ≤ 2e-9 in the runs).
 
 - The script below computes R by Numerov integration of V_Z (`HardWallPES.f90`). It compares arg R with the elastic
-  S that the Fortran printed in the committed reference fort.25 (`tests/reference/hardwall_small/fortran_fort25.txt`,
-  5.24 r1713 `-O3`; Z_sp = 8.64 from `fortran_stdout.txt`).
-- Run from the repository root:
-  `.venv/bin/python -I -B elastic_phase_check.py tests/reference/hardwall_small/fortran_fort25.txt`.
+  S that the Fortran printed in the reference fort.25 of 5.24 r1713 `-O3` (`tests/reference/hardwall_small/
+  fortran_fort25.txt` until 2026-11-23, i.e. `git show 383fd40:tests/reference/hardwall_small/fortran_fort25.txt`;
+  Z_sp = 8.64 from `fortran_stdout.txt`).
+- Run from the repository root, on that file:
+  `.venv/bin/python -I -B elastic_phase_check.py r1713_fortran_fort25.txt`.
 - Output, 41 energies from 0.20 to 0.60 eV (excerpt):
 
   ```text
@@ -172,6 +178,8 @@ no other channel is open (ΣP(other) ≤ 2e-9 in the runs).
 
 - The plain difference equals k (Z_sp − Zana) wrapped to (−π, π], e.g. 4.703 − 2π = −1.580 at 0.2 eV. After that
   factor is removed, 0.010 rad is left, which is the time-step error of the propagation (next point).
+- On the committed reference of r1727 (with the r1720 fix) the columns swap: max \|arg S − arg(−R)\| = 0.0101 rad,
+  and 1.8680 rad with the factor (measured 2026-11-24).
 
 <details>
 <summary>elastic_phase_check.py</summary>
@@ -341,7 +349,8 @@ A deliberate deviation from the Fortran (analysis D2). It changes only the phase
    restart files. `alsoAnalysis` reads the checkpoint the run has just written.
 4. **Gate 5 keeps comparing with the Fortran.** It runs `run_fine_analysis` on the Fortran's BK file without a
    checkpoint, so every phase refers to `Zana` as in the Fortran's fort.25. No production mode, no input key, and
-   the tolerances are unchanged. No other gate compares phases.
+   the tolerances are unchanged. No other gate compared phases then; since the reference is r1727, gate 4 compares
+   the on-the-fly elements, phases included, with the Fortran's (both refer the initial state to Z_sp).
 5. **The plot tool** follows: its copy of the S-matrix formula (`tools/plots/copies/s_matrix.py`
    `channel_factors`) takes each channel's measurement line. `PlotRuns.test_runs_s_matrix` rebuilds `s_matrix.tsv`
    with the lines from `checkpoint.bin`, and gains a negative case: every phase at `Zana` fails at all 41 energies
@@ -352,7 +361,8 @@ A deliberate deviation from the Fortran (analysis D2). It changes only the phase
      dynamics, 7000 steps) against the exact 1D reflection amplitude (Numerov on V_Z of the program's own hard-wall
      PES) at 0.25–0.55 eV.
      - Phase within 1e-2 rad, measured 6.24e-3 rad; |S| within 4e-3, measured 1.85e-3. Z_sp = 8.64.
-     - Negative test: the Fortran's phase, S e^{ik(Z_sp − Zana)}, fails at all 31 energies (k (Z_sp − Zana) is
+     - Negative test: the phase referred to Zana (the Fortran's fine analysis, and its on-the-fly analysis up to
+       r1719), S e^{ik(Z_sp − Zana)}, fails at all 31 energies (k (Z_sp − Zana) is
        5.26 to 7.80 rad there, at least 0.027 rad from 2π).
    - `SMatrix.InitialStatePhaseRefersToTheSpecularLine` (`tests/test_analysis.cpp`). On synthetic BK sums:
      - the initial state's elements are the Fortran-convention ones times e^{−ik_f (Z_sp − Zana)}, for every v;
@@ -386,7 +396,8 @@ A deliberate deviation from the Fortran (analysis D2). It changes only the phase
 
 ## Open points
 
-- **Report it upstream?** The Fortran is affected in 5.19, 5.24 and master; the patch above is a few lines.
+- **Upstream.** Reported; r1720 (2026-11-21) applies the patch above to `smatrix_calc` (`Analyzor.f90` lines
+  647–655 at r1727). `probaf` (`nread = 2`, line 1406 at r1727) still refers to `ZAnalysis`.
 - **The scattering-grid part before fixing.** Its being zero is inferred from the projection in every potential
   step and not measured. If it were not, the factor would have to be applied per coefficient during the time
   accumulation, only to coefficients taken after fixing (a separate sum for the initial state). The hard-wall test
