@@ -139,21 +139,40 @@ TEST(GasPhase, JMax7OpensJ5) {
   EXPECT_FALSE(has_warning(gas, "Rotational basis too small to describe all open channels!"));
 }
 
-// With JAna 3 the open level j = 5 is not analysed: the warning tests the next level of the basis, j = 5.
+// With JAna 3 the open level j = 5 is not analysed: the warning tests the next level of the basis, j = 5. With
+// EMaxWP 0.17 eV j = 4 (0.142 eV) is open but j = 5 (0.209) closed: no warning, so the warning tests j = 5,
+// not j = 4.
 TEST(GasPhase, OddJInWarnsForTheNextOddLevel) {
   nlohmann::json changes = odd_jin_example;
   changes.update({{"JMax", 7}, {"MJMax", 7}, {"EMinWP", 0.2}, {"EMaxWP", 0.3}, {"JAna", 3}});
   const GasPhase gas = hard_wall_gas_phase(hard_wall_config(changes));
   EXPECT_EQ(gas.j_max_analysis, 3);
   EXPECT_TRUE(has_warning(gas, "Not all open j channels analysed!"));
+  changes.update({{"EMinWP", 0.1}, {"EMaxWP", 0.17}});
+  const GasPhase even_open = hard_wall_gas_phase(hard_wall_config(changes));
+  EXPECT_EQ(even_open.j_max_analysis, 3);
+  EXPECT_FALSE(has_warning(even_open, "Not all open j channels analysed!"));
+}
+
+// The message of the std::logic_error that f throws ("" if it throws none).
+template <class F>
+std::string logic_error_message(F f) {
+  try {
+    f();
+  } catch (const std::logic_error& error) {
+    return error.what();
+  }
+  return "";
 }
 
 // The post-conditions, reached only through a configuration changed after validation.
 TEST(GasPhase, PostConditionsThrow) {
   Config config = hard_wall_config({{"JIn", 2}});
   config.input.j_analysis = 0;
-  EXPECT_THROW((void)hard_wall_gas_phase(config), std::logic_error);
+  EXPECT_NE(logic_error_message([&] { (void)hard_wall_gas_phase(config); }).find("is above the highest analysed j"),
+            std::string::npos);
   config = hard_wall_config({{"VIn", 1}});
   config.input.v_analysis = 1;
-  EXPECT_THROW((void)hard_wall_gas_phase(config), std::logic_error);
+  EXPECT_NE(logic_error_message([&] { (void)hard_wall_gas_phase(config); }).find("is not among the 1 analysed"),
+            std::string::npos);
 }

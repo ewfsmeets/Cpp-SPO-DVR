@@ -203,19 +203,31 @@ derived from exactly the same parameters.
    (`fortran_restart_stdout.txt`, tools/fortran_reference/run_restart_reference.sh).
    Since the reference is r1727 (2026-11-24) also every S-matrix row of the Fortran's on-the-fly
    `fortran_fort25.txt` (tests/fort25_reference.hpp; r1720 refers the initial state's phase to the specular
-   analysis line, as the C++ does): Re S and Im S within the printed half units plus 1e-9 · max(S_scale, 1e-4),
-   S_scale the case's largest \|S\|; P within its printed half unit plus the effect of that term; the phase where
-   the printed digits fix it within 1e-3 rad (19769 of the 41536 rows of cu111_dailight_short, 36065 of
-   cu111_dailight_small); and each block's total energy. The code term was measured on every case with the CPU, the
-   GPU and both fast-math builds: largest 5.99e-11 of the scale, in hardwall_short with fast-math, whose elements
-   are all rounding noise (\|S\| ≤ 2.4e-15, so the floor 1e-4 binds, as for its BK coefficients); at most 2.1e-12
-   with the default builds; 1e-9 is the smallest power of 10 with a margin of 10 over that. Where \|S\| is large
-   (cu111_dailight_small, scm_cu111_srp48_small) the printed digits bind on every row. Counts: the rows read equal
-   the Fortran's print rule (the open channels, E_total > E(v, j)) applied to the C++ run and an independent count
-   of the file's row lines; every row matches an open C++ state of its block's diffraction order; the number of
-   phases compared is pinned per case. Negative check on the same run: the initial state's phase referred to Zana
-   (the Fortran's convention up to r1719) fails exactly the rows r1720 changed (50 per Dai–Light case, 51 in
-   hardwall_small, 21 in scm_cu111_srp48_small; none in hardwall_short, whose line never fixes).
+   analysis line, as the C++ does). The tolerances add the Fortran's printed digits and a code term
+   c · max(S_scale, 1e-3), c = 1e-10, S_scale the case's largest \|S\|:
+
+   - S: \|S_C++ − S_F\| within the printed half units of Re S and Im S (combined; a printed zero is exact) plus
+     the code term;
+   - P: within its printed half unit plus the code term's effect on \|S\|²;
+   - the phase: within its printed half unit plus code term / \|S\| (the Fortran prints the phase of its
+     unrounded S), compared where that bound is at most 1e-3 rad, i.e. \|S\| ≳ 1e3 times the code term (31624
+     of the 41536 rows of cu111_dailight_short, 36534 of cu111_dailight_small, none in hardwall_short); a C++
+     phase must be finite on every row;
+   - each block's printed total energy.
+
+   The code term was measured on every case with the CPU, the GPU and both fast-math builds: the largest
+   difference beyond the printed digits is 5.99e-12 of max(S_scale, 1e-3), in hardwall_short with the fast-math
+   CPU build (its elements are all rounding noise, \|S\| ≤ 2.4e-15, so the floor 1e-3 binds); 1.1e-12 in the
+   Dai–Light cases with fast-math, at most 2.1e-13 with the default builds. c = 1e-10 is the smallest power of 10
+   with a margin of 10 over 5.99e-12. Where \|S\| is large (cu111_dailight_small, scm_cu111_srp48_small) the
+   printed digits bind on every row. Counts: the rows read equal the Fortran's print rule (the open channels,
+   E_total > E(v, j)) applied to the C++ run and an independent count of the file's row lines; every row matches
+   an open C++ state of its block's diffraction order; the number of phases compared is pinned per case. A run with
+   a single diffraction order is refused: the Fortran then prints one block header per v for all rotational
+   states. Negative check on the same run: the initial state's phase referred to Zana (the Fortran's convention up
+   to r1719) fails exactly the rows r1720 changed (50 per Dai–Light case, 51 in hardwall_small, 21 in
+   scm_cu111_srp48_small; none in hardwall_short, whose line never fixes); against the r1713 reference files the
+   C++ fails exactly those rows and the Zana convention none (measured once, 2026-11-24).
    Status: all pass. Full hard-wall run (hardwall_small, 7000 steps): probabilities worst 0.989451
    of half a printed unit, BK (1400 records) 6.36e-13 of max|c| = 0.409; Fortran restart run
    worst 0.99. In hardwall_short all BK coefficients are
@@ -235,8 +247,8 @@ derived from exactly the same parameters.
    (fortran_deviations.md, analysis D2). Status: all
    pass (worst 0.990127 of half a printed unit, in `Gate5DaiLight`).
    Independent of the Fortran: `ElasticPhase.HardWallElasticElementIsTheExactReflection` compares the
-   elastic element of a hard-wall run (hardwall_small with one rotational state and 2 × 2 (x, y)
-   points, 7000 steps, ≈ 13 s at 8 threads) with the exact 1D reflection amplitude (Numerov) at
+   elastic element of a hard-wall run (hardwall_small with JMax 2, i.e. 6 rotational states (JMax 0 is an input
+   error since r1726), and 2 × 2 (x, y) points, 7000 steps, ≈ 20 s at 8 threads) with the exact 1D reflection amplitude (Numerov) at
    0.25–0.55 eV: phase within 1e-2 rad, \|S\| within 4e-3 (measured 6.24e-3 rad and 1.85e-3: the time-step
    error and the norm not yet across the line at tEnd); the phase referred to Zana (the Fortran's fine analysis,
    and its on-the-fly analysis up to r1719) fails at all 31 energies.

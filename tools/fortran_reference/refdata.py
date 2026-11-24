@@ -42,6 +42,7 @@ Docs: tools/fortran_reference/README.md.
 """
 
 import argparse
+import cmath
 import datetime
 import functools
 import hashlib
@@ -542,14 +543,24 @@ def comparable_lines(text, labels):
     return kept
 
 
+def e_format(token):
+    """A printed number with an E exponent: D becomes E, and a three-digit exponent without its letter (gfortran
+    prints 0.100000-119) gets it back."""
+    text = token.upper().replace("D", "E")
+    sign = max(text.rfind("+"), text.rfind("-"))
+    if "E" not in text and sign > 0:
+        text = text[:sign] + "E" + text[sign:]
+    return text
+
+
 def as_float(token):
-    """The value of a printed number (D exponents included)."""
-    return float(token.upper().replace("D", "E"))
+    """The value of a printed number (D exponents and three-digit exponents without their letter included)."""
+    return float(e_format(token))
 
 
 def printed_unit(token):
     """The value of one unit in the last printed digit of a number."""
-    mantissa, _, exponent = token.upper().replace("D", "E").partition("E")
+    mantissa, _, exponent = e_format(token).partition("E")
     decimals = len(mantissa.partition(".")[2])
     # Not 10.0 ** n, which overflows: hex digits in the CRP outputs read as numbers like 4e5123.
     return float(f"1e{int(exponent or 0) - decimals}")
@@ -740,9 +751,10 @@ def channel_momentum(case, v, momentum):
 
 
 def initial_row_change(diff, case, where, v, momentum, old, new):
-    """Records whether one changed initial-state row (Re S, Im S, P, phase as printed) changed only as the
-    r1720 rotation does: |S| and P kept to their printed digits, the phase rotated by -k_v (Z_sp - Zana) mod
-    2 pi within the printed digits. The comparisons are written so that a NaN fails them."""
+    """Records whether one initial-state row (Re S, Im S, P, phase as printed; changed or not) changed only as
+    the r1720 rotation does: S_new = S_old exp(-i k_v (Z_sp - Zana)) and |S| within the printed digits of Re S
+    and Im S (and the rounding of k_v, Zana and Z_sp), P within one printed unit, and the printed phase rotated
+    by the same angle mod 2 pi. The comparisons are written so that a NaN fails them."""
     diff.numbers += sum(a != b for a, b in zip(old, new, strict=True))
     values = [as_float(token) for token in (*old, *new)]
     if not all(math.isfinite(x) for x in values):
@@ -756,8 +768,8 @@ def initial_row_change(diff, case, where, v, momentum, old, new):
         diff.forbid(f"{where}: |S| changed ({old[0]} {old[1]} became {new[0]} {new[1]})")
     if not abs(p_old - p_new) <= max(printed_unit(old[2]), printed_unit(new[2])) * (1 + UNIT_SLACK):
         diff.forbid(f"{where}: P {old[2]} became {new[2]}, more than one printed unit")
-    if re_old == 0.0 or re_new == 0.0:
-        return  # the Fortran prints a zero phase when Re S = 0 (smatrix_combine)
+    if re_old == im_old == re_new == im_new == 0.0:
+        return  # S = 0 has no phase to rotate
     if momentum is None:
         diff.forbid(f"{where}: no 'total momentum' line before the row")
         return
@@ -768,8 +780,19 @@ def initial_row_change(diff, case, where, v, momentum, old, new):
     k, dk = found
     distance = case.z_sp - case.z_ana
     expected = -k * distance
+    angle_tolerance = abs(distance) * dk + k * case.z_rounding
+    rotated = complex(re_old, im_old) * cmath.exp(1j * expected)
+    s_deviation = abs(complex(re_new, im_new) - rotated)
+    s_rotation_tolerance = s_tolerance + abs(complex(re_old, im_old)) * angle_tolerance
+    if not s_deviation <= s_rotation_tolerance * (1 + UNIT_SLACK):
+        diff.forbid(
+            f"{where}: S {old[0]} {old[1]} became {new[0]} {new[1]}, not S_old exp(-i k (Z_sp - Zana)) "
+            f"(off by {s_deviation:.3g}, tolerance {s_rotation_tolerance:.3g})"
+        )
+    if re_old == 0.0 or re_new == 0.0:
+        return  # the Fortran prints a zero phase when Re S = 0 (smatrix_combine)
     deviation = math.remainder(phase_new - phase_old - expected, 2.0 * math.pi)
-    tolerance = 0.5 * (printed_unit(old[3]) + printed_unit(new[3])) + abs(distance) * dk + k * case.z_rounding
+    tolerance = 0.5 * (printed_unit(old[3]) + printed_unit(new[3])) + angle_tolerance
     diff.max_abs = max(diff.max_abs, abs(deviation))
     if not abs(deviation) <= tolerance * (1 + UNIT_SLACK):
         diff.forbid(
@@ -781,7 +804,7 @@ def initial_row_change(diff, case, where, v, momentum, old, new):
 def initial_phase_differences(old, new, case):
     """The Differences of two versions of an on-the-fly fort.25 under class initial_phase: only the rows
     m1 = m2 = 0 below a block header of the initial state (v any, JIn, MJIn, diffraction order 0) may change,
-    as initial_row_change allows; every other line must be identical."""
+    and each of them, changed or not, as initial_row_change allows; every other line must be identical."""
     diff = Differences()
     a, b = old.decode().splitlines(), new.decode().splitlines()
     if len(a) != len(b):
@@ -796,11 +819,15 @@ def initial_phase_differences(old, new, case):
         found = FORT25_MOMENTUM.fullmatch(x)
         if found:
             momentum = found.group(1)
-        if x == y:
-            continue
-        diff.lines += 1
         row_old, row_new = FORT25_ROW.fullmatch(x), FORT25_ROW.fullmatch(y)
         initial = state is not None and state[1:] == (case.j_in, case.mj_in, 0)
+        if x == y:
+            if initial and row_old and row_old.group(1, 2) == ("0", "0"):  # unchanged: must be the rotation too
+                initial_row_change(
+                    diff, case, f"line {number}", state[0], momentum, row_old.groups()[2:], row_old.groups()[2:]
+                )
+            continue
+        diff.lines += 1
         if not (initial and row_old and row_new and row_old.group(1, 2) == ("0", "0") == row_new.group(1, 2)):
             diff.forbid(f"line {number}: {x.strip()!r} became {y.strip()!r}, not a row of the initial state")
             continue

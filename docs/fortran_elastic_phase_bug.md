@@ -356,8 +356,9 @@ A deliberate deviation from the Fortran (analysis D2). It changes only the phase
    with the lines from `checkpoint.bin`, and gains a negative case: every phase at `Zana` fails at all 41 energies
    of the oblique Dai-Light fixture (the smallest error 0.022 of the largest |S|, against the tolerance 1e-12).
 6. **Tests:**
-   - `ElasticPhase.HardWallElasticElementIsTheExactReflection` (`tests/test_elastic_phase.cpp`, ≈ 13 s at 8
-     threads). A hard-wall run (`hardwall_small` with one rotational state and 2 × 2 (x, y) points; the same Z, r
+   - `ElasticPhase.HardWallElasticElementIsTheExactReflection` (`tests/test_elastic_phase.cpp`, ≈ 20 s at 8
+     threads). A hard-wall run (`hardwall_small` with JMax 2, 6 rotational states, and 2 × 2 (x, y) points; until
+     2026-11-23 one rotational state, which r1726 makes an input error; the same Z, r
      dynamics, 7000 steps) against the exact 1D reflection amplitude (Numerov on V_Z of the program's own hard-wall
      PES) at 0.25–0.55 eV.
      - Phase within 1e-2 rad, measured 6.24e-3 rad; |S| within 4e-3, measured 1.85e-3. Z_sp = 8.64.

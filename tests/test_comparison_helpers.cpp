@@ -494,6 +494,7 @@ TEST(GateComparisons, Fort25ReadsAThreeDigitExponent) {
   EXPECT_FALSE(fortran_number("Infinity"));
   EXPECT_FALSE(fortran_number("*********"));
   EXPECT_EQ(parse_fortran_real("0.100000-119"), 0.1e-119);
+  EXPECT_EQ(parse_fortran_real("1.5e-03"), 1.5e-3);
   // The printed digits of such a value: half a unit of its 6th digit, not of an exponent 0.
   EXPECT_EQ(fortran_text_with_e("0.100000-119"), "0.100000E-119");
   EXPECT_EQ(printed_text_tolerance(fortran_text_with_e("0.100000-119"), 0.0), 1.01 * 0.5 * std::pow(10.0, -125));
@@ -522,8 +523,10 @@ TEST(GateComparisons, Fort25UnmatchedRowFails) {
 TEST(GateComparisons, Fort25MissingRowsFailTheCount) {
   const Fort25Fixture f;
   const Fort25Comparison c = compare_text(f.run, replaced(f.text(), f.row(1, 1, 0) + "\n", ""));
+  EXPECT_EQ(c.failed, 0);
   EXPECT_EQ(c.rows, 1);
-  EXPECT_NE(c.rows, c.expected_rows);
+  EXPECT_EQ(c.row_like_lines, 1);
+  EXPECT_EQ(c.expected_rows, 2);
 }
 
 // Without the second header its row belongs to the first block (order 0), where the C++ has no such state.
@@ -559,4 +562,129 @@ TEST(GateComparisons, Fort25ClosedChannelRowFails) {
 TEST(GateComparisons, Fort25WrongTotalEnergyFails) {
   const Fort25Fixture f;
   EXPECT_EQ(compare_text(f.run, replaced(f.text(), "-0.42671410D+01", "-0.42671411D+01")).failed, 1);
+}
+
+// Each of the three checks of a row on its own: S, P or the phase of the C++ off, the other two as printed.
+TEST(GateComparisons, Fort25SOnlyDeviationFails) {
+  Fort25Fixture f;
+  const std::string text = f.text();
+  f.run.scattering.energies[0].s_matrix[0] += cplx(1e-9, 0.0);  // above 7.1e-10 of digits + 2.2e-12 of code
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+TEST(GateComparisons, Fort25ProbabilityOnlyDeviationFails) {
+  Fort25Fixture f;
+  const std::string text = f.text();
+  f.run.scattering.energies[0].probability[0] += 1.2e-12;  // P 0.945177D-06: half a unit 5.05e-13
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+TEST(GateComparisons, Fort25PhaseOnlyDeviationFails) {
+  Fort25Fixture f;
+  const std::string text = f.text();
+  f.run.scattering.energies[0].phase[0] += 1e-5;  // the tolerance: 5.05e-7 + code / |S| = 5.07e-7
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+// A NaN in the C++ P or phase alone fails, also on a row whose phase is not compared (Re S printed 0).
+TEST(GateComparisons, Fort25NaNProbabilityOrPhaseFails) {
+  Fort25Fixture f;
+  std::string text = f.text();
+  f.run.scattering.energies[0].probability[0] = not_a_number;
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+  f.set_cpp(f.s);
+  f.run.scattering.energies[0].phase[0] = not_a_number;
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+  f.s[0] = cplx(0.0, -0.850680e-03);
+  f.set_cpp(f.s);
+  text = f.text();
+  const Fort25Comparison clean = compare_text(f.run, text);
+  EXPECT_EQ(clean.failed, 0);
+  EXPECT_EQ(clean.phase_compared, 1);
+  f.run.scattering.energies[0].phase[0] = not_a_number;
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+// The gate's assertions (expect_fort25_gate), each failing alone.
+TEST(GateComparisons, Fort25GateAssertsItsCounts) {
+  Fort25Comparison c;
+  c.rows = c.expected_rows = c.row_like_lines = c.compared = c.phase_compared = 2;
+  expect_fort25_gate(c, 0, {2, 0});
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(c, 0, {1, 0}), "phases compared vs the case's pin");
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(c, 1, {2, 0}), "referred to Zana");
+  Fort25Comparison failed = c;
+  failed.failed = 1;
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(failed, 0, {2, 0}), "failed rows");
+  Fort25Comparison not_compared = c;
+  not_compared.compared = 1;
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(not_compared, 0, {2, 0}), "rows compared vs rows read");
+  Fort25Comparison empty;
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(empty, 0, {0, 0}), "no rows read");
+  // From files: a missing row, and a row that the independent pattern does not count (an E exponent).
+  const Fort25Fixture f;
+  const Fort25Comparison missing = compare_text(f.run, replaced(f.text(), f.row(1, 1, 0) + "\n", ""));
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(missing, 0, {1, 0}), "rows read vs the Fortran's print rule");
+  const Fort25Comparison e_letter = compare_text(f.run, replaced(f.text(), "0.100000D-01", "0.100000E-01"));
+  EXPECT_NONFATAL_FAILURE(expect_fort25_gate(e_letter, 0, {2, 0}), "rows read vs an independent count of the file");
+}
+
+TEST(GateComparisons, Fort25RowOutsideABlockFails) {
+  const Fort25Fixture f;
+  const Fort25Comparison c = compare_text(f.run, f.row(0, 0, 0) + "\n" + f.text());
+  EXPECT_EQ(c.failed, 1);
+  ASSERT_EQ(c.failures.size(), 1u);
+  EXPECT_NE(c.failures[0].find("a row outside a block"), std::string::npos) << c.failures[0];
+}
+
+TEST(GateComparisons, Fort25ExtraEnergyBlockFails) {
+  const Fort25Fixture f;
+  EXPECT_EQ(compare_text(f.run, f.text() + " total energy = -0.42671410D+01\n").failed, 1);
+}
+
+TEST(GateComparisons, Fort25EmptyFileFails) {
+  const Fort25Fixture f;
+  const Fort25Comparison c = compare_text(f.run, "");
+  EXPECT_EQ(c.failed, 1);
+  EXPECT_EQ(c.rows, 0);
+  EXPECT_EQ(c.expected_rows, 2);
+}
+
+// A block header with a level the run does not analyse (v = 1 of n_v = 1, or v = -1).
+TEST(GateComparisons, Fort25LevelOutsideTheRunFails) {
+  const Fort25Fixture f;
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), "   0   0   0   1", "   1   0   0   1")).failed, 1);
+  EXPECT_EQ(compare_text(f.run, replaced(f.text(), "   0   0   0   1", "  -1   0   0   1")).failed, 1);
+}
+
+// Elements that are all rounding noise (|S| ~ 1e-15): the scale is the floor 1e-3, the code term 1e-13.
+TEST(GateComparisons, Fort25CodeTermAtTheFloor) {
+  Fort25Fixture f;
+  f.s = {cplx(1e-15, 2e-15), cplx(-1e-15, 1e-15)};
+  f.set_cpp(f.s);
+  const std::string text = f.text();
+  f.set_cpp({f.s[0] + cplx(0.9e-13, 0.0), f.s[1]});
+  EXPECT_EQ(compare_text(f.run, text).failed, 0);
+  f.set_cpp({f.s[0] + cplx(1.1e-13, 0.0), f.s[1]});
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+// A printed zero is exact: a C++ element of 1e-9 there fails (half a unit of 0.000000D+00 would allow 5e-7).
+TEST(GateComparisons, Fort25PrintedZeroIsExact) {
+  Fort25Fixture f;
+  f.s[1] = cplx(0.0, 0.0);
+  f.set_cpp(f.s);
+  const std::string text = f.text();
+  EXPECT_EQ(compare_text(f.run, text).failed, 0);
+  f.set_cpp({f.s[0], cplx(1e-9, 0.0)});
+  EXPECT_EQ(compare_text(f.run, text).failed, 1);
+}
+
+// With one diffraction order the Fortran prints one header per v for all rotational states: refused loudly.
+TEST(GateComparisons, Fort25SingleDiffractionOrderIsNotComparable) {
+  Fort25Fixture f;
+  f.run.states[1].order = 0;
+  const Fort25Comparison c = compare_text(f.run, f.text());
+  EXPECT_EQ(c.failed, 2);  // the refusal, and the row under the order-1 header
+  ASSERT_FALSE(c.failures.empty());
+  EXPECT_NE(c.failures[0].find("one diffraction order"), std::string::npos) << c.failures[0];
 }

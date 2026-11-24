@@ -1,9 +1,10 @@
 # Bugs: the highest analysed j for odd JIn, and the VIn check against VAna
 
 **Status:** fixed upstream on 2026-11-23 in r1726 (the input checks) and r1727 (the search starts at `jin`), and
-ported to the C++ (section [The C++](#the-c)); r1727 is the reference of the port since 2026-11-23. Found on 2026-11-23 while checking which input paths no reference case
-covers (every Fortran-compared case has `VIn = JIn = MJIn = 0`), and verified by runs of both codes. The sections
-below describe the bugs as they were in 5.19, 5.24 and upstream master up to 8c2b3fe (r1725).
+ported to the C++ (section [The C++](#the-c)); r1727 is the reference of the port since 2026-11-23. Found on
+2026-11-23 while checking which input paths no reference case covers (every Fortran-compared case has
+`VIn = JIn = MJIn = 0`), and verified by runs of both codes. The sections below describe the bugs as they were in
+5.19, 5.24 and upstream master up to 8c2b3fe (r1725), and in the C++ up to 383fd40 (its line numbers there).
 
 **In one paragraph.** The analysis projects the outgoing wave onto the channels (v, j, mJ, diffraction order) with
 v below `VAna` levels and j up to `jana`. Two of the limits are wrong:
@@ -180,7 +181,7 @@ With `VIn = VAna` (`VAna` given):
 
 ## Evidence
 
-Runs of the Fortran 5.24 r1713 (`-O3`, the C++ port's reference) and of upstream master 8c2b3fe (built the same way,
+Runs of the Fortran 5.24 r1713 (`-O3`, the C++ port's reference until 2026-11-23) and of upstream master 8c2b3fe (built the same way,
 `GNU.mk` `O3FLAGS = -O3`), and of the C++ at commit 000b505. Each input is a reference case of `tests/reference/`
 with the keys listed changed (`DVR.inp` and `input.json` alike); the executables run in a fresh directory, 4 threads.
 

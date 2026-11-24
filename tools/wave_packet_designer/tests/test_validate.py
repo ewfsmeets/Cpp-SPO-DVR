@@ -140,6 +140,12 @@ def test_valid_input_has_no_findings() -> None:
     check_equal(findings_of({}), [], "findings of the DZ input")
 
 
+def test_limits_just_inside_are_valid() -> None:
+    """The analysis limits (r1726: JIn < JMax, VIn < VAna, JIn < JAna; analysis D3: VIn < nR-1) just inside."""
+    for changes in ({"j_in": 26}, {"v_in": 0, "v_analysis": 1}, {"j_in": 0, "j_analysis": 2}, {"v_in": 38}):
+        check_equal(findings_of(changes), [], f"findings of {changes}")
+
+
 def test_each_violation_is_found() -> None:
     """Each row of VIOLATIONS gives its error."""
     for changes, key, message in VIOLATIONS:

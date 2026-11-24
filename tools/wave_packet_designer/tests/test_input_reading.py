@@ -71,6 +71,9 @@ def test_absorber_needs_energy_or_factor() -> None:
     check(read_with({"ZOptFactor": 0.01}, removed=("ZOptEnergy",)).parameters is not None, "factor only")
     check_has_error(read_with({"ZSpOptEnergy": -0.1}).findings, "ZSpOptEnergy", "ZSpOptEnergy <= 0.", "negative")
     check_has_error(read_with({"ZSpOptEnergy": 0.0}).findings, "ZSpOptEnergy", "ZSpOptEnergy <= 0.", "zero")
+    for key in ("ZOptEnergy", "ROptEnergy", "ZSpOptEnergy"):  # exact <= 0 (r1718): just above 0 is valid
+        just_above = read_with({key: 1e-13})
+        check(just_above.parameters is not None and just_above.findings == [], f"{key} 1e-13: {just_above.findings}")
 
 
 def test_low_z_absorber_rules() -> None:
@@ -83,11 +86,22 @@ def test_low_z_absorber_rules() -> None:
         ({"ZSpOptLowStart": 0.0, "ZSpOptLowEnd": 16.0, "ZSpOptLowEnergy": 0.1}, "ZSpOptLowEnd", "higher than Zana"),
         ({"ZOptLowStart": 0.0, "ZOptLowEnd": 2.0}, "ZOptLowEnergy", "should be present"),
         ({"ZOptLowStart": 0.0, "ZOptLowEnd": 2.0, "ZOptLowEnergy": -0.2}, "ZOptLowEnergy", "< 0"),
+        ({"ZOptLowStart": 0.0, "ZOptLowEnd": 2.0, "ZOptLowEnergy": -2e-12}, "ZOptLowEnergy", "< 0"),
+        ({"ZSpOptLowStart": 0.0, "ZSpOptLowEnd": 2.0, "ZSpOptLowEnergy": 0.0}, "ZSpOptLowEnergy", "<= 0"),
     )
     for changes, key, message in cases:
         check_has_error(read_with(changes).findings, key, message, str(changes))
     good = read_with({"ZOptLowStart": 0.0, "ZOptLowEnd": 2.0, "ZOptLowEnergy": 0.1})
     check(good.parameters is not None and good.findings == [], f"a valid low-Z absorber: {good.findings}")
+    # Each energy's operator (r1718): ZOptLowEnergy the tolerant .RLT. 0 (0 and -5e-13 valid), ZSpOptLowEnergy an
+    # exact <= 0 (1e-13 valid).
+    for changes in (
+        {"ZOptLowStart": 0.0, "ZOptLowEnd": 2.0, "ZOptLowEnergy": 0.0},
+        {"ZOptLowStart": 0.0, "ZOptLowEnd": 2.0, "ZOptLowEnergy": -5e-13},
+        {"ZSpOptLowStart": 0.0, "ZSpOptLowEnd": 2.0, "ZSpOptLowEnergy": 1e-13},
+    ):
+        valid = read_with(changes)
+        check(valid.parameters is not None and valid.findings == [], f"{changes}: {valid.findings}")
 
 
 def test_specular_analysis_line_rules() -> None:

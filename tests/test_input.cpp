@@ -981,6 +981,8 @@ INSTANTIATE_TEST_SUITE_P(
         // The range checks of r1714, and their 1e-12 bands, which pass on to the next check.
         Violation{"FluxEMinAboveEMaxWP", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.7; j["EMaxFluxAna"] = 0.8; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna > EMaxWP"},
         Violation{"FluxEMaxBelowEMinWP", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.1; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna", "EMaxFluxAna < EMinWP"},
+        Violation{"FluxEMinJustAboveEMaxWP", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.6 + 2.0e-12; j["EMaxFluxAna"] = 0.8; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna > EMaxWP"},
+        Violation{"FluxEMaxJustBelowEMinWP", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.2 - 2.0e-12; j["DeltaEFluxAna"] = 0.01; }, "EMaxFluxAna", "EMaxFluxAna < EMinWP"},
         Violation{"FluxEMinWithinToleranceAboveEMaxWPReachesTheNextCheck", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.6 + 5.0e-13; j["EMaxFluxAna"] = 0.6; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna"},
         Violation{"FluxEMaxWithinToleranceBelowEMinWPReachesTheNextCheck", [](Json& j) { j["doFluxAnalysis"] = true; j["rFluxAnalysis"] = 3.05; j["EMinFluxAna"] = 0.2; j["EMaxFluxAna"] = 0.2 - 5.0e-13; j["DeltaEFluxAna"] = 0.01; }, "EMinFluxAna", "EMinFluxAna >= EMaxFluxAna"},
         // flux Q1: EMaxFluxAna above EMaxWP (0.6 eV) is rejected.

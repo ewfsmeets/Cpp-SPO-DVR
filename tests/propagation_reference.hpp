@@ -64,7 +64,7 @@ struct FortranPropagationReference {
 
 inline double parse_fortran_real(std::string token) {
   for (char& c : token)
-    if (c == 'D' || c == 'd') c = 'E';
+    if (c == 'D' || c == 'd' || c == 'e') c = 'E';
   // gfortran drops the letter of a three-digit exponent (0.100000-119): put it back, else std::stod stops there.
   if (const auto sign = token.find_first_of("+-", 1); token.find('E') == std::string::npos && sign != std::string::npos)
     token.insert(sign, "E");

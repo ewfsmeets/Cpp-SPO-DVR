@@ -114,6 +114,16 @@ TEST(AnalysisBasis, InitialStateOutsideTheBasisThrows) {
                std::invalid_argument);
 }
 
+// An initial level VIn outside the analysed levels is refused too (the other half of the guard).
+TEST(AnalysisBasis, InitialLevelOutsideTheBasisThrows) {
+  const AnalysisSetup& s = reference_setup();
+  ASSERT_EQ(s.config.input.v_in, 0);
+  GasPhase gas = s.gas;
+  gas.n_v_analysis = 0;  // VIn = 0 not among the analysed levels
+  EXPECT_THROW((void)AnalysisBasis(s.config, s.angular, s.basis, gas, s.tables.xy_kinetic_energies),
+               std::invalid_argument);
+}
+
 TEST(AnalysisBasis, DiffractionChannelsAreSortedStablyByOrder) {
   const auto& channels = reference_setup().analysis.diffraction_channels();
   EXPECT_EQ(channels.front().n, 0);

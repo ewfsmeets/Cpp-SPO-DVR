@@ -23,35 +23,31 @@ inline constexpr double bk_gate_tolerance = 1e-10;
 enum class References { optional, required };
 
 // Gate 4, the S-matrix elements: the code-difference term of the tolerance (Fort25Tolerance::s_scale_fraction), the
-// smallest power of 10 at least 10 times the largest difference measured over every case on the CPU, the GPU and
-// their fast-math builds (2026-11-24): 5.99e-11 of max(|S|, 1e-4) in hardwall_short, whose elements are all
-// rounding noise (|S| <= 2.4e-15), with the fast-math CPU build; at most 2.1e-12 with the default builds and 1.1e-12
-// in the Dai-Light cases with fast-math. 1e-9 is also the largest value allowed (the S-matrix goal is ~1e-10).
-inline constexpr double fort25_code_difference = 1e-9;
+// smallest power of 10 at least 10 times the largest difference measured over every case with the CPU, the GPU and
+// their fast-math builds (2026-11-24, as a fraction of max(|S|, s_floor = 1e-3)): 5.99e-12 in hardwall_short, whose
+// elements are all rounding noise (|S| <= 2.4e-15; 6.0e-15 absolute), with the fast-math CPU build; 1.1e-12 in the
+// Dai-Light cases with fast-math; at most 2.1e-13 with the default builds.
+inline constexpr double fort25_code_difference = 1e-10;
 
-// The counts gate 4 must reach per case, measured with that tolerance: the rows whose phase the printed digits
-// determine, and the rows that fail when the C++ refers the initial state's phase to Zana for every state, the
-// convention of the Fortran up to r1719 (a realistic porting mistake the gate must catch; 0 for hardwall_short,
-// whose specular line never fixes).
-struct Fort25Pins {
-  int phase_compared;
-  int zana_failures;
-};
+// The counts gate 4 must reach per case with that tolerance (measured; the same with every build): the rows whose
+// phase is compared, and the rows that fail with the initial state's phase referred to Zana, the convention of the
+// Fortran up to r1719 (a realistic porting mistake the gate must catch): exactly the rows r1720 changed, 0 in
+// hardwall_short, whose specular line never fixes.
 inline const std::map<std::string, Fort25Pins>& fort25_pins() {
   static const std::map<std::string, Fort25Pins> pins = {
       {"hardwall_short", {0, 0}},
       {"hardwall_small", {51, 51}},
-      {"cu111_dailight_short", {19769, 50}},
-      {"cu111_dailight_short_sym", {19775, 50}},
-      {"cu111_dailight_short_lowz", {19771, 50}},
-      {"cu111_dailight_small", {36065, 50}},
-      {"scm_cu111_srp48_small", {9485, 21}},
+      {"cu111_dailight_short", {31624, 50}},
+      {"cu111_dailight_short_sym", {31584, 50}},
+      {"cu111_dailight_short_lowz", {31621, 50}},
+      {"cu111_dailight_small", {36534, 50}},
+      {"scm_cu111_srp48_small", {9486, 21}},
   };
   return pins;
 }
 
-// Gate 4 (S-matrix elements): every printed row of the Fortran's on-the-fly fort.25 against the C++ S, P and phase;
-// the rows read equal the Fortran's print rule applied to the C++ run and an independent count of the file.
+// Gate 4 (S-matrix elements): every printed row of the Fortran's on-the-fly fort.25 against the C++ S, P and phase
+// (compare_fort25), with the counts and pins of expect_fort25_gate.
 inline void compare_fort25_with_fortran(const PropagationRun& cpp, const Fort25File& file,
                                         const std::string& case_name) {
   Fort25Tolerance tolerance;
@@ -61,19 +57,11 @@ inline void compare_fort25_with_fortran(const PropagationRun& cpp, const Fort25F
             << "), " << c.compared << " compared, " << c.phase_compared << " phases; largest code difference "
             << c.worst_ratio << " of max(|S|, " << tolerance.s_floor
             << ") = " << nan_aware_max(c.s_scale, tolerance.s_floor) << "\n";
-  for (const std::string& failure : c.failures) ADD_FAILURE() << "fort.25 " << failure;
-  EXPECT_EQ(c.failed, 0);
-  EXPECT_GT(c.rows, 0);
-  EXPECT_EQ(c.rows, c.expected_rows) << "rows read vs the Fortran's print rule";
-  EXPECT_EQ(c.rows, c.row_like_lines) << "rows read vs an independent count of the file";
-  EXPECT_EQ(c.compared, c.rows);
   const auto pin = fort25_pins().find(case_name);
   ASSERT_NE(pin, fort25_pins().end()) << "no pinned gate-4 counts for case " << case_name;
-  EXPECT_EQ(c.phase_compared, pin->second.phase_compared);
   PropagationRun zana = cpp;
   zana.scattering = cpp.scattering_zana;
-  EXPECT_EQ(compare_fort25(zana, file, tolerance).failed, pin->second.zana_failures)
-      << "the initial state's phase referred to Zana (the Fortran up to r1719)";
+  expect_fort25_gate(c, compare_fort25(zana, file, tolerance).failed, pin->second);
 }
 
 inline void run_gate(const std::string& case_name, const BackendFactory& backend = make_cpu_backend,

@@ -353,9 +353,10 @@ def fort25_row(m1, m2, s):
     return f"{m1:4d}{m2:4d}  {re_s:>13} {im_s:>13} {fortran_d(abs(printed) ** 2):>13} {phase:10.6f}"
 
 
-def initial_phase_fort25(rotation=lambda v: 1.0, other=OTHER_ROW, order=0):
+def initial_phase_fort25(rotation=lambda v: 1.0, other=OTHER_ROW, order=0, j2_row=None):
     """A fort.25 block: each initial row multiplied by rotation(v), the other row as given; the header of v = 0
-    with diffraction order `order`."""
+    with diffraction order `order`; with j2_row, also a block of the state (v, j, mJ, order) = (0, 2, 0, 0) with
+    that S as its row (0, 0)."""
     k = math.sqrt(2.0 * MASS * TRANS_ENERGY / CHAEV)
     lines = [
         " total energy = " + fortran_d(-4.467141 + TRANS_ENERGY).replace("D", "D", 1),
@@ -369,6 +370,10 @@ def initial_phase_fort25(rotation=lambda v: 1.0, other=OTHER_ROW, order=0):
         lines.append(fort25_row(0, 0, s * rotation(v)))
         if v == 0:
             lines.append(fort25_row(1, 0, other))
+    if j2_row is not None:
+        lines.append(" v j mj dif.order are:   0   2   0   0")
+        lines.append("  m1  m2        s-matrix element          prob          phase")
+        lines.append(fort25_row(0, 0, j2_row))
     return "\n".join(lines) + "\n"
 
 
@@ -383,12 +388,13 @@ def r1720_rotation(v, extra=0.0):
     return cmath.exp(1j * (-momentum(v) * (10.88 - 8.0) + extra))
 
 
-def initial_phase_trees(work, new_fort25, new_stdout=None):
-    """(OLD, NEW, expected file) for class initial_phase: the case as above, NEW's fort.25 as given."""
+def initial_phase_trees(work, new_fort25, new_stdout=None, old_fort25=None):
+    """(OLD, NEW, expected file) for class initial_phase: the case as above, NEW's fort.25 as given (OLD's too,
+    if given)."""
     shutil.rmtree(work, ignore_errors=True)
     old, new = work / "old", work / "new"
     for root, fort25, stdout in (
-        (old, initial_phase_fort25(), INITIAL_PHASE_STDOUT.format(nproj=2)),
+        (old, old_fort25 or initial_phase_fort25(), INITIAL_PHASE_STDOUT.format(nproj=2)),
         (new, new_fort25, new_stdout or INITIAL_PHASE_STDOUT.format(nproj=2)),
     ):
         for tree in ("tests/reference", "tests/crplib/reference", "tests/scm/reference"):
@@ -411,9 +417,9 @@ def initial_phase_trees(work, new_fort25, new_stdout=None):
     return old, new, expected
 
 
-def compare_initial_phase(work, new_fort25, new_stdout=None):
+def compare_initial_phase(work, new_fort25, new_stdout=None, old_fort25=None):
     """(exit status, output) of compare on initial_phase_trees."""
-    old, new, expected = initial_phase_trees(work, new_fort25, new_stdout)
+    old, new, expected = initial_phase_trees(work, new_fort25, new_stdout, old_fort25)
     return compare(old, new, "--no-provenance", expected=expected)
 
 
@@ -438,8 +444,17 @@ def test_initial_phase_s_magnitude_fails(work):
 
 
 def test_initial_phase_wrong_rotation_fails(work):
-    """The initial row of v = 1 rotated 0.01 rad too far: fails on the phase."""
+    """The initial row of v = 1 rotated 0.01 rad too far: fails on S (and the phase)."""
     fort25 = initial_phase_fort25(rotation=lambda v: r1720_rotation(v, extra=0.01 if v == 1 else 0.0))
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*not S_old exp")
+
+
+def test_initial_phase_phase_column_fails(work):
+    """The rows rotated as r1720 does, but the printed phase of v = 1 0.01 rad off: fails on the phase."""
+    fort25 = initial_phase_fort25(rotation=r1720_rotation)
+    row = [line for line in fort25.splitlines() if line.startswith("   0   0")][1]
+    phase = row.split()[5]
+    fort25 = fort25.replace(row, row[: -len(phase)] + f"{float(phase) + 0.01:.6f}")
     expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*the phase changed by")
 
 
@@ -457,6 +472,41 @@ def test_initial_phase_header_fails(work):
     """The block header of v = 0 with diffraction order 1 instead of 0: fails."""
     fort25 = initial_phase_fort25(rotation=r1720_rotation, order=1)
     expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*dif.order are.*not a row of the initial")
+
+
+def test_initial_phase_unrotated_row_fails(work):
+    """v = 0 rotated, the initial row of v = 1 left as it was (identical): fails, an unchanged initial row must be
+    the rotation too."""
+    fort25 = initial_phase_fort25(rotation=lambda v: r1720_rotation(v) if v == 0 else 1.0)
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*not S_old exp\(-i k \(Z_sp - Zana\)\)")
+
+
+def test_initial_phase_row_of_another_state_fails(work):
+    """The row (0, 0) of the state j = 2 (not JIn) rotated as r1720 rotates the initial state: fails."""
+    other = complex(0.300000e-02, -0.100000e-02)
+    fort25 = initial_phase_fort25(rotation=r1720_rotation, j2_row=other * r1720_rotation(0))
+    status, output = compare_initial_phase(work, fort25, old_fort25=initial_phase_fort25(j2_row=other))
+    expect_failure(status, output, r"initial_phase .*not a row of the initial state")
+
+
+def test_initial_phase_im_sign_flipped_fails(work):
+    """The v = 0 row rotated, but its Im S printed with the wrong sign (|S|, P and the phase column as rotated):
+    fails on S."""
+    fort25 = initial_phase_fort25(rotation=r1720_rotation)
+    row = next(line for line in fort25.splitlines() if line.startswith("   0   0"))
+    fields = row.split()
+    flipped = fortran_d(-from_fortran(fields[3]))
+    fort25 = fort25.replace(row, row.replace(fields[3], flipped))
+    expect_failure(*compare_initial_phase(work, fort25), r"initial_phase .*not S_old exp")
+
+
+def test_three_digit_exponent():
+    """gfortran prints a three-digit exponent without its letter (0.100000-119): read with it."""
+    refdata = load_module("refdata", REFDATA)
+    assert refdata.as_float("0.100000-119") == 0.1e-119
+    assert refdata.as_float("-0.250000+123") == -0.25e123
+    assert refdata.as_float("0.500000D+00") == 0.5
+    assert refdata.printed_unit("0.100000-119") == pytest.approx(1e-125, rel=1e-12)
 
 
 def test_nproj_label(work):
