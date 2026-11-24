@@ -365,6 +365,20 @@ TEST(InterpolateSMatrix, SignChangesAndZeros) {
   EXPECT_EQ(interpolate_s_matrix(cplx(0.0, 0.0), cplx(0.0, 0.0), 0.5), cplx(0.0, 0.0));
 }
 
+// A NaN grid element (from a non-finite BK coefficient) gives a NaN element, at either end and in either part,
+// without calling std::polar with a NaN modulus (its precondition, checked in builds with _GLIBCXX_ASSERTIONS).
+TEST(InterpolateSMatrix, NaNProbabilityGivesANaNElement) {
+  constexpr double nan = std::numeric_limits<double>::quiet_NaN();
+  const cplx s = std::polar(0.5, 1.0);
+  for (const cplx bad : {cplx(nan, nan), cplx(nan, 0.1), cplx(0.1, nan)})
+    for (const double f : {0.0, 0.5, 1.0}) {
+      for (const cplx result : {interpolate_s_matrix(bad, s, f), interpolate_s_matrix(s, bad, f)}) {
+        EXPECT_TRUE(std::isnan(result.real())) << f;
+        EXPECT_TRUE(std::isnan(result.imag())) << f;
+      }
+    }
+}
+
 TEST(LocateOnGrid, NeighboursAndClamps) {
   FineAnalysisGrid g{};
   g.first_index = 10;

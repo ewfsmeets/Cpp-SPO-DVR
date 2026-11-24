@@ -206,6 +206,9 @@ cplx interpolate_s_matrix(cplx s1, cplx s2, double f) {
   const double p2 = s2.real() * s2.real() + s2.imag() * s2.imag();
   const double p = p1 + (p2 - p1) * f;  // as Fortran: prob_interpolated
   const cplx chord = s1 + (s2 - s1) * f;
+  // A NaN |S|^2 (from a non-finite BK coefficient) gives a NaN S, which the run reports (exit code 5); std::polar
+  // must not get it: its modulus must be >= 0.
+  if (std::isnan(p)) return {p, p};
   if (p <= 0.0 || chord == cplx(0.0, 0.0)) return {0.0, 0.0};
   return std::polar(std::sqrt(p), std::arg(chord));
 }
