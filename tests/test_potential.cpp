@@ -258,7 +258,7 @@ TEST(Cu111Potentials, DaiLightIsPeriodicOnTheLattice) {
   }
 }
 
-// Fortran quirk kept: Persson's coordinates use 0.529167 bohr/Angstrom while the lattice constant
+// Fortran quirk kept: Persson's coordinates use 0.529167 Angstrom/bohr while the lattice constant
 // uses cboan = 0.529177, so the potential has period cc/0.529167, not the grid's alat.
 TEST(Cu111Potentials, PerssonPeriodIsNotTheGridLattice) {
   const PerssonCu111Potential persson;

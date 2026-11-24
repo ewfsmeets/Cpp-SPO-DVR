@@ -31,7 +31,7 @@ void print_norm_budget_cost(std::ostream& out, int windows_written, double secon
 
 // The size of norm_budget/ (a record per analysis step) and its projected cost, or nothing without NormBudget. The
 // cost is the block-density reduction of every analysis step that has no averages row (measured on the thesis DZ
-// grid: 1.25 ns per complex value of psi on the CPU, 0.28 ns on the GPU).
+// grid: 1.46 ns per complex value of psi on the CPU, 0.17 ns on the GPU).
 [[nodiscard]] std::optional<PlotDataSize> norm_budget_data_size(const Config& config);
 
 }  // namespace spodvr

@@ -369,8 +369,9 @@ TEST(SMatrix, ConstantSeriesGivesTheGeometricSumAndThePrefactor) {
 }
 
 // The initial state's coefficients are taken at the specular analysis line Z_sp once it is fixed: its S-matrix
-// elements (every v) carry exp(-i kz (Z_sp - Zana)) relative to the Fortran's reference at Zana; every other
-// element, and every probability, is unchanged. A line at Zana is the Fortran's result bit for bit.
+// elements (every v) carry exp(-i kz (Z_sp - Zana)) relative to the reference at Zana (the Fortran's fine analysis,
+// and its on-the-fly analysis up to r1719); every other element, and every probability, is unchanged. A line at
+// Zana gives those Zana results bit for bit.
 TEST(SMatrix, InitialStatePhaseRefersToTheSpecularLine) {
   const AnalysisSetup& s = reference_setup();
   const AnalysisBasis& a = s.analysis;

@@ -21,7 +21,7 @@ struct Style {
 
 // Full-precision scientific notation (%.16e), used for every regression-relevant number.
 [[nodiscard]] std::string full_precision(double x);
-// Fixed or scientific formatting with the given number of significant/decimal digits.
+// Fixed or scientific formatting with the given number of digits after the decimal point.
 [[nodiscard]] std::string fixed(double x, int decimals);
 [[nodiscard]] std::string scientific(double x, int decimals);
 // Wall-clock duration as "m:ss" (under an hour) or "h:mm:ss".

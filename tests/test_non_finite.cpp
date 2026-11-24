@@ -1,7 +1,8 @@
 // Tests: non-finite results (exit code 5). The finder (analysis/non_finite.hpp) per group of
 // quantities and its scan order, the wording of the error line (report/analysis_report.hpp), and
-// two runs: a restart from a checkpoint whose wave packet holds a NaN, and an analysis-only run of
-// a BK file whose last record holds one. Both write every file of a clean run and exit with 5.
+// three runs: a restart from a checkpoint whose wave packet holds a NaN (also with alsoAnalysis),
+// and an analysis-only run of a BK file whose last record holds one. Each writes every file of a
+// clean run and exits with 5.
 #include <gtest/gtest.h>
 
 #include <algorithm>

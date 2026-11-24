@@ -36,7 +36,7 @@ struct PlotDataSize {
 };
 
 // The plot data of the run's switches (empty when none is on): densities/ (writeDensities), potential/
-// (writePotential), frames/ (dtFrames) and norm_budget/ (NormBudget).
+// (writePotential), frames/ (dtFrames), norm_budget/ (NormBudget) and energy_resolved/ (EnergyResolvedSites).
 [[nodiscard]] std::vector<PlotDataSize> plot_data_sizes(const Config& config, const SpatialGrids& grids,
                                                         const AngularGrid& angular);
 

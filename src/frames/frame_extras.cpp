@@ -100,8 +100,9 @@ struct FrameExtras::Tables {
   // angular: the FBR -> DVR transform of one column pass (columns_per_pass of the nX nY columns of a (Z, r)
   // point, as the potential step)
   std::unique_ptr<AngularTransform> angular;
-  // diffraction: the x-y FFTs of the n_rot columns of one (Z, r) point (layout (irot, ix, iy)), the shift
-  // exp(-i k_par . R) and the probability per |FFT value|^2: dZ dr dx dy sin(skew) / (nX nY)
+  // diffraction: the x-y FFTs of the n_rot columns of one (Z, r) point (layout (irot, iy, ix), first index
+  // fastest: ixy = iy + ny ix), the shift exp(-i k_par . R) and the probability per |FFT value|^2:
+  // dZ dr dx dy sin(skew) / (nX nY)
   std::unique_ptr<ComplexFftPlan> xy_fft;
   std::span<const Complex> shift_forward;
   double diffraction_scale = 0.0;

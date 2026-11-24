@@ -59,8 +59,8 @@ class CubicSpline1D {
   // F(t). Outside [x_0, x_{n-1}] linear extrapolation from the first (last) interval.
   // Fortran: DPL (Evaluate_Spline1D)
   [[nodiscard]] double value_dpl(double t) const;
-  // F'(t); outside the knots the derivative of the end interval's cubic. Fortran: DPLP
-  // (Evaluate_Spline1D_Derivative)
+  // F'(t); outside the knots the linear extrapolation of F' from its values at the two knots of
+  // the end interval. Fortran: DPLP (Evaluate_Spline1D_Derivative)
   [[nodiscard]] double slope_dplp(double t) const;
 
   struct ValueAndSlope {

@@ -10,7 +10,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # =============================================================================================
-# Build options (-D<name>=<value>; README.md lists them, docs/CONTRIBUTING.md "Build variants" the usual combinations)
+# Build options (-D<name>=<value>; README.md lists the user options, docs/CONTRIBUTING.md "Build variants" the
+# developer options and the usual combinations)
 # =============================================================================================
 option(SPODVR_USE_MKL "Use Intel oneMKL (BLAS/LAPACK, FFTs) when it is found" ON)
 set(SPODVR_FFT_LIBRARY "AUTO" CACHE STRING "FFT library: AUTO (oneMKL if found, else FFTW), MKL or FFTW")
@@ -196,8 +197,9 @@ add_library(spodvr_strict_objects OBJECT
   src/potential/scm/scm_diagnostics.cpp
 )
 target_include_directories(spodvr_strict_objects PRIVATE src)
-# Of spodvr_core's definitions only this one changes a header today (AlignedVector's allocator);
-# copy any other that does. No PGO flags: these objects are compiled the same with any SPODVR_PGO.
+# Of spodvr_core's definitions only this one changes a header that these sources include (AlignedVector's
+# allocator; SPODVR_VERSION is read in core/program_info.hpp, which they do not include); copy any other that does.
+# No PGO flags: these objects are compiled the same with any SPODVR_PGO.
 if(SPODVR_POISON_UNINITIALISED)
   target_compile_definitions(spodvr_strict_objects PRIVATE SPODVR_POISON_UNINITIALISED)
 endif()

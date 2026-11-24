@@ -468,7 +468,8 @@ TEST(SplitOperator, ThreeTimeStepsAreHalfFullFullHalf) {
 }
 
 // The T blocks of one analysis step, shared by the CPU and GPU backends: T/2 V, (T V) n - 1 times,
-// T/2 without V; n <= 1 gives the two half steps (n = 0 comes from dtAna just below dtStep).
+// T/2 without V; n <= 1 gives the two half steps (n = 0, from dtAna just below dtStep, is an input error since
+// analysis D4; kept as a guard).
 TEST(SplitOperatorSchedule, BlocksOfOneAnalysisStep) {
   const auto describe = [](const std::vector<SplitOperatorSubStep>& schedule) {
     std::string text;

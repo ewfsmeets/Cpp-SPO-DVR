@@ -213,7 +213,7 @@ TEST(RealDataSet, GradientMatchesFiniteDifferences) {
       }
 }
 
-// Every combination of the speed-ups (S2, S3, S4) gives bitwise the plain QD-wrapper value on a
+// The speed-ups (S2, S3, S4, all on, the default) give bitwise the plain QD-wrapper value on a
 // dynamics-like grid (also where r and Z are clamped and above Zasy).
 TEST(RealDataSet, SpeedUpsAreBitwise) {
   const DataSet& d = real_data_set();

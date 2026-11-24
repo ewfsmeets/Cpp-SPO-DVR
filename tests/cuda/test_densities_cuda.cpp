@@ -1,7 +1,8 @@
 // Tests: densities/ (writeDensities), frames/ (dtFrames) and norm_budget/ (NormBudget) on the GPU. The density and
 // budget records come from the device reduction block_densities() and the specular wave (copied exactly), the frames
 // from exact copies of the planes reduced on the host, so a run on the GPU writes the CPU's records to the
-// CPU-vs-GPU level of the propagation (rule "CPU = GPU"), which grows with the number of steps.
+// CPU-vs-GPU level of the propagation (docs/cuda.md "One method, two executions"), which grows with the number of
+// steps.
 #include <gtest/gtest.h>
 
 #include <algorithm>

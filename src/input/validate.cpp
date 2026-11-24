@@ -21,7 +21,9 @@ using validation::check;
 using validation::nint;
 
 // Fortran: InputNew.f90 ValidateInput (upstream r1727). The checks appear in the same order and with
-// the same messages (a few message typos are corrected; see docs/fortran_deviations.md).
+// the Fortran's messages, with typos corrected and some made longer (e.g. NrOfEs, EMaxFluxAna,
+// DeltaEFluxAna). C++-only checks lie in between (RestartDir, RestartFormat, CheckpointFormat,
+// analysis D3/D4, SymmetryTolerance).
 void validate_input(const InputParameters& p, const SystemParameters& system, double zasymp) {
   using namespace fortran_compare;
   const auto& units = units::legacy;

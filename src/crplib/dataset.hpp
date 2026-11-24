@@ -89,7 +89,7 @@ struct DataSet {
   [[nodiscard]] int num_layers() const { return static_cast<int>(interlayer_spacings.size()) + 1; }
 };
 
-// Reads and validates the data set in `directory` (docs/crp_library.md "Validation"); throws
+// Reads and validates the data set in `directory` (docs/crp_library.md "Data-set format"); throws
 // DataError naming the file and the problem.
 DataSet read_data_set(const std::filesystem::path& directory);
 

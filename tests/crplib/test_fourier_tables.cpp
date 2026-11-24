@@ -1,6 +1,7 @@
 // Tests: the Fourier coefficient tables (src/crplib/fourier_tables.*): bitwise equal to the tables
-// of the Fortran library, and inverse to the Fourier basis at the reference sites (Appendix A of
-// docs/crp_library.md), which pins down the site geometry the tables assume.
+// of the Fortran library, and inverse to the Fourier basis at the reference sites
+// (docs/crp_library.md "Appendix: cuts, sites and orientations"), which pins down the site geometry
+// the tables assume.
 #include <gtest/gtest.h>
 
 #include <array>

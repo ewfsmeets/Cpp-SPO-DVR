@@ -1,7 +1,8 @@
 #pragma once
 // Synthetic CRP data sets for the tests (no real data set is needed): the cut geometry of each
-// symmetry (Appendix A of docs/crp_library.md, written down independently of the library code),
-// an exactly symmetric pairwise model PES, and "impulse" data sets (one cut 1, everything else 0).
+// symmetry (docs/crp_library.md "Appendix: cuts, sites and orientations", written down
+// independently of the library code), an exactly symmetric pairwise model PES, and "impulse"
+// data sets (one cut 1, everything else 0).
 
 #include <array>
 #include <cmath>
@@ -138,7 +139,7 @@ class PairwiseModel {
                    std::exp(-1.2 * rho) * switch_off_slope(rho, 4.0, 6.0));
   }
 
-  // Sum of f(|p - R|) and of its z-gradient over the surface atoms R within 8 bohr.
+  // Sum of f(|p - R|) over the surface atoms R within 8 bohr.
   template <typename F>
   double sum_over_atoms(const Vec3& p, F f) const {
     double sum = 0.0;

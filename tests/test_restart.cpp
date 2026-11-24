@@ -1130,7 +1130,7 @@ TEST(CheckpointFiles, FortranAnalysisTimeStepIsChecked) {
       "the analysis time step (dtAna) differs from the one in '" + (r.first / "fort.21").string() + "'");
 }
 
-// A restart from a Fortran BK file of another analysis basis (JAna 2: 3 instead of 15 rotational states)
+// A restart from a Fortran BK file of another analysis basis (JAna 2: 6 instead of 15 rotational states)
 // is refused.
 TEST(CheckpointFiles, FortranAnalysisBasisIsChecked) {
   const CheckpointFilesRun& r = checkpoint_files_run();

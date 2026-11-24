@@ -29,7 +29,7 @@ inline double parse_fortran_real(std::string token) {
   return std::stod(token);
 }
 
-// The Fortran "INFO FROM SETTING UP THE ROVIBRATIONAL ASYMPTOTIC POTENTIAL" table: (r, V in eV).
+// The Fortran "INFO FROM SETTING UP THE ROVIBARIONAL (sic) ASYMPTOTIC POTENTIAL" table: (r, V in eV).
 // Empty if the table is not found.
 inline std::vector<std::pair<double, double>> read_vasy_table(const std::filesystem::path& stdout_file) {
   std::ifstream file(stdout_file);

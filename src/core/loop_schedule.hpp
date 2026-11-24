@@ -4,8 +4,10 @@
 
 namespace spodvr {
 
-// The OpenMP schedule of the loops over (Z, r) work groups: every loop that computes on, or first
-// writes, the large per-(Z, r) arrays uses `schedule(runtime)` and iterates over the same groups.
+// The OpenMP schedule of the loops over (Z, r) work groups: every loop over the (Z, r) groups that
+// computes on, or first writes, the large per-(Z, r) arrays (T_xy + V, the potential step, the
+// first writes) uses `schedule(runtime)` and iterates over the same groups; T_Z + T_r (apply_zr)
+// and the reductions stay static.
 // It is set once at start-up (apply_loop_schedule); results do not depend on it.
 // - Dynamic (dynamic,1): a thread takes the next group when it is done. Balances the uneven cost
 //   per group (below Z_asymptotic: angular transform + exp(-iV dt); beyond: one multiply). For

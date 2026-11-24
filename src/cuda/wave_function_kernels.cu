@@ -35,7 +35,8 @@ __global__ void pack_z_plane_kernel(const Complex* psi, DeviceLayout layout, int
 }
 
 // One thread per element; i runs izr fastest, so the device-layout side is coalesced (the host
-// chunk side is strided; these copies run once per run).
+// chunk side is strided; these copies run only at a restart and when psi is written to a file,
+// not per time step).
 __global__ void host_chunk_to_device_kernel(const Complex* chunk, DeviceLayout layout, std::int64_t izr_first,
                                             std::int64_t n_points, Complex* psi) {
   const std::int64_t i = thread_index();

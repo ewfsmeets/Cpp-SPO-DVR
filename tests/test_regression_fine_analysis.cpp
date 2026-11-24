@@ -152,7 +152,8 @@ cplx fortran_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   const double simag_interpolated = s1_imag + (s2_imag - s1_imag) * f;  // 5.24 r1713; 5.19 had s1_real
   const double sreal = std::sqrt(prob_interpolated) * std::cos(phase_interpolated);
   const double simag = std::sqrt(prob_interpolated) * std::sin(phase_interpolated);
-  // Fortran SIGN(a, b): |a| with the sign of b (b = 0 counts as positive).
+  // Fortran SIGN(a, b): |a| with the sign of b (+0 counts as positive; gfortran's default -fsign-zero gives -0
+  // the negative sign, which this emulation does not reproduce).
   auto sign = [](double a, double b) { return b >= 0.0 ? std::abs(a) : -std::abs(a); };
   return {sign(sreal, sreal_interpolated), sign(simag, simag_interpolated)};
 }

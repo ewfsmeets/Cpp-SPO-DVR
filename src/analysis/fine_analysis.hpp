@@ -99,8 +99,8 @@ class BkSeries {
 
 // S at E_z between two grid points (fraction f from point 1 to point 2): |S|^2 is interpolated
 // linearly (as Fortran) and the phase is that of the linearly interpolated S.
-// The Fortran interpolation of the phase is wrong (ATAN, Re S in place of Im S, signs taken
-// separately); see docs/fortran_fine_analysis_bugs.md. A NaN interpolated |S|^2 gives (NaN, NaN).
+// The Fortran interpolation of the phase is wrong (ATAN, signs taken separately; up to r1712 also
+// Re S in place of Im S); see docs/fortran_fine_analysis_bugs.md. A NaN interpolated |S|^2 gives (NaN, NaN).
 [[nodiscard]] std::complex<double> interpolate_s_matrix(std::complex<double> s1, std::complex<double> s2, double f);
 
 // The grid interval of E_z for the interpolation: upper neighbour (0-based, in 1 .. size-1) and

@@ -12,14 +12,15 @@
 
 namespace spodvr {
 
-// Error in a checkpoint or BK coefficient file (missing, corrupt, or not matching the input).
+// Error in a binary file of this program (checkpoint, BK coefficients, Fortran-layout restart file,
+// series or arrays directory): missing, corrupt, or not matching the input.
 class CheckpointError : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };
 
 // Raw binary output of plain values and arrays in host byte order (little-endian on x86-64),
-// for the native files of this program.
+// for the native files of this program and the records of the Fortran-layout files.
 class BinaryWriter {
  public:
   BinaryWriter(const std::filesystem::path& path, std::ios::openmode mode = std::ios::trunc)
@@ -51,7 +52,7 @@ class BinaryWriter {
   }
 
  private:
-  // The only place where bytes meet the iostream char* interface.
+  // With BinaryReader::read_bytes, the only place where bytes meet the iostream char* interface.
   void write_bytes(std::span<const std::byte> bytes) {
     file_.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     check();

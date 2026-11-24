@@ -8,7 +8,8 @@ namespace spodvr {
 //
 // The Fortran code mixes two sets of factors: `legacy` (chaev, camau, cboan,
 // chacm in constants.f90, used almost everywhere) and `precise` (Constants_eV2Ha, u2aum,
-// Bohr2Ang, Ha2cmInv, used in FluxAnalyzor.f90). Each factor is stored in the direction in
+// Bohr2Ang, Ha2cmInv, used in FluxAnalyzor.f90 and, since 5.24, for the SCM correction in
+// DistortedSurfaceWrapper.f90). Each factor is stored in the direction in
 // which the Fortran code defines it, and every conversion multiplies or divides by it exactly
 // as the Fortran code does, so results are bitwise reproducible.
 class UnitConversion {

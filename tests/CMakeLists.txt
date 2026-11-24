@@ -177,8 +177,8 @@ add_pytest_test(NAME FortranReference.PesCutsCountAndLines TOOL tools/fortran_re
 add_pytest_test(NAME FortranReference.PesCutsRefusals TOOL tools/fortran_reference
                 SELECT test_pes_cuts.py::test_refusals)
 
-# refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1713.tsv is valid and
-# matches the committed files, every class it allows passes, each fault and each refusal fails. The
+# refdata.py compare (tools/fortran_reference/test_refdata.py): expected/r1727.tsv is valid and
+# matches the committed files, every class of expected/r1713.tsv passes, each fault and each refusal fails. The
 # copies of refdata.py's MANIFEST header, reference trees and NOT_A_CASE (ReferenceManifest.cmake,
 # tools/check_docs.py, reference_config.sh, .pre-commit-config.yaml) agree; planted differences fail.
 add_pytest_test(NAME FortranReference.CompareExpectedFileMatchesTree TOOL tools/fortran_reference

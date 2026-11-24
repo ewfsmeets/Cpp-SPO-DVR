@@ -1,7 +1,7 @@
 // Tests: the angular interpolation at one site (src/crplib/site_interpolation.*): each site function
-// reproduces its cut values (and their Z, r derivatives) at the cut orientations of Appendix A of
-// docs/crp_library.md, is symmetric under the exchange of the two atoms, and has angular
-// derivatives that match finite differences. No data set needed.
+// reproduces its cut values (and their Z, r derivatives) at the cut orientations of
+// docs/crp_library.md "Appendix: cuts, sites and orientations", is symmetric under the exchange of
+// the two atoms, and has angular derivatives that match finite differences. No data set needed.
 #include <gtest/gtest.h>
 
 #include <bit>

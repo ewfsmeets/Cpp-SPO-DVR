@@ -208,7 +208,7 @@ std::vector<SurfaceOperation> all_operations() {
   return ops;
 }
 
-// Angle difference reduced to (-pi, pi].
+// Absolute angle difference, reduced to [0, pi].
 double angle_difference(double a, double b) {
   const double d = std::remainder(a - b, Constants::two_pi);
   return std::abs(d);

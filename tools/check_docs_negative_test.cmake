@@ -1,5 +1,6 @@
 # Negative tests of tools/check_docs.py (ctest Docs.UndocumentedKeyFails, Docs.StaleAllowlistRowFails,
-# Docs.UpstreamPinMismatchFails; docs/CONTRIBUTING.md "Testing"): the checker must exit 1 and name the fault when
+# Docs.UpstreamPinMismatchFails, Docs.SubscriptAnchorFails; docs/CONTRIBUTING.md "Testing"): the checker must
+# exit 1 and name the fault when
 #   undocumented-key  src/input/json_input.cpp reads a key that docs/input_schema.md does not name
 #                     (on a minimal copy of those two files in WORK, which is first shown to be clean);
 #   stale-allowlist   the allow-list has one more row, which suppresses nothing (on the source tree);

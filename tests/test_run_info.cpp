@@ -79,7 +79,7 @@ double gas_file_energy(const fs::path& file, int v, int j) {
   return NAN;
 }
 
-// The documented factors (CLAUDE.md "UnitConversion", the legacy set the program uses).
+// The documented factors (docs/method.md, units::legacy in core/unit_conversion.hpp: the set the program uses).
 constexpr double hartree_to_ev = 27.2114;
 constexpr double amu_to_me = 1822.89;
 
@@ -380,7 +380,7 @@ TEST(RunInfo, EveryRunModeWritesIt) {
   EXPECT_EQ(propagation["run_mode"]["name"], "new");
 }
 
-// Without a gas phase (the write2DPES stop of a later milestone) the fields that need it are null;
+// Without a gas phase (a write2DPES run, src/app/run.cpp write_pes_cut_run) the fields that need it are null;
 // the program's version and commit are written as given.
 TEST(RunInfo, WithoutGasPhaseItsFieldsAreNull) {
   const TemporaryDirectory dir("spodvr_run_info_no_gas");

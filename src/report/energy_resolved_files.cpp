@@ -28,7 +28,8 @@ constexpr std::string_view directory_name = "energy_resolved";
 constexpr double pair_seconds_per_value_cpu = 8.3e-9;
 constexpr double pair_seconds_per_value_gpu = 2.7e-9;
 
-// The datasets, in the order the files are written: the final sums, the partial sums and the scalars.
+// The datasets, in the order of their indices in arrays_ (and the manifest): the final sums, the partial sums and the
+// scalars.
 std::vector<DatasetSpec> energy_resolved_datasets(const EnergyResolvedSums& s) {
   const int n_sites = static_cast<int>(s.site_names.size());
   const int n_e = static_cast<int>(s.collision_ev.size());

@@ -1,5 +1,6 @@
 // The GPU propagation backend: the wave packet stays in GPU memory; per analysis step only the
-// specular wave, the BK plane and (for the averages) the per-point densities are copied back.
+// specular wave, the BK plane, the per-point densities (averages, NormBudget) and the
+// energy-resolved site columns are copied back.
 // CPU twin: propagation/cpu_backend.cpp. Fortran: SplitOperator.f90 Propagate
 #include "cuda/cuda_backend.hpp"
 

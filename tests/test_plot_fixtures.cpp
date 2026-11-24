@@ -2,9 +2,10 @@
 // inputs, written by the current program into SPODVR_PLOT_FIXTURES_DIR. One ctest in one process
 // (PlotRuns.Fixtures, FIXTURES_SETUP plot_fixtures, out of the quick tier); each case deletes its
 // directories first. The fixtures are deliberately not converged (as the gate case hardwall_small is not).
-// Every fixture writes the plot data: the propagating ones densities/ (writeDensities), frames/ (dtFrames
-// 100 a.u., with every FrameExtras extra) and norm_budget/ (NormBudget), and all potential/ (writePotential, with
-// PlotSites: hardwall_tiny "origin" and "centre", dailight_oblique "top" and "bridge").
+// Every fixture but hardwall_long, dailight_rho_e and pes_cut writes the plot data: the propagating ones densities/
+// (writeDensities), frames/ (dtFrames 100 a.u., with every FrameExtras extra) and norm_budget/ (NormBudget), and all
+// potential/ (writePotential, with PlotSites: hardwall_tiny "origin" and "centre", dailight_oblique "top" and
+// "bridge").
 //   hardwall_tiny             hardwall_small with nX = nY = 2, JMax = MJMax = 2, tEnd 10000, alsoAnalysis
 //   hardwall_tiny_split       the same in two segments, split at t = 4000 (first/, second/; split_time.txt)
 //   hardwall_budget           hardwall_tiny with dtAve = dtAna = 10 (a densities/ record at every window's end, for

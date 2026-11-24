@@ -57,8 +57,8 @@ void check_whole_analysis_steps(const InputParameters& p, const std::string& key
             " (the program truncates it, so its records would come at other times than dtAna says)");
 }
 
-// dtFrames: frames line up with the analysis steps and, across restarts, with tStart and tEnd (C++ only checks, so
-// relative to the frame interval rather than the Fortran's absolute 1e-12).
+// dtFrames (C++ only checks): frames line up with the analysis steps (to an absolute 1e-12, as the Fortran's dtAna
+// checks) and, across restarts, with tStart and tEnd (relative to the frame interval).
 void check_frames(const InputParameters& p, bool propagates) {
   using fortran_compare::rlt;
   using fortran_compare::rne;

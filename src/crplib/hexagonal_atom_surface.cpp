@@ -251,7 +251,7 @@ AtomSurfaceValue HexagonalAtomSurface::compute(const Vec3& p, Want want) const {
   const RepulsiveValue rep =
       prune_cluster_ ? reachable_repulsive_sum(x0c, y0c, p.z, want) : repulsive_sum(x0c, y0c, p.z, want);
 
-  // Interpolation over z for each site (all sites share the z range of the first)
+  // Interpolation over z for each site (z checked against the first site's range only, as in ATII)
   const std::vector<double>& z = cuts_.front().x();
   if (p.z < z.front() || p.z > z.back()) {
     throw EvaluationError("CRP atom-surface PES: z = " + std::to_string(p.z) + " bohr outside the data range [" +

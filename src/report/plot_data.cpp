@@ -1,5 +1,5 @@
-// The plot data of a run (densities/, potential/, frames/, norm_budget/): their projected sizes, the free-space
-// check before the set-up and the "PLOT DATA" lines. C++ only.
+// The plot data of a run (densities/, potential/, frames/, norm_budget/, energy_resolved/): their projected sizes,
+// the free-space check before the set-up and the "PLOT DATA" lines. C++ only.
 #include "report/plot_data.hpp"
 
 #include <cstddef>

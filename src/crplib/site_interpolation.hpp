@@ -1,8 +1,9 @@
 #pragma once
 // Interpolation over the molecular orientation (theta, phi) at one surface site: from the values of
-// the site's cuts (each a fixed orientation, see docs/crp_library.md Appendix A) at the current
-// (r, Z) to the value at (theta, phi), with its derivatives. Fortran: the InterpolateOn* routines
-// of CRP_C3v/C4v/C6v_MoleculeSurface.f90. Formulas in the Fortran order of operations.
+// the site's cuts (each a fixed orientation, see docs/crp_library.md "Appendix: cuts, sites and
+// orientations") at the current (r, Z) to the value at (theta, phi), with its derivatives.
+// Fortran: the InterpolateOn* routines of CRP_C3v/C4v/C6v_MoleculeSurface.f90. Formulas in the
+// Fortran order of operations.
 
 #include <span>
 
@@ -24,7 +25,7 @@ struct ThetaTrig {
 };
 ThetaTrig theta_trig(double theta, Want want = Want::value_and_gradient);
 
-// Every site function: cuts are the site's cut values in the cut order of Appendix A; with
+// Every site function: cuts are the site's cut values in the cut order of that appendix; with
 // Want::value only SiteValue::v is computed (the rest is 0; speed-up S3).
 
 // Hexagonal (C3v, C6v). Fortran: InterpolateOnTop (3 cuts), InterpolateOnBridge (4),

@@ -44,7 +44,7 @@ class ScmCrpPotential final : public Potential {
 
   // The CRP potential of the data set (its own, unrescaled system parameters and summary).
   [[nodiscard]] const CrpPotential& crp() const { return crp_; }
-  // The slab snapshot as read (layers 1 and 2 inside the cut-off).
+  // The slab snapshot as read (layers 1 and 2; in version 3 only the atoms inside the cut-off).
   [[nodiscard]] const ScmSlab& slab() const { return slab_; }
   // s = a_T/a₀ with rescaling, else empty. Fortran: LatExpansion (thermExpansion)
   [[nodiscard]] std::optional<double> rescaling_factor() const { return rescaling_factor_; }

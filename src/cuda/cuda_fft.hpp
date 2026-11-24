@@ -35,7 +35,8 @@ struct DeviceFftLoadCallback {
 };
 
 // One cuFFT plan (cufftMakePlanMany64). cuFFT does not scale: the scale factors of the CPU plans
-// are applied by the kernels around the transforms (folded into their factor tables).
+// are applied by the kernels between the transforms of a pair, as two separate multiplications
+// (FftScales, kernels.hpp).
 // Large batches are executed in slabs of consecutive transforms, so that cuFFT's work area
 // stays below a limit; the work area itself is shared by all plans of a backend
 // (set_work_area), since they run one after the other on one stream.

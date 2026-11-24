@@ -79,7 +79,8 @@ void expect_data_error(const std::filesystem::path& directory, const std::string
   }
 }
 
-// Writes the synthetic C6v data set, modified by `edit`, and expects `fragment` in the error.
+// Writes the synthetic pairwise data set of `symmetry`, modified by `edit`, and expects `fragment` in
+// the error.
 template <typename Edit>
 void expect_rejected(Symmetry symmetry, Edit edit, const std::string& fragment) {
   TemporaryDirectory dir("dataset");

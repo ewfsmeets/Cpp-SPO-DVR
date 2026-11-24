@@ -172,8 +172,8 @@ TEST(ScmLatticeCheck, ScmD9NanFails) {
 // The potential on the SRP48 data set with the example slab
 // ---------------------------------------------------------------------------------------------
 
-// The example slab lies on the SRP48 lattice within 1.2e-6 bohr (the cause, a bohr constant 7.2e-8
-// apart: fortran_deviations.md SCM D9): accepted without a warning; both layers are checked.
+// The example slab lies on the SRP48 lattice within 1.2e-6 bohr (the cause, bohr constants 7.2e-8
+// apart relative: fortran_deviations.md SCM D9): accepted without a warning; both layers are checked.
 TEST(ScmCrpPotential, ScmD9ExampleSlabIsOnTheSrp48Lattice) {
   const ScmCrpPotential potential(srp48, example_input(true));
   const ScmLatticeCheck& check = potential.lattice_check();

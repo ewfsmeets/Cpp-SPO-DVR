@@ -17,8 +17,10 @@ struct AnalysisSurfaceState {
 };
 
 // Position of the analysis surface on the specular grid (ProjOp = 2). With DynamZSpAna it
-// starts just before the specular absorber and moves inwards (towards the surface) as long as
-// the wave packet still has significant norm beyond it; once it can no longer move it is fixed.
+// starts just before the specular absorber and moves inwards (towards the surface) with the outer
+// tail of the incoming wave packet, keeping the norm beyond it (up to the absorber) below the
+// tolerance; it is fixed once the returning packet would push it outwards, or when it reaches
+// ZAnalysis.
 // The rest norm of the averages is summed up to this point. Indices are 0-based.
 // Fortran: Analyzor.f90 SetupAnalysis (izanlySpecChan, anlyTol), FindNewAnalysisPoint
 class AnalysisSurface {

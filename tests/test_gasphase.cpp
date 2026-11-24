@@ -35,7 +35,7 @@ TEST(LapackEigensolver, KnownMatrix) {
 
 TEST(FourierGridHamiltonian, KineticMatrixMatchesAnalyticFgh) {
   // Even-N Fourier grid kinetic matrix (Colbert-Miller style, periodic):
-  // T_ii = (pi^2 / (6 m dx^2)) (1 + 2/N^2); T_ij = (-1)^(i-j) pi^2 / (2 m dx^2 N^2 sin^2(pi (i-j)/N))
+  // T_ii = (pi^2 / (6 m dx^2)) (1 + 2/N^2); T_ij = (-1)^(i-j) pi^2 / (m dx^2 N^2 sin^2(pi (i-j)/N))
   // (the Nyquist term k = N/2 is included, as in the Fortran construction via the half spectrum).
   const FftwFft fft;
   const int n = 16;

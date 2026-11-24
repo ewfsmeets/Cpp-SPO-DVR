@@ -16,11 +16,13 @@ namespace spodvr {
 //   - NOT initialised on allocation: `AlignedVector<double> v(n)` leaves the n values
 //     undefined (double and std::complex<double> are implicit-lifetime types, so this is valid
 //     C++20). The owner must write every element before reading it, and does so in parallel for
-//     the large arrays, with the same static OpenMP schedule as the loops that use them: on
-//     multi-socket (NUMA) machines a memory page is placed on the socket of the thread that
-//     first writes it ("first touch"), so each thread then works on local memory.
-// The pointers exist only inside the standard allocator interface used by std::vector (the one
-// place besides the C-API boundaries where the project allows raw pointers).
+//     the large arrays, with the same OpenMP schedule as the loops that use them
+//     (schedule(runtime) over the same (Z, r) groups, core/loop_schedule.hpp): on multi-socket
+//     (NUMA) machines a memory page is placed on the socket of the thread that first writes it
+//     ("first touch"), so each thread then works on local memory.
+// The pointers exist only inside the standard allocator interface used by std::vector (one of
+// the few places where the project allows raw pointers, with the C-API boundaries, the iostream
+// calls of io/binary_file.hpp and from_chars_whole).
 template <class T>
 struct AlignedAllocator {
   using value_type = T;

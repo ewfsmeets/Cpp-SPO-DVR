@@ -66,7 +66,8 @@ class FortranRecordWriter {
   std::int64_t max_subrecord_;
 };
 
-// Values of one record, read in order; reading past the end or leaving data unread is an error.
+// Values of one record, read in order; reading past the end is an error, and expect_end() checks
+// that no data is left unread.
 class FortranRecordParser {
  public:
   FortranRecordParser(std::vector<std::byte> bytes, std::string description)

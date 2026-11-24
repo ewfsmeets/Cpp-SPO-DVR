@@ -2,7 +2,8 @@
 
 This directory propagates the wave packet on an NVIDIA GPU (`spodvr --device cuda`). ψ stays in
 GPU memory for the whole run. The host gets back only small pieces: the specular wave, one Z
-plane for the BK analysis, and now and then a density per (Z, r) point.
+plane for the BK analysis, now and then a density per (Z, r) point, and with `EnergyResolvedSites`
+the (Z, r, rotation) column of each site.
 
 > **Ground rule.** Every kernel computes exactly what its *CPU twin* in `src/propagation/`
 > computes, with the same tables and in the same order. Only the memory layout and the parallel
@@ -40,7 +41,7 @@ Building, running, benchmarks and the measured optimisations are in
 | slab | a block of consecutive (Z, r) points of the interaction region, processed together (the DVR scratch is sized for one slab) |
 | DVR column | one (Z, r, x, y) point of a slab: one GPU thread in the angular-transform kernels |
 | BK plane | ψ at one Z (`iz_analysis`), the input of the Balint-Kurti (BK) analysis on the host, which projects it onto the asymptotic channels |
-| dtAve | the interval of the averages output; `block_densities` runs at this interval |
+| dtAve | the interval of the averages output; `block_densities` runs at this interval (with `NormBudget` after every analysis step) |
 | load callback | a device function that cuFFT calls for every value it reads (used to multiply by exp(iA) inside an FFT) |
 
 ---
@@ -118,7 +119,8 @@ call launches:
 | 16 | | `project_onto_specular` | initial channel back to the specular grid |
 
 The analysis loop asks for the rest when it needs it: `z_plane(iz)` (`pack_z_plane` and a copy),
-and `block_densities()` every dtAve.
+`block_densities()` every dtAve (every analysis step with `NormBudget`), and with
+`EnergyResolvedSites` `site_column(ixy)` (one copy per site) every analysis step.
 
 One stream, no atomics, fixed launch shapes: two runs on the same GPU give bitwise identical
 results, also across a restart.

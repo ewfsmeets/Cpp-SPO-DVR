@@ -19,8 +19,8 @@ namespace spodvr {
 
 class FrameSource {
  public:
-  // The tables must outlive the source (it keeps a view of their specular_to_scattering); with FrameExtras the
-  // other arguments too.
+  // The tables must outlive the source (it and its FrameExtras keep views of them: specular_to_scattering,
+  // shift_forward, rotational_energies); the other arguments are used in the constructor only.
   FrameSource(const Config& config, const SpatialGrids& grids, const AngularGrid& angular, const RotationalBasis& basis,
               const GasPhase& gas, const PropagationTables& tables, const Fft& fft);
 

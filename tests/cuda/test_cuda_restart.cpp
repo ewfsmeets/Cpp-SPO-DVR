@@ -1,6 +1,6 @@
 // Tests: checkpoint / restart and the command line with the GPU backend (--device cuda). A GPU
 // run split by a restart (native or Fortran files) is bitwise identical to the unsplit GPU run;
-// a GPU run can continue from a CPU checkpoint (and the results then agree to rounding).
+// and --device is parsed (an unknown device is an error).
 #include <filesystem>
 #include <fstream>
 #include <iterator>

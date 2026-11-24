@@ -18,7 +18,8 @@ class InputError : public std::runtime_error {
   std::string parameter_;
 };
 
-// A feature that exists in the Fortran code but is not (yet) available in this program.
+// A feature not available in this program or build: a Fortran feature that is not ported, or
+// --device cuda without the CUDA backend or with too little GPU memory (exit code 3).
 class NotSupportedError : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;

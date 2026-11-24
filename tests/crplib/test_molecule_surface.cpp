@@ -3,12 +3,13 @@
 // impulse responses, exactness at the data points, the gas-phase switch, gradients, and a
 // representable model reproduced off the grid.
 //
-// Data sets with CutsInterpolation = F (total energies) are compared to 4e-15 max(u, |value|), u the
-// atomic unit (Hartree, Hartree/bohr) in the output units:
-// the Fortran reduces their cuts with gfortran's vectorised libmvec cos, the C++ with std::cos
-// (CRP D4, docs/fortran_deviations.md); measured on the reference cases: |dV| <= 4.4e-16,
-// |dF| <= 2.7e-15 at under 12 % of the points. A scratch build calling _ZGVbN2v_cos instead was
-// bitwise equal everywhere. CutsInterpolation = T data sets are compared bit for bit.
+// Data sets with CutsInterpolation = F (total energies) are compared to 4e-15 max(u S, |value|), u the
+// atomic unit (Hartree, Hartree/bohr) in the output units and S the largest |datum| in Hartree (at
+// least 1): the Fortran reduces their cuts with gfortran's vectorised libmvec cos, the C++ with std::cos
+// (CRP D4, docs/fortran_deviations.md); measured on the synthetic reference cases: |dV| <= 4.4e-16,
+// |dF| <= 2.7e-15 at under 12 % of the points (on the real SRP48 data set up to 1.9e-14 at a few
+// points). A scratch build calling _ZGVbN2v_cos instead was bitwise equal everywhere.
+// CutsInterpolation = T data sets are compared bit for bit.
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -255,7 +256,7 @@ namespace {
 
 // The Fourier sites in Psite order: position (lattice units, skewed for C3v/C6v, Cartesian for
 // C4v), the cut-site type (index of its first cut) and the azimuth offset at which the site function
-// is evaluated (degrees). Appendix A of docs/crp_library.md.
+// is evaluated (degrees). docs/crp_library.md "Appendix: cuts, sites and orientations".
 struct FourierSite {
   double u, v;
   int first_cut;

@@ -271,8 +271,8 @@ INSTANTIATE_TEST_SUITE_P(Scm, RegressionPes,
 // program's input reader and checks. V is the PES itself in eV (no switching, no VMin/VMax), printed by the
 // Fortran as e15.8: a value passes within half a printed unit plus potential_tolerance_of(case) x
 // max(|V|, 1 eV) (a value on a rounding boundary can print either way). r and Z pass within half a printed
-// unit plus 1e-14 bohr: the Fortran's grid points are rounded from quad precision (its Z = 0 is 4.4e-16 in
-// the C++'s plain double, docs/fortran_deviations.md).
+// unit plus 1e-14 bohr: the Fortran's grid points are rounded from quad precision (its Z = 0 point is 4.2e-17,
+// printed 0.41633363E-16, where the C++'s plain double gives exactly 0; docs/fortran_deviations.md).
 
 namespace {
 

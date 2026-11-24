@@ -61,8 +61,8 @@ struct RunSetup {
         angular(make_angular_grid(config)) {}
 };
 
-// The Dai-Light C6v case (nphi = 12) and the same input without UseSymmetry but with the same
-// angular grid: the full potential on the same grid points.
+// The Dai-Light C6v case (UseSymmetry, nPhisOptimal: nphi = 12), set up once; the tests compute
+// the full potential on the same grid with a trivial GridSymmetry.
 const RunSetup& dai_light_symmetric() {
   static const RunSetup s(case_json("cu111_dailight_short_sym"));
   return s;

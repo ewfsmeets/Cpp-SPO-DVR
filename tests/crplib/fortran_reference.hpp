@@ -61,7 +61,8 @@ class DriverInput {
   std::size_t next_ = 0;
 };
 
-// One line of driver output: a result (label, 1-based index, bits) or text.
+// One line of driver output: a result (label, index as printed: 1-based from the Fortran driver,
+// 0-based in tables.out, bits) or text.
 struct DriverRecord {
   std::string label;
   int index = 0;

@@ -1,7 +1,8 @@
 // Regression gates 3 and 4 (docs/validation.md): the propagation and the on-the-fly analysis of
 // tests/reference/hardwall_short (1000 steps) against the Fortran output of the same case
-// (fortran_stdout.txt, fortran_averages.out and, if present, fortran_fort21.bin, written by
-// tools/fortran_reference/run_propagation_reference.sh). Skipped when missing.
+// (fortran_stdout.txt, fortran_averages.out, fortran_fort25.txt and, if present, fortran_fort21.bin, written by
+// tools/fortran_reference/run_propagation_reference.sh). Skipped when the stdout or averages file is missing; a
+// missing fortran_fort25.txt fails.
 // The full 7000-step cases (hardwall_small, cu111_dailight_small) run only with
 // SPODVR_LONG_TESTS=1. Each case skips while its Fortran reference files are missing, except the
 // SCM case scm_cu111_srp48_small and cu111_dailight_oblique, which fail.

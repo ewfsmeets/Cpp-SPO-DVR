@@ -24,7 +24,7 @@ std::string_view symmetry_name(Symmetry symmetry) {
   return "?";
 }
 
-// Fortran: SIZE(fouri3D) (C3v/C6v, ATII), Cuts(1..6) (C4v, Read_AtomSurface_Data)
+// Fortran: idf3 (C3v 10, C6v 7; ATII), Cuts(1..6) (C4v, Read_AtomSurface_Data)
 int atom_cut_count(Symmetry symmetry) {
   switch (symmetry) {
     case Symmetry::c3v: return 10;

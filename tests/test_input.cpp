@@ -1121,8 +1121,6 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ROptEnd", [](Json& j) { j["ROptEnd"] = 9.2; }, "ROptEnd", "ROptEnd is too big for the grid in r."},
         Violation{"ZSpOptOrder", [](Json& j) { j["ZSpOptEnd"] = 16.0; }, "ZSpOptStart", "ZSpOptStart > ZSpOptEnd."},
         Violation{"ZSpOptEnd", [](Json& j) { j["ZSpOptEnd"] = 21.0; }, "ZSpOptEnd", "ZSpOptEnd is too big for the specular grid in Z."},
-        // ZSpOptStart < ZAsymptotic cannot be reached on its own: Z0 >= ZAsymptotic and
-        // Z0 <= ZSpOptStart are checked first.
         // Z0 > ZSpOptStart comes first; ZSpOptStart < ZAsymptotic itself is reached only inside the 1e-12 band
         // (ZSpOptStartBelowZAsymptotic).
         Violation{"ZSpOptStart", [](Json& j) { j["ZSpOptStart"] = 6.0; }, "Z0", "Z0 > ZSpOptStart."},

@@ -8,7 +8,8 @@
 
 namespace crplib::detail {
 
-// Hexagonal 6D interpolation, 12 sites (Appendix A of docs/crp_library.md), used by C3v and C6v.
+// Hexagonal 6D interpolation, 12 sites (docs/crp_library.md "Appendix: cuts, sites and
+// orientations"), used by C3v and C6v.
 // Fortran: CRP_C6v_MoleculeSurface.f90 / CRP_C3v_MoleculeSurface.f90 FOUR6D (fouri6D)
 const std::array<double, 144>& fourier_table_molecule_hexagonal();
 

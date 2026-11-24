@@ -2,7 +2,7 @@
 // interpolation at the 12 Fourier sites (each site's own cuts, rotated for its symmetry images),
 // then the Fourier interpolation over the molecule's centre. Fortran: the site part of RRINTII,
 // SISII and FOUR6II (CRP_C6v_MoleculeSurface.f90, CRP_C3v_MoleculeSurface.f90); the site and cut
-// tables are Appendix A of docs/crp_library.md.
+// tables are in docs/crp_library.md "Appendix: cuts, sites and orientations".
 #include <array>
 #include <cmath>
 
