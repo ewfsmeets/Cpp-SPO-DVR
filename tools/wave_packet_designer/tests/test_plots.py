@@ -1,7 +1,9 @@
 """Tests (ctest WavePacketDesigner.Plots): the figure (plots.py), the verdict text (report.py), `check --png`, and the
 window's wiring (gui_mpl.py), all without a window: tests/conftest.py selects matplotlib's Agg backend."""
 
+import math
 import os
+import re
 import subprocess
 import sys
 from dataclasses import replace
@@ -179,6 +181,28 @@ def test_e_n_min_slider_sets_the_time_check() -> None:
     window.update()
     check(rule not in [c.name for c in window.evaluation.design if c.passed is False], "passes at 0.07 eV")
     draw_window(window)
+
+
+def test_time_explanation_names_the_drawn_labels() -> None:
+    """Every label the time panel's explanation quotes ('elastic', 'E_n,min') is one the panel draws."""
+    e = evaluate(load_parameters(DZ_INPUT), Settings(representatives=19))
+    figure = report_figure(e)
+    time = figure.axes[2]
+    drawn = {t.get_text().split("\n")[0].strip() for t in time.texts}  # a label's first line; the time below it
+    quoted = re.findall(r"(?<![A-Za-z])'([^']+)'", PANELS["draw_time"])  # not an apostrophe ("packet's")
+    check(len(quoted) >= 2, f"quoted labels {quoted}")
+    for label in quoted:
+        check(label in drawn, f"time panel: '{label}' quoted but not drawn ({sorted(drawn)})")
+    plt.close(figure)
+
+
+def test_z0_explanation_quotes_the_tolsp_tail() -> None:
+    """The Z0 text's multiple of sigma_Z for spodvr's TolSp check is where the one-sided Gaussian tail of the
+    packet's density is TolSp = 1e-7 (inputs/README.md section 5): within 5 %."""
+    quoted = re.search(r"TolSp check alone needs ~([0-9.]+) sigma_Z for TolSp = 1e-7", CONTROLS["z0"])
+    check(quoted is not None, CONTROLS["z0"])
+    tail = 0.5 * math.erfc(float(quoted.group(1)) / math.sqrt(2.0))
+    check(abs(tail / 1e-7 - 1.0) < 0.05, f"tail at the quoted multiple: {tail:.3e}")
 
 
 def test_everything_has_an_explanation() -> None:

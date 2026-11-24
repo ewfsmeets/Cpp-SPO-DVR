@@ -2,6 +2,7 @@
 the bound methods its widgets call; each state the test checks is drawn for real. Without a GUI backend view.py
 writes the frame movies instead."""
 
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,7 +18,7 @@ from explanations import CONTROLS, PANELS
 from readers.run_info import AU_TIME_FS
 from readers.segments import joined_info, ordered_segments
 from style import scale_and_limits
-from viewer import HELP_PROMPT, Click, FrameViewer, click_on, open_window, self_test_steps
+from viewer import EMPTY_WINDOW, HELP_PROMPT, Click, FrameViewer, click_on, open_window, self_test_steps
 
 
 def new_viewer(fixture_runs: Path, run: str = "dailight_oblique") -> FrameViewer:
@@ -240,6 +241,17 @@ def test_every_panel_and_control_has_its_explanation(fixture_runs: Path) -> None
     window.toggle_explanations()
     assert any(t.get_text().startswith("The probability per area") for t in window.map_ax.texts)
     draw_viewer(window)
+
+
+def test_the_map_explanation_states_the_empty_window_rule(fixture_runs: Path) -> None:
+    """The cell map's text quotes EMPTY_WINDOW and what it is a share of: the first frame's probability on the
+    scattering grid (prob_zrxy of record 0, the viewer's initial_norm), not the norm, which also holds the
+    probability beyond the scattering grid (prob_tail_zr)."""
+    window = new_viewer(fixture_runs)
+    first = window.frames.series.arrays
+    assert window.initial_norm == float(np.asarray(first["prob_zrxy"][0]).sum())
+    quoted = re.search(r"less than (\S+) of the first frame's probability on the scattering grid", PANELS["cell_map"])
+    assert quoted is not None and float(quoted.group(1)) == EMPTY_WINDOW
 
 
 def test_without_a_window_view_writes_the_movies(

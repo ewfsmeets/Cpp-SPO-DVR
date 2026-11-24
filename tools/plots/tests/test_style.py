@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 import style
+from compute.frame_extras import NYQUIST_FRACTION
 from explanations import FIGURES
 
 TOOL_DIR = Path(__file__).resolve().parent.parent
@@ -90,6 +91,14 @@ def test_file_names_of_figures_and_movies() -> None:
     fig = style.new_figure()
     assert style.file_names("x", fig) == ["x.png", "x.pdf"]
     assert style.file_names("m", style.Movie(fig=fig, update=lambda k: None, n_frames=2)) == ["m.gif", "m.png"]
+
+
+def test_the_momentum_explanation_states_the_edge_rules() -> None:
+    """The momentum figure's text states the two edge rules of compute/frame_extras.py: |k| strictly above
+    NYQUIST_FRACTION of a grid's largest momentum (probability_near_edge), the diffraction orders at or above it
+    (momentum_edges compares |n| and |m| with >=)."""
+    assert f"|k| above {NYQUIST_FRACTION:g} of the grid's largest momentum" in FIGURES["momentum"]
+    assert f"the orders with |n| or |m| at or above {NYQUIST_FRACTION:g} of the largest" in FIGURES["momentum"]
 
 
 def test_the_map_explanation_states_the_density_floor() -> None:

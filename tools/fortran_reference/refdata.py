@@ -1161,7 +1161,7 @@ def parse_arguments(argv):
     add.add_argument("--script", metavar="NAME", required=True, help="the script that generated the files")
     add.add_argument("--install", metavar="DIR", help="the reference install that ran (its BUILDINFO.tsv gives the id)")
     add.add_argument(
-        "--binary", metavar="FILE", help="the program that ran: the install's executable or the CRP driver"
+        "--binary", metavar="FILE", help="the program that ran: the install's executable, or the CRP or SCM driver"
     )
     add.add_argument(
         "--input",

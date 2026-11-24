@@ -280,8 +280,8 @@ FIGURES = {
         "channel: (0, 0), the initial J and mJ, every v) in Z, in the first frame, at the surface and in the last "
         "frame. Right: against time, the probability the run brings to the edges of the momentum grids above the "
         f"first frame's, |k| above {NYQUIST_FRACTION:g} of the grid's largest momentum (dashed in the left panels), "
-        f"and, with the diffraction extra, the orders with |n| or |m| above {NYQUIST_FRACTION:g} of the largest. The "
-        "grid cannot hold larger momenta: the FFT folds them over to the other side. Not checked: the normal "
+        f"and, with the diffraction extra, the orders with |n| or |m| at or above {NYQUIST_FRACTION:g} of the largest. "
+        "The grid cannot hold larger momenta: the FFT folds them over to the other side. Not checked: the normal "
         "momentum of the other channels (rotational de-excitation, diffraction to a smaller parallel momentum). The "
         f"verdict warns above {FRAME_EDGE_LIMIT:g} of the initial norm (heuristic); good is far below it."
     ),
@@ -296,8 +296,9 @@ PANELS = {
         "and r points of the window the two range sliders set, at the time of the time slider; the title gives the "
         "window and the probability P in it. The sites of PlotSites and the picked point are marked; click a cell to "
         "pick its grid point. The colour scale is this frame's (Scale: per frame) or one over all frames of the "
-        "window (Scale: all frames, to compare times); a window holding less than 1e-8 of the initial norm is left "
-        "empty. The map is a density at that time, not a reaction probability."
+        "window (Scale: all frames, to compare times); a window holding less than 1e-8 of the first frame's "
+        "probability on the scattering grid is left empty. The map is a density at that time, not a reaction "
+        "probability."
     ),
     "point_density": (
         "rho(Z, r) above the picked (x, y) grid point (bohr^-4: probability per Z r x y cell over its volume, summed "

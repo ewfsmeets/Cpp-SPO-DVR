@@ -56,7 +56,7 @@ PANELS = {
         "k0 and EMinWP): in from Z0, reflected at the turning point Z_turn, and, if the reflection is elastic, "
         "out at the same speed. The slow one is back across Zana at 'elastic': a lower bound for tEnd. "
         "Rotational excitation and diffraction take normal energy, so many outgoing waves are slower; the "
-        "orange path leaves with the lowest normal energy E_n,min you want converged and is back at 'E_n'. "
+        "orange path leaves with the lowest normal energy E_n,min you want converged and is back at 'E_n,min'. "
         "Good: tEnd (thick line) beyond both. Not included: trapping in wells, the spreading of the packet. "
         "inputs/README.md section 8."
     ),
@@ -86,8 +86,9 @@ CONTROLS = {
         "nZSpecular and the absorber ends follow the new grid. inputs/README.md section 4."
     ),
     "z0": (
-        "Z0: the centre of the initial packet. At least Zana + 8 sigma_Z, so no norm starts below the "
-        "analysis line (spodvr's TolSp check), and its outer tail >= 2 bohr before the specular absorber. "
+        "Z0: the centre of the initial packet. At least Zana + 8 sigma_Z, so the packet keeps away from Z < "
+        "Z_asymptotic, where the two grids are coupled (spodvr's TolSp check alone needs ~5.2 sigma_Z for TolSp = "
+        "1e-7), and its outer tail >= 2 bohr before the specular absorber. "
         "Further out only costs propagation time. inputs/README.md section 5."
     ),
     "zsp_opt_start": (

@@ -239,6 +239,8 @@ add_pytest_test(NAME FortranReference.CompareBadExpectedFileRefused TOOL tools/f
                 SELECT test_refdata.py::test_refusals)
 add_pytest_test(NAME FortranReference.ReferenceListsAgree TOOL tools/fortran_reference
                 SELECT test_refdata.py::test_reference_lists)
+add_pytest_test(NAME FortranReference.ManifestRecordHelpNamesThePrograms TOOL tools/fortran_reference
+                SELECT test_refdata.py::test_record_help)
 
 # spodvr_compare_wave (tools/compare/test_compare_wave.py): finite files compare as before, a NaN or
 # inf in either file always fails, bad arguments are usage errors and unreadable files are refused.

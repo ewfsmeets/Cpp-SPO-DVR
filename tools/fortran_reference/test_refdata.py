@@ -776,3 +776,11 @@ def test_number_count(work):
     expect_failure(
         *compare(old, new, "--no-provenance"), r"abs .*cu111_dailight_short/fortran_stdout.txt.*0\.9440341E-25"
     )
+
+
+def test_record_help():
+    """manifest record --help names every program a reference script records as the one that ran: the install's
+    executable and both drivers linked against its objects (run_crp_reference.sh, run_scm_reference.sh)."""
+    status, output = run("manifest", "record", "--help")
+    assert status == 0, output
+    assert "the install's executable, or the CRP or SCM driver" in " ".join(output.split()), output
