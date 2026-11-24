@@ -211,18 +211,22 @@ cplx interpolate_s_matrix(cplx s1, cplx s2, double f) {
 }
 
 int count_large_phase_steps(const ScatteringResults& spectrum) {
+  // The floor from the finite probabilities only: an inf would raise it above every channel.
   double p_max = 0.0;
   for (const EnergyResult& e : spectrum.energies)
-    for (const double p : e.probability) p_max = std::max(p_max, p);
+    for (const double p : e.probability)
+      if (std::isfinite(p) && p > p_max) p_max = p;
   const double floor = 1e-8 * p_max;
 
+  // A NaN probability is not <= floor and a NaN step is not <= pi/2: a non-finite S counts as a large step.
   int count = 0;
   for (std::size_t i = 1; i < spectrum.energies.size(); ++i) {
     const EnergyResult& a = spectrum.energies[i - 1];
     const EnergyResult& b = spectrum.energies[i];
     for (std::size_t k = 0; k < a.s_matrix.size(); ++k) {
       if (a.probability[k] <= floor || b.probability[k] <= floor) continue;
-      if (std::abs(std::arg(b.s_matrix[k] * std::conj(a.s_matrix[k]))) > Constants::pi / 2.0) count = count + 1;
+      const double step = std::arg(b.s_matrix[k] * std::conj(a.s_matrix[k]));
+      if (!(std::abs(step) <= Constants::pi / 2.0)) count = count + 1;
     }
   }
   return count;

@@ -160,6 +160,12 @@ differences are in [validation.md](validation.md).
   analysis-surface index of the file (in a native checkpoint also its previous value) against the specular grid
   before they read the scattering wave and refuse a file whose index lies off it (exit 4, naming the file); the
   Fortran reads `FixedZAnalysisSpec, izanlySpecChan` unchecked (`WaveFunction.f90 ReadWaveFunc`).
+- <a id="non-finite-results"></a>Non-finite results (C++ only): when a number of the scattering results of the
+  on-the-fly or the fine analysis (an energy, an S-matrix element, a probability, a phase, a sum or a mean energy)
+  is NaN or infinite, the C++ still writes every output file, prints a "Non-finite result" line naming the first
+  such number of each result set, and exits with code 5 (README "Exit codes"; `src/analysis/non_finite.hpp`). The
+  Fortran has no such check (no `ieee_is_nan` or `ieee_is_finite` in its sources) and writes such results without
+  notice.
 - Fine analysis, fixed (`docs/fortran_fine_analysis_bugs.md`): `smatrix_calc` (nread 2, non-NAG)
   uses ATAN instead of ATAN2 and takes the signs of Re/Im S separately from the linear
   interpolation. Only S and phases at the analysis energies are affected (probabilities: P

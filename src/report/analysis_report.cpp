@@ -1,6 +1,8 @@
 // Printed sections of the asymptotic analysis: set-up and compact result tables.
 #include "report/analysis_report.hpp"
 
+#include <cmath>
+#include <complex>
 #include <string>
 #include <vector>
 
@@ -120,6 +122,66 @@ void print_diffraction_table(std::ostream& out, const Style& style, const Config
   table.print(out, style);
 }
 
+// A number in full precision; a NaN as "nan" whatever its sign bit.
+std::string number(double x) { return std::isnan(x) ? "nan" : full_precision(x); }
+
+// "(v, j, mJ, n, m) = (0, 2, -1, 1, 0)" for analysed state (is, v).
+std::string state_labels(const AnalysisBasis& basis, int is, int v) {
+  const DiffractionChannel& c = basis.channel(is);
+  return "(v, j, mJ, n, m) = (" + std::to_string(v) + ", " + std::to_string(basis.j(is)) + ", " +
+         std::to_string(basis.mj(is)) + ", " + std::to_string(c.n) + ", " + std::to_string(c.m) + ")";
+}
+
+// "(v, j, mJ) = (0, 2, -1)" for analysed rotational state irotana in level v.
+std::string rotation_labels(const AnalysisBasis& basis, int irotana, int v) {
+  const int is = irotana * basis.n_diffraction();  // any state of that rotation: its first diffraction channel
+  return "(v, j, mJ) = (" + std::to_string(v) + ", " + std::to_string(basis.j(is)) + ", " +
+         std::to_string(basis.mj(is)) + ")";
+}
+
+// The quantity at value.index of one energy's results, with its labels, and the number itself, as
+// "<quantity> is <number>". Layouts: EnergyResult.
+std::string non_finite_quantity(const NonFiniteValue& value, const AnalysisBasis& basis, const EnergyResult& e) {
+  const int i = value.index;
+  const int n_states = basis.n_states();
+  const int n_rot = basis.n_rotation();
+  const int n_orders = basis.max_order() + 1;
+  switch (value.quantity) {
+    case ResultQuantity::total_energy: return "E_total is " + number(e.total_energy);
+    case ResultQuantity::collision_energy: return "E_coll is " + number(e.collision_energy);
+    case ResultQuantity::z_energy: return "E_z is " + number(e.z_energy);
+    case ResultQuantity::total_momentum: return "the total momentum is " + number(e.total_momentum);
+    case ResultQuantity::s_matrix: {
+      const std::complex<double> s = e.s_matrix[i];
+      return "S of " + state_labels(basis, i % n_states, i / n_states) + " is (" + number(s.real()) + ", " +
+             number(s.imag()) + ")";
+    }
+    case ResultQuantity::probability:
+      return "P of " + state_labels(basis, i % n_states, i / n_states) + " is " + number(e.probability[i]);
+    case ResultQuantity::phase:
+      return "the phase of " + state_labels(basis, i % n_states, i / n_states) + " is " + number(e.phase[i]);
+    case ResultQuantity::p_vibration: return "P of v = " + std::to_string(i) + " is " + number(e.p_vibration[i]);
+    case ResultQuantity::p_rotation:
+      return "P of " + rotation_labels(basis, i % n_rot, i / n_rot) + " is " + number(e.p_rotation[i]);
+    case ResultQuantity::p_order: {
+      const int order = i % n_orders;
+      const int rotation = i / n_orders;
+      return "P of " + rotation_labels(basis, rotation % n_rot, rotation / n_rot) + ", diffraction order " +
+             std::to_string(order) + " is " + number(e.p_order[i]);
+    }
+    case ResultQuantity::e_rotation_v:
+      return "<E_rot> of v = " + std::to_string(i) + " is " + number(e.e_rotation_v[i]);
+    case ResultQuantity::e_diffraction_v:
+      return "<E_dif> of v = " + std::to_string(i) + " is " + number(e.e_diffraction_v[i]);
+    case ResultQuantity::p_total: return "P_scattered is " + number(e.p_total);
+    case ResultQuantity::p_reaction: return "P_reaction is " + number(e.p_reaction);
+    case ResultQuantity::e_vibration: return "<E_vib> is " + number(e.e_vibration);
+    case ResultQuantity::e_rotation: return "<E_rot> is " + number(e.e_rotation);
+    case ResultQuantity::e_diffraction: return "<E_dif> is " + number(e.e_diffraction);
+  }
+  return "an unknown quantity is not finite";
+}
+
 }  // namespace
 
 void print_analysis_setup(std::ostream& out, const Style& style, const Config& config, const AnalysisBasis& basis,
@@ -170,6 +232,14 @@ void print_scattering_results(std::ostream& out, const Style& style, const Confi
                         ", j=" + std::to_string(config.input.j_in) + ", summed over mJ)")
       << "\n\n";
   print_diffraction_table(out, style, config, basis, results);
+}
+
+std::string describe_non_finite(std::string_view set, const NonFiniteValue& value, const AnalysisBasis& basis,
+                                const ScatteringResults& results) {
+  const EnergyResult& e = results.energies[value.energy_index];
+  return std::string(set) + ", energy " + std::to_string(value.energy_index + 1) + " of " +
+         std::to_string(results.energies.size()) + " (E_coll = " + fixed(e.collision_energy, 6) +
+         " eV): " + non_finite_quantity(value, basis, e);
 }
 
 }  // namespace spodvr

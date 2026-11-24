@@ -232,6 +232,7 @@ add_library(spodvr_core
   src/analysis/balint_kurti.cpp
   src/analysis/energy_resolved.cpp
   src/analysis/fine_analysis.cpp
+  src/analysis/non_finite.cpp
   src/analysis/norm_budget.cpp
   src/analysis/s_matrix.cpp
   src/io/checkpoint.cpp

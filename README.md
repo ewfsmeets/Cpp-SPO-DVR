@@ -361,7 +361,14 @@ Defined in `src/app/run.cpp` and `src/app/main.cpp`:
   file that is missing or unreadable (checked before the set-up);
 - 3: not supported: a feature that is not ported ("Not supported: …");
 - 4: a checkpoint or BK file error: a restart or analysis-only file that is corrupt, truncated or
-  written with other parameters, or a checkpoint that cannot be written.
+  written with other parameters, or a checkpoint that cannot be written;
+- 5: a non-finite result: the scattering results (S-matrix elements, probabilities, their sums and
+  mean energies) of the on-the-fly or the fine analysis hold a NaN or an infinity. The run goes on and
+  writes every file; for each result set (on the fly, the fine analysis's spectrum, its interpolated
+  energies) one "Non-finite result" line names the first such number.
+
+An error that stops the run after a non-finite result (e.g. a BK file error in the fine analysis of
+`alsoAnalysis`) gives its own exit code, not 5.
 
 ### Output
 

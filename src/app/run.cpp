@@ -9,11 +9,13 @@
 #include <fstream>
 #include <functional>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
 
+#include "analysis/non_finite.hpp"
 #include "analysis/norm_budget.hpp"
 #include "app/backend_factory.hpp"
 #include "app/banner.hpp"
@@ -216,11 +218,13 @@ struct BkOutput {
 };
 
 // A propagation from tStart to tEnd (new run or restart) followed by the asymptotic analysis.
+// Returns a line naming the first non-finite number (NaN, inf) of the results, if any (written all the same).
 // Fortran: Main.f90 from SetupRDBasis to StateToStateProbs
-void run_propagation(std::ostream& out, const Style& style, const Config& config, const SpatialGrids& grids,
-                     const AngularGrid& angular, PotentialGrid potential, const GasPhase& gas, const Fft& fft,
-                     const std::filesystem::path& output_dir, Device device,
-                     const std::optional<BackendFactory>& backend) {
+std::optional<std::string> run_propagation(std::ostream& out, const Style& style, const Config& config,
+                                           const SpatialGrids& grids, const AngularGrid& angular,
+                                           PotentialGrid potential, const GasPhase& gas, const Fft& fft,
+                                           const std::filesystem::path& output_dir, Device device,
+                                           const std::optional<BackendFactory>& backend) {
   WavePacketPropagation propagation(config, grids, angular, std::move(potential), gas, fft,
                                     backend ? *backend : backend_factory(device));
   print_propagation_setup(out, style, grids, propagation);
@@ -373,13 +377,20 @@ void run_propagation(std::ostream& out, const Style& style, const Config& config
   if (budget_files) out << ", norm_budget/";
   if (sums_files) out << ", energy_resolved/";
   out << '\n';
+
+  const std::optional<NonFiniteValue> non_finite = find_non_finite(results);
+  if (!non_finite) return std::nullopt;
+  return describe_non_finite("the on-the-fly analysis", *non_finite, propagation.analysis_basis(), results);
 }
 
 // The fine analysis of a BK file (run mode 2, or alsoAnalysis after the propagation): grid,
 // memory estimate, spectrum, interpolated results and the files in <output>/fine_analysis/.
+// Returns one line for the spectrum and one for the interpolated results if they hold a non-finite
+// number (NaN, inf), naming the first (the files are written all the same).
 // Fortran: Main.f90 (nread = 2: gtaife, probaf, StateToStateProbs)
-void run_fine(std::ostream& out, const Style& style, const Config& config, const AngularGrid& angular,
-              const GasPhase& gas, const Fft& fft, const std::filesystem::path& output_dir, const BkInput& input) {
+std::vector<std::string> run_fine(std::ostream& out, const Style& style, const Config& config,
+                                  const AngularGrid& angular, const GasPhase& gas, const Fft& fft,
+                                  const std::filesystem::path& output_dir, const BkInput& input) {
   const AnalysisSetup setup(config, angular, gas);
   if (config.derived.run_mode == 2)
     print_analysis_setup(out, style, config, setup.basis, make_analysis_energies(config, gas));
@@ -398,6 +409,14 @@ void run_fine(std::ostream& out, const Style& style, const Config& config, const
   out << "\n  Fine-analysis files written to " << (output_dir / "fine_analysis").string() << ":";
   for (const auto& f : files) out << ' ' << std::filesystem::relative(f, output_dir / "fine_analysis").string();
   out << '\n';
+
+  std::vector<std::string> non_finite_lines;
+  if (const std::optional<NonFiniteValue> v = find_non_finite(results.spectrum))
+    non_finite_lines.push_back(describe_non_finite("the fine analysis (spectrum)", *v, setup.basis, results.spectrum));
+  if (const std::optional<NonFiniteValue> v = find_non_finite(results.interpolated))
+    non_finite_lines.push_back(
+        describe_non_finite("the fine analysis (interpolated)", *v, setup.basis, results.interpolated));
+  return non_finite_lines;
 }
 
 // write2DPES: the cut of the PES, the gas-phase potential V_asy (the plots' energy reference; the Fortran
@@ -438,6 +457,14 @@ BkInput written_analysis_input(const Config& config, const std::filesystem::path
 int run_program(const CommandLine& command_line, std::ostream& out, std::ostream& err, bool color,
                 const ProgramInfo& program, const std::optional<BackendFactory>& backend) {
   const Style style{color};
+  // A non-finite result (NaN, inf) is reported as it is found and the run goes on, so that every file is
+  // written; the run then ends with exit code 5, unless a later error ends it with its own code.
+  bool non_finite = false;
+  auto report_non_finite = [&](const std::string& line) {
+    err << style.warning("Non-finite result") << ": " << line << '\n';
+    non_finite = true;
+  };
+  constexpr int non_finite_exit_code = 5;
   try {
     if (command_line.threads) omp_set_num_threads(*command_line.threads);
     // The schedule of the (Z, r) group loops, set before any large array is first written.
@@ -547,20 +574,25 @@ int run_program(const CommandLine& command_line, std::ostream& out, std::ostream
       return 0;
     }
     if (analysis_only) {
-      run_fine(out, style, config, angular, gas, fft, command_line.output_dir, analysis_input(config));
+      for (const std::string& line :
+           run_fine(out, style, config, angular, gas, fft, command_line.output_dir, analysis_input(config)))
+        report_non_finite(line);
       out << '\n' << style.emphasis("Analysis-only run finished.") << '\n';
-      return 0;
+      return non_finite ? non_finite_exit_code : 0;
     }
 
-    run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft, command_line.output_dir,
-                    device, backend);
+    if (const std::optional<std::string> line =
+            run_propagation(out, style, config, grids, angular, std::move(*potential_grid), gas, fft,
+                            command_line.output_dir, device, backend))
+      report_non_finite(*line);
     // alsoAnalysis: the fine analysis of the BK file this run has just written (the
     // propagation's memory is freed by now). Fortran: Main.f90 reads fort.21 back.
     if (config.input.also_analysis)
-      run_fine(out, style, config, angular, gas, fft, command_line.output_dir,
-               written_analysis_input(config, command_line.output_dir));
+      for (const std::string& line : run_fine(out, style, config, angular, gas, fft, command_line.output_dir,
+                                              written_analysis_input(config, command_line.output_dir)))
+        report_non_finite(line);
     out << '\n' << style.emphasis("Run finished.") << '\n';
-    return 0;
+    return non_finite ? non_finite_exit_code : 0;
   } catch (const InputError& e) {
     err << style.warning("Input error") << ": " << e.what() << '\n';
     return 2;

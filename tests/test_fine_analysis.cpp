@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <vector>
 
@@ -537,4 +538,38 @@ TEST(FortranInterpolationBugs, SyntheticFastPhase) {
   EXPECT_GT(n_sign, 0);
   EXPECT_GT(n_typo, 0);
   EXPECT_LT(err_fixed, 0.12);  // second order in the phase step (0.9 rad)
+}
+
+// count_large_phase_steps with a non-finite S: a NaN S (and so a NaN |S|^2) counts as a large step to
+// and from its neighbours, and an infinite |S|^2 does not raise the population floor above every channel.
+TEST(FineAnalysis, NaNStepCountsAsLarge) {
+  constexpr double nan = std::numeric_limits<double>::quiet_NaN();
+  constexpr int n_energies = 5;
+  constexpr int n_channels = 3;  // channel 2 is unpopulated (S = 0)
+  ScatteringResults spectrum;
+  for (int i = 0; i < n_energies; ++i) {
+    EnergyResult e{};
+    for (int k = 0; k < n_channels; ++k) {
+      double phase = 0.1 * i + k;
+      if (k == 1 && i == 4) phase = phase + 2.0;  // the one genuine step > pi/2 (between energies 3 and 4)
+      const cplx s = k == 2 ? cplx(0.0, 0.0) : std::polar(0.5, phase);
+      e.s_matrix.push_back(s);
+      e.probability.push_back(std::norm(s));
+    }
+    spectrum.energies.push_back(e);
+  }
+  ASSERT_EQ(count_large_phase_steps(spectrum), 1);
+
+  // NaN at an inner energy: the steps from energy 1 and to energy 3 count.
+  spectrum.energies[2].s_matrix[0] = cplx(nan, nan);
+  spectrum.energies[2].probability[0] = nan;
+  EXPECT_EQ(count_large_phase_steps(spectrum), 3);
+  // NaN at the first energy: one more step.
+  spectrum.energies[0].s_matrix[1] = cplx(nan, nan);
+  spectrum.energies[0].probability[1] = nan;
+  EXPECT_EQ(count_large_phase_steps(spectrum), 4);
+  // An infinite |S|^2 of the unpopulated channel: its neighbour stays below the floor, and the floor
+  // comes from the finite probabilities, so the other steps still count.
+  spectrum.energies[4].probability[2] = std::numeric_limits<double>::infinity();
+  EXPECT_EQ(count_large_phase_steps(spectrum), 4);
 }
