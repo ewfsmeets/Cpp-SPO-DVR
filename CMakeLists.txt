@@ -22,7 +22,7 @@ set(SPODVR_PGO_DIR "${CMAKE_BINARY_DIR}/pgo-profile" CACHE PATH "Directory of th
 option(SPODVR_USE_CUDA "Build the GPU backend (--device cuda; docs/cuda.md)" OFF)
 option(SPODVR_CUDA_SYNC_DEBUG "Debug: wait for and check every CUDA kernel right after its launch" OFF)
 option(SPODVR_POISON_UNINITIALISED "Debug: fill new AlignedVector elements with NaN" OFF)
-set(SPODVR_SANITIZE "" CACHE STRING "Debug: -fsanitize= list, e.g. address,undefined (needs SPODVR_LTO=OFF)")
+set(SPODVR_SANITIZE "" CACHE STRING "Debug: -fsanitize= list, e.g. address,undefined (needs LTO and CUDA off)")
 option(SPODVR_WARNINGS_AS_ERRORS "Treat compiler warnings as errors (CI)" OFF)
 option(SPODVR_BUILD_TESTS "Build the unit and regression tests" ON)
 option(SPODVR_BUILD_TOOLS "Build the developer tools (operator timing, wave function dump/compare)" ON)

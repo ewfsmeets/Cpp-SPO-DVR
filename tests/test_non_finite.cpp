@@ -415,6 +415,43 @@ TEST(NonFiniteResults, RunWithANaNExitsWith5AndWritesItsFiles) {
   EXPECT_NE(read_file(dir.path() / "nan" / "s_matrix.tsv").find("nan"), std::string::npos);
 }
 
+// A restart from such a checkpoint with alsoAnalysis: the fine analysis of the BK file the run has just written
+// follows the on-the-fly analysis, and each result set holding a NaN gets its line (the on-the-fly one first); the
+// files of the clean run, exit code 5. 60 records (dtStep = dtAna = 10, 0 .. 600 a.u.), so that the fine grid has
+// energies in the confidence interval (nen95 = 3; with 12 records there are none, and no fine results).
+TEST(NonFiniteResults, AlsoAnalysisRunNamesEachResultSet) {
+  const test_support::TemporaryDirectory dir("non_finite_also");
+  nlohmann::json json = short_json();
+  json["dtStep"] = 10.0;
+  json["dtAna"] = 10.0;
+  json["dtAve"] = 100.0;
+  std::string err;
+  ASSERT_EQ(run(with_times(json, 0.0, 300.0, 30), dir.path() / "first", err), 0) << err;
+  fs::create_directories(dir.path() / "damaged");
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin"})
+    fs::copy_file(dir.path() / "first" / name, dir.path() / "damaged" / name);
+  const fs::path checkpoint = dir.path() / "damaged" / "checkpoint.bin";
+  patch_nan(checkpoint, fs::file_size(checkpoint) - 8 - sizeof(cplx));
+
+  nlohmann::json restart = with_times(json, 300.0, 600.0, 30);
+  restart["NewCalc"] = false;
+  restart["alsoAnalysis"] = true;
+  restart["RestartDir"] = (dir.path() / "first").string();
+  ASSERT_EQ(run(restart, dir.path() / "clean", err), 0) << err;
+  EXPECT_EQ(err, "");
+  restart["RestartDir"] = (dir.path() / "damaged").string();
+  EXPECT_EQ(run(restart, dir.path() / "nan", err), 5) << err;
+
+  std::istringstream lines(err);
+  std::vector<std::string> printed;
+  for (std::string line; std::getline(lines, line);) printed.push_back(line);
+  ASSERT_EQ(printed.size(), 3u) << err;  // the on-the-fly results, the fine spectrum, its interpolated energies
+  EXPECT_TRUE(printed[0].starts_with("Non-finite result: the on-the-fly analysis, ")) << err;
+  EXPECT_TRUE(printed[1].starts_with("Non-finite result: the fine analysis (spectrum), ")) << err;
+  EXPECT_TRUE(printed[2].starts_with("Non-finite result: the fine analysis (interpolated), ")) << err;
+  EXPECT_EQ(file_set(dir.path() / "nan"), file_set(dir.path() / "clean"));
+}
+
 // An analysis-only run of a BK file whose last record has a NaN in the coefficient of the initial
 // state: the time-to-energy transform spreads it over the spectrum and the interpolated energies.
 // One line per result set, the files of the clean run, exit code 5. The run of FineAnalysisRuns in

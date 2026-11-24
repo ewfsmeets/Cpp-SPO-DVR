@@ -44,6 +44,16 @@ inline double printed_text_tolerance(const std::string& text, double floor = 1e-
   return std::max(1.01 * 0.5 * std::pow(10.0, exponent - digits), floor);
 }
 
+// Half a unit in the last printed digit of a Fortran real (printed_text_tolerance, at least floor), but floor for an
+// E-format zero, which is exact: a nonzero value always prints a nonzero mantissa there. An F-format zero is not
+// exact (f10.6 prints 3e-7 as 0.000000) and keeps its half unit.
+inline double printed_half_unit(const std::string& text, double floor) {
+  const std::string t = fortran_text_with_e(text);
+  const auto e = t.find('E');
+  if (e != std::string::npos && t.substr(0, e).find_first_of("123456789") == std::string::npos) return floor;
+  return printed_text_tolerance(t, floor);
+}
+
 inline std::vector<std::string> split(const std::string& line) {
   std::istringstream in(line);
   std::vector<std::string> tokens;
@@ -154,7 +164,10 @@ struct FortranOrderRow {
 // One per-energy block of the Fortran stdout; problems: lines the reader could not use (an unreadable label, an
 // order row before its header).
 struct FortranEnergyBlock {
-  std::string total_energy;  // ' total energy =  0.45837825D+00'
+  std::string total_energy;      // ' total energy =  0.45837825D+00'
+  std::string collision_energy;  // ' trans energy ='
+  std::string z_energy;          // ' trans energy in z ='
+  std::string total_momentum;    // ' total momentum =' (a.u.)
   std::vector<FortranVibrationRow> vibration;
   std::vector<FortranRotationRow> rotation;
   int order_headers = 0;  // ' v, j, mj =   0   0   0'
@@ -190,7 +203,13 @@ inline std::vector<FortranEnergyBlock> read_fortran_energy_blocks(const std::fil
     if (blocks.empty()) continue;
     FortranEnergyBlock& b = blocks.back();
     const std::string at = "line " + std::to_string(number);
-    if (has("rotation-diffraction summed probabilities")) {
+    if (has(" trans energy =")) {
+      b.collision_energy = last_token(line);
+    } else if (has(" trans energy in z =")) {
+      b.z_energy = last_token(line);
+    } else if (has(" total momentum =")) {
+      b.total_momentum = last_token(line);
+    } else if (has("rotation-diffraction summed probabilities")) {
       section = Section::vibration;
     } else if (has("diffraction summed probabilities")) {
       section = Section::rotation;
@@ -245,12 +264,13 @@ inline std::vector<FortranEnergyBlock> read_fortran_energy_blocks(const std::fil
 
 // The noise threshold of the average energies: an average is a ratio of two sums of |S|^2 (Analyzor.f90
 // smatrix_combine: av edif and av erot of P(v), the three averages of the sum of the probabilities), compared only
-// where the printed probability it divides by exceeds this; below, both codes print ratios of rounding noise
-// (hardwall_short, whose |S| are all <= 2.4e-15: P(v) <= 9.4e-30, av erot differs by up to 4.4 % between the codes).
-// 1e3 times the largest |P_C++(v) - P_Fortran(v)| where P(v) < 1e-10, measured on every gate-4 case (both Long ones
-// and the restart run included) and gate-5 case (2026-11-24), rounded up: 4.99e-18 (cu111_dailight_oblique, gate 5;
-// 4.96e-18 in cu111_dailight_short_sym), the noise level of a probability. Above it every average compared passes
-// (largest 0.99 half printed units); the smallest P(v) compared is 2.8e-14 (cu111_dailight_oblique, gate 5).
+// where the printed probability it divides by exceeds this; below, both codes print ratios of rounding noise.
+// Measured on every gate-4 case (both Long ones and the restart run included) and gate-5 case (2026-11-24): the
+// printed P(v) are either rounding noise, at most 9.4e-30 (hardwall_short, whose |S| are all <= 2.4e-15; its
+// averages differ by up to 7.2e5 half printed units, av erot by 4.4 %), or at least 2.8e-14 (cu111_dailight_oblique,
+// gate 5), where every average passes within its printed rounding (worst 0.98 of half a unit below P(v) = 1e-11).
+// The threshold lies in that gap. (The largest |P_C++(v) - P_F(v)| where P(v) < 1e-10, about 5e-18, is half a
+// printed unit of an E14.7 value just below 1e-10: the Fortran's print resolution, not the codes' noise.)
 inline constexpr double average_energy_noise_threshold = 5e-15;
 
 // The counts of one section: rows (values) read and those the Fortran's print rule gives for the C++ run (summed
@@ -266,24 +286,24 @@ struct SectionCounts {
 // The outcome of a comparison of the per-energy blocks with the C++ results; failures holds the first few.
 struct EnergyBlockComparison {
   int blocks = 0;
-  SectionCounts scalars;           // per block: total energy, sum of the probabilities, reaction probability
-  SectionCounts averages;          // per block: the average vibrational, rotational, diffraction energy
-  SectionCounts vibration;         // P(v)
-  SectionCounts vibration_means;   // av edif and av erot of a P(v) row
-  SectionCounts rotation;          // P(v, j, mJ)
-  SectionCounts order_headers;     // the (v, j, mJ) headers of the order block
-  SectionCounts order;             // P(v, j, mJ, order)
-  int failed = 0;                  // values outside their tolerance, rows without a C++ state, counts that differ
-  double worst = 0.0;              // the largest deviation in units of its tolerance
+  SectionCounts scalars;  // per block: total energy, trans energy (and in z), total momentum, sum, reaction probability
+  SectionCounts averages;  // per block: the average vibrational, rotational, diffraction energy
+  SectionCounts vibration;  // P(v)
+  SectionCounts vibration_means;  // av edif and av erot of a P(v) row
+  SectionCounts rotation;  // P(v, j, mJ)
+  SectionCounts order_headers;  // the (v, j, mJ) headers of the order block
+  SectionCounts order;  // P(v, j, mJ, order)
+  int failed = 0;  // values outside their tolerance, rows without a C++ state, counts that differ
+  double worst = 0.0;  // the largest deviation in units of its tolerance
   std::vector<std::string> failures;
 };
 
 // The rows the Fortran's print rules give for one block of the C++ run at total_energy, added to c's expected
-// counts: 3 scalars and 3 averages; the v block nviba rows; the rotation block nviba * nana; with writeRDProbs the
+// counts: 6 scalars and 3 averages; the v block nviba rows; the rotation block nviba * nana; with writeRDProbs the
 // order block one header per (v, j, mJ) with E >= E(v, j) (smatrix_combine: `cycle` if E < E(v, j)) and one row per
 // diffraction order under it.
 inline void add_expected_rows(const PropagationRun& cpp, double total_energy, EnergyBlockComparison& c) {
-  c.scalars.expected = c.scalars.expected + 3;
+  c.scalars.expected = c.scalars.expected + 6;
   c.averages.expected = c.averages.expected + 3;
   c.vibration.expected = c.vibration.expected + cpp.n_v;
   c.vibration_means.expected = c.vibration_means.expected + cpp.n_v;
@@ -318,7 +338,7 @@ inline EnergyBlockComparison compare_energy_blocks(const PropagationRun& cpp,
       fail(what + (text.empty() ? ": not printed" : ": Fortran printed '" + text + "'"));
       return;
     }
-    const double tolerance = std::max(printed_text_tolerance(fortran_text_with_e(text)), absolute_floor);
+    const double tolerance = std::max(printed_half_unit(text, 1e-20), absolute_floor);
     const double deviation = std::abs(value - *printed) / tolerance;
     c.worst = nan_aware_max(c.worst, deviation);
     if (!(deviation <= 1.0)) fail(what + ": C++ " + std::format("{:.16e}", value) + ", Fortran " + text);
@@ -355,7 +375,9 @@ inline EnergyBlockComparison compare_energy_blocks(const PropagationRun& cpp,
     const auto printed = [](const std::vector<std::string>& texts) {
       return static_cast<int>(std::ranges::count_if(texts, [](const std::string& t) { return !t.empty(); }));
     };
-    count("scalar", printed({f.total_energy, f.p_total, f.p_reaction}), block.scalars.expected, c.scalars);
+    count("scalar",
+          printed({f.total_energy, f.collision_energy, f.z_energy, f.total_momentum, f.p_total, f.p_reaction}),
+          block.scalars.expected, c.scalars);
     count("average energy", printed({f.e_vibration, f.e_rotation, f.e_diffraction}), block.averages.expected,
           c.averages);
     count("P(v)", static_cast<int>(f.vibration.size()), block.vibration.expected, c.vibration);
@@ -364,6 +386,17 @@ inline EnergyBlockComparison compare_energy_blocks(const PropagationRun& cpp,
     count("P(v, j, mJ)", static_cast<int>(f.rotation.size()), block.rotation.expected, c.rotation);
     count("order header", f.order_headers, block.order_headers.expected, c.order_headers);
     count("P(v, j, mJ, order)", static_cast<int>(f.order.size()), block.order.expected, c.order);
+    // Per header: each (v, j, mJ) printed once, with one row per diffraction order (0 .. mdifa).
+    std::map<std::tuple<int, int, int>, int> rows_per_header;
+    for (const FortranOrderRow& r : f.order) rows_per_header[{r.v, r.j, r.mj}] += 1;
+    if (static_cast<int>(rows_per_header.size()) != f.order_headers)
+      fail(at + ": " + std::to_string(f.order_headers) + " order headers for " +
+           std::to_string(rows_per_header.size()) + " (v, j, mJ) with rows");
+    for (const auto& [key, rows] : rows_per_header)
+      if (rows != cpp.n_orders)
+        fail(at + ": " + std::to_string(rows) + " order rows under (v, j, mJ) = (" + std::to_string(std::get<0>(key)) +
+             ", " + std::to_string(std::get<1>(key)) + ", " + std::to_string(std::get<2>(key)) + "), " +
+             std::to_string(cpp.n_orders) + " orders");
 
     // The scalars. The reaction probability is 1 - sum (Fortran: 1.0 - sump). When almost everything
     // scatters it is the small difference of two numbers near 1, so it is known only to the *absolute*
@@ -386,9 +419,12 @@ inline EnergyBlockComparison compare_energy_blocks(const PropagationRun& cpp,
     // still checked to half a printed unit. 1e-11 gives a margin of ~2 over the fast-math
     // build; a deviation beyond it points to a real change, not to rounding.
     check(e.total_energy, f.total_energy, at + " total energy");
+    check(e.collision_energy, f.collision_energy, at + " trans energy");
+    check(e.z_energy, f.z_energy, at + " trans energy in z");
+    check(e.total_momentum, f.total_momentum, at + " total momentum");
     check(e.p_total, f.p_total, at + " sum of the probabilities");
     check(e.p_reaction, f.p_reaction, at + " reaction probability", 1e-11);
-    c.scalars.compared = c.scalars.compared + 3;
+    c.scalars.compared = c.scalars.compared + 6;
     // The averages over every scattered molecule (f12.6, eV), ratios to the sum of the probabilities: noise if the
     // printed P(v) (E14.7; the printed sum has 7 decimals only) add up to at most the threshold (a NaN is not).
     double printed_sum = 0.0;
@@ -396,6 +432,9 @@ inline EnergyBlockComparison compare_energy_blocks(const PropagationRun& cpp,
       printed_sum = printed_sum + fortran_number(r.p).value_or(std::numeric_limits<double>::quiet_NaN());
     if (printed_sum <= noise_threshold) {
       c.averages.skipped = c.averages.skipped + 3;
+      // Not compared, but a C++ average must still be a number.
+      if (!std::isfinite(e.e_vibration) || !std::isfinite(e.e_rotation) || !std::isfinite(e.e_diffraction))
+        fail(at + ": a non-finite C++ average energy");
     } else {
       check(e.e_vibration, f.e_vibration, at + " average vibrational energy");
       check(e.e_rotation, f.e_rotation, at + " average rotational energy");
@@ -414,6 +453,8 @@ inline EnergyBlockComparison compare_energy_blocks(const PropagationRun& cpp,
       c.vibration.compared = c.vibration.compared + 1;
       if (noise(r.p)) {
         c.vibration_means.skipped = c.vibration_means.skipped + 1;
+        if (!std::isfinite(e.e_diffraction_v[r.v]) || !std::isfinite(e.e_rotation_v[r.v]))
+          fail(row + ": a non-finite C++ av edif or av erot");
         continue;
       }
       check(e.e_diffraction_v[r.v], r.e_diffraction, row + " av edif");
@@ -548,8 +589,9 @@ inline std::vector<std::string> read_fortran_fixed_line(const std::filesystem::p
   return printed;
 }
 
-// Gate 3: the C++ specular analysis line becomes fixed exactly when the Fortran's does (printed at most once), at
-// the same Z to half a printed unit (a line that never fixes, as in hardwall_short, is absent in both).
+// Gate 3: the C++ specular analysis line becomes fixed if and only if the Fortran's does (printed at most once; the
+// Fortran prints no time), at the same Z to half a printed unit (a line that never fixes, as in hardwall_short, is
+// absent in both).
 inline void expect_fixed_line(const std::optional<double>& cpp_line, const std::vector<std::string>& printed) {
   EXPECT_LE(printed.size(), 1u) << "the Fortran printed its fixed specular line " << printed.size() << " times";
   EXPECT_EQ(cpp_line.has_value(), !printed.empty())

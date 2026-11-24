@@ -366,7 +366,9 @@ TEST(InterpolateSMatrix, SignChangesAndZeros) {
 }
 
 // A NaN grid element (from a non-finite BK coefficient) gives a NaN element, at either end and in either part,
-// without calling std::polar with a NaN modulus (its precondition, checked in builds with _GLIBCXX_ASSERTIONS).
+// without calling std::polar with a NaN modulus (its precondition). Only a build with _GLIBCXX_ASSERTIONS
+// (build-asan) checks that precondition: elsewhere std::polar(NaN, ...) also returns NaN, and this test passes with
+// or without the NaN branch of interpolate_s_matrix.
 TEST(InterpolateSMatrix, NaNProbabilityGivesANaNElement) {
   constexpr double nan = std::numeric_limits<double>::quiet_NaN();
   const cplx s = std::polar(0.5, 1.0);
@@ -586,4 +588,8 @@ TEST(FineAnalysis, NaNStepCountsAsLarge) {
   // comes from the finite probabilities, so the other steps still count.
   spectrum.energies[4].probability[2] = std::numeric_limits<double>::infinity();
   EXPECT_EQ(count_large_phase_steps(spectrum), 4);
+  // An S with one infinite part (its step angle is finite: arg of (inf, -inf) is -pi/4) counts too.
+  spectrum.energies[4].s_matrix[0] = cplx(std::numeric_limits<double>::infinity(), 0.0);
+  spectrum.energies[4].probability[0] = std::numeric_limits<double>::infinity();
+  EXPECT_EQ(count_large_phase_steps(spectrum), 5);
 }

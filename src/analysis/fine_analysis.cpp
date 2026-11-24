@@ -221,7 +221,9 @@ int count_large_phase_steps(const ScatteringResults& spectrum) {
       if (std::isfinite(p) && p > p_max) p_max = p;
   const double floor = 1e-8 * p_max;
 
-  // A NaN probability is not <= floor and a NaN step is not <= pi/2: a non-finite S counts as a large step.
+  // A step to or from a non-finite S counts as large (its phase is undefined; an S with one infinite part can still
+  // give a finite angle). A NaN probability is not <= floor, so such a step is not skipped as unpopulated.
+  const auto finite = [](cplx s) { return std::isfinite(s.real()) && std::isfinite(s.imag()); };
   int count = 0;
   for (std::size_t i = 1; i < spectrum.energies.size(); ++i) {
     const EnergyResult& a = spectrum.energies[i - 1];
@@ -229,7 +231,8 @@ int count_large_phase_steps(const ScatteringResults& spectrum) {
     for (std::size_t k = 0; k < a.s_matrix.size(); ++k) {
       if (a.probability[k] <= floor || b.probability[k] <= floor) continue;
       const double step = std::arg(b.s_matrix[k] * std::conj(a.s_matrix[k]));
-      if (!(std::abs(step) <= Constants::pi / 2.0)) count = count + 1;
+      if (!finite(a.s_matrix[k]) || !finite(b.s_matrix[k]) || !(std::abs(step) <= Constants::pi / 2.0))
+        count = count + 1;
     }
   }
   return count;

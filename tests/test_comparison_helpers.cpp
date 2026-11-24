@@ -84,6 +84,9 @@ PropagationRun run_with_energy_block() {
   run.limits = {2, 2, 2, 4, 1};                                               // jana, nviba, nana, nstata, inchna
   EnergyResult e{};
   e.total_energy = -4.267141;
+  e.collision_energy = 0.2;
+  e.z_energy = 0.2;
+  e.total_momentum = 7.3491474;
   e.p_vibration = {0.85, 0.0};
   e.e_diffraction_v = {0.03, 0.0};
   e.e_rotation_v = {0.013, 0.0};
@@ -102,6 +105,9 @@ PropagationRun run_with_energy_block() {
 std::vector<FortranEnergyBlock> fortran_energy_block() {
   FortranEnergyBlock block;
   block.total_energy = "-0.42671410D+01";
+  block.collision_energy = "0.20000000D+00";
+  block.z_energy = "0.20000000D+00";
+  block.total_momentum = "0.73491474D+01";
   block.vibration = {{0, "0.8500000E+00", "0.3000000E-01", "0.1300000E-01"},
                      {1, "0.0000000E+00", "0.0000000E+00", "0.0000000E+00"}};
   block.rotation = {{0, 1, 0, 0, "0.6000000E+00"},
@@ -348,7 +354,7 @@ TEST(GateComparisons, ProbabilitiesPassWhenEqual) {
   const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), fortran_energy_block());
   EXPECT_EQ(c.failed, 0);
   EXPECT_EQ(c.blocks, 1);
-  EXPECT_EQ(c.scalars.compared, 3);
+  EXPECT_EQ(c.scalars.compared, 6);
   EXPECT_EQ(c.averages.compared, 3);
   EXPECT_EQ(c.vibration.compared, 2);
   EXPECT_EQ(c.vibration_means.compared, 1);
@@ -417,10 +423,11 @@ TEST(GateComparisons, DiffractionOrderJustAboveToleranceFailsOnce) {
   EXPECT_NE(c.failures[0].find("(v, j, mJ, order) = (0, 0, 0, 1)"), std::string::npos) << c.failures[0];
   run.scattering.energies[0].p_order[1] = 0.1 + 4e-8;
   EXPECT_EQ(compare_energy_blocks(run, fortran_energy_block()).failed, 0);
-  // An order row of a closed level (v = 1 lies above the total energy) fails, and so does its block's count.
+  // An order row of a closed level (v = 1 lies above the total energy) fails, and so do its block's row count, its
+  // header count (a row without a header) and its own count of rows (1 of 2 orders).
   std::vector<FortranEnergyBlock> ref = fortran_energy_block();
   ref[0].order.push_back({1, 0, 0, 0, "0.0000000E+00"});
-  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 2);
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 4);
 }
 
 // av edif of v = 0 = 0.3000000E-01: half a printed unit 5.05e-9; 6e-9 off fails once, 4e-9 passes. The averages of
@@ -519,14 +526,17 @@ TEST(GateComparisons, EmptySectionFailsTheCount) {
     if (section == "P(v, j, mJ)") ref[0].rotation.clear();
     if (section == "P(v, j, mJ, order)") ref[0].order.clear();
     const EnergyBlockComparison c = compare_energy_blocks(run_with_energy_block(), ref);
-    EXPECT_EQ(c.failed, 1) << section;
-    ASSERT_EQ(c.failures.size(), 1u) << section;
+    // An empty order section also leaves its 2 headers without rows (the per-header count).
+    const std::size_t failures = section == "P(v, j, mJ, order)" ? 2 : 1;
+    EXPECT_EQ(c.failed, static_cast<int>(failures)) << section;
+    ASSERT_EQ(c.failures.size(), failures) << section;
     EXPECT_NE(c.failures[0].find("0 " + section + " rows read, the print rule gives"), std::string::npos)
         << c.failures[0];
   }
+  // One header fewer than the print rule: the header count, and 1 header for 2 (v, j, mJ) with rows.
   std::vector<FortranEnergyBlock> ref = fortran_energy_block();
   ref[0].order_headers = 1;
-  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 1);
+  EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 2);
   ref = fortran_energy_block();
   ref[0].e_diffraction.clear();  // an average not printed: the count and the value
   EXPECT_EQ(compare_energy_blocks(run_with_energy_block(), ref).failed, 2);
@@ -603,6 +613,58 @@ TEST(GateComparisons, AnalysisLimitsMismatchFails) {
   EXPECT_NONFATAL_FAILURE(expect_analysis_limits(not_compared, limits_of_a_run), "analysis limits compared");
 }
 
+// A printed E-format zero is exact (a nonzero value prints a nonzero mantissa), an F-format zero is not (f10.6
+// prints 3e-7 as 0.000000); in the energy blocks a C++ 1e-15 under a printed zero fails once (half a unit, 5.05e-8,
+// let it pass before).
+TEST(GateComparisons, PrintedZeroIsExactInEFormatOnly) {
+  EXPECT_EQ(printed_half_unit("0.0000000E+00", 1e-20), 1e-20);
+  EXPECT_EQ(printed_half_unit("-0.000000D+00", 0.0), 0.0);
+  EXPECT_EQ(printed_half_unit("0.000000", 0.0), 1.01 * 0.5e-6);
+  EXPECT_EQ(printed_half_unit("0.1000000E+00", 0.0), printed_text_tolerance("0.1000000E+00", 0.0));
+  PropagationRun run = run_with_energy_block();
+  run.scattering.energies[0].p_rotation[2] = 1e-15;  // printed 0.0000000E+00: (v, irot, j, mJ) = (1, 1, 0, 0)
+  const EnergyBlockComparison c = compare_energy_blocks(run, fortran_energy_block());
+  EXPECT_EQ(c.failed, 1);
+  ASSERT_EQ(c.failures.size(), 1u);
+  EXPECT_NE(c.failures[0].find("(v, irot, j, mJ) = (1, 1, 0, 0)"), std::string::npos) << c.failures[0];
+}
+
+// The order rows are counted per header: one header with a row too many and one with a row too few (the block's
+// total unchanged) fail once each, and so does a header printed twice.
+TEST(GateComparisons, OrderRowsAreCountedPerHeader) {
+  const auto order_count_failures = [](const EnergyBlockComparison& c) {
+    return std::ranges::count_if(c.failures, [](const std::string& s) {
+      return s.find("order rows under") != std::string::npos || s.find("order headers for") != std::string::npos;
+    });
+  };
+  EXPECT_EQ(order_count_failures(compare_energy_blocks(run_with_energy_block(), fortran_energy_block())), 0);
+  std::vector<FortranEnergyBlock> moved = fortran_energy_block();
+  moved[0].order[3] = {0, 0, 0, 1, "0.1000000E+00"};  // the second header's order-1 row under the first header
+  EXPECT_EQ(order_count_failures(compare_energy_blocks(run_with_energy_block(), moved)), 2);
+  std::vector<FortranEnergyBlock> twice = fortran_energy_block();
+  twice[0].order_headers = 3;  // a header printed twice (its rows read under one key)
+  EXPECT_EQ(order_count_failures(compare_energy_blocks(run_with_energy_block(), twice)), 1);
+}
+
+// The averages skipped as noise are not compared, but a non-finite C++ value there fails once: av erot of the closed
+// level (P(v) = 0), and the three totals when every printed P(v) is 0.
+TEST(GateComparisons, SkippedAverageMustBeFinite) {
+  PropagationRun run = run_with_energy_block();
+  run.scattering.energies[0].e_rotation_v[1] = std::numeric_limits<double>::quiet_NaN();
+  const EnergyBlockComparison per_v = compare_energy_blocks(run, fortran_energy_block());
+  EXPECT_EQ(per_v.failed, 1);
+  EXPECT_EQ(per_v.vibration_means.skipped, 1);
+
+  std::vector<FortranEnergyBlock> closed = fortran_energy_block();
+  closed[0].vibration[0].p = "0.0000000E+00";  // every printed P(v) 0: the totals are skipped
+  const int base = compare_energy_blocks(run_with_energy_block(), closed).failed;
+  PropagationRun total = run_with_energy_block();
+  total.scattering.energies[0].e_rotation = std::numeric_limits<double>::infinity();
+  const EnergyBlockComparison totals = compare_energy_blocks(total, closed);
+  EXPECT_EQ(totals.averages.skipped, 3);
+  EXPECT_EQ(totals.failed, base + 1);
+}
+
 // The fixed specular line (gate 3): equal to half a printed unit (e15.8 of 10.88: 5e-7, with the 1 % margin 5.05e-7)
 // passes; just beyond it, a NaN, a line fixed in only one code, a line printed twice or an unreadable value fails
 // once; a line fixed in neither passes.
@@ -641,7 +703,8 @@ TEST(GateComparisons, EnergyBlockReader) {
   const std::filesystem::path path = std::filesystem::path(::testing::TempDir()) / "energy_block_synthetic.txt";
   std::ofstream(path)
       << "   0  0.1  0.2  0.3\n"  // before the first block: not read
-      << "\n total energy = -0.42671410D+01\n trans energy =  0.20000000D+00\n\n"
+      << "\n total energy = -0.42671410D+01\n trans energy =  0.20000000D+00\n"
+      << " trans energy in z =  0.20000000D+00\n total momentum =  0.73491474D+01\n\n"
       << " ************************************\n rotation-diffraction summed probabilities\n"
       << " ************************************\n\n v    probability         av edif         av erot\n\n"
       << "   0  0.8500000E+00  0.3000000E-01  0.1300000E-01\n\n"

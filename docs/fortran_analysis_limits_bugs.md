@@ -2,7 +2,7 @@
 
 **Status:** fixed upstream on 2026-11-23 in r1726 (the input checks) and r1727 (the search starts at `jin`), and
 ported to the C++ (section [The C++](#the-c)); r1727 is the reference of the port since 2026-11-23. Found on
-2026-11-23 while checking which input paths no reference case covers (every Fortran-compared case has
+2026-11-23 while checking which input paths no reference case covers (every Fortran-compared case then had
 `VIn = JIn = MJIn = 0`), and verified by runs of both codes. The sections below describe the bugs as they were in
 5.19, 5.24 and upstream master up to 8c2b3fe (r1725), and in the C++ up to 383fd40 (its line numbers there).
 
@@ -234,7 +234,8 @@ with the keys listed changed (`DVR.inp` and `input.json` alike); the executables
 - The open-level search is in the block of `GasPhase.f90` marked "ADDED BY E. PIJPER" (lines 107–184 in 5.19). It
   reads `DeltaJ` from the angular grid, so the parity was considered for the step but not for the start.
 - Both bugs are unchanged in upstream master 8c2b3fe, which includes the input-check fixes of 19–22 November 2026.
-- The C++ port reproduced both. No reference case has an odd `JIn` or `VAna` given, so no gate could see them.
+- The C++ port reproduced both. No reference case had an odd `JIn` or `VAna` given, so no gate could see them
+  (since 2026-11-24 the case `cu111_dailight_oblique` has JIn 1, see [The C++](#the-c)).
 
 ## Proposed fix: Fortran
 
@@ -291,7 +292,10 @@ The C++ follows upstream in all three r1726 checks (the user's decision, 2026-11
 - Tests: `GasPhase.OddJInSearchReachesJ3` (example 1), `GasPhase.JMax7OpensJ5`, `GasPhase.OddJInWarnsForTheNextOddLevel`,
   `GasPhase.PostConditionsThrow`, `AnalysisBasis.OddJInExampleHasTenRotationalStates`,
   `AnalysisBasis.InitialStateOutsideTheBasisThrows`, the input rows `JInEqJMax`, `VInEqVAna`, `VAnaZeroGiven`,
-  `JInEqJAna`, `AnalysisD3VInIsTheLastLevel`, and the designer's copy (`tools/wave_packet_designer`).
+  `JInEqJAna`, `AnalysisD3VInIsTheLastLevel`, and the designer's copy (`tools/wave_packet_designer`). Against the
+  Fortran (r1727): the reference case `cu111_dailight_oblique` (JIn 1, MJIn −1, JMax 3) has `jana` 3 and `nana` 10
+  in both codes; gate 2 compares `nana`, `nstata`, `inchna` (`RegressionPes.Gate2AnalysisLimits`), gates 4 and 5
+  all five limits ([validation.md](validation.md)).
 - BK and checkpoint files written before the fix by a run with odd JIn and without JAna have another number of
   analysed states; reading them now stops with exit code 4 (give the old run's JAna to read them).
 - Commits: the input checks d18066b, the search and analysis D3 26f1730.

@@ -362,8 +362,8 @@ Defined in `src/app/run.cpp` and `src/app/main.cpp`:
 - 3: not supported: a feature that is not ported ("Not supported: …");
 - 4: a checkpoint or BK file error: a restart or analysis-only file that is corrupt, truncated or
   written with other parameters, or a checkpoint that cannot be written;
-- 5: a non-finite result: the scattering results (S-matrix elements, probabilities, their sums and
-  mean energies) of the on-the-fly or the fine analysis hold a NaN or an infinity. The run goes on and
+- 5: a non-finite result: the scattering results (energies, S-matrix elements, probabilities, phases,
+  their sums and mean energies) of the on-the-fly or the fine analysis hold a NaN or an infinity. The run goes on and
   writes every file; for each result set (on the fly, the fine analysis's spectrum, its interpolated
   energies) one "Non-finite result" line names the first such number.
 
@@ -532,9 +532,10 @@ CPU and the C++ GPU code were run and compared state by state:
   40 steps on that grid.
 - The full record, with figures: [docs/validation_thesis_fig5_3_dz](docs/validation_thesis_fig5_3_dz/README.md).
 
-**The validated domain.** All cases compared with the Fortran start H₂ in (v = 0, j = 0) at normal
-incidence. Other initial states, oblique incidence and other molecules are not compared with the
-Fortran code. Convergence remains the user's task: [inputs/README.md](inputs/README.md) covers the
+**The validated domain.** The cases compared with the Fortran start H₂ in (v = 0, j = 0) at normal
+incidence, and one in (v = 0, j = 1, mJ = −1) at oblique incidence (`cu111_dailight_oblique`: 0.1 eV parallel
+energy at 17°). Other initial states (v > 0, larger j) and other molecules are not compared with the Fortran
+code. Convergence remains the user's task: [inputs/README.md](inputs/README.md) covers the
 Z and r grids, the wave packet and the absorbers; the rotational basis (JMax, MJMax) and the surface
 grid (nX, nY) are checked by runs with larger values.
 

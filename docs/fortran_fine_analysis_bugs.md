@@ -86,9 +86,10 @@ s1 and s2 are the S-matrix elements at the grid points below and above E_z. The 
   - It fails only when the phase changes by about π between neighbouring grid points.
 - S = √P·e^{iφ}.
 
-If a populated channel (|S|² > 1e-8 of the largest |S|²) changes its phase by more than π/2
+If a populated channel (|S|² > 1e-8 of the largest finite |S|²) changes its phase by more than π/2
 between neighbouring grid points, the program prints a warning. The interpolation is then
-unreliable, and the run should be propagated longer.
+unreliable, and the run should be propagated longer. A step to or from a non-finite S counts too; such
+an S is also reported as an error (exit code 5).
 
 ## How the fix is verified (the Fortran code is not modified)
 

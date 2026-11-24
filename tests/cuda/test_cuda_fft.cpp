@@ -84,6 +84,7 @@ TEST(CudaFft, StridedBatchOf1DTransformsMatchesTheCpuAlsoInSlabs) {
   const FftLayout cpu_long{n_long, n_columns, n_columns, 1};
   const std::size_t limit = std::size_t(10) * n_long * sizeof(cplx);
   DeviceFftPlan sliced(gpu_long, FftSign::Plus, limit);
+  ASSERT_GT(sliced.batch_per_call(), 0);
   EXPECT_LT(sliced.batch_per_call(), n_columns);              // more than one slab
   EXPECT_NE(n_columns % sliced.batch_per_call(), 0);          // and a remainder slab
   EXPECT_LT(compare(gpu_long, nullptr, &cpu_long, FftSign::Plus, w), 1e-15);         // one call

@@ -16,6 +16,7 @@
 #include <fstream>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <span>
 #include <sstream>
 #include <string>
@@ -1037,16 +1038,20 @@ TEST(CheckpointFiles, AnalysisSurfaceIndexIsChecked) {
     AnalysisSurfaceState surface;
     std::string error;
   };
-  AnalysisSurfaceState beyond = info.surface;
-  beyond.index = n_z_specular;
-  AnalysisSurfaceState negative = info.surface;
-  negative.previous_index = -1;
-  const std::vector<Case> cases = {
-      {"index", beyond,
-       std::format("(analysis surface index {} is outside the specular grid, 0 .. {})", n_z_specular,
-                   n_z_specular - 1)},
-      {"previous_index", negative,
-       std::format("(previous analysis surface index -1 is outside the specular grid, 0 .. {})", n_z_specular - 1)}};
+  // Each index at both bounds: nZSpecular and -1.
+  std::vector<Case> cases;
+  for (const int value : {n_z_specular, -1}) {
+    AnalysisSurfaceState index = info.surface;
+    index.index = value;
+    cases.push_back(
+        {std::format("index_{}", value), index,
+         std::format("(analysis surface index {} is outside the specular grid, 0 .. {})", value, n_z_specular - 1)});
+    AnalysisSurfaceState previous = info.surface;
+    previous.previous_index = value;
+    cases.push_back({std::format("previous_index_{}", value), previous,
+                     std::format("(previous analysis surface index {} is outside the specular grid, 0 .. {})", value,
+                                 n_z_specular - 1)});
+  }
   const std::size_t wave_packet_bytes =
       16 * (std::size_t(shape[3]) * shape[4] + std::size_t(shape[0]) * shape[1] * shape[2]);
   for (const Case& c : cases) {
@@ -1101,6 +1106,17 @@ TEST(CheckpointFiles, FortranAnalysisSurfaceIndexIsChecked) {
     expect_checkpoint_error(CheckpointFilesRun::restart(dir, "fortran"),
                             r.dir.path() / std::format("out_cut_{}", index + 1), error);
   }
+  // The smallest int32 (a corrupt file; izanlySpecChan - 1 would overflow): refused the same way, the value named.
+  const fs::path dir = r.copy_of_first("fortran_surface_int32_min");
+  const fs::path path = dir / "fort.9";
+  std::string bytes = read_file(r.first / "fort.9");
+  const std::size_t index_offset = (4 + 4 + 4) + (4 + 16 * std::size_t(shape[3]) * shape[4] + 4) + 4 + 4;
+  const std::int32_t smallest = std::numeric_limits<std::int32_t>::min();
+  patch_value(bytes, index_offset, smallest);
+  write_file(path, bytes);
+  expect_checkpoint_error(CheckpointFilesRun::restart(dir, "fortran"), r.dir.path() / "out_restart_int32_min",
+                          std::format("'{}': izanlySpecChan {} is outside the specular grid, 1 .. {}", path.string(),
+                                      smallest, n_z_specular));
 }
 
 // A restart from a Fortran BK file of another analysis time step (dtAna 20 instead of 10) is refused.

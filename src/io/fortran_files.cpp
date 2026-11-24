@@ -45,12 +45,13 @@ AnalysisSurfaceState read_analysis_record(FortranRecordReader& file, const std::
                                           int n_z_specular, AnalysisSurfaceState state) {
   FortranRecordParser analysis = file.read("record 3 (FixedZAnalysisSpec, izanlySpecChan)");
   state.fixed = analysis.read<int32>() != 0;
-  state.index = analysis.read<int32>() - 1;
-  state.previous_index = state.index;
+  const int32 iz_analysis = analysis.read<int32>();  // 1-based; checked before any arithmetic (a corrupt file)
   analysis.expect_end();
-  if (state.index < 0 || state.index >= n_z_specular)
-    throw CheckpointError("'" + path.string() + "': izanlySpecChan " + std::to_string(state.index + 1) +
+  if (iz_analysis < 1 || iz_analysis > n_z_specular)
+    throw CheckpointError("'" + path.string() + "': izanlySpecChan " + std::to_string(iz_analysis) +
                           " is outside the specular grid, 1 .. " + std::to_string(n_z_specular));
+  state.index = iz_analysis - 1;
+  state.previous_index = state.index;
   return state;
 }
 

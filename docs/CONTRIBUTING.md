@@ -198,8 +198,9 @@ The regular expression selects the names that end in `Long` (or whose suite does
 Run the same ctest command in their build directory ([Build variants](#build-variants)). Use
 `build-poison` after touching the uninitialised-memory code. `build-asan` runs the C++ tests of the quick tier
 (`OMP_NUM_THREADS=8 ctest --test-dir build-asan -LE python -E 'RegressionPropagation|PlotRuns'`, about 15 min,
-2026-11-24) with `ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1`. Its compiler
-warnings are not errors: GCC reports false maybe-uninitialized warnings inside libstdc++'s `<regex>` under the
+2026-11-24) with `ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1`; run it after
+touching how non-finite numbers are handled (some library preconditions, such as std::polar's, are checked only
+there). Its compiler warnings are not errors: GCC reports false maybe-uninitialized warnings inside libstdc++'s `<regex>` under the
 sanitizers. The fast-math builds (`build-fast`,
 `build-cuda-fast`) are expected to fail a few tests that compare exact values; their gates pass. The
 list, with the reason for each: [performance.md](performance.md#the-fast-math-build-spodvr_fast_math).

@@ -745,8 +745,9 @@ TEST(Input, ZanaWithinTheTolerancesIsValid) {
   EXPECT_NEAR(grids.z_analysis, 8.88, 1e-14);
 }
 
-// ZAnaSp exactly at ZSpOptStart and exactly at Z0 is valid: the Fortran checks ZAnaSp > ZSpOptStart and
-// ZAnaSp < Z0 with plain comparisons (ReadInput; 1e-13 beyond them is in the violation table).
+// ZAnaSp exactly at ZSpOptStart and exactly at Z0 passes the input checks: the Fortran checks ZAnaSp > ZSpOptStart
+// and ZAnaSp < Z0 with plain comparisons (ReadInput; 1e-13 beyond them is in the violation table). A run with ZAnaSp
+// at Z0 then stops at the initial wave packet's norm check (TolSp): about half the packet lies beyond the surface.
 TEST(Input, ZAnaSpAtItsBoundsIsValid) {
   Json json = reference_json();
   json["DynamZSpAna"] = false;

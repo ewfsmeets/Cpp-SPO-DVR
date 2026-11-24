@@ -1,7 +1,8 @@
 // Gate 5: the fine analysis (run mode 2) against the Fortran code. The C++ analyses the Fortran's
-// own BK coefficients (hardwall_small/fortran_fort21.bin), so the fine analysis is tested in
-// isolation. Reference data: tools/fortran_reference/run_fine_analysis_reference.sh (unmodified
-// Fortran binary, onlyAnalysis runs), in hardwall_small/fine_<variant>/.
+// own BK coefficients (<case>/fortran_fort21.bin of hardwall_small, cu111_dailight_small and
+// cu111_dailight_oblique), so the fine analysis is tested in isolation. Reference data:
+// tools/fortran_reference/run_fine_analysis_reference.sh (unmodified Fortran binary, onlyAnalysis runs), in
+// <case>/fine_<variant>/.
 // The Fortran interpolated S-matrix elements (fort.25) are compared with an emulation of the
 // Fortran interpolation including its bugs (docs/fortran_fine_analysis_bugs.md); everything
 // else with the C++ results directly. Every value of fil10, unit 3 and fort.25 is compared, or
@@ -113,7 +114,7 @@ struct Comparison {
   double worst = 0.0;
 
   void check(double value, const std::string& text, const std::string& what, double floor = 1e-20) {
-    const double tolerance = printed_text_tolerance(text, floor);
+    const double tolerance = printed_half_unit(text, floor);
     const double deviation = std::abs(value - parse_fortran_real(text)) / tolerance;
     EXPECT_LE(deviation, 1.0) << what << ": C++ " << value << ", Fortran " << text;
     worst = nan_aware_max(worst, deviation);
@@ -166,21 +167,14 @@ std::vector<fs::path> reference_files(const std::string& case_name, const std::s
   return files;
 }
 
-// The fort.25 rows whose S and phase gate 5 skips, per reason (measured; the probability of every row is compared):
-// both grid elements around the energy below 1e-8 of the largest |S| (negligible), or the linear interpolation of
-// Re S or Im S within 1e-10 of the largest |S| of zero (its sign, which the Fortran copies, is undecidable).
-struct Fort25Skips {
-  int negligible;
-  int undecidable;
-};
-const std::map<std::string, Fort25Skips>& fort25_skips() {
-  static const std::map<std::string, Fort25Skips> skips = {
-      {"hardwall_small/full", {9856, 0}},
-      {"hardwall_small/truncated", {9856, 0}},
-      {"hardwall_small/small", {7629, 0}},
-      {"cu111_dailight_small/full", {4131, 0}},
-      // The undecidable rows: elements below 9e-8 (2e-5 of the largest |S|) on both grid points (2026-11-24).
-      {"cu111_dailight_oblique/full", {8066, 22}},
+// The fort.25 rows whose S and phase gate 5 skips (measured; the probability of every row is compared): both grid
+// elements around the energy below 1e-8 of the largest |S| (negligible). Every other row is compared, also where
+// the linear interpolation of Re S or Im S lies near zero (the Fortran copies its sign): in cu111_dailight_oblique
+// 22 rows have a part within 4.9e-13 of zero, and they compare like the others (2026-11-24).
+const std::map<std::string, int>& fort25_negligible_rows() {
+  static const std::map<std::string, int> skips = {
+      {"hardwall_small/full", 9856},       {"hardwall_small/truncated", 9856},    {"hardwall_small/small", 7629},
+      {"cu111_dailight_small/full", 4131}, {"cu111_dailight_oblique/full", 8066},
   };
   return skips;
 }
@@ -299,7 +293,7 @@ void run_gate(const std::string& case_name, const std::string& variant, Referenc
   EXPECT_EQ(static_cast<int>(r.skipped.size()), info.n_skip_messages);
 
   // 6. fort.25: every row's probability against the C++; S and phase against the bug emulation, or skipped with
-  // a reason (fort25_skips).
+  // a reason (fort25_negligible_rows).
   const Fort25File fort25 = read_fortran_fort25_rows(dir / "fort.25");
   for (const std::string& problem : fort25.problems) ADD_FAILURE() << "fort.25 " << problem;
   ASSERT_EQ(fort25.total_energy.size(), r.interpolated.energies.size());
@@ -310,7 +304,7 @@ void run_gate(const std::string& case_name, const std::string& variant, Referenc
     for (const cplx s : e.s_matrix) s_max = nan_aware_max(s_max, std::abs(s));
   Comparison p25;
   Comparison s25;
-  Fort25Skips skipped{0, 0};
+  int skipped_negligible = 0;
   for (const Fort25Row& row : fort25.rows) {
     const EnergyResult& e = r.interpolated.energies[row.block];
     const int is = run.state(row.order, row.n, row.m, row.j, row.mj);
@@ -319,21 +313,16 @@ void run_gate(const std::string& case_name, const std::string& variant, Referenc
       continue;
     }
     const int k = is + n_states * row.v;
+    // The Fortran prints open channels only: E_total > E(v, j), the rule the counts use (fort25_print_rule_rows).
+    if (!(e.total_energy > interpolated.level_energy_ev[row.v][row.j]))
+      ADD_FAILURE() << "fort.25 line " << row.line << ": a closed channel (total energy not above E(v, j))";
     p25.check(e.probability[k], row.p, "fort.25 P");
 
     const auto [upper, f] = locate_on_grid(g, e.z_energy);
     const cplx s1 = r.spectrum.energies[upper - 1].s_matrix[k];
     const cplx s2 = r.spectrum.energies[upper].s_matrix[k];
     if (std::abs(s1) < 1e-8 * s_max && std::abs(s2) < 1e-8 * s_max) {
-      skipped.negligible = skipped.negligible + 1;
-      continue;
-    }
-    // Signs decided by a linear interpolation within rounding of zero cannot be compared.
-    const double re_lin = s1.real() + (s2.real() - s1.real()) * f;
-    // As the reference since 5.24 r1713 (5.19 had s1.real()).
-    const double im_lin = s1.imag() + (s2.imag() - s1.imag()) * f;
-    if (std::abs(re_lin) < 1e-10 * s_max || std::abs(im_lin) < 1e-10 * s_max) {
-      skipped.undecidable = skipped.undecidable + 1;
+      skipped_negligible = skipped_negligible + 1;
       continue;
     }
     // The interval located by the C++ is the Fortran's on every gate-5 case: a fallback to the neighbouring interval
@@ -345,18 +334,20 @@ void run_gate(const std::string& case_name, const std::string& variant, Referenc
     const double phase = emulated.real() == 0.0 ? 0.0 : std::atan2(emulated.imag(), emulated.real());
     s25.check(phase, row.phase, "fort.25 phase (emulated)");
   }
+  Comparison e25;  // the total energy of each block
+  for (std::size_t b = 0; b < fort25.total_energy.size(); ++b)
+    e25.check(r.interpolated.energies[b].total_energy, fort25.total_energy[b], "fort.25 total energy");
+  e25.report("fort.25 total energies");
   p25.report("fort.25 probabilities");
   s25.report("fort.25 S-matrix and phases (Fortran interpolation emulated)");
-  std::cout << "  fort.25: " << fort25.rows.size() << " rows; S and phase skipped: " << skipped.negligible
-            << " negligible, " << skipped.undecidable << " with an undecidable sign\n";
+  std::cout << "  fort.25: " << fort25.rows.size() << " rows; S and phase skipped: " << skipped_negligible
+            << " negligible\n";
 
   // 7. The counts: every value of every output compared, every skip pinned.
-  const auto pin = fort25_skips().find(case_name + "/" + variant);
-  ASSERT_NE(pin, fort25_skips().end()) << "no pinned fort.25 skips for " << case_name << "/" << variant;
-  EXPECT_EQ(skipped.negligible, pin->second.negligible) << "fort.25 rows skipped as negligible vs the pin";
-  EXPECT_EQ(skipped.undecidable, pin->second.undecidable) << "fort.25 rows skipped as undecidable vs the pin";
-  expect_fine_counts({f10.n, u3.n, p25.n, s25.n},
-                     expected_fine_counts(interpolated, g.size(), skipped.negligible + skipped.undecidable));
+  const auto pin = fort25_negligible_rows().find(case_name + "/" + variant);
+  ASSERT_NE(pin, fort25_negligible_rows().end()) << "no pinned fort.25 skips for " << case_name << "/" << variant;
+  EXPECT_EQ(skipped_negligible, pin->second) << "fort.25 rows skipped as negligible vs the pin";
+  expect_fine_counts({f10.n, u3.n, p25.n, s25.n}, expected_fine_counts(interpolated, g.size(), skipped_negligible));
 }
 
 }  // namespace

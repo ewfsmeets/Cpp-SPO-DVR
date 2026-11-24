@@ -232,7 +232,10 @@ TEST(CudaPotential, SlabsEqualTheCpu) {
   cuda::DevicePotentialOperator gpu(shape, s.grids.nz_potential, s.basis.initial_index(), s.tables, transform,
                                     potential, s.potential.symmetry, fft_limit, scratch_limit);
   const std::int64_t interaction_points = std::int64_t(s.grids.nz_potential) * p.nr;
+  ASSERT_GT(gpu.slab_points(), 0);
   ASSERT_LT(gpu.slab_points(), interaction_points);  // more than one slab
+  // slab_size takes a divisor of the points: every slab is full (the stage has no remainder slab).
+  EXPECT_EQ(interaction_points % gpu.slab_points(), 0) << gpu.slab_points() << " of " << interaction_points;
   ASSERT_TRUE(gpu.exp_potential_in_fft_callback());
   const PotentialOperator cpu(shape, s.grids.nz_potential, s.basis.initial_index(), s.tables, transform, potential,
                               s.potential.symmetry);

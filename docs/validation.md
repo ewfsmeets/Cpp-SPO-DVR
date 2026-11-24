@@ -147,8 +147,8 @@ derived from exactly the same parameters.
    e(1,0) = 0.762842 eV) is checked by the unit test `GasPhase.ReferenceCaseSixDigitValues`.
    The other cases of gate 1 run the same comparison (`RegressionPes.Gate2RovibrationalStates`).
    The analysis limits the Fortran set-up prints (`nana`, `nstata`, `inchna`; RotDifBasis.f90) equal the C++
-   analysis basis built on that gas phase (`RegressionPes.Gate2AnalysisLimits`, every case with a
-   `fortran_setup_stdout.txt`); gates 4 and 5 compare all five limits (`jana` and `nviba` too) of every run.
+   analysis basis built on that gas phase (`RegressionPes.Gate2AnalysisLimits` and
+   `RegressionHardWall.Gate2AnalysisLimits`, every case with a `fortran_setup_stdout.txt`); gates 4 and 5 compare all five limits (`jana` and `nviba` too) of every run.
 3. **Propagation** (`tests/test_regression_propagation.cpp`): initial wave-packet block
    (norm, |ψ(k)| values, iLow/iHigh, norm inside) and the averages table (time, norm, ⟨Z⟩, ⟨r⟩,
    rest norm) against the Fortran output (stdout; averages from averages.out), to all printed
@@ -167,8 +167,9 @@ derived from exactly the same parameters.
    `Gate5DaiLight`). Oblique incidence with J > 0: `cu111_dailight_oblique` (default, CPU and GPU; gates 1–5) is
    `cu111_dailight_short` with JIn 1, MJIn −1, JMax = MJMax = 3 (10 rotational states, the odd-parity angular
    grid, mJ ≠ 0), EParallel 0.1 eV and PhiParallel 17° (the momentum shift and the oblique channels), and tEnd
-   2100 a.u. (1050 steps): its specular line fixes at Z = 10.88 at t = 1610 a.u. in both codes, so the run is a
-   code test, not a converged S matrix (a missing reference file fails its tests). Every case also compares where
+   2100 a.u. (1050 steps): its specular line fixes at Z = 10.88 in both codes (the C++ at t = 1610 a.u.; the
+   Fortran prints no time, only the line, between its 1600 and 1700 a.u. averages), so the run is a code test,
+   not a converged S matrix (a missing reference file fails its tests). Every case also compares where
    the specular analysis line becomes fixed with the Fortran's printed "fixed at Z" (half a printed unit; never
    fixed in hardwall_short, in both codes). Status: all pass (gates 3, 4, 5). Full Dai–Light run (7000 steps): averages
    worst 0.986583 of half a printed unit, BK (1400 records) 6.41e-13 of max|c| = 0.265,
@@ -201,10 +202,11 @@ derived from exactly the same parameters.
    with the CRP term alone (ΔV removed, the lattice kept) the C++ misses the Fortran by 7.8e9 half
    units and 1.4e10 BK tolerances (2026-11-15).
 4. **On-the-fly analysis** (same test as gate 3, same runs): every value printed in the
-   Fortran per-energy blocks (`Analyzor.f90` smatrix_combine: total energy, sum, reaction probability, the
-   three average energies, P(v) with av edif and av erot, P(v, j, mJ) and, with writeRDProbs, P per
-   diffraction order; tests/analysis_reference.hpp) to half a unit in the last printed digit (values below
-   1e-20 are noise and compared absolutely), every BK coefficient of every analysis step (`fortran_fort21.bin`) to 1e-10 of
+   Fortran per-energy blocks (`Analyzor.f90` smatrix_combine: total energy, trans energy, trans energy in z,
+   total momentum, sum, reaction probability, the three average energies, P(v) with av edif and av erot,
+   P(v, j, mJ) and, with writeRDProbs, P per diffraction order; tests/analysis_reference.hpp) to half a unit in
+   the last printed digit (values below 1e-20 are noise and compared absolutely; a printed E-format zero is
+   exact, since E-format prints a nonzero value with a nonzero mantissa), every BK coefficient of every analysis step (`fortran_fort21.bin`) to 1e-10 of
    max(max|c|, 1e-4) (exception: the reaction probability = 1 − sum is compared to
    max(half a printed unit, 1e-11) absolute, the accuracy of the sum it is derived from; decided
    after cu111_dailight_small: 2.9e-6 printed to 7 digits differed by 3.6e-13; floor
@@ -215,11 +217,13 @@ derived from exactly the same parameters.
    Every row must match a C++ state (the rotation block's irot is the C++ rotational index + 1), and per
    energy block the rows of each section number what the Fortran's print rule gives for the C++ run: nviba
    P(v) rows, nviba · nana P(v, j, mJ), one order header per (v, j, mJ) with E ≥ E(v, j) and mdifa + 1 rows
-   under it. An average energy is a ratio of two sums of \|S\|²: it is compared where the printed
-   probability it divides by (P(v), or the sum of the printed P(v) for the three totals) exceeds 5e-15, 1e3
-   times the largest \|P_C++(v) − P_F(v)\| measured where P(v) < 1e-10, rounded up (4.99e-18,
-   cu111_dailight_oblique in gate 5, over every gate-4 and gate-5 case, 2026-11-24); below, both codes print ratios of rounding noise
-   (hardwall_short: P(v) ≤ 9.4e-30, av erot 4.4 % apart). Skipped rows are counted. The analysis limits the
+   under each header. An average energy is a ratio of two sums of \|S\|²: it is compared where the printed
+   probability it divides by (P(v), or the sum of the printed P(v) for the three totals) exceeds 5e-15. The
+   printed P(v) of every gate-4 and gate-5 case are either rounding noise, at most 9.4e-30 (hardwall_short,
+   whose averages differ by up to 7.2e5 half printed units, av erot 4.4 % apart), or at least 2.8e-14
+   (cu111_dailight_oblique), where every average passes within its printed rounding (worst 0.98 of half a unit
+   below P(v) = 1e-11); 5e-15 lies in that gap (measured 2026-11-24). Skipped rows are counted, and a skipped
+   C++ average must still be finite. The analysis limits the
    Fortran prints (`jana`, `nviba`, `nana`, `nstata`, `inchna`) equal the C++ analysis basis.
    Since the reference is r1727 (2026-11-24) also every S-matrix row of the Fortran's on-the-fly
    `fortran_fort25.txt` (tests/fort25_reference.hpp; r1720 refers the initial state's phase to the specular
@@ -271,8 +275,11 @@ derived from exactly the same parameters.
    31200 of unit 3, 9904 fort.25 rows). Re S, Im S and the phase of a fort.25 row are skipped where both grid
    elements around its energy are below 1e-8 of the largest \|S\| (pinned per variant: 9856 of 9904 rows in
    full and truncated, 7629 of 7728 in small, 4131 of 39232 in `Gate5DaiLight`, 8066 of 29504 in
-   `Gate5DaiLightOblique`; the hard wall populates few states) or the sign of the interpolated Re S or Im S is
-   undecidable (22 in `Gate5DaiLightOblique`, all elements below 9e-8 on both grid points; 0 in the others). A fallback to the
+   `Gate5DaiLightOblique`; the hard wall populates few states). Every other row is compared, also the 22 rows of
+   `Gate5DaiLightOblique` whose interpolated Re S or Im S lies within 4.9e-13 of zero (the Fortran takes their
+   sign separately; they compare like the others). Each fort.25 row must be an open channel (E_total > E(v, j),
+   the print rule of the counts), each block's printed total energy is compared, and a printed E-format zero
+   is exact. A fallback to the
    neighbouring interval's emulation for energies on a grid point matched better 0 times on every variant
    (2026-11-24) and was removed. The committed variants require their files: a missing one fails
    (`RegressionFineAnalysis.MissingRequiredReferenceFails`). The gate analyses

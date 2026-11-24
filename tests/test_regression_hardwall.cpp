@@ -3,6 +3,7 @@
 //   fortran_setup_stdout.txt  vasy table (gate 1), list-directed full precision
 //   pes_reference.txt         the full potential V(iz, ir) and the angular grid (gate 1)
 //   debug_asyp.dat            rovibrational energies and eigenvectors (gate 2)
+//   fortran_setup_stdout.txt  the analysis limits nana, nstata, inchna (gate 2, with the gas phase)
 // Tests are skipped when a reference file is missing.
 #include <gtest/gtest.h>
 
@@ -16,6 +17,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "analysis_reference.hpp"
+#include "app/fine_analysis_run.hpp"
 #include "comparison.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fftw_fft.hpp"
@@ -171,4 +174,18 @@ TEST(RegressionHardWall, Gate2RovibrationalStates) {
   RecordProperty("max_relative_energy_difference_all", std::to_string(max_rel_energy_all));
   std::cout << "  open levels: max rel dE = " << max_rel_energy_open << ", max |dpsi| = " << max_abs_psi_open
             << "; all levels: max rel dE = " << max_rel_energy_all << '\n';
+}
+
+// Gate 2: the analysis limits the Fortran set-up prints (RotDifBasis.f90: nana, nstata, inchna; a potential-only run
+// stops before jana and nviba, which gates 4 and 5 compare) against the C++ analysis basis built on the gas phase.
+TEST(RegressionHardWall, Gate2AnalysisLimits) {
+  REQUIRE_REFERENCE("fortran_setup_stdout.txt");
+  const Calculation& c = calculation();
+  const AnalysisSetup setup(c.config, c.angular, c.gas);
+  namespace t = spodvr::testing;
+  t::expect_analysis_limits(
+      t::compare_analysis_limits(t::analysis_limits(setup.basis),
+                                 t::read_fortran_analysis_limits(reference_dir / "fortran_setup_stdout.txt"),
+                                 t::limits_of_a_setup),
+      t::limits_of_a_setup);
 }

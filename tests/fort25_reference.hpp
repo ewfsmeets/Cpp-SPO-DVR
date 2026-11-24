@@ -95,15 +95,6 @@ inline Fort25File read_fortran_fort25_rows(const std::filesystem::path& path) {
   return file;
 }
 
-// Half a unit in the last printed digit of a Fortran real (printed_text_tolerance, at least floor), but floor
-// for a printed zero: an E-format zero is exact (a nonzero value always prints a nonzero mantissa).
-inline double printed_half_unit(const std::string& text, double floor) {
-  const std::string t = fortran_text_with_e(text);
-  const std::string mantissa = t.substr(0, t.find('E'));
-  if (mantissa.find_first_of("123456789") == std::string::npos) return floor;
-  return printed_text_tolerance(t, floor);
-}
-
 // The tolerances of the S-matrix elements (measured, tests/regression_gate.hpp). Two errors add: the printed
 // digits of the Fortran (half a unit of Re and Im, 0 for a printed zero) and the difference of the two codes, at
 // most code = s_scale_fraction * max(the case's largest |S_F|, s_floor), an absolute error. |S_C - S_F| within
