@@ -4,6 +4,9 @@ A plane wave of energy E meets V = -i A (3/2) ((q - start)/L)^2 on [start, start
 T what passes the end (and wraps around on the periodic grid). Transfer matrix through thin slices with
 constant V, integrated backwards from the transmitted wave, with the program's strength A. A low-Z absorber is
 the mirror image for a wave from the other side: same R and T.
+
+The plot tool's verdict uses the same method, vectorised over energies (tools/plots/compute/absorber_reflection.py;
+its tests/test_absorber_reflection.py compares it with reflection_transmission here).
 """
 
 import cmath

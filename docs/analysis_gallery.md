@@ -672,6 +672,7 @@ The report opens with a verdict, worst finding first. For this run (condensed):
 | warning | the packet reaches the outer diffraction orders of the momentum grid | up to 0.11 of the norm (t = 5160 a.u.) | ≤ 10⁻⁶ |
 | warning | the norm budget does not close | residual 1.7 × 10⁻³ (error estimate 7.6 × 10⁻⁴) | estimate + 10⁻⁴ |
 | information | slowest converged outgoing normal energy | 0.060 eV; slower channels carry at most 3.5 × 10⁻⁹ | ≤ 0.001 |
+| information | absorber reflection: the error of P from waves the Z absorbers return | up to 6.1 × 10⁻⁵ in P (0.4 eV, channel (v, j, mJ, n, m) = (0, 0, 0, 1, −1), P = 0.049); relative error 2a up to 2.5 × 10⁻⁴ where P ≥ 0.01; 14 073 rows near a threshold not estimated | ≤ 0.001 |
 | information | the top rotational state J = 28 during impact | up to 3.8 × 10⁻⁵ of the norm | normal at the surface |
 | information | norm left at the end | 1.2 × 10⁻⁴ | |
 
@@ -695,7 +696,9 @@ with that parameter changed. How to choose and verify each parameter:
 not derived bounds. Nor does a norm bound the error at one energy: that error is first order in the
 amplitude, about 2√N for a norm N not yet analysed where P ≈ 1 and larger at the ends of the packet's
 energy range, and absorber reflection adds up to about 2√R of P, which no norm shows
-(inputs/README.md, section 8).
+(inputs/README.md, section 8). The "absorber reflection" finding estimates the latter per channel from
+the absorbers' R and T, to first order: not for channels just above their threshold (R > 0.1), nor for
+the r absorber, the low-Z absorbers or channels the run does not analyse.
 
 ### Norms and mean positions
 

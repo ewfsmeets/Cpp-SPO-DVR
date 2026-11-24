@@ -179,7 +179,9 @@ waves, a high one reflects slow ones.
   L/λ). At exactly 1 no interval of the table matches: the strength is 0, the absorber is off, and
   the C++ warns ([absorber D2](../docs/fortran_deviations.md#absorber-d2)). This scales with the
   mass: for D₂ the same L/λ needs √2 shorter absorbers.
-- **End on the last grid point**: whatever passes the end wraps around to Z = 0.
+- **End on the last grid point**: whatever passes the end wraps around to ZStart. There the wall
+  reflects it, and it crosses the absorber again: it comes back with amplitude about T (section 8,
+  "Errors no norm shows").
 - **Scattering absorber**: sees all channels, down to their thresholds: target ~0.2 eV, L ≥ ~4 bohr
   (H₂: R + T ≤ 4e-5 for 0.05–1.0 eV, 8e-5 at 1.5 eV). Below ~0.03 eV it reflects whatever the choice
   (section 8: why that limit is set by T anyway, and the error this gives in P).
@@ -190,7 +192,8 @@ waves, a high one reflects slow ones.
   `ROptStart` beyond the barrier region and beyond the extent of the bound states up to the
   analysed v and j_max; target ~0.3 eV.
 - The designer's `check` computes R and T (1D transfer matrix through the exact −iV_opt) and L/λ
-  for all three.
+  for all three; after a run, the plot tool's verdict estimates the error this gives per channel
+  (section 8).
 
 ### Low-Z absorbers and the grid-point trap
 
@@ -242,12 +245,24 @@ wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and with the line fixe
 - **Energy resolution** ≈ 2π/T (6.8 meV at 25 000 a.u.). A finer `NrOfEs` spacing interpolates.
 - **`dtAna`**: 2π/`dtAna` must exceed the span of total energies (incl. internal energy) in the
   analysis (8.5 eV at 20 a.u.).
-- **Errors no norm shows**: an absorber reflects √R of a channel's outgoing amplitude back across
-  the analysis line, so ΔP/P oscillates in energy with an amplitude of about 2√R at the channel's
-  outgoing normal energy (hard wall, R = 5e-7: |S| off by up to 8.7e-4 against √R = 7e-4). For the
-  specular absorber targets of section 7 (R + T ≤ 4e-9) that is up to ≈ 1.3e-4; for the scattering
-  absorber's (R + T ≤ 4e-5 from 0.05 to 1.0 eV) up to ≈ 1.3e-2, more for channels just above their
-  threshold (an estimate, not measured).
+- **Errors no norm shows**: an absorber returns part of a channel's outgoing wave across the
+  analysis line. It reflects √R of the amplitude; the transmitted part wraps round to ZStart, is
+  reflected by the wall and crosses the absorber again, so about T comes back too (when V at ZStart
+  exceeds the channel's normal energy). With a = √R + T at the channel's outgoing normal energy
+  (`ZSpOpt` for every v of the initial channel, `ZOpt` for the others), the error of P_f is, to
+  first order in a and at the worst phase, up to
+  - 2·a_f·P_f: the channel's own wave returned, a relative error 2a_f;
+  - plus 2·√(P_f·Q), Q = Σ_c min(a_c, 1)²·P_c over the analysed channels at that energy: the
+    returned waves scatter at the surface again, into every channel.
+
+  It oscillates in energy. Hard wall, R = 5e-7: |S| off by up to 8.7e-4, between √R = 7e-4 and
+  2√R. Above ~0.4 eV T dominates a (DZ `ZOpt` at 1 eV: R 1.7e-10, T 1.1e-5). For the specular
+  absorber targets of section 7 (R + T ≤ 4e-9) 2a is up to ≈ 1.3e-4; for the scattering absorber's
+  (R + T ≤ 4e-5 from 0.05 to 1.0 eV) up to ≈ 1.3e-2, more for channels just above their threshold.
+  The plot tool's verdict estimates both terms per channel (finding "absorber reflection",
+  [tools/plots](../tools/plots/README.md#the-verdict)). It leaves out `ROpt`, the low-Z absorbers,
+  unanalysed channels, the tail below, multiple reflections and channels with R > 0.1 (near a
+  threshold, where first order fails), and counts as if everything returned before `tEnd`.
 - **The tail beyond the specular line**: with `DynamZSpAna`, up to max(`TolSp`, the initial norm in
   the specular absorber) of incoming tail lies beyond the line when it is fixed (section 6). It
   crosses the line later and adds an error of order √`TolSp` to the elastic element's |S|

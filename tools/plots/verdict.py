@@ -8,10 +8,12 @@ from pathlib import Path
 
 import numpy as np
 
+from compute.absorber_reflection import returned_amplitude
 from compute.analysis import analysis_energies, analysis_time_step_au, channel_energy_of_rows, energy_of_rows
 from compute.densities import combined_probability, region_norms, specular_inside_line
 from compute.diagnostics import (
     Finding,
+    absorber_reflection,
     budget_open,
     diverged,
     grid_edge,
@@ -52,6 +54,10 @@ from readers.tables import Averages, Table, read_gas_phase_states, read_s_matrix
 
 PROPAGATING_RUN_MODES = (0, 1)  # new, restart (run_info.json run_mode.code)
 END_OF_RUN_FILES = ("averages.dat", "scattering_summary.tsv", "s_matrix.tsv")  # written after the propagation
+INITIAL_CHANNEL_ABSORBER = "ZSpOpt"  # every v of the initial channel is measured on the specular grid
+OTHER_CHANNELS_ABSORBER = "ZOpt"
+LOW_Z_ABSORBERS = ("ZOptLow", "ZSpOptLow")
+CHANNEL_COLUMNS = ("v", "j", "mJ", "n", "m")
 
 
 def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
@@ -76,6 +82,7 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
         slowest(last, info, bk),
         moving(info, bk, run_results),
         unitarity(run_results.unitarity_error, worst_unitarity_energy(run_results)),
+        absorber_reflection_finding(last, info, bk),
         *basis_edges(last, info),
         *frames_at_edges(runs),
         norm_budget_finding(runs),
@@ -235,6 +242,62 @@ def slowest(run: Path, info: RunInfo, bk: BkCoefficients | None) -> Finding:
     energy_index, outgoing_ev = outgoing_normal_energies(table, bk, collision_ev, info.hartree_to_ev)
     slow_p = slow_probability(energy_index, outgoing_ev, table["P"], len(collision_ev), e_n_min_ev)
     return slowest_converged(e_n_min_ev, slow_p, collision_ev)
+
+
+def absorber_reflection_finding(run: Path, info: RunInfo, bk: BkCoefficients | None) -> Finding:
+    """The error of each channel's P from the waves the Z absorbers return (s_matrix.tsv, the BK file's channel
+    energies, run_info.json's absorbers): ZSpOpt for every v of the initial channel (subtracted from the
+    scattering grid and measured on the specular grid), ZOpt for the others, at the channel's outgoing normal
+    energy with the total mass. "not checked" without the files or for an absorber power other than 2."""
+    if bk is None or not (run / "s_matrix.tsv").is_file():
+        return not_checked("absorber reflection", "no bk_coefficients.bin or s_matrix.tsv")
+    absorbers = info.data["absorbers"]
+    if absorbers["power"] != 2:
+        return not_checked("absorber reflection", f"power {absorbers['power']}, not 2")
+    table = read_s_matrix(run / "s_matrix.tsv")
+    collision_ev = analysis_energies(info).collision_ev
+    energy_index, outgoing_ev = outgoing_normal_energies(table, bk, collision_ev, info.hartree_to_ev)
+    by_name = {absorber["name"]: absorber for absorber in absorbers["list"]}
+    initial = initial_channel_rows(table, info)
+    reflection, amplitude = np.full(len(outgoing_ev), np.inf), np.full(len(outgoing_ev), np.inf)  # closed: inf
+    for name, rows in ((INITIAL_CHANNEL_ABSORBER, initial), (OTHER_CHANNELS_ABSORBER, ~initial)):
+        open_rows = rows & (outgoing_ev > 0.0)
+        reflection[open_rows], amplitude[open_rows] = absorber_response(
+            by_name[name], outgoing_ev[open_rows] / info.hartree_to_ev, info.data["molecule"]["total_mass"]
+        )
+    return absorber_reflection(
+        reflection=reflection,
+        amplitude=amplitude,
+        probability=table["P"],
+        collision_energy_ev=collision_ev,
+        channels=np.column_stack([table[c].astype(int) for c in CHANNEL_COLUMNS]),
+        energy_index=energy_index,
+        low_z_absorbers=any(name in by_name for name in LOW_Z_ABSORBERS),
+    )
+
+
+def initial_channel_rows(table: Table, info: RunInfo) -> np.ndarray:
+    """The rows of the initial channel (j_in, mJ_in, specular diffraction (0, 0)), every v."""
+    state = info.data["initial_state"]
+    return (
+        (table["j"].astype(int) == state["j"])
+        & (table["mJ"].astype(int) == state["mJ"])
+        & (table["n"].astype(int) == 0)
+        & (table["m"].astype(int) == 0)
+    )
+
+
+def absorber_response(absorber: dict, energies_hartree: np.ndarray, mass_me: float) -> tuple[np.ndarray, np.ndarray]:
+    """R and the returned amplitude a = sqrt(R) + T of an absorber of run_info.json at the given kinetic energies
+    (hartree). An absorber that is off (strength <= 0) reflects nothing and returns everything: R = 0, a = 1."""
+    if not absorber["strength"] > 0.0:
+        return np.zeros(len(energies_hartree)), np.ones(len(energies_hartree))
+    return returned_amplitude(
+        energies_hartree,
+        length_bohr=absorber["end"] - absorber["start"],
+        strength_hartree=absorber["strength"],
+        mass_me=mass_me,
+    )
 
 
 def outgoing_normal_energies(

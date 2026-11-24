@@ -36,7 +36,8 @@ def test_findings_sorted_worst_first() -> None:
 
 
 def test_a_clean_run_has_no_error_or_warning() -> None:
-    """A complete, converged, unitary run with packet weight everywhere: only the information on the norm left."""
+    """A complete, converged, unitary run with packet weight everywhere, its absorbers returning little: only
+    information (the absorber reflection, the norm left)."""
     energies = np.linspace(0.2, 0.6, 5)
     p = np.full(5, 0.9)
     findings = d.sorted_findings(
@@ -49,10 +50,11 @@ def test_a_clean_run_has_no_error_or_warning() -> None:
             d.outer_diffraction_channels(np.zeros(5), energies),
             d.r_grid_ends(1e-9, (0, 0), False),
             d.still_moving(p, p, energies),
+            reflection_finding([1e-5] * 5, list(p), energy_index=list(range(5))),
             d.norm_left(1e-5),
         ]
     )
-    assert [f.name for f in findings] == ["norm left"]
+    assert [f.name for f in findings] == ["absorber reflection", "norm left"]
     assert d.slowest_converged(0.03, np.zeros(5), energies).severity == "information"
 
 
@@ -79,6 +81,71 @@ def test_each_finding_fires_just_above_its_limit_and_for_nan() -> None:
     assert slow(0.03, np.array([0.0, d.SLOW_CHANNELS_LIMIT]), energies).severity == "information"
     assert slow(0.03, np.array([NAN, 0.0]), energies).severity == "warning"
     assert d.diverged(0.0) and not d.diverged(None)
+
+
+def reflection_finding(
+    amplitude: list[float],
+    probability: list[float],
+    *,
+    reflection: list[float] | None = None,
+    energy_index: list[int] | None = None,
+) -> d.Finding:
+    """absorber_reflection for rows given by their returned amplitude a and P (R default a^2: below the
+    first-order limit), all at one collision energy unless energy_index says otherwise; the channel of row k is
+    (0, k, 0, 0, 0)."""
+    n_rows = len(amplitude)
+    index = np.zeros(n_rows, dtype=int) if energy_index is None else np.array(energy_index)
+    return d.absorber_reflection(
+        reflection=np.array(amplitude) ** 2 if reflection is None else np.array(reflection),
+        amplitude=np.array(amplitude),
+        probability=np.array(probability),
+        collision_energy_ev=0.2 + 0.1 * np.arange(index.max() + 1),
+        channels=np.array([[0, k, 0, 0, 0] for k in range(n_rows)]),
+        energy_index=index,
+    )
+
+
+def test_absorber_reflection_fires_just_above_its_limit_and_for_nan() -> None:
+    """One row with P = 1: delta P = 2 a P + 2 sqrt(P a^2 P) = 4 a (exact for a = limit / 4); just above the
+    limit a warning, at it information; a NaN in a or P, and an absorber that is off (a = 1), warn."""
+    assert reflection_finding([1.01 * d.REFLECTION_LIMIT / 4], [1.0]).severity == "warning"
+    at_limit = reflection_finding([d.REFLECTION_LIMIT / 4], [1.0])
+    assert at_limit.severity == "information" and at_limit.value.startswith("up to 1.00e-03 in P")
+    assert reflection_finding([NAN, 1e-6], [0.5, 0.5], reflection=[0.0, 0.0]).severity == "warning"
+    assert reflection_finding([1e-6, 1e-6], [NAN, 0.5]).severity == "warning"
+    off = reflection_finding([1.0], [0.5], reflection=[0.0])
+    assert off.severity == "warning" and "direct 1.00e+00" in off.value
+    assert off.section == d.SECTION_ABSORBERS
+
+
+def test_absorber_reflection_terms_by_hand() -> None:
+    """Three rows at one energy and one at another: Q sums min(a, 1)^2 P per energy (the near-threshold row,
+    a = 2 with R = 0.5, capped at 1 but included), the re-scattered term is 2 sqrt(P Q), the direct one 2 a P;
+    the near-threshold row is not estimated."""
+    amplitude, probability = np.array([0.01, 0.02, 2.0, 0.03]), np.array([0.5, 0.3, 0.1, 0.2])
+    error = d.reflection_error(np.array([1e-4, 4e-4, 0.5, 9e-4]), amplitude, probability, np.array([0, 0, 0, 1]), 2)
+    q = np.array([1e-4 * 0.5 + 4e-4 * 0.3 + 1.0 * 0.1, 9e-4 * 0.2])
+    assert np.allclose(error.rescattered, 2.0 * np.sqrt(probability * q[[0, 0, 0, 1]]), rtol=1e-15, atol=0.0)
+    assert np.allclose(error.direct, 2.0 * amplitude * probability, rtol=1e-15, atol=0.0)
+    assert list(error.near_threshold) == [False, False, True, False]
+    finding = reflection_finding(list(amplitude), list(probability), reflection=[1e-4, 4e-4, 0.5, 9e-4])
+    assert "1 rows with R > 0.1 (near a threshold) not estimated" in finding.value
+
+
+def test_absorber_reflection_relative_part_only_for_large_p() -> None:
+    """A row with P below REFLECTION_RELATIVE_P and a large a (0.05) is left out of the relative error the value
+    quotes (2a of the other row), but still counts in the absolute check (it warns when its error is large)."""
+    small_p = 0.1 * d.REFLECTION_RELATIVE_P
+    finding = reflection_finding([1e-4, 0.05], [0.5, small_p], energy_index=[0, 1])
+    assert finding.severity == "information"
+    assert "relative error 2a up to 2.00e-04 where P >= 0.01 (E_coll 0.2 eV, (v, j, mJ, n, m) = (0, 0, 0, 0, 0))" in (
+        finding.value
+    )
+    assert "1.00e-01" not in finding.value
+    transmitting = reflection_finding([1e-4, 0.5], [0.5, small_p], reflection=[1e-8, 0.01], energy_index=[0, 1])
+    assert transmitting.severity == "warning"  # 2 a P + 2 sqrt(P a^2 P) = 2e-3 for a = 0.5 (T large, R 0.01)
+    none = reflection_finding([0.05], [small_p])
+    assert "no estimated channel with P >= 0.01" in none.value
 
 
 def moving(p_end: float, change: float) -> d.Finding | None:

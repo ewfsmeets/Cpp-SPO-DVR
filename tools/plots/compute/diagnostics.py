@@ -24,6 +24,12 @@ BUDGET_LIMIT = 1e-4  # heuristic: probability that may leave the grids beyond th
 # own error of the absorbers (second order in dtStep: 4.1e-7 by t = 6000 a.u. on the hard-wall fixture at dtStep 2,
 # 1.05e-7 at dtStep 1, ROpt eating the bound state's tail on the specular grid)
 
+REFLECTION_LIMIT = 1e-3  # heuristic: an absolute error in P, the verdict's probability scale (as UNANALYSED_LIMIT,
+# SLOW_CHANNELS_LIMIT and EDGE_LIMIT)
+REFLECTION_RELATIVE_P = 1e-2  # heuristic: rows whose relative error the value quotes
+FIRST_ORDER_LIMIT = 0.1  # heuristic: R above it, the first-order estimate fails (near a threshold)
+
+SECTION_ABSORBERS = "7. Absorbers"
 SECTION_TIME = "8. Total time and energy grid"
 SECTION_STEPS = "4. dZ: the grid must hold the momenta"  # also the time step dtStep
 SECTION_VERIFY = "10. Verifying a new input"
@@ -199,8 +205,8 @@ def norm_left(norm: float) -> Finding:
         "it includes flux already analysed but not yet absorbed; the norm N not yet analysed (the 'norm by "
         "region' bands below Zana plus the rest norm) bounds only the loss averaged over the packet's spectrum: "
         "at a single energy the error of P is about 2 sqrt(N) where P ~ 1, larger at the ends of the range, and "
-        "absorber reflection (up to about "
-        "2 sqrt(R) P) shows in no norm",
+        "absorber reflection (up to about 2 sqrt(R) P) shows in no norm (the 'absorber reflection' finding "
+        "estimates it per channel)",
         SECTION_TIME,
     )
 
@@ -378,4 +384,127 @@ def budget_open(*, excess: float, residual: float, error_estimate: float, t_au: 
         "basis's part at every time step; less with a smaller dtStep), or the run diverged; it counts as reaction in "
         "P_reaction = 1 - P_scattered",
         SECTION_VERIFY,
+    )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReflectionError:
+    """The first-order error of each row's P from the waves the Z absorbers return to the analysis line
+    (reflection_error); per row of s_matrix.tsv."""
+
+    direct: np.ndarray  # 2 a_f P_f: the channel's own outgoing wave returned
+    rescattered: np.ndarray  # 2 sqrt(P_f Q(E)): every channel's returned wave scattered again into f
+    total: np.ndarray  # direct + rescattered: the bound on |delta P_f|
+    near_threshold: np.ndarray  # bool: R above FIRST_ORDER_LIMIT (or NaN): the first-order estimate fails
+
+
+def reflection_error(
+    reflection: np.ndarray, amplitude: np.ndarray, probability: np.ndarray, energy_index: np.ndarray, n_energies: int
+) -> ReflectionError:
+    """delta P_f <= 2 a_f P_f + 2 sqrt(P_f Q(E)), Q(E) = sum_c min(a_c, 1)^2 P_c over the rows at that energy
+    (first order in a, worst phase: delta S_f = r_f S_fi + sum_c S_fc r_c S_ci with Cauchy-Schwarz and
+    unitarity). Per row: R and a = sqrt(R) + T of its absorber, P, the index of its analysis energy."""
+    returned = np.minimum(amplitude, 1.0) ** 2 * probability  # NaN stays NaN
+    q = np.bincount(energy_index, weights=returned, minlength=n_energies)
+    with np.errstate(invalid="ignore"):  # inf * 0 in a near-threshold row: not estimated anyway
+        direct = 2.0 * amplitude * probability
+    rescattered = 2.0 * np.sqrt(probability * q[energy_index])
+    near = ~(reflection <= FIRST_ORDER_LIMIT)
+    return ReflectionError(direct=direct, rescattered=rescattered, total=direct + rescattered, near_threshold=near)
+
+
+def worst_of(values: np.ndarray, selected: np.ndarray) -> int | None:
+    """The index of the largest selected value (a NaN is the largest), or None when nothing is selected."""
+    if not selected.any():
+        return None
+    return int(np.argmax(np.where(selected, np.nan_to_num(values, nan=np.inf), -np.inf)))
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReflectionRows:
+    """The rows of s_matrix.tsv the "absorber reflection" finding reads: per row R and a = sqrt(R) + T of its
+    absorber, P, its channel (v, j, mJ, n, m) and the index of its analysis energy into collision_energy_ev."""
+
+    reflection: np.ndarray
+    amplitude: np.ndarray
+    probability: np.ndarray
+    channels: np.ndarray  # (n_rows, 5) int
+    energy_index: np.ndarray
+    collision_energy_ev: np.ndarray  # (n_energies,)
+
+
+def row_text(rows: ReflectionRows, row: int) -> str:
+    """Where a row is: its E_coll and channel (v, j, mJ, n, m)."""
+    channel = ", ".join(str(int(q)) for q in rows.channels[row])
+    return f"E_coll {rows.collision_energy_ev[rows.energy_index[row]]:.3g} eV, (v, j, mJ, n, m) = ({channel})"
+
+
+def reflection_value(rows: ReflectionRows, error: ReflectionError, low_z: bool) -> str:
+    """The value of the "absorber reflection" finding: the largest error of P with its parts, the largest
+    relative error 2a among rows with P >= REFLECTION_RELATIVE_P, the near-threshold rows, the low-Z absorbers."""
+    estimated = ~error.near_threshold
+    worst = worst_of(error.total, estimated)
+    if worst is None:
+        parts = ["no channel estimated"]
+    else:
+        parts = [
+            f"up to {error.total[worst]:.2e} in P ({row_text(rows, worst)}, P {rows.probability[worst]:.3g}: "
+            f"direct {error.direct[worst]:.2e}, re-scattered {error.rescattered[worst]:.2e})"
+        ]
+    relative = worst_of(2.0 * rows.amplitude, estimated & ~(rows.probability < REFLECTION_RELATIVE_P))
+    if relative is None:
+        parts.append(f"no estimated channel with P >= {REFLECTION_RELATIVE_P:g}")
+    else:
+        parts.append(
+            f"relative error 2a up to {2.0 * rows.amplitude[relative]:.2e} where P >= {REFLECTION_RELATIVE_P:g} "
+            f"({row_text(rows, relative)})"
+        )
+    near = int(error.near_threshold.sum())
+    parts.append(f"{near} rows with R > {FIRST_ORDER_LIMIT:g} (near a threshold) not estimated")
+    if low_z:
+        parts.append("low-Z absorbers on: not estimated")
+    return "; ".join(parts)
+
+
+def absorber_reflection(
+    *,
+    reflection: np.ndarray,
+    amplitude: np.ndarray,
+    probability: np.ndarray,
+    collision_energy_ev: np.ndarray,
+    channels: np.ndarray,
+    energy_index: np.ndarray,
+    low_z_absorbers: bool = False,
+) -> Finding:
+    """The error of each channel's P from the waves the Z absorbers return to the analysis line: a warning when
+    the bound exceeds REFLECTION_LIMIT in a row below the first-order limit, or a P or a is NaN; else information.
+    Per row of s_matrix.tsv: R and a = sqrt(R) + T of its absorber at its outgoing normal energy
+    (compute/absorber_reflection.py; inf where that energy is not positive), P, its channel (v, j, mJ, n, m)
+    and the index of its analysis energy into collision_energy_ev (eV). low_z_absorbers: ZOptLow or ZSpOptLow
+    is on (not estimated)."""
+    rows = ReflectionRows(
+        reflection=reflection,
+        amplitude=amplitude,
+        probability=probability,
+        channels=channels,
+        energy_index=energy_index,
+        collision_energy_ev=collision_energy_ev,
+    )
+    n_energies = len(collision_energy_ev)
+    error = reflection_error(rows.reflection, rows.amplitude, rows.probability, rows.energy_index, n_energies)
+    fires = bool(np.any(~(error.total[~error.near_threshold] <= REFLECTION_LIMIT)))  # NaN fires
+    fires = fires or bool(np.isnan(rows.probability).any() or np.isnan(rows.amplitude).any())
+    return Finding(
+        "warning" if fires else "information",
+        "absorber reflection",
+        reflection_value(rows, error, low_z_absorbers),
+        f"<= {REFLECTION_LIMIT:g} in each channel's P",
+        "an estimate, first order in the returned amplitude a = sqrt(R) + T at the channel's outgoing normal energy "
+        "(R reflected; T passes the absorber, wraps round to ZStart, is reflected by the wall and crosses it again; "
+        "ZSpOpt for every v of the initial channel, ZOpt for the others), at the worst phase: 2 a P directly plus "
+        "2 sqrt(P Q) re-scattered at the surface, Q = sum of min(a, 1)^2 P over the analysed channels at that "
+        "energy; only what returns before tEnd counts, so the error may be smaller. Not included: ROpt, the low-Z "
+        "absorbers, unanalysed channels, the sqrt(TolSp) tail and multiple reflections (inputs/README.md section "
+        "8). A longer absorber or another target energy lowers R + T",
+        SECTION_ABSORBERS,
     )
