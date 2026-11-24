@@ -53,11 +53,11 @@ nlohmann::json hardwall_small_input() {
 // Setup of an analysis-only run (gas phase and analysis basis, no 6D potential).
 struct RunSetup {
   explicit RunSetup(const nlohmann::json& json)
-      : config(build_config(parse_input(json))),
+      : pes(make_potential(parse_input(json))),
+        config(build_config(parse_input(json), *pes)),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)),
-        gas(compute_gas_phase(config, grids, angular,
-                              compute_asymptotic_potential(*make_potential(config.input), config, grids), fft,
+        gas(compute_gas_phase(config, grids, angular, compute_asymptotic_potential(*pes, config, grids), fft,
                               LapackEigensolver())),
         analysis(config, angular, gas) {}
 
@@ -68,6 +68,7 @@ struct RunSetup {
   [[nodiscard]] int n_series() const { return basis().n_states() * basis().n_v(); }
 
   FftwFft fft;
+  std::unique_ptr<Potential> pes;  // built once, as the program does
   Config config;
   SpatialGrids grids;
   AngularGrid angular;

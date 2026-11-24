@@ -109,10 +109,10 @@ const Calculation& calculation(const std::string& name) {
     InputParameters input = parse_input(nlohmann::json::parse(file));
     resolve_repository_paths(input);
     if (with_symmetry(name)) input.use_symmetry = true;
-    Config config = build_config(input);
+    std::unique_ptr<Potential> pes = make_potential(input);
+    Config config = build_config(input, *pes);
     SpatialGrids grids = make_spatial_grids(config);
     AngularGrid angular = make_angular_grid(config);
-    std::unique_ptr<Potential> pes = make_potential(config.input);
     PotentialGrid potential = compute_potential_grid(*pes, config, grids, angular);
     GasPhase gas = compute_gas_phase(config, grids, angular, potential.asymptotic, FftwFft(), LapackEigensolver());
     entry = std::make_unique<Calculation>(Calculation{std::move(config), std::move(grids), std::move(angular),

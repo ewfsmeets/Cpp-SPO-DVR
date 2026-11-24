@@ -43,6 +43,7 @@ using cplx = std::complex<double>;
 
 // Everything a backend is built from, for a reference case (optionally with changed keys).
 struct BackendSetup {
+  std::unique_ptr<Potential> pes;  // built once, as the program does
   Config config;
   SpatialGrids grids;
   AngularGrid angular;
@@ -53,20 +54,20 @@ struct BackendSetup {
   PropagationTables tables;
   SpecularWave initial;
 
-  static Config read(const std::string& case_name, const nlohmann::json& changes) {
+  static InputParameters read(const std::string& case_name, const nlohmann::json& changes) {
     std::ifstream file(std::string(SPODVR_REFERENCE_DIR) + "/" + case_name + "/input.json");
     nlohmann::json json = nlohmann::json::parse(file);
     json.update(changes);
-    return build_config(parse_input(json));
+    return parse_input(json);
   }
 
   explicit BackendSetup(const std::string& case_name, const nlohmann::json& changes = nlohmann::json::object())
-      : config(read(case_name, changes)),
+      : pes(make_potential(read(case_name, changes))),
+        config(build_config(read(case_name, changes), *pes)),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)),
         basis(angular, config.input.j_in, config.input.mj_in),
-        potential(compute_potential_grid(*make_potential(config.input), config, grids, angular,
-                                         make_grid_symmetry(config, angular))),
+        potential(compute_potential_grid(*pes, config, grids, angular, make_grid_symmetry(config, angular))),
         gas(compute_gas_phase(config, grids, angular, potential.asymptotic, fft, LapackEigensolver())),
         tables(make_propagation_tables(config, grids, basis, potential.asymptotic)),
         initial(make_initial_wave_packet(config, grids, gas, fft).specular) {}

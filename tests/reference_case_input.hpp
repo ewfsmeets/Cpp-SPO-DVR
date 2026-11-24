@@ -4,13 +4,17 @@
 // (tools/fortran_reference/reference_config.sh stage_inputs), while the tests run in the build tree.
 
 #include <filesystem>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 
 #include "input/config.hpp"
 #include "input/json_input.hpp"
 #include "input/process.hpp"
+#include "potential/potential.hpp"
+#include "potential/potential_factory.hpp"
 
 namespace spodvr::testing {
 
@@ -38,6 +42,19 @@ inline Config case_config(const nlohmann::json& input) {
   InputParameters parameters = parse_input(input);
   resolve_repository_paths(parameters);
   return build_config(parameters);
+}
+
+// A reference case's PES and configuration, the PES built once (as the program does) from the resolved input.
+struct CaseSetup {
+  std::unique_ptr<Potential> pes;
+  Config config;
+};
+inline CaseSetup case_setup(const nlohmann::json& input) {
+  InputParameters parameters = parse_input(input);
+  resolve_repository_paths(parameters);
+  std::unique_ptr<Potential> pes = make_potential(parameters);
+  Config config = build_config(parameters, *pes);
+  return {std::move(pes), std::move(config)};
 }
 
 }  // namespace spodvr::testing

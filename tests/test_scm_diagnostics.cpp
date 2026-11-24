@@ -109,14 +109,17 @@ fs::path raised_atom_file(const fs::path& dir, double z) {
 
 // The SCM potential, its config and grids for an input.
 struct ScmSetup {
+  ScmCrpPotential potential;  // built once, as the program does
   Config config;
-  ScmCrpPotential potential;
   SpatialGrids grids;
   AngularGrid angular;
 
-  explicit ScmSetup(const nlohmann::json& json)
-      : config(build_config(parse_input(json))),
-        potential(config.input.crp_dataset, config.input.scm),
+  explicit ScmSetup(const nlohmann::json& json) : ScmSetup(parse_input(json)) {}
+
+ private:
+  explicit ScmSetup(const InputParameters& input)
+      : potential(input.crp_dataset, input.scm),
+        config(build_config(input, potential)),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)) {}
 };

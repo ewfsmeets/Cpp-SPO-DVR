@@ -81,8 +81,9 @@ double wrapped(double phase) { return std::remainder(phase, 2.0 * Constants::pi)
 // specular line Z_sp = 8.64 (the Fortran's fine analysis, and its on-the-fly analysis up to r1719), i.e.
 // S e^{ik(Z_sp - Zana)}, fails at every energy.
 TEST(ElasticPhase, HardWallElasticElementIsTheExactReflection) {
-  const spodvr::Config config = spodvr::testing::case_config(reduced_hard_wall());
-  const auto pes = spodvr::make_potential(config.input);
+  const spodvr::testing::CaseSetup setup = spodvr::testing::case_setup(reduced_hard_wall());
+  const spodvr::Config& config = setup.config;
+  const std::unique_ptr<spodvr::Potential>& pes = setup.pes;
   const spodvr::testing::PropagationRun run = spodvr::testing::run_cpp_propagation(config, *pes);
   ASSERT_TRUE(run.specular_line.has_value());
   EXPECT_NEAR(*run.specular_line, 8.64, 1e-12);  // the dynamic line of hardwall_small (fortran_stdout.txt)

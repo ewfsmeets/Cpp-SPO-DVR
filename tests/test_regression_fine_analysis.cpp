@@ -68,11 +68,11 @@ nlohmann::json variant_input(const std::string& case_name, const std::string& va
 // Setup of an analysis-only run (no 6D potential) and its fine analysis.
 struct FineRun {
   explicit FineRun(const nlohmann::json& json)
-      : config(build_config(parse_input(json))),
+      : pes(make_potential(parse_input(json))),
+        config(build_config(parse_input(json), *pes)),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)),
-        gas(compute_gas_phase(config, grids, angular,
-                              compute_asymptotic_potential(*make_potential(config.input), config, grids), fft,
+        gas(compute_gas_phase(config, grids, angular, compute_asymptotic_potential(*pes, config, grids), fft,
                               LapackEigensolver())),
         setup(config, angular, gas) {}
 
@@ -98,6 +98,7 @@ struct FineRun {
   }
 
   FftwFft fft;
+  std::unique_ptr<Potential> pes;  // built once, as the program does
   Config config;
   SpatialGrids grids;
   AngularGrid angular;

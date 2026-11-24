@@ -97,11 +97,13 @@ Json small_json(const fs::path& data_set) {
 }
 
 struct RunSetup {
+  std::unique_ptr<Potential> pes;  // built once, as the program does
   Config config;
   SpatialGrids grids;
   AngularGrid angular;
   explicit RunSetup(const Json& json)
-      : config(build_config(parse_input(json))),
+      : pes(make_potential(parse_input(json))),
+        config(build_config(parse_input(json), *pes)),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)) {}
 };
@@ -168,7 +170,7 @@ TEST_P(CrpPotentialTest, SymmetryCheckPasses) {
   json["UseSymmetry"] = true;
   json["nPhisOptimal"] = true;
   const RunSetup s(json);
-  const std::unique_ptr<Potential> pes = make_potential(s.config.input);
+  const std::unique_ptr<Potential>& pes = s.pes;
   const GridSymmetry symmetry = make_grid_symmetry(s.config, s.angular);
   EXPECT_EQ(symmetry.group_order(), GetParam() == Symmetry::c6v ? 12 : GetParam() == Symmetry::c4v ? 8 : 6);
   EXPECT_TRUE(symmetry.dropped_operations().empty());
@@ -187,7 +189,7 @@ TEST_P(CrpPotentialTest, SymmetricGridGathersTheFullGrid) {
   json["UseSymmetry"] = true;
   json["nPhisOptimal"] = true;
   const RunSetup s(json);
-  const std::unique_ptr<Potential> pes = make_potential(s.config.input);
+  const std::unique_ptr<Potential>& pes = s.pes;
   const PotentialGrid reduced = compute_potential_grid(*pes, s.config, s.grids, s.angular);
   const PotentialGrid full = compute_potential_grid(
       *pes, s.config, s.grids, s.angular, GridSymmetry(s.config.input.nx, s.config.input.ny, s.angular.n_phi()));
@@ -248,7 +250,7 @@ TEST(CrpPotential, Summary) {
 // report_potential prints the data set of a plain CRP PES, and nothing of the SCM.
 TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
-  const CrpPotential pes(s.config.input.crp_dataset);
+  const CrpPotential& pes = s.pes->crp_potential()->get();
   EXPECT_FALSE(s.config.derived.scm);
   std::ostringstream out;
   report_potential(out, Style{}, pes, s.config, s.grids, s.angular);
@@ -260,7 +262,7 @@ TEST(CrpPotential, ReportPotentialPrintsTheDataSet) {
 // Z = -2 + 0.125 k below Zmin = 0.5 (+1e-12) for k <= 20 (21 clamped of the 80 6D points).
 TEST(CrpPotential, RangeReportAndSetupReport) {
   const RunSetup s(gate_case_json(Symmetry::c6v));
-  const CrpPotential pes(s.config.input.crp_dataset);
+  const CrpPotential& pes = s.pes->crp_potential()->get();
   const auto z_6d = s.grids.z_scattering.points().first(s.grids.nz_potential);
   const CrpRangeReport range = pes.range_report(z_6d, s.grids.r.points());
   EXPECT_EQ(range.r_points, 32);
@@ -312,7 +314,7 @@ TEST(CrpPotential, EvaluationErrorNamesTheKeyAndThePoint) {
 // threads.
 TEST(CrpPotentialGrid, IndependentOfThreadCount) {
   const RunSetup s(small_json(pairwise_data_set(Symmetry::c6v)));
-  const CrpPotential pes(s.config.input.crp_dataset);
+  const CrpPotential& pes = s.pes->crp_potential()->get();
   omp_set_num_threads(1);
   const PotentialGrid serial = compute_potential_grid(pes, s.config, s.grids, s.angular);
   omp_set_num_threads(4);
@@ -326,7 +328,7 @@ TEST(CrpPotentialGrid, IndependentOfThreadCount) {
 TEST(CrpPotentialGrid, ErrorIsDeterministic) {
   TemporaryDirectory dir("crp_potential");
   const RunSetup s(small_json(write_shallow_atom_data_set(dir.path())));
-  const CrpPotential pes(s.config.input.crp_dataset);
+  const CrpPotential& pes = s.pes->crp_potential()->get();
   omp_set_num_threads(1);
   const std::string serial = error_message([&] { (void)compute_potential_grid(pes, s.config, s.grids, s.angular); });
   omp_set_num_threads(4);

@@ -72,10 +72,11 @@ std::set<std::string> files_in(const fs::path& dir) {
 // with no switching: the case switches from 6 to 8 bohr), at the angles in radians the Fortran passes
 // (degrees x Constants_Deg2Rad), Z fastest.
 TEST(PesCut, ValuesAreThePesItselfInTheFortranOrder) {
-  const Config config = build_config(parse_input(cut_json()));
+  const InputParameters input = parse_input(cut_json());
+  const auto potential = make_potential(input);
+  const Config config = build_config(input, *potential);
   ASSERT_TRUE(config.input.use_switching);
   const SpatialGrids grids = make_spatial_grids(config);
-  const auto potential = make_potential(config.input);
   const PesCut cut = compute_pes_cut(*potential, config.input, grids);
   ASSERT_EQ(cut.r.size(), static_cast<std::size_t>(grids.r.size()));
   ASSERT_EQ(cut.z.size(), static_cast<std::size_t>(grids.z_scattering.size()));

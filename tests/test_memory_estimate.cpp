@@ -36,12 +36,14 @@ nlohmann::json reference_json(const std::string& name) {
 }
 
 struct RunGrids {
+  std::unique_ptr<Potential> pes;  // built once, as the program does
   Config config;
   SpatialGrids grids;
   AngularGrid angular;
 
   explicit RunGrids(const nlohmann::json& json)
-      : config(build_config(parse_input(json))),
+      : pes(make_potential(parse_input(json))),
+        config(build_config(parse_input(json), *pes)),
         grids(make_spatial_grids(config)),
         angular(make_angular_grid(config)) {}
 
@@ -89,8 +91,7 @@ TEST(MemoryEstimate, ReferenceCaseByHand) {
 TEST(MemoryEstimate, MatchesAllocations) {
   const RunGrids setup(reference_json("hardwall_short"));
   const MemoryEstimate e = setup.estimate(1);
-  PotentialGrid potential =
-      compute_potential_grid(*make_potential(setup.config.input), setup.config, setup.grids, setup.angular);
+  PotentialGrid potential = compute_potential_grid(*setup.pes, setup.config, setup.grids, setup.angular);
   EXPECT_EQ(e.items[0].values, potential.values.size());
 
   const FftwFft fft;
@@ -139,8 +140,7 @@ TEST(MemoryEstimate, FineAnalysisByHandAndAllocations) {
   const FftwFft fft;
   const GasPhase gas =
       compute_gas_phase(setup.config, setup.grids, setup.angular,
-                        compute_asymptotic_potential(*make_potential(setup.config.input), setup.config, setup.grids),
-                        fft, LapackEigensolver());
+                        compute_asymptotic_potential(*setup.pes, setup.config, setup.grids), fft, LapackEigensolver());
   const AnalysisSetup analysis(setup.config, setup.angular, gas);
   const FineAnalysisGrid grid = make_fine_analysis_grid(setup.config, 1400);
   const MemoryEstimate e = estimate_fine_analysis_memory(grid, analysis.basis);
