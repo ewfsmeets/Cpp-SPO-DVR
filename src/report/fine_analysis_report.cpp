@@ -55,8 +55,8 @@ void print_fine_analysis_results(std::ostream& out, const Style& style, const Co
   if (stride > 1) out << "  1 in " << stride << " grid points is shown; all are in fine_analysis/spectrum/.\n";
   if (r.large_phase_steps > 0)
     out << "\n  " << style.warning("Warning") << ": " << r.large_phase_steps
-        << " populated channel(s) change their phase by more than pi/2 between grid points or have a non-finite S "
-           "(reported separately); the interpolation to the analysis energies is unreliable (propagate longer).\n";
+        << " phase step(s) of populated channels exceed pi/2 between neighbouring grid points or involve a non-finite "
+           "S (reported separately); the interpolation to the analysis energies is unreliable (propagate longer).\n";
 
   if (!r.skipped.empty()) {
     out << "\n  Analysis energies without a fine-analysis result:\n";

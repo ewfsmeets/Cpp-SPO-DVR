@@ -11,6 +11,8 @@
 #include <iostream>
 #include <limits>
 #include <random>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -31,6 +33,8 @@
 #include "linalg/symmetric_eigensolver.hpp"
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
+#include "report/fine_analysis_report.hpp"
+#include "report/format.hpp"
 
 namespace fs = std::filesystem;
 using namespace spodvr;
@@ -592,4 +596,35 @@ TEST(FineAnalysis, NaNStepCountsAsLarge) {
   spectrum.energies[4].s_matrix[0] = cplx(std::numeric_limits<double>::infinity(), 0.0);
   spectrum.energies[4].probability[0] = std::numeric_limits<double>::infinity();
   EXPECT_EQ(count_large_phase_steps(spectrum), 5);
+}
+
+// The warning counts phase steps, not channels: one populated channel whose phase jumps by 2 rad twice gives 2,
+// and the printed warning says "2 phase step(s)" (on the real fine analysis of hardwall_small, whose own
+// spectrum has no large step).
+TEST(FineAnalysis, LargePhaseStepWarningCountsSteps) {
+  ScatteringResults spectrum;
+  for (int i = 0; i < 3; ++i) {
+    EnergyResult e{};
+    const cplx s = std::polar(0.5, 2.0 * i);  // steps of 2 rad > pi/2 between energies 0-1 and 1-2
+    e.s_matrix.push_back(s);
+    e.probability.push_back(std::norm(s));
+    spectrum.energies.push_back(e);
+  }
+  EXPECT_EQ(count_large_phase_steps(spectrum), 2);
+
+  const RunSetup& s = hardwall_small();
+  FineAnalysisResults r = run_fine_analysis(s.config, s.analysis, s.gas, BkInput{fortran_bk, true}, s.fft);
+  ASSERT_GT(r.grid.size(), 0);
+  ASSERT_EQ(r.large_phase_steps, 0);
+  const auto printed = [&]() {
+    std::ostringstream out;
+    print_fine_analysis_results(out, Style{false}, s.config, s.basis(), r);
+    return out.str();
+  };
+  EXPECT_EQ(printed().find("phase step(s)"), std::string::npos);
+  r.large_phase_steps = 2;
+  EXPECT_NE(printed().find("Warning: 2 phase step(s) of populated channels exceed pi/2 between neighbouring grid "
+                           "points or involve a non-finite S"),
+            std::string::npos)
+      << printed();
 }

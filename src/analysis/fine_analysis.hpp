@@ -137,8 +137,9 @@ struct FineAnalysisResults {
                                                                    const AnalysisEnergies& energies,
                                                                    ScatteringResults spectrum);
 
-// Counts the populated channels (|S|^2 > 1e-8 of the largest finite |S|^2) whose phase changes by more
-// than pi/2 between neighbouring grid points. A step to or from a non-finite S counts.
+// Counts the phase steps of more than pi/2 between neighbouring grid points of the populated channels
+// (|S|^2 > 1e-8 of the largest finite |S|^2): one per channel and pair of neighbours. A step to or from a
+// non-finite S counts.
 [[nodiscard]] int count_large_phase_steps(const ScatteringResults& spectrum);
 
 }  // namespace spodvr
