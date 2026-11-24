@@ -1,5 +1,6 @@
 """The tool's structure: every module has a layer and imports only from lower layers (or its own package) and
-the third-party packages its layer may use, and every `Shadows:` citation names an existing file and function."""
+the third-party packages its layer may use, and every `Shadows:` line of a module docstring names existing src/
+files and functions."""
 
 import ast
 import re

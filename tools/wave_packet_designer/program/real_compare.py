@@ -1,6 +1,6 @@
 """The Fortran's tolerant real comparisons and NINT, used wherever the program uses them.
 
-Shadows: src/core/real_compare.hpp (fortran_compare::req, rgt, rge, seq), src/input/validate.cpp (nint)
+Shadows: src/core/real_compare.hpp (fortran_compare::req, rgt, rge, seq), src/input/validation_helpers.hpp (nint)
 
 The tolerance is absolute (1e-12), not relative. Some program checks use plain < and > instead; the
 calling module says which one it copies. At a difference of exactly 1e-12, `rge` is false.
