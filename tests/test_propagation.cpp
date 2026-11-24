@@ -152,6 +152,8 @@ TEST(ScatteringKinetic, InPlaceTxyEqualsGatheredTxyBitwise) {
   ASSERT_EQ(in_place.group_points(), 1);
   ASSERT_TRUE(in_place.transforms_in_place());
   ASSERT_FALSE(gathered.transforms_in_place());
+  EXPECT_EQ(in_place.group_work_size(), 0U);  // in place: no work array
+  EXPECT_EQ(gathered.group_work_size(), std::size_t(s.shape.n_rot) * s.shape.nx * s.shape.ny);
   // The program's default on this small grid: several r points per group, gathered.
   EXPECT_FALSE(ScatteringKineticOperator(s.shape, s.tables, s.fft).transforms_in_place());
 

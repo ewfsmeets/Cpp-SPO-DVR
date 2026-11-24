@@ -126,7 +126,8 @@ header line.
   the Fortran code (production grids: the potential alone is tens of GB, so the on-the-fly path is
   used and the memory is that of the real potential). Both paths give bitwise identical results.
 - Work arrays per thread are cache-sized: (r, Z) units of ≤ 4 adjacent (irot, iy) values,
-  (x, y) groups of r points ≤ 1 MiB; the DVR work array of one pass of the angular transform
+  (x, y) groups of r points ≤ 1 MiB (no group array when T_xy runs in place: one (Z, r) point per group and no
+  momentum shift, e.g. DZ and ER); the DVR work array of one pass of the angular transform
   (`AngularTransform::columns_per_pass`: ≤ 58 KiB of DVR blocks; the Fortran code holds all (x, y)
   points of a (Z, r) point).
 - The program prints a "MEMORY ESTIMATE" block before it computes the potential

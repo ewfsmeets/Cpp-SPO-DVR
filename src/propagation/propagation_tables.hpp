@@ -58,6 +58,10 @@ struct PropagationTables {
   double fft_scale_y = 0.0;
 };
 
+// exp(-i k0 . R) at every (x, y) point: the momentum shift of T_xy (PropagationTables::shift_forward).
+// Fortran: SetupMomentumShift
+[[nodiscard]] std::vector<std::complex<double>> momentum_shift_forward(const Config& config);
+
 // Kinetic energy of the parallel motion ekinxy (hartree) at every ixy = iy + ny*ix.
 // Fortran: GridEnergies.f90 DifChanEnergies
 [[nodiscard]] std::vector<double> parallel_kinetic_energies(const Config& config);

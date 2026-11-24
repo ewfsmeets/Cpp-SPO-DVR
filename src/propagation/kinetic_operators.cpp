@@ -33,6 +33,10 @@ int xy_group_points(const ScatteringShape& shape, std::size_t max_bytes) {
   return 1;
 }
 
+bool xy_momentum_shift_needed(std::span<const cplx> shift_forward) {
+  return !std::all_of(shift_forward.begin(), shift_forward.end(), is_one);
+}
+
 bool xy_in_place_possible(const ScatteringShape& shape, int group_points, bool shift) {
   const std::size_t block_bytes = sizeof(cplx) * shape.n_rot * shape.nx * shape.ny;
   return group_points == 1 && !shift && block_bytes % 64 == 0;
@@ -44,7 +48,7 @@ ScatteringKineticOperator::ScatteringKineticOperator(const ScatteringShape& shap
     : shape_(shape),
       tables_(tables),
       chunk_(zr_chunk_size(shape.n_rot * shape.ny)),
-      shift_(!std::all_of(tables.shift_forward.begin(), tables.shift_forward.end(), is_one)),
+      shift_(xy_momentum_shift_needed(tables.shift_forward)),
       group_points_(xy_group_points(shape, options.group_byte_limit)),
       in_place_(options.allow_in_place && xy_in_place_possible(shape, group_points_, shift_)) {
   // (r, Z) unit buffer: (e, ir, iz) with e = 0 .. chunk-1 fastest.
@@ -119,6 +123,7 @@ void ScatteringKineticOperator::apply_xy(ScatteringWave& psi, TimeStep step) con
 }
 
 std::size_t ScatteringKineticOperator::group_work_size() const {
+  if (in_place_) return 0;  // apply_xy_group transforms the block itself
   return std::size_t(shape_.n_rot) * shape_.nx * shape_.ny * group_points_;
 }
 

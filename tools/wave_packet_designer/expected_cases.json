@@ -253,10 +253,10 @@
           {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 66300, "bytes": 8486400, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 25600, "bytes": 3276800, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 8466667712,
-        "propagation_bytes": 7791154112,
+        "propagation_bytes": 7785944512,
         "peak_bytes": 8466667712
       },
       "gpu": {
@@ -289,11 +289,11 @@
           {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 66300, "bytes": 8486400, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 25600, "bytes": 3276800, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 11598663680,
-        "propagation_bytes": 11607150080,
-        "peak_bytes": 11607150080
+        "propagation_bytes": 11601940480,
+        "peak_bytes": 11601940480
       },
       "gpu": {
         "items": [
@@ -326,11 +326,11 @@
           {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 11403264000, "bytes": 182452224000, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 2122020, "bytes": 271618560, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 340260, "bytes": 43553280, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 195916587328,
-        "propagation_bytes": 196188205888,
-        "peak_bytes": 196188205888
+        "propagation_bytes": 195960140608,
+        "peak_bytes": 195960140608
       },
       "gpu": {
         "items": [
@@ -362,11 +362,11 @@
           {"name": "exp(-i V dt) table", "values": 0, "bytes": 0, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, scattering grid", "values": 399114240, "bytes": 6385827840, "during_setup": true, "during_propagation": true},
           {"name": "Wave function, specular grid", "values": 6720, "bytes": 215040, "during_setup": true, "during_propagation": true},
-          {"name": "Work arrays", "values": 115020, "bytes": 14722560, "during_setup": false, "during_propagation": true}
+          {"name": "Work arrays", "values": 14336, "bytes": 1835008, "during_setup": false, "during_propagation": true}
         ],
         "setup_bytes": 10337863680,
-        "propagation_bytes": 10352586240,
-        "peak_bytes": 10352586240
+        "propagation_bytes": 10339698688,
+        "peak_bytes": 10339698688
       },
       "gpu": {
         "items": [
@@ -391,6 +391,43 @@
       "threads": 8,
       "symmetry": {"representatives": 19, "operations": 12},
       "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [127, 159], "z_specular_optical": [184, 255], "r_optical": [18, 39], "z_optical_low": null, "z_specular_optical_low": null},
+      "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
+      "cpu": {
+        "items": [
+          {"name": "Potential V", "values": 85500000, "bytes": 684000000, "during_setup": true, "during_propagation": false},
+          {"name": "Surface symmetry maps", "values": 1008, "bytes": 4032, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 327680, "during_setup": true, "during_propagation": true},
+          {"name": "Work arrays", "values": 25600, "bytes": 3276800, "during_setup": false, "during_propagation": true}
+        ],
+        "setup_bytes": 8466667712,
+        "propagation_bytes": 7785944512,
+        "peak_bytes": 8466667712
+      },
+      "gpu": {
+        "items": [
+          {"name": "Wave function, scattering grid", "values": 400896000, "bytes": 6414336000, "during_setup": true, "during_propagation": true},
+          {"name": "Wave function, specular grid", "values": 10240, "bytes": 163840, "during_setup": true, "during_propagation": true},
+          {"name": "exp(-i V dt) table", "values": 85500000, "bytes": 1368000000, "during_setup": true, "during_propagation": true},
+          {"name": "DVR scratch (one slab)", "values": 64800000, "bytes": 1036800000, "during_setup": true, "during_propagation": true},
+          {"name": "cuFFT work area", "values": 33554432, "bytes": 536870912, "during_setup": true, "during_propagation": true},
+          {"name": "BK plane", "values": 2505600, "bytes": 40089600, "during_setup": true, "during_propagation": true},
+          {"name": "Copy buffer", "values": 4134240, "bytes": 66147840, "during_setup": true, "during_propagation": true}
+        ],
+        "setup_bytes": 9462408192,
+        "propagation_bytes": 9462408192,
+        "peak_bytes": 9462408192
+      }
+    },
+    {
+      "name": "dz_parallel_momentum",
+      "about": "Parallel momentum: T_xy shifts, so it keeps its (x, y) group array.",
+      "input": "inputs/thesis_fig5_3_dz/input.json",
+      "changes": {"EParallel": 0.05, "PhiParallel": 30.0},
+      "threads": 8,
+      "symmetry": {"representatives": 19, "operations": 12},
+      "grids": {"iz_analysis": 125, "nz_potential": 125, "z_optical": [125, 159], "z_specular_optical": [184, 255], "r_optical": [18, 39], "z_optical_low": null, "z_specular_optical_low": null},
       "angular": {"n_theta": 15, "n_phi": 60, "rotational_basis_size": 435},
       "cpu": {
         "items": [

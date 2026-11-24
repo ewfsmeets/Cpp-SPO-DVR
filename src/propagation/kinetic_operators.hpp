@@ -1,7 +1,9 @@
 #pragma once
 
+#include <complex>
 #include <cstddef>
 #include <memory>
+#include <span>
 
 #include "fft/fft.hpp"
 #include "propagation/propagation_tables.hpp"
@@ -32,6 +34,10 @@ struct ScatteringShape {
 // of n_rot * nx * ny complex values that is a multiple of 64 bytes.
 [[nodiscard]] bool xy_in_place_possible(const ScatteringShape& shape, int group_points, bool shift);
 
+// Whether T_xy shifts to the frame of the initial parallel momentum: some factor of shift_forward is not exactly 1
+// (with EParallel = 0 every phase is +-0).
+[[nodiscard]] bool xy_momentum_shift_needed(std::span<const std::complex<double>> shift_forward);
+
 // How T_xy runs. The defaults are the program's; only tests change them, to reach both paths on small
 // grids (a group byte limit other than xy_group_points' default gives groups other than those of the
 // first touch and the potential step: a difference in scheduling only).
@@ -60,6 +66,7 @@ class ScatteringKineticOperator {
   void apply_xy_group(std::span<std::complex<double>> group, TimeStep step, std::span<std::complex<double>> work) const;
   // Number of r points per (x, y) group (xy_group_points).
   [[nodiscard]] int group_points() const { return group_points_; }
+  // Elements of the work array apply_xy_group needs: none when T_xy runs in place.
   [[nodiscard]] std::size_t group_work_size() const;
   // Whether T_xy transforms a group in the wave function itself: with one point per group and no
   // momentum shift, the gathered work array would be a plain copy of the block (same layout), so the

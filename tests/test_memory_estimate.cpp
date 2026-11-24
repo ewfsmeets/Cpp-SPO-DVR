@@ -2,9 +2,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <complex>
 #include <fstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -22,8 +24,11 @@
 #include "potential/potential_factory.hpp"
 #include "potential/potential_grid.hpp"
 #include "potential/potential_symmetry.hpp"
+#include "propagation/angular_transform.hpp"
+#include "propagation/kinetic_operators.hpp"
 #include "propagation/memory_estimate.hpp"
 #include "propagation/propagation.hpp"
+#include "propagation/propagation_tables.hpp"
 #include "report/format.hpp"
 
 using namespace spodvr;
@@ -160,6 +165,45 @@ TEST(MemoryEstimate, FineAnalysisByHandAndAllocations) {
 // The wave-packet designer (tools/wave_packet_designer) copies the grid indices, the angular sizes, the
 // symmetry's use in the estimate and the CPU memory estimate; its expected_cases.json holds its results. When
 // this fails, update the designer's copy and regenerate the file (designer_cases.hpp).
+// The estimate's rule for the T_xy work array is the operator's: hardwall_small on 64 x 64 (x, y) points (one r
+// point per T_xy group: 15 x 4096 values of 16 bytes fit 1 MiB once), without and with parallel momentum. Without
+// the shift T_xy runs in place and the work item is max((r, Z) unit, DVR blocks); with it the group array stays.
+TEST(MemoryEstimate, InPlaceRuleIsTheOperators) {
+  for (const double e_parallel : {0.0, 0.05}) {
+    nlohmann::json json = reference_json("hardwall_small");
+    json["nX"] = 64;
+    json["nY"] = 64;
+    json["EParallel"] = e_parallel;
+    json["PhiParallel"] = 30.0;
+    const RunGrids setup(json);
+    const InputParameters& p = setup.config.input;
+    const RotationalBasis basis(setup.angular, p.j_in, p.mj_in);
+    const ScatteringShape shape{basis.size(), p.nx, p.ny, p.nr, p.nz};
+    const PropagationTables tables =
+        make_propagation_tables(setup.config, setup.grids, basis, std::vector<double>(p.nr, 0.0));
+    const bool shift = xy_momentum_shift_needed(momentum_shift_forward(setup.config));
+    EXPECT_EQ(shift, e_parallel != 0.0);
+    EXPECT_EQ(shift, !std::all_of(tables.shift_forward.begin(), tables.shift_forward.end(),
+                                  [](std::complex<double> c) { return c == std::complex<double>(1.0, 0.0); }));
+    const FftwFft fft;
+    const ScatteringKineticOperator kinetic(shape, tables, fft);
+    ASSERT_EQ(kinetic.group_points(), 1);
+    EXPECT_EQ(kinetic.transforms_in_place(), xy_in_place_possible(shape, xy_group_points(shape), shift));
+    EXPECT_EQ(kinetic.transforms_in_place(), !shift);
+    const std::size_t group = kinetic.transforms_in_place() ? 0 : std::size_t(shape.n_rot) * p.nx * p.ny;
+    EXPECT_EQ(kinetic.group_work_size(), group);
+    const std::size_t zr_unit = std::size_t(zr_chunk_size(shape.n_rot * shape.ny)) * p.nr * p.nz;
+    const std::size_t dvr_blocks =
+        std::size_t(AngularTransform::dvr_block_size(setup.angular.n_theta(), setup.angular.n_phi())) *
+        AngularTransform::columns_per_pass(p.nx * p.ny, setup.angular.n_theta(), setup.angular.n_phi());
+    const MemoryEstimate e = setup.estimate(1);
+    const auto work =
+        std::find_if(e.items.begin(), e.items.end(), [](const MemoryItem& i) { return i.name == "Work arrays"; });
+    ASSERT_NE(work, e.items.end());
+    EXPECT_EQ(work->values, std::max(zr_unit, group + dvr_blocks)) << "EParallel " << e_parallel;
+  }
+}
+
 TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) {
   using namespace spodvr::testing;
   for (const nlohmann::json& designer_case : designer_cases()) {

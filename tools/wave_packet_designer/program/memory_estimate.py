@@ -1,7 +1,9 @@
 """The memory of the large arrays of a run, array by array, on the CPU and on the GPU.
 
 Shadows: src/propagation/memory_estimate.cpp (estimate_memory),
-src/propagation/kinetic_operators.cpp (zr_chunk_size, xy_group_points),
+src/propagation/kinetic_operators.cpp (zr_chunk_size, xy_group_points, xy_in_place_possible,
+xy_momentum_shift_needed),
+src/propagation/propagation_tables.cpp (momentum_shift_forward),
 src/propagation/angular_transform.hpp (dvr_block_size, cpu_pass_bytes),
 src/propagation/angular_transform.cpp (columns_per_pass),
 src/propagation/potential_operator.hpp (default_table_limit),
@@ -146,7 +148,10 @@ def work_values_per_thread(
     with the DVR blocks of the potential step (the stages run one after the other)."""
     n_xy = p.nx * p.ny
     zr_unit = zr_chunk_size(n_rot * p.ny) * p.nr * p.nz
-    xy_group = n_rot * n_xy * xy_group_points(n_rot, p.nx, p.ny, p.nr)
+    group_points = xy_group_points(n_rot, p.nx, p.ny, p.nr)
+    # T_xy in place (one aligned point per group, no shift) needs no (x, y) group array.
+    in_place = xy_in_place_possible(n_rot, p.nx, p.ny, group_points, xy_momentum_shift_needed(p))
+    xy_group = 0 if in_place else n_rot * n_xy * group_points
     # The DVR blocks of the columns of one angular-transform pass.
     dvr_blocks = dvr_block_size(angular.n_theta, angular.n_phi) * columns_per_pass(n_xy, angular.n_theta, angular.n_phi)
     # On the fly with symmetry: exp(i A) of the representatives of one (Z, r) point.
@@ -170,6 +175,19 @@ def xy_group_points(n_rot: int, nx: int, ny: int, nr: int) -> int:
         if nr % g == 0 and g * block_bytes <= XY_GROUP_LIMIT:
             return g
     return 1
+
+
+def xy_in_place_possible(n_rot: int, nx: int, ny: int, group_points: int, shift: bool) -> bool:
+    """Whether T_xy transforms a group in the wave function itself: one point per group, no momentum shift, and a
+    block of n_rot * nx * ny complex values that is a multiple of 64 bytes."""
+    return group_points == 1 and not shift and (COMPLEX_BYTES * n_rot * nx * ny) % 64 == 0
+
+
+def xy_momentum_shift_needed(p: InputParameters) -> bool:
+    """Whether T_xy shifts to the frame of the initial parallel momentum. The C++ decides from the shift factors
+    (some factor not exactly 1), which for a valid input is EParallel != 0; the designer has no lattice to compute
+    the factors."""
+    return p.e_parallel != 0.0
 
 
 def dvr_block_size(n_theta: int, n_phi: int) -> int:

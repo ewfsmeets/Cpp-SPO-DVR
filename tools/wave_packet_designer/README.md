@@ -212,7 +212,7 @@ flowchart TB
 | `program/gas_phase_potentials.py` | V(r) of the Dai-Light and hard-wall potentials at Z_asymptotic | `src/potential/dai_light_cu111_potential.cpp`, `hard_wall_potential.cpp`, `potential_grid.cpp` |
 | `program/point_group.py` | the φ multiple and order of each point group | `src/symmetry/point_group.cpp` |
 | `dz_gas_phase.py` | the DZ input's printed V(r): the stand-in for other potentials, and test data | — |
-| `expected_cases.json` | the drift guard: twelve cases with the designer's grid indices, angular sizes and memory estimates (written by `write_expected_cases.py`) | read by `tests/designer_cases.hpp` for the C++ tests |
+| `expected_cases.json` | the drift guard: thirteen cases with the designer's grid indices, angular sizes and memory estimates (written by `write_expected_cases.py`) | read by `tests/designer_cases.hpp` for the C++ tests |
 | `program/potential_systems.py` | Z_asymptotic, point group and (for the analytic potentials) the lattice constants per SystemID | the analytic potentials, `src/potential/potential_factory.cpp` |
 | `program/fft_sizes.py`, `real_compare.py`, `unit_conversion.py` | valid FFT sizes; the Fortran's tolerant comparisons and NINT; units and π | `src/fft/fft_sizes.cpp`, `src/core/real_compare.hpp`, `src/core/unit_conversion.hpp`, `src/core/constants.hpp` |
 | `program/findings.py` | an error or warning of the program | `src/core/error.hpp` |
@@ -251,7 +251,7 @@ NINT rounds half away from zero, unlike Python's `round`). To change …
 
 Most comparisons above use numbers recorded from the program once, so they do not notice a later change
 of the C++. For the grid indices, the angular sizes and the memory estimates, which change whenever the
-program gains or resizes an array, `expected_cases.json` closes that gap. Each of its twelve cases holds a
+program gains or resizes an array, `expected_cases.json` closes that gap. Each of its thirteen cases holds a
 definition written by hand (a base input, key changes, the threads, and the symmetry counts the program
 computes) and the designer's results, and both sides are tested against it:
 

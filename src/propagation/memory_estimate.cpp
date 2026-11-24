@@ -14,6 +14,7 @@
 #include "propagation/angular_transform.hpp"
 #include "propagation/kinetic_operators.hpp"
 #include "propagation/potential_operator.hpp"
+#include "propagation/propagation_tables.hpp"
 
 namespace spodvr {
 
@@ -74,7 +75,11 @@ MemoryEstimate estimate_memory(const Config& config, const SpatialGrids& grids, 
     // DVR blocks of the potential step (the stages run one after the other).
     const ScatteringShape shape{basis.size(), p.nx, p.ny, p.nr, p.nz};
     const std::size_t zr_unit = std::size_t(zr_chunk_size(shape.n_rot * shape.ny)) * p.nr * p.nz;
-    const std::size_t xy_group = std::size_t(shape.n_rot) * n_xy * xy_group_points(shape);
+    // The (x, y) group of T_xy; none when T_xy runs in place (ScatteringKineticOperator::group_work_size).
+    const int group_points = xy_group_points(shape);
+    const bool shift = xy_momentum_shift_needed(momentum_shift_forward(config));
+    const std::size_t xy_group =
+        xy_in_place_possible(shape, group_points, shift) ? 0 : std::size_t(shape.n_rot) * n_xy * group_points;
     // The DVR blocks of the columns of one angular-transform pass (AngularTransform::columns_per_pass).
     const std::size_t dvr_blocks = std::size_t(AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi())) *
                                    AngularTransform::columns_per_pass(p.nx * p.ny, angular.n_theta(), angular.n_phi());

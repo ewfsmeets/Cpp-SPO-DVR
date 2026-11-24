@@ -149,7 +149,8 @@ def test_designer_matches_the_expected_cases() -> None:
 def test_the_cases_cover_the_estimate_paths() -> None:
     """The cases keep covering what the estimates distinguish: UseSymmetry with a reduction, a potential-only
     run (no GPU estimate), a potential above the 4 GiB table limit (kept, no exp table), the low-Z absorbers,
-    and both molecule kinds (half or all theta points)."""
+    parallel momentum (T_xy shifts, so it keeps its group array), and both molecule kinds (half or all theta
+    points)."""
     cases = load_cases()
     inputs = [case_input(case) for case in cases]
     check(
@@ -159,6 +160,7 @@ def test_the_cases_cover_the_estimate_paths() -> None:
     check(any(c["gpu"] is None and c["cpu"] is not None for c in cases), "a potential-only run")
     check(any(c["gpu"] is not None and c["cpu"]["items"][1]["bytes"] == 0 for c in cases), "exp table not stored")
     check(any(c["grids"]["z_optical_low"] is not None for c in cases), "low-Z absorbers")
+    check(any(v.get("EParallel", 0.0) != 0.0 for v in inputs), "a case with the momentum shift of T_xy")
     check(any(v["Mass1"] != v["Mass2"] for v in inputs) and any(v["Mass1"] == v["Mass2"] for v in inputs), "masses")
 
 
