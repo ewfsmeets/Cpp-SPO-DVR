@@ -77,7 +77,7 @@ fixed the specular analysis line at 18.75 a₀, behind the packet. With this inp
   specular grid carries only the initial channel, elastically reflected at the packet energies,
   so its absorber is tuned higher. Below the 0.05 eV where `check` starts (channels just above
   threshold) R grows towards 1 whatever the choice, but those waves move slowly and barely return
-  within T.
+  within `tEnd`.
 
 ## Cost (this machine)
 

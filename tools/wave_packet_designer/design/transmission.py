@@ -21,7 +21,7 @@ ENERGY_POINTS = 8  # energies per absorber, evenly spaced on a log scale
 SLICE = 0.002  # bohr: halving it changes R + T of the DZ absorbers by at most 1.1e-4 relative (0.03-1.5 eV)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class AbsorberResponse:
     """R and T of one absorber over the energies it must absorb."""
 
@@ -61,7 +61,7 @@ def absorber_response(
     pairs = [reflection_transmission(ev_to_hartree(e), length, strength, mass) for e in energies]
     reflection, transmission = tuple(r for r, _ in pairs), tuple(t for _, t in pairs)
     total = tuple(r + t for r, t in pairs)
-    return AbsorberResponse(name, energies, reflection, transmission, total)
+    return AbsorberResponse(name=name, energies=energies, reflection=reflection, transmission=transmission, total=total)
 
 
 def reflection_transmission(energy: float, length: float, strength: float, mass: float) -> tuple[float, float]:

@@ -123,13 +123,32 @@ def test_absorber_reflection_terms_by_hand() -> None:
     a = 2 with R = 0.5, capped at 1 but included), the re-scattered term is 2 sqrt(P Q), the direct one 2 a P;
     the near-threshold row is not estimated."""
     amplitude, probability = np.array([0.01, 0.02, 2.0, 0.03]), np.array([0.5, 0.3, 0.1, 0.2])
-    error = d.reflection_error(np.array([1e-4, 4e-4, 0.5, 9e-4]), amplitude, probability, np.array([0, 0, 0, 1]), 2)
+    error = d.reflection_error(
+        reflection=np.array([1e-4, 4e-4, 0.5, 9e-4]),
+        amplitude=amplitude,
+        probability=probability,
+        energy_index=np.array([0, 0, 0, 1]),
+        n_energies=2,
+    )
     q = np.array([1e-4 * 0.5 + 4e-4 * 0.3 + 1.0 * 0.1, 9e-4 * 0.2])
     assert np.allclose(error.rescattered, 2.0 * np.sqrt(probability * q[[0, 0, 0, 1]]), rtol=1e-15, atol=0.0)
     assert np.allclose(error.direct, 2.0 * amplitude * probability, rtol=1e-15, atol=0.0)
     assert list(error.near_threshold) == [False, False, True, False]
     finding = reflection_finding(list(amplitude), list(probability), reflection=[1e-4, 4e-4, 0.5, 9e-4])
-    assert "1 rows with R > 0.1 (near a threshold) not estimated" in finding.value
+    assert "1 rows with R > 0.1 (near a threshold) not estimated, the largest P among them 1.00e-01" in finding.value
+
+
+def test_absorber_reflection_near_threshold_fires_just_above_its_limit() -> None:
+    """A row above the first-order limit (R 0.5, a = sqrt(R) + T 0.75) is not estimated but can carry an error of
+    order its P: with 2 P just above REFLECTION_LIMIT a warning, at it information; the value quotes its P."""
+    just_above = reflection_finding([0.75], [1.01 * d.REFLECTION_LIMIT / 2], reflection=[0.5])
+    assert just_above.severity == "warning"
+    at_limit = reflection_finding([0.75], [d.REFLECTION_LIMIT / 2], reflection=[0.5])
+    assert at_limit.severity == "information"
+    assert at_limit.value == (
+        "no channel estimated; no estimated channel with P >= 0.01; "
+        "1 rows with R > 0.1 (near a threshold) not estimated, the largest P among them 5.00e-04"
+    )
 
 
 def test_absorber_reflection_relative_part_only_for_large_p() -> None:
@@ -138,9 +157,10 @@ def test_absorber_reflection_relative_part_only_for_large_p() -> None:
     small_p = 0.1 * d.REFLECTION_RELATIVE_P
     finding = reflection_finding([1e-4, 0.05], [0.5, small_p], energy_index=[0, 1])
     assert finding.severity == "information"
-    assert "relative error 2a up to 2.00e-04 where P >= 0.01 (E_coll 0.2 eV, (v, j, mJ, n, m) = (0, 0, 0, 0, 0))" in (
-        finding.value
+    expected = (
+        "direct relative error 2a up to 2.00e-04 where P >= 0.01 (E_coll 0.2 eV, (v, j, mJ, n, m) = (0, 0, 0, 0, 0))"
     )
+    assert expected in finding.value
     assert "1.00e-01" not in finding.value
     transmitting = reflection_finding([1e-4, 0.5], [0.5, small_p], reflection=[1e-8, 0.01], energy_index=[0, 1])
     assert transmitting.severity == "warning"  # 2 a P + 2 sqrt(P a^2 P) = 2e-3 for a = 0.5 (T large, R 0.01)

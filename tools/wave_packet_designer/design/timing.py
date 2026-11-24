@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from design.rules import DesignInput, t_end_for
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PathZ:
     """One straight-line path Z(t) through the given points (a.u., bohr)."""
 
@@ -45,12 +45,12 @@ def time_budget(c: DesignInput) -> TimeBudget:
     for label, k in (("EMaxWP", c.d.kz + width), ("mean k0", c.d.kz), ("EMinWP", c.d.kz - width)):
         t_in = (z0 - z_turn) * mass / k
         t_out = t_in + (z_analysis - z_turn) * mass / k
-        paths.append(PathZ(f"{label}, elastic", (0.0, t_in, t_out), (z0, z_turn, z_analysis)))
+        paths.append(PathZ(label=f"{label}, elastic", times=(0.0, t_in, t_out), z=(z0, z_turn, z_analysis)))
     k_slow = c.d.kz - width
     t_turn = (z0 - z_turn) * mass / k_slow
     t_elastic = t_turn + (z_analysis - z_turn) * mass / k_slow
     t_needed = t_end_for(z0, z_analysis, mass, k_slow, c.e_n_min, z_turn)
-    paths.append(PathZ(f"E_n = {c.e_n_min:g} eV out", (t_turn, t_needed), (z_turn, z_analysis)))
+    paths.append(PathZ(label=f"E_n = {c.e_n_min:g} eV out", times=(t_turn, t_needed), z=(z_turn, z_analysis)))
     return TimeBudget(
         z_turn=z_turn,
         time_per_bohr_slowest=mass / k_slow,

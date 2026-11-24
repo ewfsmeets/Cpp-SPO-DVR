@@ -2,6 +2,7 @@
 (wave_packet_designer.py)."""
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ CLI = TOOL_DIR / "wave_packet_designer.py"
 # Z_asymptotic of the SRP48 data set of inputs/scm_example: the last Z of Molecule/extrapol.dat, 6.5 angstrom,
 # converted like the CRP library does (x * (1 / 0.529177249)); the data set is C3v.
 SRP48_Z_ASYMPTOTIC = 6.5 * (1.0 / 0.529177249)
+NUMBER = r" [0-9.]+(?:e[+-][0-9]+)?"  # one value of a table row, with the space before it
 
 
 def run_check(*arguments: str) -> subprocess.CompletedProcess:
@@ -39,28 +41,31 @@ def test_check_prints_r_t_time_and_tails() -> None:
     inputs/README.md and inputs/thesis_fig5_3_dz/README.md quote."""
     result = run_check(str(DZ_INPUT))
     check(result.returncode == 0, f"{result.returncode}: {result.stdout}{result.stderr}")
-    lines = result.stdout.splitlines()
+    text = " ".join(result.stdout.split())  # whitespace collapsed: no dependence on columns or line wrapping
 
     def table_row(absorber: str, label: str) -> list[str]:
-        """The values of one row (R, T or R + T) of an absorber in ABSORBERS: REFLECTION + TRANSMISSION."""
-        start = next(i for i, line in enumerate(lines) if line.split()[:2] == [absorber, "E"])
-        for line in lines[start + 1 : start + 4]:
-            if line[13:21].strip() == label:
-                return line[21:].split()
-        raise AssertionError(f"{absorber}: no {label} row")
+        """The values of one row (R + T, R or T) of an absorber in ABSORBERS: REFLECTION + TRANSMISSION, each row
+        found by its label after the absorber's energy row."""
+        rows = re.search(
+            rf"\b{absorber} E \(eV\)(?:{NUMBER})+ R \+ T(?P<total>(?:{NUMBER})+) R(?P<R>(?:{NUMBER})+) "
+            rf"T(?P<T>(?:{NUMBER})+)",
+            text,
+        )
+        check(rows is not None, f"{absorber}: no E, R + T, R, T rows: {result.stdout}")
+        return rows.group({"R + T": "total", "R": "R", "T": "T"}[label]).split()
 
     check_equal(table_row("ZOpt", "R")[0], "4.2e-05", "ZOpt R at the lowest energy")
     check_equal(table_row("ZOpt", "T")[-1], "8.3e-06", "ZOpt T at the highest energy")
     check_equal(table_row("ZSpOpt", "R + T")[-1], "2.7e-09", "ZSpOpt R + T at the highest energy")
-    for text in (
-        "TIME (inputs/README.md section 8)",
-        "354 a.u. per bohr",
-        "after 10252 a.u.",
-        "needs 22438",
-        "Packet moving outward, k > 0 ................. 2.9e-21",
-        "Wrapped to outward motion, beyond k_grid ..... 1.4e-20",
+    for pattern in (
+        re.escape("TIME (inputs/README.md section 8)"),
+        r"M / k_min \.+ 354 a\.u\. per bohr",
+        re.escape("after 10252 a.u."),
+        re.escape("needs 22438"),
+        r"Packet moving outward, k > 0 \.+ 2\.9e-21",
+        r"Wrapped to outward motion, beyond k_grid \.+ 1\.4e-20",
     ):
-        check(text in result.stdout, f"{text!r} missing: {result.stdout}")
+        check(re.search(pattern, text) is not None, f"{pattern!r} not found: {result.stdout}")
 
 
 def test_rejected_input_exits_with_1(work: Path) -> None:

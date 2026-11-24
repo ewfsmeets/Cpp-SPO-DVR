@@ -8,13 +8,15 @@ import shutil
 from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+from compute.absorber_reflection import returned_amplitude
 from readers.binary import read_bk_coefficients
 from readers.run_info import RunInfo, read_run_info
 from readers.segments import joined_info, ordered_segments
 from readers.tables import read_averages
-from verdict import absorber_reflection_finding, frames_at_edges, run_verdict
+from verdict import absorber_reflection_finding, frames_at_edges, initial_channel_rows, run_verdict, s_matrix_rows
 
 EXPECTED = {
     "hardwall_tiny": [
@@ -22,7 +24,7 @@ EXPECTED = {
         "P_scattered still moving",
         "unitarity error",
         # 2.36e-3 in P at 0.22 eV: the 3.52 bohr ZSpOpt has R 4.86e-7 at 0.2 eV (section 7's target: R + T <= 4e-9)
-        "absorber reflection",
+        "absorber reflection",  # its value: REFLECTION_VALUE
         "gas-phase states reach the ends of the r grid",
         "slowest converged energy",
         "norm left",
@@ -31,7 +33,7 @@ EXPECTED = {
     "dailight_oblique": [
         "P_scattered still moving",
         "unitarity error",
-        "absorber reflection",  # 2.56e-3 in P at 0.30 eV (P 0.65): the same 3.52 bohr ZSpOpt
+        "absorber reflection",  # 2.56e-3 in P at 0.30 eV (P 0.65): the same 3.52 bohr ZSpOpt; REFLECTION_VALUE
         "flux at the edge of the basis: j' = 2",
         "flux at the edge of the basis: outermost diffraction channels",
         "gas-phase states reach the ends of the r grid",
@@ -46,6 +48,16 @@ EXPECTED = {
     "potential_only": ["not checked: the propagation"],
     "pes_cut": ["not checked: the propagation"],  # a write2DPES run (run mode 0) stops after the cut
 }
+REFLECTION_VALUE = {  # the value of the "absorber reflection" finding (both warn)
+    "hardwall_tiny": "up to 2.36e-03 in P (E_coll 0.22 eV, (v, j, mJ, n, m) = (0, 0, 0, 0, 0), P 1.02: direct "
+    "1.18e-03, re-scattered 1.18e-03); direct relative error 2a up to 1.39e-03 where P >= 0.01 (E_coll 0.2 eV, "
+    "(v, j, mJ, n, m) = (0, 0, 0, 0, 0)); 31 rows with R > 0.1 (near a threshold) not estimated, the largest P "
+    "among them 3.48e-11",
+    "dailight_oblique": "up to 2.56e-03 in P (E_coll 0.3 eV, (v, j, mJ, n, m) = (0, 0, 0, 0, 0), P 0.651: direct "
+    "9.08e-04, re-scattered 1.65e-03); direct relative error 2a up to 4.29e-03 where P >= 0.01 (E_coll 0.33 eV, "
+    "(v, j, mJ, n, m) = (0, 2, 0, 1, 0)); 71 rows with R > 0.1 (near a threshold) not estimated, the largest P "
+    "among them 3.80e-07",
+}
 
 
 def verdict_of(runs: list[Path]) -> list:
@@ -58,6 +70,43 @@ def verdict_of(runs: list[Path]) -> list:
 def test_findings_of_each_fixture(fixture_runs: Path, run: str) -> None:
     """The names of the findings, worst first."""
     assert [f.name for f in verdict_of([fixture_runs / run])] == EXPECTED[run]
+
+
+@pytest.mark.parametrize(
+    "run, segments",
+    [
+        ("hardwall_tiny", ["hardwall_tiny"]),
+        ("hardwall_tiny", ["hardwall_tiny_split/first", "hardwall_tiny_split/second"]),
+        ("dailight_oblique", ["dailight_oblique"]),
+        ("dailight_oblique", ["dailight_oblique_split/first", "dailight_oblique_split/second"]),
+    ],
+)
+def test_absorber_reflection_values(fixture_runs: Path, run: str, segments: list[str]) -> None:
+    """The "absorber reflection" warning of each fixture with its numbers, the same for its split run."""
+    finding = next(f for f in verdict_of([fixture_runs / s for s in segments]) if f.name == "absorber reflection")
+    assert (finding.severity, finding.value) == ("warning", REFLECTION_VALUE[run])
+
+
+def test_absorber_reflection_of_one_open_channel(fixture_runs: Path) -> None:
+    """hardwall_tiny at 0.22 eV has one open channel, the elastic one (the other rows carry P <= 1.4e-26): its
+    error is 2 a P direct plus 2 sqrt(P a^2 P) = 2 a P re-scattered, 4 a P in all, with a of ZSpOpt at the row's
+    outgoing normal energy (compute/absorber_reflection.py)."""
+    run = fixture_runs / "hardwall_tiny"
+    info = read_run_info(run)
+    rows = s_matrix_rows(run, info, read_bk_coefficients(run / "bk_coefficients.bin"))
+    at_energy = rows.energy_index == int(np.argmin(np.abs(rows.collision_ev - 0.22)))
+    (elastic,) = np.flatnonzero(at_energy & initial_channel_rows(rows.table, info) & (rows.table["v"] == 0))
+    zsp = next(a for a in info.data["absorbers"]["list"] if a["name"] == "ZSpOpt")
+    _, amplitude = returned_amplitude(
+        rows.outgoing_ev[elastic : elastic + 1] / info.hartree_to_ev,
+        length_bohr=zsp["end"] - zsp["start"],
+        strength_hartree=zsp["strength"],
+        mass_me=info.data["molecule"]["total_mass"],
+    )
+    direct = 2.0 * amplitude[0] * rows.table["P"][elastic]
+    expected = f"up to {2.0 * direct:.2e} in P (E_coll 0.22 eV, (v, j, mJ, n, m) = (0, 0, 0, 0, 0), P "
+    expected += f"{rows.table['P'][elastic]:.3g}: direct {direct:.2e}, re-scattered {direct:.2e});"
+    assert REFLECTION_VALUE["hardwall_tiny"].startswith(expected)
 
 
 def test_stopped_run_is_incomplete(stopped_run: Path) -> None:
@@ -128,6 +177,7 @@ def test_absorber_reflection_checks_and_an_absorber_that_is_off(fixture_runs: Pa
     checked"; ZSpOpt off (strength 0) returns a = 1 and warns; a low-Z absorber in the list is named."""
     run = fixture_runs / "hardwall_tiny"
     info, bk = read_run_info(run), read_bk_coefficients(run / "bk_coefficients.bin")
+    rows = s_matrix_rows(run, info, bk)
 
     def changed(change: dict) -> RunInfo:
         """The run's RunInfo with its absorbers changed (a deep copy)."""
@@ -135,12 +185,14 @@ def test_absorber_reflection_checks_and_an_absorber_that_is_off(fixture_runs: Pa
         data["absorbers"].update(change)
         return replace(info, data=data)
 
-    power = absorber_reflection_finding(run, changed({"power": 3}), bk)
+    power = absorber_reflection_finding(rows, changed({"power": 3}))
     assert (power.name, power.value) == ("not checked: absorber reflection", "power 3, not 2")
-    assert absorber_reflection_finding(run, info, None).value == "no bk_coefficients.bin or s_matrix.tsv"
+    no_bk = absorber_reflection_finding(s_matrix_rows(run, info, None), info)
+    assert no_bk.value == "no bk_coefficients.bin or s_matrix.tsv"
     absorbers = copy.deepcopy(info.data["absorbers"]["list"])
     next(a for a in absorbers if a["name"] == "ZSpOpt")["strength"] = 0.0
-    off = absorber_reflection_finding(run, changed({"list": absorbers}), bk)
+    off = absorber_reflection_finding(rows, changed({"list": absorbers}))
     assert off.severity == "warning" and float(off.value.split()[2]) > 1.0  # "up to <error> in P": 2 a P with a = 1
+    assert off.value.endswith("; ZSpOpt is off (strength 0): everything it should absorb returns")
     low_z = absorbers + [{"name": "ZOptLow", "start": 0.0, "end": 1.0, "strength": 0.01}]
-    assert "low-Z absorbers on: not estimated" in absorber_reflection_finding(run, changed({"list": low_z}), bk).value
+    assert "low-Z absorbers on: not estimated" in absorber_reflection_finding(rows, changed({"list": low_z})).value

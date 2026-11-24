@@ -251,18 +251,21 @@ wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and with the line fixe
   exceeds the channel's normal energy). With a = √R + T at the channel's outgoing normal energy
   (`ZSpOpt` for every v of the initial channel, `ZOpt` for the others), the error of P_f is, to
   first order in a and at the worst phase, up to
-  - 2·a_f·P_f: the channel's own wave returned, a relative error 2a_f;
+  - 2·a_f·P_f: the channel's own wave returned, a direct relative error 2a_f;
   - plus 2·√(P_f·Q), Q = Σ_c min(a_c, 1)²·P_c over the analysed channels at that energy: the
     returned waves scatter at the surface again, into every channel.
 
   It oscillates in energy. Hard wall, R = 5e-7: |S| off by up to 8.7e-4, between √R = 7e-4 and
-  2√R. Above ~0.4 eV T dominates a (DZ `ZOpt` at 1 eV: R 1.7e-10, T 1.1e-5). For the specular
-  absorber targets of section 7 (R + T ≤ 4e-9) 2a is up to ≈ 1.3e-4; for the scattering absorber's
-  (R + T ≤ 4e-5 from 0.05 to 1.0 eV) up to ≈ 1.3e-2, more for channels just above their threshold.
-  The plot tool's verdict estimates both terms per channel (finding "absorber reflection",
-  [tools/plots](../tools/plots/README.md#the-verdict)). It leaves out `ROpt`, the low-Z absorbers,
-  unanalysed channels, the tail below, multiple reflections and channels with R > 0.1 (near a
-  threshold, where first order fails), and counts as if everything returned before `tEnd`.
+  2√R. Since a holds √R, not R, T dominates it only late: for the DZ `ZOpt` T exceeds R above
+  0.35 eV but √R only above 1.06 eV (at 1 eV √R 1.3e-5, T 1.1e-5). For the specular absorber
+  targets of section 7 (R + T ≤ 4e-9) the direct relative error 2a is up to ≈ 1.3e-4; for the
+  scattering absorber's (R + T ≤ 4e-5 from 0.05 to 1.0 eV) up to ≈ 1.3e-2, more for channels just
+  above their threshold. The plot tool's verdict estimates both terms per channel (finding
+  "absorber reflection", [tools/plots](../tools/plots/README.md#the-verdict)). It leaves out
+  `ROpt`, the low-Z absorbers, unanalysed channels, the tail below, multiple reflections and
+  channels with R > 0.1 (near a threshold, where first order fails; their error can be of order
+  P, so it quotes their largest P and warns when 2P exceeds 1e-3), and counts as if everything
+  returned before `tEnd`.
 - **The tail beyond the specular line**: with `DynamZSpAna`, up to max(`TolSp`, the initial norm in
   the specular absorber) of incoming tail lies beyond the line when it is fixed (section 6). It
   crosses the line later and adds an error of order √`TolSp` to the elastic element's |S|

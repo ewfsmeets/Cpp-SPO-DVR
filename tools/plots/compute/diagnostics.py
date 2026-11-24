@@ -27,7 +27,8 @@ BUDGET_LIMIT = 1e-4  # heuristic: probability that may leave the grids beyond th
 REFLECTION_LIMIT = 1e-3  # heuristic: an absolute error in P, the verdict's probability scale (as UNANALYSED_LIMIT,
 # SLOW_CHANNELS_LIMIT and EDGE_LIMIT)
 REFLECTION_RELATIVE_P = 1e-2  # heuristic: rows whose relative error the value quotes
-FIRST_ORDER_LIMIT = 0.1  # heuristic: R above it, the first-order estimate fails (near a threshold)
+FIRST_ORDER_LIMIT = 0.1  # heuristic: R above it, the first-order estimate fails (near a threshold); such a row
+# can carry an error of order its P, so it warns when 2 P exceeds REFLECTION_LIMIT
 
 SECTION_ABSORBERS = "7. Absorbers"
 SECTION_TIME = "8. Total time and energy grid"
@@ -205,8 +206,8 @@ def norm_left(norm: float) -> Finding:
         "it includes flux already analysed but not yet absorbed; the norm N not yet analysed (the 'norm by "
         "region' bands below Zana plus the rest norm) bounds only the loss averaged over the packet's spectrum: "
         "at a single energy the error of P is about 2 sqrt(N) where P ~ 1, larger at the ends of the range, and "
-        "absorber reflection (up to about 2 sqrt(R) P) shows in no norm (the 'absorber reflection' finding "
-        "estimates it per channel)",
+        "absorber reflection shows in no norm: up to 2 a P with a = sqrt(R) + T, plus the re-scattered term "
+        "2 sqrt(P Q) (the 'absorber reflection' finding, which estimates both per channel)",
         SECTION_TIME,
     )
 
@@ -399,7 +400,12 @@ class ReflectionError:
 
 
 def reflection_error(
-    reflection: np.ndarray, amplitude: np.ndarray, probability: np.ndarray, energy_index: np.ndarray, n_energies: int
+    *,
+    reflection: np.ndarray,
+    amplitude: np.ndarray,
+    probability: np.ndarray,
+    energy_index: np.ndarray,
+    n_energies: int,
 ) -> ReflectionError:
     """delta P_f <= 2 a_f P_f + 2 sqrt(P_f Q(E)), Q(E) = sum_c min(a_c, 1)^2 P_c over the rows at that energy
     (first order in a, worst phase: delta S_f = r_f S_fi + sum_c S_fc r_c S_ci with Cauchy-Schwarz and
@@ -439,9 +445,12 @@ def row_text(rows: ReflectionRows, row: int) -> str:
     return f"E_coll {rows.collision_energy_ev[rows.energy_index[row]]:.3g} eV, (v, j, mJ, n, m) = ({channel})"
 
 
-def reflection_value(rows: ReflectionRows, error: ReflectionError, low_z: bool) -> str:
-    """The value of the "absorber reflection" finding: the largest error of P with its parts, the largest
-    relative error 2a among rows with P >= REFLECTION_RELATIVE_P, the near-threshold rows, the low-Z absorbers."""
+def reflection_value(
+    rows: ReflectionRows, error: ReflectionError, low_z: bool, absorbers_off: tuple[tuple[str, float], ...]
+) -> str:
+    """The value of the "absorber reflection" finding: the largest error of P with its parts, the largest direct
+    relative error 2a among rows with P >= REFLECTION_RELATIVE_P, the near-threshold rows and their largest P,
+    the low-Z absorbers, the absorbers that are off."""
     estimated = ~error.near_threshold
     worst = worst_of(error.total, estimated)
     if worst is None:
@@ -456,14 +465,49 @@ def reflection_value(rows: ReflectionRows, error: ReflectionError, low_z: bool) 
         parts.append(f"no estimated channel with P >= {REFLECTION_RELATIVE_P:g}")
     else:
         parts.append(
-            f"relative error 2a up to {2.0 * rows.amplitude[relative]:.2e} where P >= {REFLECTION_RELATIVE_P:g} "
+            f"direct relative error 2a up to {2.0 * rows.amplitude[relative]:.2e} where P >= {REFLECTION_RELATIVE_P:g} "
             f"({row_text(rows, relative)})"
         )
-    near = int(error.near_threshold.sum())
-    parts.append(f"{near} rows with R > {FIRST_ORDER_LIMIT:g} (near a threshold) not estimated")
+    parts.append(near_threshold_text(rows, error))
     if low_z:
         parts.append("low-Z absorbers on: not estimated")
+    parts += [
+        f"{name} is off (strength {strength:g}): everything it should absorb returns"
+        for name, strength in absorbers_off
+    ]
     return "; ".join(parts)
+
+
+def near_threshold_text(rows: ReflectionRows, error: ReflectionError) -> str:
+    """How many rows lie above the first-order limit (near a threshold, not estimated), with their largest P."""
+    near = int(error.near_threshold.sum())
+    text = f"{near} rows with R > {FIRST_ORDER_LIMIT:g} (near a threshold) not estimated"
+    largest = worst_of(rows.probability, error.near_threshold)
+    return text if largest is None else f"{text}, the largest P among them {rows.probability[largest]:.2e}"
+
+
+def reflection_fires(rows: ReflectionRows, error: ReflectionError) -> bool:
+    """Whether the finding warns: the bound above REFLECTION_LIMIT in an estimated row, 2 P above it in a
+    near-threshold row (an error of order P), or a P or an a that is NaN."""
+    near = error.near_threshold
+    estimated_fires = np.any(~(error.total[~near] <= REFLECTION_LIMIT))  # NaN fires
+    near_fires = np.any(~(2.0 * rows.probability[near] <= REFLECTION_LIMIT))
+    return bool(estimated_fires or near_fires or np.isnan(rows.probability).any() or np.isnan(rows.amplitude).any())
+
+
+# What the "absorber reflection" finding means (its Finding.meaning)
+REFLECTION_MEANING = (
+    "an estimate, first order in the returned amplitude a = sqrt(R) + T at the channel's outgoing normal energy "
+    "(R reflected; T passes the absorber and wraps round to ZStart: it returns, crossing the absorber again, with "
+    "amplitude about T only when V at ZStart exceeds the channel's normal energy, so that the wall reflects it; "
+    "ZSpOpt for every v of the initial channel, ZOpt for the others), at the worst phase: 2 a P directly plus "
+    "2 sqrt(P Q) re-scattered at the surface, Q = sum of min(a, 1)^2 P over the analysed channels at that "
+    "energy; only what returns before tEnd counts, so the error may be smaller. First order holds only for "
+    f"small R: rows with R > {FIRST_ORDER_LIMIT:g} (near a threshold) are not estimated, and warn when 2 P "
+    "exceeds the limit (their error can be of order P). Not included: ROpt, the low-Z "
+    "absorbers, unanalysed channels, the sqrt(TolSp) tail and multiple reflections (inputs/README.md section "
+    "8). A longer absorber or another target energy lowers R + T"
+)
 
 
 def absorber_reflection(
@@ -475,13 +519,16 @@ def absorber_reflection(
     channels: np.ndarray,
     energy_index: np.ndarray,
     low_z_absorbers: bool = False,
+    absorbers_off: tuple[tuple[str, float], ...] = (),
 ) -> Finding:
     """The error of each channel's P from the waves the Z absorbers return to the analysis line: a warning when
-    the bound exceeds REFLECTION_LIMIT in a row below the first-order limit, or a P or a is NaN; else information.
+    the bound exceeds REFLECTION_LIMIT in a row below the first-order limit, 2 P exceeds it in a row above that
+    limit, or a P or a is NaN; else information.
     Per row of s_matrix.tsv: R and a = sqrt(R) + T of its absorber at its outgoing normal energy
     (compute/absorber_reflection.py; inf where that energy is not positive), P, its channel (v, j, mJ, n, m)
     and the index of its analysis energy into collision_energy_ev (eV). low_z_absorbers: ZOptLow or ZSpOptLow
-    is on (not estimated)."""
+    is on (not estimated); absorbers_off: (name, strength) of each Z absorber that is off (strength <= 0, a = 1).
+    """
     rows = ReflectionRows(
         reflection=reflection,
         amplitude=amplitude,
@@ -490,21 +537,18 @@ def absorber_reflection(
         energy_index=energy_index,
         collision_energy_ev=collision_energy_ev,
     )
-    n_energies = len(collision_energy_ev)
-    error = reflection_error(rows.reflection, rows.amplitude, rows.probability, rows.energy_index, n_energies)
-    fires = bool(np.any(~(error.total[~error.near_threshold] <= REFLECTION_LIMIT)))  # NaN fires
-    fires = fires or bool(np.isnan(rows.probability).any() or np.isnan(rows.amplitude).any())
+    error = reflection_error(
+        reflection=reflection,
+        amplitude=amplitude,
+        probability=probability,
+        energy_index=energy_index,
+        n_energies=len(collision_energy_ev),
+    )
     return Finding(
-        "warning" if fires else "information",
+        "warning" if reflection_fires(rows, error) else "information",
         "absorber reflection",
-        reflection_value(rows, error, low_z_absorbers),
+        reflection_value(rows, error, low_z_absorbers, absorbers_off),
         f"<= {REFLECTION_LIMIT:g} in each channel's P",
-        "an estimate, first order in the returned amplitude a = sqrt(R) + T at the channel's outgoing normal energy "
-        "(R reflected; T passes the absorber, wraps round to ZStart, is reflected by the wall and crosses it again; "
-        "ZSpOpt for every v of the initial channel, ZOpt for the others), at the worst phase: 2 a P directly plus "
-        "2 sqrt(P Q) re-scattered at the surface, Q = sum of min(a, 1)^2 P over the analysed channels at that "
-        "energy; only what returns before tEnd counts, so the error may be smaller. Not included: ROpt, the low-Z "
-        "absorbers, unanalysed channels, the sqrt(TolSp) tail and multiple reflections (inputs/README.md section "
-        "8). A longer absorber or another target energy lowers R + T",
+        REFLECTION_MEANING,
         SECTION_ABSORBERS,
     )

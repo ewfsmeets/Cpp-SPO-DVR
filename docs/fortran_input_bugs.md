@@ -15,10 +15,12 @@ Fortran keeps for an absorber energy of 0 (absorber D1), the optical potentials 
 of the Z grid that upstream 5.24 added (low-Z D1–D4), the number of analysis energies
 (analysis D1), and dtAna or dtAve just below a multiple of dtStep or dtAna (analysis D4, open in the Fortran).
 
-**Status (2026-11-23):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
+**Status (2026-11-24):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
 analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
-NaN), and the C++ follows the fixed checks. The reference of the port is r1727 since 2026-11-23, so it has them. Each section starts with its status. The demonstrations below show the
-Fortran before those fixes (5.19 and r1713).
+NaN), and the C++ follows the fixed checks. The reference of the port is r1727 since 2026-11-23, so it has them.
+Analysis D4 is still open in the Fortran (r1727 included); the C++ rejects those inputs. Each section starts with
+its status. The demonstrations of the fixed checks show the Fortran before those fixes (5.19 and r1713); those of
+analysis D4 ran 5.19 and r1727.
 
 ## The demonstration runs
 
@@ -553,9 +555,10 @@ times, and no fort.25 is written.
 
 The ratios are truncated. A value up to 1e-12 below a multiple passes the tolerant checks and counts one less, and
 so does an ordinary decimal ratio that is not exact in binary: 1.2 / 0.1 = 11.999999999999998 gives 11 time steps
-per analysis (likewise 0.3 / 0.1, 0.6 / 0.2, 2.4 / 0.2). Neither code checks that dtAna is a whole multiple of
-dtStep at all (dtAna 5 with dtStep 2 gives 2 steps per analysis). The sites of the two SIGFPEs below are identified
-from where the output stops and the code (the backtraces carry no symbols).
+per analysis (likewise 0.3 / 0.1, 0.6 / 0.2, 2.4 / 0.2). The Fortran never checks that dtAna is a whole multiple
+of dtStep (dtAna 5 with dtStep 2 gives 2 steps per analysis); the C++ checks it only when dtFrames or NormBudget is
+set (`check_whole_analysis_steps`, `src/input/validate_outputs.cpp`). The sites of the two SIGFPEs below are
+identified from where the output stops and the code (the backtraces carry no symbols).
 
 - **dtAna just below dtStep:** nanspo = 0. The Fortran stops with SIGFPE (the build traps no floating-point
   exception, so this is an integer division by zero) in `ndatnw = nstep / nanspo` (`AsympInfo.f90
@@ -588,9 +591,9 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
 
 ### The C++ behaviour
 
-- `src/input/validate.cpp` (`validate_input`) adds three exact checks after the tolerant ones, with the run's own
-  truncation (`steps_per_analysis`, `analyses_per_average`, `src/input/process.cpp`). Each case above is an input
-  error (exit code 2):
+- `src/input/validate.cpp` (`validate_input`) adds three exact checks after the tolerant ones, on the ratios
+  dtAna / dtStep and dtAve / dtAna themselves: a ratio below 1 (truncated to 0) is rejected, and nStep must be a
+  multiple of the truncated dtAna / dtStep. Each case above is an input error (exit code 2):
 
   ```text
   Input error: dtAna: dtAna = 1.9999999999995 lies within the 1e-12 tolerance below dtStep = 2, so dtAna / dtStep truncates to 0 time steps per analysis; use dtAna >= dtStep.

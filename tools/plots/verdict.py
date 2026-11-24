@@ -3,7 +3,7 @@ compute/diagnostics.py, worst first. A file the run has not written is a finding
 writes averages.dat, checkpoint.bin and the result tables only after the propagation (src/app/run.cpp), and
 appends to bk_coefficients.bin every analysis step, so a run that stopped early has only the BK file."""
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -76,14 +76,15 @@ def run_verdict(runs: list[Path], info: RunInfo) -> list[Finding]:
         return sorted_findings([stopped_early(missing, reached, info.t_end_au), diverged(first_bad_time(None, bk))])
     averages, _ = read_joined_averages(runs)
     run_results = results(read_scattering_summary(last / "scattering_summary.tsv"))
+    rows = s_matrix_rows(last, info, bk)
     findings = [  # within a severity in this order: completeness, convergence in time, results, basis edges
         diverged(first_bad_time(averages, bk)),
         flux_inside(last, info),
-        slowest(last, info, bk),
+        slowest(rows, info, bk),
         moving(info, bk, run_results),
         unitarity(run_results.unitarity_error, worst_unitarity_energy(run_results)),
-        absorber_reflection_finding(last, info, bk),
-        *basis_edges(last, info),
+        absorber_reflection_finding(rows, info),
+        *basis_edges(rows, last, info),
         *frames_at_edges(runs),
         norm_budget_finding(runs),
         norm_left(averages.norm[-1]),
@@ -153,12 +154,35 @@ def worst_unitarity_energy(run_results: Results) -> float:
     return float(run_results.collision_energy_ev[int(np.argmin(ranking))])
 
 
-def basis_edges(run: Path, info: RunInfo) -> list[Finding | None]:
+@dataclass(frozen=True, kw_only=True)
+class SMatrixRows:
+    """s_matrix.tsv, read once for the findings that use it, with per row the index of its analysis energy into
+    collision_ev and its channel's outgoing normal energy (None without a BK file, whose channel energies it
+    needs)."""
+
+    table: Table
+    collision_ev: np.ndarray  # the analysis energies (eV)
+    energy_index: np.ndarray
+    outgoing_ev: np.ndarray | None  # E_total - E_channel (eV)
+
+
+def s_matrix_rows(run: Path, info: RunInfo, bk: BkCoefficients | None) -> SMatrixRows:
+    """s_matrix.tsv of the run with each row's analysis energy and, with the BK file, outgoing normal energy."""
+    table = read_s_matrix(run / "s_matrix.tsv")
+    collision_ev = analysis_energies(info).collision_ev
+    outgoing_ev = None if bk is None else outgoing_normal_energies(table, bk, info.hartree_to_ev)
+    return SMatrixRows(
+        table=table,
+        collision_ev=collision_ev,
+        energy_index=energy_of_rows(table, collision_ev),
+        outgoing_ev=outgoing_ev,
+    )
+
+
+def basis_edges(rows: SMatrixRows, run: Path, info: RunInfo) -> list[Finding | None]:
     """The flux at the top j' of the rotational basis and in the outermost diffraction channels
     (s_matrix.tsv), and the gas-phase states at the ends of the r grid (gas_phase_states.dat)."""
-    table = read_s_matrix(run / "s_matrix.tsv")
-    energies_ev = analysis_energies(info).collision_ev
-    energy_of_row = energy_of_rows(table, energies_ev)
+    table, energy_of_row, energies_ev = rows.table, rows.energy_index, rows.collision_ev
     j_top = max(j for j, _ in info.data["rotational_basis"]["states"])
     top = table["j"].astype(int) == j_top
     return [
@@ -166,7 +190,7 @@ def basis_edges(run: Path, info: RunInfo) -> list[Finding | None]:
         outer_diffraction_channels(
             fraction_of_p_scattered(table, energy_of_row, outermost(table), len(energies_ev)), energies_ev
         ),
-        gas_phase_edges(run, info),
+        gas_phase_edges(run, info, int(np.max(table["v"]))),
     ]
 
 
@@ -189,12 +213,11 @@ def outermost(table: Table) -> np.ndarray:
     return (on_n_edge | on_m_edge) & ~((n == 0) & (m == 0))
 
 
-def gas_phase_edges(run: Path, info: RunInfo) -> Finding | None:
+def gas_phase_edges(run: Path, info: RunInfo, v_top: int) -> Finding | None:
     """The largest |psi_v,j| at either end of the r grid, relative to its maximum, of the levels of the
-    rotational basis's j with v up to the highest analysed v' (s_matrix.tsv)."""
+    rotational basis's j with v up to v_top, the highest analysed v' (s_matrix.tsv)."""
     states = read_gas_phase_states(run / "gas_phase_states.dat")
     j_values = {j for j, _ in info.data["rotational_basis"]["states"]}
-    v_top = int(np.max(read_s_matrix(run / "s_matrix.tsv")["v"]))
     worst, worst_level, inner = 0.0, (0, 0), False
     for psi, v, j in zip(states.wave_functions, states.v, states.j, strict=True):
         if v <= v_top and j in j_values:
@@ -231,48 +254,50 @@ def slowest_converged_ev(info: RunInfo, bk: BkCoefficients | None) -> float:
     )
 
 
-def slowest(run: Path, info: RunInfo, bk: BkCoefficients | None) -> Finding:
+def slowest(rows: SMatrixRows, info: RunInfo, bk: BkCoefficients | None) -> Finding:
     """E_n,min and the probability already in the channels that leave slower than it (s_matrix.tsv with the
     BK file's channel energies)."""
-    if bk is None or not (run / "s_matrix.tsv").is_file():
+    if bk is None or rows.outgoing_ev is None:
         return not_checked("slowest converged energy", "no bk_coefficients.bin or s_matrix.tsv")
     e_n_min_ev = slowest_converged_ev(info, bk)
-    table = read_s_matrix(run / "s_matrix.tsv")
-    collision_ev = analysis_energies(info).collision_ev
-    energy_index, outgoing_ev = outgoing_normal_energies(table, bk, collision_ev, info.hartree_to_ev)
-    slow_p = slow_probability(energy_index, outgoing_ev, table["P"], len(collision_ev), e_n_min_ev)
-    return slowest_converged(e_n_min_ev, slow_p, collision_ev)
+    n_energies = len(rows.collision_ev)
+    slow_p = slow_probability(rows.energy_index, rows.outgoing_ev, rows.table["P"], n_energies, e_n_min_ev)
+    return slowest_converged(e_n_min_ev, slow_p, rows.collision_ev)
 
 
-def absorber_reflection_finding(run: Path, info: RunInfo, bk: BkCoefficients | None) -> Finding:
+def absorber_reflection_finding(rows: SMatrixRows, info: RunInfo) -> Finding:
     """The error of each channel's P from the waves the Z absorbers return (s_matrix.tsv, the BK file's channel
     energies, run_info.json's absorbers): ZSpOpt for every v of the initial channel (subtracted from the
     scattering grid and measured on the specular grid), ZOpt for the others, at the channel's outgoing normal
-    energy with the total mass. "not checked" without the files or for an absorber power other than 2."""
-    if bk is None or not (run / "s_matrix.tsv").is_file():
+    energy with the total mass. "not checked" without the BK file or for an absorber power other than 2."""
+    if rows.outgoing_ev is None:
         return not_checked("absorber reflection", "no bk_coefficients.bin or s_matrix.tsv")
     absorbers = info.data["absorbers"]
     if absorbers["power"] != 2:
         return not_checked("absorber reflection", f"power {absorbers['power']}, not 2")
-    table = read_s_matrix(run / "s_matrix.tsv")
-    collision_ev = analysis_energies(info).collision_ev
-    energy_index, outgoing_ev = outgoing_normal_energies(table, bk, collision_ev, info.hartree_to_ev)
+    table, outgoing_ev = rows.table, rows.outgoing_ev
     by_name = {absorber["name"]: absorber for absorber in absorbers["list"]}
     initial = initial_channel_rows(table, info)
     reflection, amplitude = np.full(len(outgoing_ev), np.inf), np.full(len(outgoing_ev), np.inf)  # closed: inf
-    for name, rows in ((INITIAL_CHANNEL_ABSORBER, initial), (OTHER_CHANNELS_ABSORBER, ~initial)):
-        open_rows = rows & (outgoing_ev > 0.0)
-        reflection[open_rows], amplitude[open_rows] = absorber_response(
+    for name, selected in ((INITIAL_CHANNEL_ABSORBER, initial), (OTHER_CHANNELS_ABSORBER, ~initial)):
+        open_rows = selected & (outgoing_ev > 0.0)
+        reflection[open_rows], amplitude[open_rows] = returned_by_absorber(
             by_name[name], outgoing_ev[open_rows] / info.hartree_to_ev, info.data["molecule"]["total_mass"]
         )
+    off = tuple(
+        (name, by_name[name]["strength"])
+        for name in (INITIAL_CHANNEL_ABSORBER, OTHER_CHANNELS_ABSORBER)
+        if not by_name[name]["strength"] > 0.0
+    )
     return absorber_reflection(
         reflection=reflection,
         amplitude=amplitude,
         probability=table["P"],
-        collision_energy_ev=collision_ev,
+        collision_energy_ev=rows.collision_ev,
         channels=np.column_stack([table[c].astype(int) for c in CHANNEL_COLUMNS]),
-        energy_index=energy_index,
+        energy_index=rows.energy_index,
         low_z_absorbers=any(name in by_name for name in LOW_Z_ABSORBERS),
+        absorbers_off=off,
     )
 
 
@@ -287,7 +312,7 @@ def initial_channel_rows(table: Table, info: RunInfo) -> np.ndarray:
     )
 
 
-def absorber_response(absorber: dict, energies_hartree: np.ndarray, mass_me: float) -> tuple[np.ndarray, np.ndarray]:
+def returned_by_absorber(absorber: dict, energies_hartree: np.ndarray, mass_me: float) -> tuple[np.ndarray, np.ndarray]:
     """R and the returned amplitude a = sqrt(R) + T of an absorber of run_info.json at the given kinetic energies
     (hartree). An absorber that is off (strength <= 0) reflects nothing and returns everything: R = 0, a = 1."""
     if not absorber["strength"] > 0.0:
@@ -300,12 +325,9 @@ def absorber_response(absorber: dict, energies_hartree: np.ndarray, mass_me: flo
     )
 
 
-def outgoing_normal_energies(
-    table: Table, bk: BkCoefficients, collision_ev: np.ndarray, hartree_to_ev: float
-) -> tuple[np.ndarray, np.ndarray]:
-    """Per row of s_matrix.tsv: the index of its analysis energy, and its channel's outgoing normal energy
-    E_total - E_channel (eV)."""
-    return energy_of_rows(table, collision_ev), table["E_total"] - channel_energy_of_rows(table, bk) * hartree_to_ev
+def outgoing_normal_energies(table: Table, bk: BkCoefficients, hartree_to_ev: float) -> np.ndarray:
+    """Per row of s_matrix.tsv: its channel's outgoing normal energy E_total - E_channel (eV)."""
+    return table["E_total"] - channel_energy_of_rows(table, bk) * hartree_to_ev
 
 
 def flux_inside(run: Path, info: RunInfo) -> Finding | None:

@@ -67,8 +67,8 @@ def designer_responses(cases: list[dict]) -> list[list[list[float]]]:
         input=json.dumps(cases),
         capture_output=True,
         text=True,
-        check=True,
     )
+    assert completed.returncode == 0, f"the designer's process exited with {completed.returncode}: {completed.stderr}"
     return json.loads(completed.stdout)
 
 

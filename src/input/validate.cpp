@@ -12,7 +12,6 @@
 #include "core/real_compare.hpp"
 #include "core/unit_conversion.hpp"
 #include "fft/fft_sizes.hpp"
-#include "input/process.hpp"
 #include "input/validation_helpers.hpp"
 #include "potential/potential_factory.hpp"
 
