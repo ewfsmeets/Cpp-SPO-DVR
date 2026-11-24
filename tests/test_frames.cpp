@@ -326,6 +326,14 @@ TEST(FrameExtras, AngularPassesGiveTheBitsOfOnePass) {
   std::vector<std::complex<double>> plane(column * layout.nr);
   for (std::size_t i = 0; i < plane.size(); ++i) plane[i] = {std::cos(0.1 * double(i)), std::sin(0.3 * double(i))};
   const std::size_t nodes = std::size_t(angular.n_theta()) * angular.n_phi();
+  // The estimate counts what the extra allocates: the plane of psi_full, the dataset and the per-r sums, and per
+  // thread the DVR blocks of one column pass of the transform.
+  ASSERT_EQ(extras.angular_columns(), 4);
+  const std::size_t dvr_block = AngularTransform::dvr_block_size(angular.n_theta(), angular.n_phi());
+  EXPECT_EQ(FrameExtras::memory_values(layout, angular, FrameExtraSwitches::of(config.input),
+                                       static_cast<int>(basis_j_values(basis).size()), 1),
+            2 * plane.size() + std::size_t(layout.nz) * nodes + std::size_t(layout.nr) * nodes +
+                2 * dvr_block * std::size_t(extras.angular_columns()));
   auto reduced = [&](const std::vector<std::complex<double>>& values) {
     FrameRecord record = make_frame_record(layout);
     record.prob_angle_z.assign(std::size_t(layout.nz) * nodes, 0.0);

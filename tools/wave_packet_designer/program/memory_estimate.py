@@ -3,7 +3,6 @@
 Shadows: src/propagation/memory_estimate.cpp (estimate_memory),
 src/propagation/kinetic_operators.cpp (zr_chunk_size, xy_group_points, xy_in_place_possible,
 xy_momentum_shift_needed),
-src/propagation/propagation_tables.cpp (momentum_shift_forward),
 src/propagation/angular_transform.hpp (dvr_block_size, cpu_pass_bytes),
 src/propagation/angular_transform.cpp (columns_per_pass),
 src/propagation/potential_operator.hpp (default_table_limit),

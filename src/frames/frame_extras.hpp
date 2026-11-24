@@ -78,6 +78,9 @@ class FrameExtras {
   void reduce_specular(const SpecularWave& specular, FrameRecord& record);
 
   [[nodiscard]] const FrameExtraSwitches& switches() const { return on_; }
+  // The columns per pass of the angular extra's transform (0 with the extra off): its DVR buffer holds that many
+  // blocks per thread, as memory_values counts them.
+  [[nodiscard]] int angular_columns() const;
   // The wall-clock time of each extra so far (angular, diffraction, vibration, rotation_moments, momentum).
   [[nodiscard]] const std::vector<double>& seconds() const { return seconds_; }
   // The doubles the extras hold during a frame: their datasets in the record, the plane of psi_full, their tables

@@ -219,6 +219,8 @@ void FrameExtras::reduce_plane(int iz, std::span<const Complex> full_plane, Fram
   }
 }
 
+int FrameExtras::angular_columns() const { return tables_->angular ? tables_->angular->n_columns() : 0; }
+
 // Per (Z, r) point the nX nY columns to the DVR grid, in passes of transform.n_columns() columns (as the potential
 // step: a pass's DVR blocks stay in cache); |value|^2 summed over (x, y) per node, then over r in order.
 void FrameExtras::reduce_angular(int iz, std::span<const Complex> plane, FrameRecord& record) {

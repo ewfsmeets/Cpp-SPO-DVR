@@ -162,19 +162,19 @@ TEST(MemoryEstimate, FineAnalysisByHandAndAllocations) {
   EXPECT_EQ(e.items[0].values, std::size_t(series.n_series()) * series.length());
 }
 
-// The wave-packet designer (tools/wave_packet_designer) copies the grid indices, the angular sizes, the
-// symmetry's use in the estimate and the CPU memory estimate; its expected_cases.json holds its results. When
-// this fails, update the designer's copy and regenerate the file (designer_cases.hpp).
 // The estimate's rule for the T_xy work array is the operator's: hardwall_small on 64 x 64 (x, y) points (one r
-// point per T_xy group: 15 x 4096 values of 16 bytes fit 1 MiB once), without and with parallel momentum. Without
-// the shift T_xy runs in place and the work item is max((r, Z) unit, DVR blocks); with it the group array stays.
+// point per T_xy group: 15 x 4096 values of 16 bytes fit 1 MiB once), without and with parallel momentum (also at
+// PhiParallel 0, 90, 180 and 270, where the cosine or sine of the angle is nearly 0). Without the shift T_xy runs in
+// place and the work item is max((r, Z) unit, DVR blocks); with it the group array stays.
 TEST(MemoryEstimate, InPlaceRuleIsTheOperators) {
-  for (const double e_parallel : {0.0, 0.05}) {
+  const std::vector<std::pair<double, double>> cases = {{0.0, 30.0},  {0.05, 0.0},   {0.05, 30.0},
+                                                        {0.05, 90.0}, {0.05, 180.0}, {0.05, 270.0}};
+  for (const auto& [e_parallel, phi_parallel] : cases) {
     nlohmann::json json = reference_json("hardwall_small");
     json["nX"] = 64;
     json["nY"] = 64;
     json["EParallel"] = e_parallel;
-    json["PhiParallel"] = 30.0;
+    json["PhiParallel"] = phi_parallel;
     const RunGrids setup(json);
     const InputParameters& p = setup.config.input;
     const RotationalBasis basis(setup.angular, p.j_in, p.mj_in);
@@ -200,10 +200,14 @@ TEST(MemoryEstimate, InPlaceRuleIsTheOperators) {
     const auto work =
         std::find_if(e.items.begin(), e.items.end(), [](const MemoryItem& i) { return i.name == "Work arrays"; });
     ASSERT_NE(work, e.items.end());
-    EXPECT_EQ(work->values, std::max(zr_unit, group + dvr_blocks)) << "EParallel " << e_parallel;
+    EXPECT_EQ(work->values, std::max(zr_unit, group + dvr_blocks))
+        << "EParallel " << e_parallel << ", PhiParallel " << phi_parallel;
   }
 }
 
+// The wave-packet designer (tools/wave_packet_designer) copies the grid indices, the angular sizes, the
+// symmetry's use in the estimate and the CPU memory estimate; its expected_cases.json holds its results. When
+// this fails, update the designer's copy and regenerate the file (designer_cases.hpp).
 TEST(MemoryEstimate, MatchesTheWavePacketDesignerCases) {
   using namespace spodvr::testing;
   for (const nlohmann::json& designer_case : designer_cases()) {

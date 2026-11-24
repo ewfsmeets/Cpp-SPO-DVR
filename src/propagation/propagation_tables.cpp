@@ -105,13 +105,16 @@ std::vector<double> parallel_phases(const Config& config) {
   return phases;
 }
 
-}  // namespace
-
-std::vector<cplx> momentum_shift_forward(const Config& config) {
+// exp(-i phase) of each phase.
+std::vector<cplx> shift_factors(const std::vector<double>& phases) {
   std::vector<cplx> shift;
-  for (const double phase : parallel_phases(config)) shift.push_back(exp_minus_i(phase));
+  for (const double phase : phases) shift.push_back(exp_minus_i(phase));
   return shift;
 }
+
+}  // namespace
+
+std::vector<cplx> momentum_shift_forward(const Config& config) { return shift_factors(parallel_phases(config)); }
 
 // Kinetic energy of the parallel motion on the skewed lattice for every (kx, ky) pair,
 // ekinxy = (kx^2 + ky^2 - 2 cos(skew) kx ky) / 2M. Fortran: DifChanEnergies (nmoder = 3, 4)
@@ -189,7 +192,7 @@ PropagationTables make_propagation_tables(const Config& config, const SpatialGri
 
   // Momentum shift and grid projection. Fortran: SetupMomentumShift, SetupTwoGrids
   const std::vector<double> phases = parallel_phases(config);
-  t.shift_forward = momentum_shift_forward(config);
+  t.shift_forward = shift_factors(phases);  // momentum_shift_forward(config)
   for (std::size_t i = 0; i < phases.size(); ++i) {
     const cplx forward = t.shift_forward[i];
     const cplx backward = std::exp(cplx(0.0, phases[i]));
