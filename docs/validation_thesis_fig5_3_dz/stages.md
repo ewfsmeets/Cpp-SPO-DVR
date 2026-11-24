@@ -147,8 +147,9 @@ writes the grids with `%.17e`); counts from both logs.
 
 ### 3. Is every line under "INFO FROM MISCELLANEOUS SETUP" the same?
 
-**Answer.** Yes: 7 integer lines (indices, after the 0/1-based conversion) and the flux-analysis text
-line are identical, and 19 printed values agree within ½ printed unit; `nmoder` has no C++ counterpart. Verdict: **identical / printed**.
+**Answer.** Yes: 7 integer lines (point counts and indices, the indices after the 0/1-based
+conversion) and the flux-analysis text line are identical, and 19 printed values agree within ½
+printed unit; `nmoder` has no C++ counterpart. Verdict: **identical / printed**.
 
 **Compared.** Fortran F-format lines (6 decimals) against the C++ log (`%.16e` for the momentum
 steps, `%.6f` otherwise; when both sides are printed both half units count) and the C++ grid points.
@@ -612,9 +613,9 @@ within the criterion (1e-10) and ≥ 3.7× below the print resolution at every e
 
 **Answer.** Yes: of 82488 printed probabilities per diffraction order, 82432 agree within ½ printed
 unit and 56 are explained (replay decomposition as in item 14: these are values near a rounding
-boundary of the print, where the replay of the Fortran's own BK coefficients already lies close to
-half a unit from the printed value and the propagation difference, at most 8.0e-19, adds the rest); GPU vs CPU at most 6.4e-13. Verdict:
-**printed / explained**; CPU↔GPU **rounding**.
+boundary of the print: the replay of the Fortran's own BK coefficients reproduces the printed value
+within half a unit, and the propagation difference, at most 8.0e-19, carries the C++ value past it);
+GPU vs CPU at most 6.4e-13. Verdict: **printed / explained**; CPU↔GPU **rounding**.
 
 **Compared.** Fortran stdout "probabilities as function of diffraction order" (E14.7, only open
 rovibrational states) against `probabilities_diffraction.tsv`; every Fortran row has a C++ row.
@@ -639,8 +640,8 @@ which `s_matrix.tsv` omits; no C++ row is missing in `fort.25`. All phases with 
 precision |ΔS| ≤ 1.7e-12 (C++ vs Fortran) and 5.5e-13 (GPU vs CPU). Verdict:
 **printed / explained / rounding**.
 
-**Compared.** `fort.25` (Re S, Im S, |S|² as D13.6, phase F10.6; parser
-`read_fortran_fort25`, now in `tests/fort25_reference.hpp`) against `s_matrix.tsv` (`%.16e`).
+**Compared.** `fort.25` (Re S, Im S, |S|² as D13.6, phase F10.6; parser `scripts/parse_logs.py`
+`fort25`; the C++ gates read it with `tests/fort25_reference.hpp`) against `s_matrix.tsv` (`%.16e`).
 
 <!-- BEGIN table:item16 -->
 

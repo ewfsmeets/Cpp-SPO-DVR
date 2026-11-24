@@ -213,7 +213,8 @@ def stationary_s_differences(run: Path, slip: str = "") -> np.ndarray:
 
 
 # The phase drift of the split operator's propagated momentum against k_f over the checked Z range: delta / v =
-# 6.9e-7 hartree x M / k = 2.3-2.6e-4 bohr^-1 (dtStep 2) over at most 1.2 bohr of Z, rounded up.
+# 6.9e-7 hartree x M / k0 = 2.3-2.6e-4 bohr^-1 (dtStep 2) over at most 1.2 bohr of Z, 2.8-3.1e-4: rounded, not a
+# strict bound (small next to the truncation indicator it is added to).
 SPLIT_OPERATOR_DRIFT = 3e-4
 
 

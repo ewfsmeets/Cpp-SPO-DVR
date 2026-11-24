@@ -197,8 +197,9 @@ add_library(spodvr_strict_objects OBJECT
   src/potential/scm/scm_diagnostics.cpp
 )
 target_include_directories(spodvr_strict_objects PRIVATE src)
-# Of spodvr_core's definitions only this one changes a header that these sources include (AlignedVector's
-# allocator; SPODVR_VERSION is read in core/program_info.hpp, which they do not include); copy any other that does.
+# Of spodvr_core's definitions only this one changes a header (AlignedVector's allocator; SPODVR_VERSION is read
+# only in core/program_info.hpp). These sources include neither today; it is copied so that they cannot differ if
+# they ever include aligned_vector.hpp. Copy any other definition that changes a header they include.
 # No PGO flags: these objects are compiled the same with any SPODVR_PGO.
 if(SPODVR_POISON_UNINITIALISED)
   target_compile_definitions(spodvr_strict_objects PRIVATE SPODVR_POISON_UNINITIALISED)

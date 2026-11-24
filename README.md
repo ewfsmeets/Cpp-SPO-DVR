@@ -309,7 +309,7 @@ ctest --test-dir build-cuda -R Cuda --output-on-failure                         
 - Run the C++ tests serially (no `-j`): many use all OpenMP threads. Set `OMP_NUM_THREADS` to the
   number of physical cores. The Python tests (`-L python`: pytest, one thread each) may run side by side
   with `-j` up to that number; the plot fixtures' writer among them reserves 6 of the slots.
-  A plain serial `ctest --test-dir build` runs everything too, about 3.5 min slower.
+  A plain serial `ctest --test-dir build` runs everything too, about 5 min slower.
 - The quick tier leaves out the propagation gates (gates 3 and 4 against the Fortran) and the plot
   tool's runs (`PlotRuns.*`). Use it while
   working on a change; run everything before committing a change to the code

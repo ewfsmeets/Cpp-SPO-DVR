@@ -277,7 +277,7 @@ unless `still=k` names another (`figure_frame_movie`: the frame when most of the
 pytest, one ctest per test module, registered by a glob in the repository's `tests/CMakeLists.txt`: the file
 name decides how. `tests/test_runs_<name>.py` becomes `PlotRuns.<name>`: it reads the fixture runs, which the
 C++ test `PlotRuns.Fixtures` ([tests/test_plot_fixtures.cpp](../../tests/test_plot_fixtures.cpp)) writes with
-the current program into `build/tests/plot_fixtures` (about 280 s at 8 threads, measured 2026-11-20; ctest runs it
+the current program into `build/tests/plot_fixtures` (about 330 s at 8 threads, measured 2026-11-24; ctest runs it
 first), and gets `--fixture-runs`. Any other `tests/test_<name>.py` becomes `Plots.<name>` and runs without them.
 `tests/conftest.py` also makes runs that stopped early from one fixture. Helpers shared by test modules live in
 modules without the `test_` prefix (`tests/frame_helpers.py`, `tests/absorber_profiles.py`), imported as

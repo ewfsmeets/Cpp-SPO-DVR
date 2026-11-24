@@ -2,8 +2,8 @@
 
 This directory propagates the wave packet on an NVIDIA GPU (`spodvr --device cuda`). ψ stays in
 GPU memory for the whole run. The host gets back only small pieces: the specular wave, one Z
-plane for the BK analysis, now and then a density per (Z, r) point, and with `EnergyResolvedSites`
-the (Z, r, rotation) column of each site.
+plane for the BK analysis, now and then a density per (Z, r) point, with `EnergyResolvedSites`
+the (Z, r, rotation) column of each site, and with `dtFrames` every Z plane at each frame.
 
 > **Ground rule.** Every kernel computes exactly what its *CPU twin* in `src/propagation/`
 > computes, with the same tables and in the same order. Only the memory layout and the parallel

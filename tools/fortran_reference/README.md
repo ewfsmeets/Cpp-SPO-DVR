@@ -65,7 +65,7 @@ An install is a directory (`SPODVR_FORTRAN_REF_DIR`, by default `<id>` in the re
 | `bin/spodvr.x` | The executable |
 | `OBJS/` | Its objects and modules (`*.o`, `*.mod`), linked into the CRP and SCM drivers |
 | `BUILDINFO.tsv` | Provenance (below) |
-| `SHA256SUMS` | sha256 of the other files (`sha256sum -c` in the install) |
+| `SHA256SUMS` | sha256 of the other files (of `bin/` and `OBJS/` only in `v5.19`; `sha256sum -c` in the install) |
 | `build.log`, `sources.tar` | The DoBuild log and the exact sources (installs made by the build script) |
 
 `v5.19` is the 5.19 archive (symlinks into the unmodified 5.19 distribution; it must never be

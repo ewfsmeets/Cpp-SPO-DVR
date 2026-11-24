@@ -1,5 +1,6 @@
-"""Tests of refdata.py compare with expected/r1713.tsv (ctest FortranReference.Compare*), and of the
-copies of refdata.py's lists (ctest FortranReference.ReferenceListsAgree).
+"""Tests of refdata.py compare with expected/r1713.tsv (ctest FortranReference.Compare*), of the
+copies of refdata.py's lists (ctest FortranReference.ReferenceListsAgree), and of the help of manifest
+record (ctest FortranReference.ManifestRecordHelpNamesThePrograms).
 
 Most tests build an OLD tree in the 5.19 style and a NEW tree in the 5.24 style (test_initial_phase_*
 and test_nproj_label: r1713 and r1727 style) in their scratch directory `work`, at the paths of real
@@ -45,6 +46,7 @@ FAIL line it prints:
                              reference_config.sh equal refdata.py's, and the exclude of .pre-commit-
                              config.yaml covers every tree; copies with a tree or NOT_A_CASE changed
                              are reported (5 lines)
+  test_record_help           manifest record --help names the install's executable and both drivers
 The tests that edit NEW's content run compare with --no-provenance, so that only the classification can fail
 them.
 

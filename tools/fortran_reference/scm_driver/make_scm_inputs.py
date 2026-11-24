@@ -169,7 +169,7 @@ def slab_v3(seed):
 
 def slab_v2(seed):
     """Version 2: 13 atoms per configuration (layer 1: the origin and its 6 neighbours; three each
-    each of layers 2 and 3; the correction skips those of layer 3), layers interleaved; three
+    of layers 2 and 3; the correction skips those of layer 3), layers interleaved; three
     configurations."""
     rng = random.Random(seed)
     layer1 = [(0, 0), (1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]

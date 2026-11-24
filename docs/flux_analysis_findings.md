@@ -12,8 +12,8 @@ tried, as the basis for deciding what a flux analysis should compute. The physic
 Fortran line numbers refer to the 5.19 sources (`procfiles.dir/SOURCES.dir`, the same as upstream
 commit `601d833`). Every routine cited is the same in 5.24 r1713 apart from OpenMP `SCHEDULE` clauses
 and line offsets (`git diff -w 601d833 dce0ecc` in the upstream repository, checked 2026-11-14), and
-r1714–r1727 change none of the cited lines (`git diff -w dce0ecc 3d00331`), so the same holds for the
-reference r1727.
+r1714–r1727 change none of the cited lines (`git diff -w dce0ecc 3d00331`; two of the cited routines changed
+elsewhere: `MiscellaneousSetup` in r1717, the low-Z switch, and `SetupAsympWF` in r1727, the analysed-j search).
 
 ## 1. Status (2026-11-14)
 

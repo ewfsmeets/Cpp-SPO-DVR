@@ -22,7 +22,7 @@ namespace spodvr {
 //     ("first touch"), so each thread then works on local memory.
 // The pointers exist only inside the standard allocator interface used by std::vector (one of
 // the few places where the project allows raw pointers, with the C-API boundaries, the iostream
-// calls of io/binary_file.hpp and from_chars_whole).
+// calls of io/binary_file.hpp, from_chars_whole and the device pointers of src/cuda/).
 template <class T>
 struct AlignedAllocator {
   using value_type = T;

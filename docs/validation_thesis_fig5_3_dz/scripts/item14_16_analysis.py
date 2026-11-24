@@ -12,8 +12,9 @@ Printed comparisons: |d| <= 1.01 x half a printed unit (P_reaction: max(that, 1e
 outside that is 'explained' when the replay (item 18b) decomposes it into measured parts: the
 Fortran's own BK coefficients through the C++ analysis, replay(fort.21), reproduce the printed
 Fortran value within its half unit, and |C++ - replay(fort.21)| (the propagation difference at
-full precision) is within the full-precision criterion (1e-10 absolute). Without the replay
-files the predicted bound 2 sqrt(P) dS + dS^2 (dS = 1e-11, criteria.md) is used. Writes
+full precision) is within the full-precision criterion (1e-10 absolute). For a value without
+a replay the bound 2 sqrt(P) dS + dS^2 is used, with dS item 18b's measured largest |S| difference (the
+predicted dS = 1e-11 of criteria.md only without item 18b). Writes
 data/items/item14_16.json and data/reaction_probability.tsv."""
 
 from __future__ import annotations

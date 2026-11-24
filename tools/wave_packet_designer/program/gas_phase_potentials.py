@@ -11,7 +11,7 @@ converted to hartree) and clips it at VMin/VMax when those are imposed. There:
 - the hard wall (HardWallPES) is its Rydberg-type gas-phase function.
 The expressions and the order of operations are the C++'s, so the values are bitwise the program's
 (tests/test_gas_phase.py checks Dai-Light bitwise against the program's printed table, the hard wall against
-the Fortran's printed table within 1e-14 relative). Not copied: the Persson potential (its gas phase is the
+the Fortran's printed table within 1e-14 of max(|V|, 1 eV)). Not copied: the Persson potential (its gas phase is the
 full LEPS at Z = 8 bohr) and the CRP data sets; for them gas_phase_potential returns None.
 """
 

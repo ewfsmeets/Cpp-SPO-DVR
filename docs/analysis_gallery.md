@@ -898,7 +898,7 @@ uv run tools/plots/view.py runs/thesis_fig5_3_dz_plotting_cuda_fast
 | `writePotential` + `PlotSites` | `potential/` | the potential on the run's grid; named sites for the elbow plots and the movies | 114 MiB | at set-up |
 | `dtFrames` | `frames/` | the whole packet every 20 a.u. (876 frames): movies, maps over the cell, rotational states | 8.2 GiB | 2.5 s per frame |
 | `FrameExtras` | inside `frames/` | axis distribution, diffraction orders, vibrational levels, alignment, momenta | (in `frames/`) | 7.7 s per frame |
-| `NormBudget` | `norm_budget/` | where the norm went, absorber by absorber | 96 KiB | 55 s in all |
+| `NormBudget` | `norm_budget/` | where the norm went, absorber by absorber | 77 KiB | 55 s in all |
 | `EnergyResolvedSites` + `EnergyResolvedEnergies` | `energy_resolved/` | stationary states at chosen energies and sites | 766 MiB | 58 s in all (0.4 %) |
 | `alsoAnalysis` | `fine_analysis/` | the fine analysis after the run | 112 MiB | 0.8 s |
 
