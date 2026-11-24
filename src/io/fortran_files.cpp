@@ -38,6 +38,22 @@ std::array<std::vector<int32>, 6> state_labels(const AnalysisBasis& basis) {
   return labels;
 }
 
+// Record 3 of a wave-function file, (FixedZAnalysisSpec, izanlySpecChan), on top of `state`
+// (oldValZanly = izanlySpecChan). izanlySpecChan must lie on the specular grid (1 .. n_z_specular):
+// a corrupt file is refused here, before the scattering wave is read.
+AnalysisSurfaceState read_analysis_record(FortranRecordReader& file, const std::filesystem::path& path,
+                                          int n_z_specular, AnalysisSurfaceState state) {
+  FortranRecordParser analysis = file.read("record 3 (FixedZAnalysisSpec, izanlySpecChan)");
+  state.fixed = analysis.read<int32>() != 0;
+  state.index = analysis.read<int32>() - 1;
+  state.previous_index = state.index;
+  analysis.expect_end();
+  if (state.index < 0 || state.index >= n_z_specular)
+    throw CheckpointError("'" + path.string() + "': izanlySpecChan " + std::to_string(state.index + 1) +
+                          " is outside the specular grid, 1 .. " + std::to_string(n_z_specular));
+  return state;
+}
+
 double analysis_time_step(const Config& config) {
   return config.input.time_step * config.derived.steps_per_analysis;  // Fortran: deltat = dtlan * nanspo
 }
@@ -65,12 +81,7 @@ AnalysisSurfaceState read_fortran_wave_function(const std::filesystem::path& pat
   specular.read_array(std::span<cplx>(psi.specular.values));
   specular.expect_end();
 
-  FortranRecordParser analysis = file.read("record 3 (FixedZAnalysisSpec, izanlySpecChan)");
-  AnalysisSurfaceState state = fresh;
-  state.fixed = analysis.read<int32>() != 0;
-  state.index = analysis.read<int32>() - 1;
-  state.previous_index = state.index;
-  analysis.expect_end();
+  const AnalysisSurfaceState state = read_analysis_record(file, path, psi.specular.n_z(), fresh);
 
   for (int izr = 0; izr < psi.scattering.n_blocks(); ++izr) {
     FortranRecordParser block = file.read("ScatWave record " + std::to_string(izr + 1));
@@ -91,16 +102,7 @@ AnalysisSurfaceState read_fortran_analysis_surface(const std::filesystem::path& 
   specular.read_array(std::span<cplx>(specular_wave));
   specular.expect_end();
 
-  FortranRecordParser analysis = file.read("record 3 (FixedZAnalysisSpec, izanlySpecChan)");
-  AnalysisSurfaceState state{};
-  state.fixed = analysis.read<int32>() != 0;
-  state.index = analysis.read<int32>() - 1;
-  state.previous_index = state.index;
-  analysis.expect_end();
-  if (state.index < 0 || state.index >= n_z_specular)
-    throw CheckpointError("'" + path.string() + "': izanlySpecChan " + std::to_string(state.index + 1) +
-                          " is outside the specular grid");
-  return state;
+  return read_analysis_record(file, path, n_z_specular, AnalysisSurfaceState{});
 }
 
 FortranBkFileWriter::FortranBkFileWriter(const std::filesystem::path& path, const Config& config,

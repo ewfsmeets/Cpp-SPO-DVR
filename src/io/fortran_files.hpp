@@ -25,7 +25,8 @@ void write_fortran_wave_function(const std::filesystem::path& path, const WavePa
 // The Fortran file holds only the surface position and whether it is fixed. The other state
 // (anlyTol, oldValZanly) is not saved by the Fortran code (it is left uninitialised on a
 // restart); it is taken from `fresh`, the state of a new analysis surface for the same input,
-// with oldValZanly = izanlySpecChan.
+// with oldValZanly = izanlySpecChan. izanlySpecChan must lie on psi's specular grid (a CheckpointError
+// otherwise, before the scattering wave is read).
 [[nodiscard]] AnalysisSurfaceState read_fortran_wave_function(const std::filesystem::path& path, WavePacket& psi,
                                                               const AnalysisSurfaceState& fresh);
 

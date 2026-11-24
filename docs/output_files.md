@@ -320,7 +320,8 @@ Native files are in host byte order (little-endian on x86-64). Both start with a
 16-byte magic string (`SPODVR-CHECKPNT` / `SPODVR-BKCOEFFS`), a `uint32` format version (2; version 1
 lacked the number of phi points), the
 SystemID (`uint64` length + characters) and the list of restart parameters (`uint64` count, then
-name and `double` value per entry). A restart compares this list with its own input. A
+name and `double` value per entry). A restart compares this list with its own input (the SystemID
+without regard to case). A
 `CRPDistrtSurface` run appends its SCM identity: `PosFileSlabNum`, `SCMCutoff`, `EnableSurfExpan`
 (0 or 1), `PosFilepath (a_T)`, `PosFilepath (atoms used)`, `PosFilepath (rms displacement)`,
 `PosFilepath (layer 1 mean shift x)` (and `y`, `z`), `PosFilepath (highest atom)` and
@@ -332,7 +333,7 @@ name and `double` value per entry). A restart compares this list with its own in
 | header | see above |
 | time | `double` |
 | n_rot, n_xy, n_zr, n_r, n_zsp | 5 × `int32` |
-| analysis surface: index, previous index (0-based), fixed, anlyTol | `int32`, `int32`, `uint8`, `double` |
+| analysis surface: index, previous index (0-based, both 0 … n_zsp − 1), fixed, anlyTol | `int32`, `int32`, `uint8`, `double` |
 | specular wave function (ir fastest) | n_r · n_zsp × `complex<double>` |
 | scattering wave function, layout (irot, ixy, izr) | n_rot · n_xy · n_zr × `complex<double>` |
 | end marker | `uint64` |

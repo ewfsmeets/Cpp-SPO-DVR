@@ -156,7 +156,10 @@ differences are in [validation.md](validation.md).
   recomputed on a restart (uninitialised while the dynamic specular surface is not yet fixed).
   C++ native checkpoints store the full surface state; reading Fortran files recomputes anlyTol
   from the input's initial wave packet and sets oldValZanly = izanlySpecChan (what a continuous
-  run has). A Fortran restart reconstructs the BK times as istep·deltat.
+  run has). A Fortran restart reconstructs the BK times as istep·deltat. Both C++ readers check the
+  analysis-surface index of the file (in a native checkpoint also its previous value) against the specular grid
+  before they read the scattering wave and refuse a file whose index lies off it (exit 4, naming the file); the
+  Fortran reads `FixedZAnalysisSpec, izanlySpecChan` unchecked (`WaveFunction.f90 ReadWaveFunc`).
 - Fine analysis, fixed (`docs/fortran_fine_analysis_bugs.md`): `smatrix_calc` (nread 2, non-NAG)
   uses ATAN instead of ATAN2 and takes the signs of Re/Im S separately from the linear
   interpolation. Only S and phases at the analysis energies are affected (probabilities: P

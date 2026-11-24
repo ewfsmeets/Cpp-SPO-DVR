@@ -1,15 +1,20 @@
 // Tests: checkpoint / restart. A run split by a restart must give bitwise the same results as
-// the unsplit run; damaged or mismatching checkpoints are clear errors.
+// the unsplit run; damaged or mismatching checkpoints are clear errors (CheckpointFiles: each guard
+// of the restart file readers, with its message).
 // The program runs the cases compare (runs(), first_run(), fine_runs(), low_z_runs(), scm_runs())
 // are function-local statics, made once per process: ctest runs the suites Restart and
 // FineAnalysisRuns each in one process (tests/CMakeLists.txt), so their cases share them.
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
+#include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <span>
 #include <sstream>
@@ -27,6 +32,8 @@
 #include "input/json_input.hpp"
 #include "input/process.hpp"
 #include "io/binary_file.hpp"
+#include "io/checkpoint.hpp"
+#include "io/fortran_files.hpp"
 #include "io/fortran_unformatted.hpp"
 #include "scm_example_input.hpp"
 #include "temporary_directory.hpp"
@@ -331,7 +338,10 @@ TEST(Restart, TruncatedCheckpointIsAnError) {
   std::ofstream(damaged / "checkpoint.bin", std::ios::binary) << checkpoint.substr(0, checkpoint.size() - 100);
   std::string err;
   EXPECT_EQ(run(restart_from(with_times(short_json(), 60.0, 120.0, 30), damaged), r.root / "after_damage", err), 4);
-  EXPECT_NE(err.find("checkpoint"), std::string::npos) << err;
+  EXPECT_NE(
+      err.find("Checkpoint error: file '" + (damaged / "checkpoint.bin").string() + "' is truncated or unreadable"),
+      std::string::npos)
+      << err;
 }
 
 // run() writes its input.json into the shared first run's directory; the program never reads a
@@ -790,6 +800,352 @@ TEST(AnalysisFiles, ScmIdentityRoundTrip) {
   ASSERT_EQ(plain.code, 0) << plain.err;
   std::ifstream plain_file(plain.root / "first" / "analysis.json");
   EXPECT_FALSE(nlohmann::json::parse(plain_file).contains("scm"));
+}
+
+namespace {
+
+// The first part of a hard-wall run (0 .. 60 a.u., 6 BK records) with native and Fortran restart files,
+// for the CheckpointFiles cases. ctest runs each case in its own process, so each makes this run (about
+// a second) itself.
+struct CheckpointFilesRun {
+  test_support::TemporaryDirectory dir{"checkpoint_files"};
+  fs::path first = dir.path() / "first";
+  int code;
+  std::string err;
+
+  static nlohmann::json json() {
+    nlohmann::json j = short_json();
+    j["CheckpointFormat"] = "both";
+    return with_times(j, 0.0, 60.0, 30);
+  }
+  // The restart 60 .. 120 from restart_dir.
+  static nlohmann::json restart(const fs::path& restart_dir, const std::string& format) {
+    nlohmann::json j = restart_from(with_times(json(), 60.0, 120.0, 30), restart_dir);
+    j["RestartFormat"] = format;
+    return j;
+  }
+  // The fine analysis (onlyAnalysis) of the 6 BK records in restart_dir.
+  static nlohmann::json only_analysis(const fs::path& restart_dir, const std::string& format) {
+    nlohmann::json j = json();
+    j["onlyAnalysis"] = true;
+    j["RestartDir"] = restart_dir.string();
+    j["RestartFormat"] = format;
+    return j;
+  }
+
+  CheckpointFilesRun() { code = run(json(), first, err); }
+
+  // A new restart directory `name` with copies of the first run's restart files.
+  fs::path copy_of_first(const std::string& name) const {
+    const fs::path target = dir.path() / name;
+    fs::create_directories(target);
+    for (const std::string file : {"checkpoint.bin", "bk_coefficients.bin", "fort.9", "fort.21"})
+      fs::copy_file(first / file, target / file);
+    return target;
+  }
+};
+
+const CheckpointFilesRun& checkpoint_files_run() {
+  static const CheckpointFilesRun r;
+  return r;
+}
+
+void write_file(const fs::path& path, const std::string& bytes) { std::ofstream(path, std::ios::binary) << bytes; }
+
+// Overwrites the bytes of `value` at `offset` (host byte order, as the native files).
+template <typename T>
+void patch_value(std::string& bytes, std::size_t offset, T value) {
+  const auto raw = std::bit_cast<std::array<char, sizeof(T)>>(value);
+  ASSERT_LE(offset + raw.size(), bytes.size());
+  std::copy(raw.begin(), raw.end(), bytes.begin() + static_cast<std::ptrdiff_t>(offset));
+}
+
+// The offset of the stored SystemID's characters in a native file (after the magic, the format
+// version and the string length).
+constexpr std::size_t system_id_offset = 16 + 4 + 8;
+
+// Replaces the stored SystemID of a native file by `id` of the same length.
+void patch_system_id(const fs::path& path, const std::string& id) {
+  std::string bytes = read_file(path);
+  ASSERT_EQ(bytes.substr(system_id_offset, id.size()), "HardWallPES");
+  bytes.replace(system_id_offset, id.size(), id);
+  write_file(path, bytes);
+}
+
+// Reads past the header of a native file (magic, version, SystemID, parameter list); returns its size in bytes.
+std::size_t skip_native_header(BinaryReader& file) {
+  (void)file.read<std::array<char, 16>>();
+  (void)file.read<std::uint32_t>();
+  std::size_t size = 16 + 4 + 8 + file.read_string().size() + 8;
+  const auto count = file.read<std::uint64_t>();
+  for (std::uint64_t k = 0; k < count; ++k) {
+    size += 8 + file.read_string().size() + 8;
+    (void)file.read<double>();
+  }
+  return size;
+}
+
+// The wave packet shape stored in a native checkpoint: n_rot, n_xy, n_zr, n_r, n_zsp.
+std::array<int, 5> stored_shape(const fs::path& checkpoint) {
+  BinaryReader file(checkpoint);
+  (void)skip_native_header(file);
+  (void)file.read<double>();  // time
+  std::array<int, 5> shape{};
+  for (int& n : shape) n = file.read<std::int32_t>();
+  return shape;
+}
+
+WavePacket wave_packet_of_shape(const std::array<int, 5>& shape) {
+  return {ScatteringWave(shape[0], shape[1], shape[2]), SpecularWave(shape[3], shape[4])};
+}
+
+// The message of the CheckpointError that `read` throws (empty if it throws none).
+std::string checkpoint_error(const std::function<void()>& read) {
+  try {
+    read();
+  } catch (const CheckpointError& e) {
+    return e.what();
+  }
+  return "";
+}
+
+// Runs `json` with output into `output` and expects a checkpoint error (exit code 4) with `message`.
+void expect_checkpoint_error(const nlohmann::json& json, const fs::path& output, const std::string& message) {
+  std::string err;
+  EXPECT_EQ(run(json, output, err), 4) << err;
+  EXPECT_NE(err.find("Checkpoint error: " + message), std::string::npos) << err;
+}
+
+}  // namespace
+
+// A native file of another format version is refused (version patched to 3), the checkpoint and the BK file.
+TEST(CheckpointFiles, FormatVersionIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin"}) {
+    const fs::path dir = r.copy_of_first("version_" + name);
+    std::string bytes = read_file(dir / name);
+    patch_value<std::uint32_t>(bytes, 16, 3);
+    write_file(dir / name, bytes);
+    const std::string kind = name == "checkpoint.bin" ? "checkpoint" : "BK coefficient file";
+    expect_checkpoint_error(CheckpointFilesRun::restart(dir, "native"), r.dir.path() / ("out_version_" + name),
+                            "unsupported format version 3 in " + kind + " '" + (dir / name).string() + "'");
+  }
+}
+
+// A native file of another SystemID (one letter changed) is refused, the checkpoint and the BK file.
+TEST(CheckpointFiles, SystemIdIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin"}) {
+    const fs::path dir = r.copy_of_first("system_id_" + name);
+    patch_system_id(dir / name, "HardWallPXS");
+    const std::string kind = name == "checkpoint.bin" ? "checkpoint" : "BK coefficient file";
+    expect_checkpoint_error(
+        CheckpointFilesRun::restart(dir, "native"), r.dir.path() / ("out_system_id_" + name),
+        "SystemID is 'HardWallPES' in the input but 'HardWallPXS' in " + kind + " '" + (dir / name).string() + "'");
+  }
+}
+
+// The SystemID is compared without regard to case (as the input reader compares it): a checkpoint
+// whose SystemID differs from the input's only in case continues the run exactly as the original.
+TEST(CheckpointFiles, CheckpointSystemIdIsComparedWithoutCase) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const fs::path dir = r.copy_of_first("upper_case_checkpoint");
+  patch_system_id(dir / "checkpoint.bin", "HARDWALLPES");
+  std::string err;
+  ASSERT_EQ(run(CheckpointFilesRun::restart(r.first, "native"), r.dir.path() / "out_original", err), 0) << err;
+  ASSERT_EQ(run(CheckpointFilesRun::restart(dir, "native"), r.dir.path() / "out_upper_case", err), 0) << err;
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv"})
+    EXPECT_EQ(read_file(r.dir.path() / "out_upper_case" / name), read_file(r.dir.path() / "out_original" / name))
+        << name;
+  // The analysis-only run reads the analysis surface of such a checkpoint too.
+  const Config config = build_config(parse_input(CheckpointFilesRun::json()));
+  EXPECT_EQ(checkpoint_error([&] { (void)read_checkpoint_surface(dir / "checkpoint.bin", config); }), "");
+}
+
+// The same for a BK file whose SystemID differs from the input's only in case.
+TEST(CheckpointFiles, BkFileSystemIdIsComparedWithoutCase) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const fs::path dir = r.copy_of_first("upper_case_bk_file");
+  patch_system_id(dir / "bk_coefficients.bin", "HARDWALLPES");
+  std::string err;
+  ASSERT_EQ(run(CheckpointFilesRun::restart(r.first, "native"), r.dir.path() / "out_original_bk", err), 0) << err;
+  ASSERT_EQ(run(CheckpointFilesRun::restart(dir, "native"), r.dir.path() / "out_upper_case_bk", err), 0) << err;
+  for (const std::string name : {"checkpoint.bin", "bk_coefficients.bin", "s_matrix.tsv"})
+    EXPECT_EQ(read_file(r.dir.path() / "out_upper_case_bk" / name), read_file(r.dir.path() / "out_original_bk" / name))
+        << name;
+}
+
+// A checkpoint read into a wave packet of another shape is refused naming the size (each of the five).
+TEST(CheckpointFiles, WavePacketShapeIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const fs::path path = r.first / "checkpoint.bin";
+  const Config config = build_config(parse_input(CheckpointFilesRun::json()));
+  const std::array<int, 5> shape = stored_shape(path);
+  WavePacket psi = wave_packet_of_shape(shape);
+  ASSERT_EQ(checkpoint_error([&] { (void)read_checkpoint(path, config, psi); }), "");  // the stored shape is read
+
+  const std::array<std::string, 5> names = {"the number of rotational states", "the number of (x, y) points",
+                                            "the number of (Z, r) points", "nR", "nZSpecular"};
+  for (int k = 0; k < 5; ++k) {
+    std::array<int, 5> other = shape;
+    other[k] += 1;
+    WavePacket wrong = wave_packet_of_shape(other);
+    EXPECT_EQ(checkpoint_error([&] { (void)read_checkpoint(path, config, wrong); }),
+              std::format("{} is {} but {} in '{}'", names[k], other[k], shape[k], path.string()));
+  }
+}
+
+// A checkpoint whose end marker is changed (its last byte) or followed by more data is refused.
+TEST(CheckpointFiles, EndMarkerIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const fs::path patched = r.copy_of_first("end_marker_patched");
+  std::string bytes = read_file(patched / "checkpoint.bin");
+  bytes.back() = static_cast<char>(bytes.back() ^ 1);
+  write_file(patched / "checkpoint.bin", bytes);
+  expect_checkpoint_error(CheckpointFilesRun::restart(patched, "native"), r.dir.path() / "out_patched",
+                          "checkpoint '" + (patched / "checkpoint.bin").string() + "' is corrupt (bad end marker)");
+
+  const fs::path appended = r.copy_of_first("end_marker_appended");
+  write_file(appended / "checkpoint.bin", read_file(r.first / "checkpoint.bin") + '\0');
+  expect_checkpoint_error(CheckpointFilesRun::restart(appended, "native"), r.dir.path() / "out_appended",
+                          "checkpoint '" + (appended / "checkpoint.bin").string() + "' is corrupt (bad end marker)");
+}
+
+// A checkpoint whose analysis surface index or previous index lies off the specular grid (written by the
+// public writer) is refused by the restart and by the analysis-only run, before the wave packet is read: a
+// file cut right after the surface state gives the same error.
+TEST(CheckpointFiles, AnalysisSurfaceIndexIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const Config config = build_config(parse_input(CheckpointFilesRun::json()));
+  const int n_z_specular = config.input.nz_specular;
+  const std::array<int, 5> shape = stored_shape(r.first / "checkpoint.bin");
+  WavePacket psi = wave_packet_of_shape(shape);
+  const CheckpointInfo info = read_checkpoint(r.first / "checkpoint.bin", config, psi);
+  const fs::path round_trip = r.dir.path() / "round_trip.bin";
+  write_checkpoint(round_trip, config, info.time, psi, info.surface);
+  ASSERT_EQ(read_file(round_trip), read_file(r.first / "checkpoint.bin"));  // the writer makes the run's file
+
+  struct Case {
+    std::string name;
+    AnalysisSurfaceState surface;
+    std::string error;
+  };
+  AnalysisSurfaceState beyond = info.surface;
+  beyond.index = n_z_specular;
+  AnalysisSurfaceState negative = info.surface;
+  negative.previous_index = -1;
+  const std::vector<Case> cases = {
+      {"index", beyond,
+       std::format("(analysis surface index {} is outside the specular grid, 0 .. {})", n_z_specular,
+                   n_z_specular - 1)},
+      {"previous_index", negative,
+       std::format("(previous analysis surface index -1 is outside the specular grid, 0 .. {})", n_z_specular - 1)}};
+  const std::size_t wave_packet_bytes =
+      16 * (std::size_t(shape[3]) * shape[4] + std::size_t(shape[0]) * shape[1] * shape[2]);
+  for (const Case& c : cases) {
+    const fs::path dir = r.copy_of_first("surface_" + c.name);
+    const fs::path path = dir / "checkpoint.bin";
+    write_checkpoint(path, config, info.time, psi, c.surface);
+    const std::string error = "checkpoint '" + path.string() + "' is corrupt " + c.error;
+    expect_checkpoint_error(CheckpointFilesRun::restart(dir, "native"), r.dir.path() / ("out_restart_" + c.name),
+                            error);
+    expect_checkpoint_error(CheckpointFilesRun::only_analysis(dir, "native"), r.dir.path() / ("out_analysis_" + c.name),
+                            error);
+
+    const std::string bytes = read_file(path);
+    ASSERT_GT(bytes.size(), wave_packet_bytes + 8);
+    write_file(path, bytes.substr(0, bytes.size() - wave_packet_bytes - 8));  // no wave packet, no end marker
+    expect_checkpoint_error(CheckpointFilesRun::restart(dir, "native"), r.dir.path() / ("out_cut_" + c.name), error);
+  }
+}
+
+// A Fortran wave-function file whose izanlySpecChan lies off the specular grid (1 .. nZSpecular) is
+// refused by the restart and by the analysis-only run, before the scattering wave is read.
+TEST(CheckpointFiles, FortranAnalysisSurfaceIndexIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const Config config = build_config(parse_input(CheckpointFilesRun::json()));
+  const int n_z_specular = config.input.nz_specular;
+  const std::array<int, 5> shape = stored_shape(r.first / "checkpoint.bin");
+  WavePacket psi = wave_packet_of_shape(shape);
+  const CheckpointInfo info = read_checkpoint(r.first / "checkpoint.bin", config, psi);
+  const fs::path round_trip = r.dir.path() / "round_trip.9";
+  write_fortran_wave_function(round_trip, psi, info.surface);
+  ASSERT_EQ(read_file(round_trip), read_file(r.first / "fort.9"));  // the writer makes the run's file
+
+  // Records 1 (nproj), 2 (SpecWave) and 3 (FixedZAnalysisSpec, izanlySpecChan), each with its two markers.
+  const std::size_t head_bytes = (4 + 4 + 4) + (4 + 16 * std::size_t(shape[3]) * shape[4] + 4) + (4 + 8 + 4);
+  for (const int index : {n_z_specular, -1}) {  // izanlySpecChan nZSpecular + 1 and 0
+    AnalysisSurfaceState surface = info.surface;
+    surface.index = index;
+    const fs::path dir = r.copy_of_first(std::format("fortran_surface_{}", index + 1));
+    const fs::path path = dir / "fort.9";
+    write_fortran_wave_function(path, psi, surface);
+    const std::string error = std::format("'{}': izanlySpecChan {} is outside the specular grid, 1 .. {}",
+                                          path.string(), index + 1, n_z_specular);
+    expect_checkpoint_error(CheckpointFilesRun::restart(dir, "fortran"),
+                            r.dir.path() / std::format("out_restart_{}", index + 1), error);
+    expect_checkpoint_error(CheckpointFilesRun::only_analysis(dir, "fortran"),
+                            r.dir.path() / std::format("out_analysis_{}", index + 1), error);
+
+    const std::string bytes = read_file(path);
+    ASSERT_GT(bytes.size(), head_bytes);
+    write_file(path, bytes.substr(0, head_bytes));  // no scattering wave
+    expect_checkpoint_error(CheckpointFilesRun::restart(dir, "fortran"),
+                            r.dir.path() / std::format("out_cut_{}", index + 1), error);
+  }
+}
+
+// A restart from a Fortran BK file of another analysis time step (dtAna 20 instead of 10) is refused.
+TEST(CheckpointFiles, FortranAnalysisTimeStepIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  nlohmann::json json = CheckpointFilesRun::restart(r.first, "fortran");
+  json["dtAna"] = 20.0;
+  expect_checkpoint_error(
+      json, r.dir.path() / "out_dt_ana",
+      "the analysis time step (dtAna) differs from the one in '" + (r.first / "fort.21").string() + "'");
+}
+
+// A restart from a Fortran BK file of another analysis basis (JAna 2: 3 instead of 15 rotational states)
+// is refused.
+TEST(CheckpointFiles, FortranAnalysisBasisIsChecked) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  nlohmann::json json = CheckpointFilesRun::restart(r.first, "fortran");
+  json["JAna"] = 2;
+  expect_checkpoint_error(
+      json, r.dir.path() / "out_j_ana",
+      "the analysis basis (nstata) differs from the one in '" + (r.first / "fort.21").string() + "'");
+}
+
+// A native BK file that holds one record more (t = 70) than the checkpoint's time (60) is refused.
+TEST(CheckpointFiles, BkFileEndingAfterTheCheckpointIsAnError) {
+  const CheckpointFilesRun& r = checkpoint_files_run();
+  ASSERT_EQ(r.code, 0) << r.err;
+  const fs::path dir = r.copy_of_first("bk_one_record_more");
+  const fs::path path = dir / "bk_coefficients.bin";
+  BinaryReader file(path);
+  const std::size_t header = skip_native_header(file);
+  const int n_states = file.read<std::int32_t>();
+  const int n_v = file.read<std::int32_t>();
+  const std::size_t record = 8 + 16 * std::size_t(n_states) * n_v;  // time, coefficients
+  const std::size_t records_start = header + 8 + 5 * 4 * std::size_t(n_states) + 8 * std::size_t(n_states) * n_v;
+  std::string bytes = read_file(path);
+  ASSERT_EQ(bytes.size(), records_start + 6 * record);  // records at t = 10 .. 60
+  std::string extra = bytes.substr(bytes.size() - record);
+  patch_value(extra, 0, 70.0);
+  write_file(path, bytes + extra);
+  expect_checkpoint_error(CheckpointFilesRun::restart(dir, "native"), r.dir.path() / "out_bk",
+                          "the BK coefficient file in '" + dir.string() +
+                              "' ends at t = 7.0000000000000000e+01, the checkpoint at t = 6.0000000000000000e+01");
 }
 
 // A file written by gfortran with -fmax-subrecord-length=16 (tests/reference/fortran_unformatted).

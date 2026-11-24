@@ -109,7 +109,9 @@ absorbers against the checkpoint and names any parameter that differs. This incl
 of φ points, which `nPhisOptimal` with `UseSymmetry` can change, and the low-Z absorbers: a
 checkpoint or BK file written with a low-Z absorber that the input does not have (or the other way
 round) is refused with a message naming that absorber. Files written without low-Z absorbers have
-the same contents as before these keys existed.
+the same contents as before these keys existed. The SystemID is compared without regard to case, as
+the input reader compares it. A checkpoint whose analysis surface lies off the specular grid (native
+or Fortran format) is refused as corrupt before its wave packet is read (exit code 4).
 The checkpoint records the `SystemID` but not the CRP data set: a restart with SystemID
 `CRPlibrary` must use the same `CRPlibDataSet` (not checked). With `CRPDistrtSurface` the native
 files also record `PosFileSlabNum`, `SCMCutoff`, `EnableSurfExpan`, the slab's a_T, atom count and

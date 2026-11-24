@@ -16,7 +16,8 @@ namespace spodvr {
 // Native checkpoint and BK coefficient files (versioned binary formats, see
 // docs/output_files.md). Both start with the input parameters that a restart must not change
 // (grids, masses, time step, wave packet, absorbers, the SCM identity, ...); reading them with a
-// different input is a CheckpointError naming the parameter.
+// different input is a CheckpointError naming the parameter. The SystemID is compared without
+// regard to case, as the input reader does.
 // Fortran: WaveFunction.f90 SaveWaveFunc / ReadWaveFunc (fort.9 / fort.8), AsympInfo.f90 and
 // Analyzor.f90 (fort.21 / fort.22)
 
@@ -30,7 +31,8 @@ struct CheckpointInfo {
   AnalysisSurfaceState surface;
 };
 
-// Reads a checkpoint into psi (whose shape must match the file).
+// Reads a checkpoint into psi (whose shape must match the file). The analysis surface indices must
+// lie on the specular grid (a CheckpointError otherwise, before psi is read).
 [[nodiscard]] CheckpointInfo read_checkpoint(const std::filesystem::path& path, const Config& config, WavePacket& psi);
 
 // The analysis surface saved in a checkpoint written for the same input (the header is checked; the

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/real_compare.hpp"
 #include "fft/fft_sizes.hpp"
 #include "report/format.hpp"
 
@@ -164,7 +165,8 @@ void read_header(BinaryReader& file, const Magic& magic, const std::string& kind
   if (file.read<Magic>() != magic) throw CheckpointError("not a " + kind + ": '" + file.path().string() + "'");
   if (const auto version = file.read<std::uint32_t>(); version != format_version)
     throw CheckpointError("unsupported format version " + std::to_string(version) + where);
-  if (const std::string id = file.read_string(); id != config.input.system_id)
+  // Case-insensitive, as the input reader compares SystemIDs (Fortran: .SEQ.).
+  if (const std::string id = file.read_string(); !fortran_compare::seq(id, config.input.system_id))
     throw CheckpointError("SystemID is '" + config.input.system_id + "' in the input but '" + id + "'" + where);
 
   const ParameterList expected = restart_parameters(config);
@@ -185,6 +187,25 @@ void check_size(BinaryReader& file, const std::string& what, std::int32_t expect
   if (const auto stored = file.read<std::int32_t>(); stored != expected)
     throw CheckpointError(what + " is " + std::to_string(expected) + " but " + std::to_string(stored) + " in '" +
                           file.path().string() + "'");
+}
+
+// The analysis surface state of a checkpoint. Its indices must lie on the specular grid of the
+// input (0 .. nZSpecular - 1): a corrupt file is refused here, before the wave function is read.
+AnalysisSurfaceState read_analysis_surface(BinaryReader& file, const Config& config) {
+  AnalysisSurfaceState surface{};
+  surface.index = file.read<std::int32_t>();
+  surface.previous_index = file.read<std::int32_t>();
+  surface.fixed = file.read<std::uint8_t>() != 0;
+  surface.norm_tolerance = file.read<double>();
+  const int n_z_specular = config.input.nz_specular;
+  const std::pair<std::string, int> indices[] = {{"analysis surface index", surface.index},
+                                                 {"previous analysis surface index", surface.previous_index}};
+  for (const auto& [name, index] : indices)
+    if (index < 0 || index >= n_z_specular)
+      throw CheckpointError("checkpoint '" + file.path().string() + "' is corrupt (" + name + " " +
+                            std::to_string(index) + " is outside the specular grid, 0 .. " +
+                            std::to_string(n_z_specular - 1) + ")");
+  return surface;
 }
 
 }  // namespace
@@ -222,10 +243,7 @@ CheckpointInfo read_checkpoint(const std::filesystem::path& path, const Config& 
   check_size(file, "the number of (Z, r) points", static_cast<std::int32_t>(psi.scattering.index.n2));
   check_size(file, "nR", static_cast<std::int32_t>(psi.specular.index.n0));
   check_size(file, "nZSpecular", static_cast<std::int32_t>(psi.specular.index.n1));
-  info.surface.index = file.read<std::int32_t>();
-  info.surface.previous_index = file.read<std::int32_t>();
-  info.surface.fixed = file.read<std::uint8_t>() != 0;
-  info.surface.norm_tolerance = file.read<double>();
+  info.surface = read_analysis_surface(file, config);
   file.read_array(std::span<cplx>(psi.specular.values));
   file.read_array(std::span<cplx>(psi.scattering.values));
   if (file.read<std::uint64_t>() != end_marker || !file.at_end())
@@ -240,15 +258,7 @@ AnalysisSurfaceState read_checkpoint_surface(const std::filesystem::path& path, 
   for (int k = 0; k < 3; ++k) (void)file.read<std::int32_t>();    // the scattering wave's shape
   check_size(file, "nR", static_cast<std::int32_t>(config.input.nr));
   check_size(file, "nZSpecular", static_cast<std::int32_t>(config.input.nz_specular));
-  AnalysisSurfaceState surface{};
-  surface.index = file.read<std::int32_t>();
-  surface.previous_index = file.read<std::int32_t>();
-  surface.fixed = file.read<std::uint8_t>() != 0;
-  surface.norm_tolerance = file.read<double>();
-  if (surface.index < 0 || surface.index >= config.input.nz_specular)
-    throw CheckpointError("checkpoint '" + path.string() + "' is corrupt (analysis surface index " +
-                          std::to_string(surface.index) + ")");
-  return surface;
+  return read_analysis_surface(file, config);
 }
 
 BkFileWriter::BkFileWriter(const std::filesystem::path& path, const Config& config, const AnalysisBasis& basis)
