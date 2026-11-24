@@ -3,6 +3,10 @@
 
 #include <cmath>
 #include <fstream>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 
@@ -18,6 +22,9 @@
 #include "potential/potential_grid.hpp"
 #include "propagation/analysis_surface.hpp"
 #include "propagation/initial_wave_packet.hpp"
+#include "propagation/propagation.hpp"
+#include "report/format.hpp"
+#include "report/propagation_report.hpp"
 
 using namespace spodvr;
 
@@ -141,4 +148,77 @@ TEST(AnalysisSurface, FixedByInput) {
   const AnalysisSurface surface(s.config, s.grids, wp.specular);
   EXPECT_TRUE(surface.fixed());
   EXPECT_EQ(surface.index(), s.grids.z_specular_optical->first);  // start of the specular absorber
+}
+
+namespace {
+
+// The hard-wall input with the analysis surface fixed by the input (DynamZSpAna false), at ZAnaSp if
+// given (the Fortran's ZAnalysisSp > 0).
+nlohmann::json fixed_surface_json(std::optional<double> z_ana_sp) {
+  nlohmann::json json = reference_json();
+  json["DynamZSpAna"] = false;
+  if (z_ana_sp) json["ZAnaSp"] = *z_ana_sp;
+  return json;
+}
+
+// The set-up report of a propagation. noipa: with a Style known at compile time, GCC 15's LTO
+// specialises print_propagation_setup and then warns falsely (-Wstringop-overflow) about the
+// heading string of print_section.
+[[gnu::noipa]] std::string propagation_setup_report(const SpatialGrids& grids, const WavePacketPropagation& propagation,
+                                                    bool color) {
+  std::ostringstream out;
+  print_propagation_setup(out, Style{color}, grids, propagation);
+  return out.str();
+}
+
+}  // namespace
+
+// ZAnaSp fixes the surface one point before the first specular point at or above it (within the
+// 1e-12 of .RGE.): 16 bohr is the point 225, 16 - 5e-13 counts as on it, 16.03 lies before the point
+// 226. The set-up report prints that point ("fixed at Z").
+TEST(AnalysisSurface, FixedAtZAnaSp) {
+  const GasPhaseSetup s(fixed_surface_json(16.0));
+  const UniformGrid& z = s.grids.z_specular;
+  ASSERT_NEAR(z[225], 16.0, 1e-12);
+  const InitialWavePacket wp = make_initial_wave_packet(s.config, s.grids, s.gas, s.fft);
+  const AnalysisSurface surface(s.config, s.grids, wp.specular);
+  EXPECT_TRUE(surface.fixed());
+  EXPECT_EQ(surface.index(), 224);
+  EXPECT_EQ(surface.fixed_line(), z[224]);
+  EXPECT_LT(surface.index(), s.grids.z_specular_optical->first - 1);  // not the absorber's point
+
+  for (const auto& [z_ana_sp, index] : {std::pair{16.0 - 5e-13, 224}, std::pair{16.03, 225}}) {
+    const GasPhaseSetup other(fixed_surface_json(z_ana_sp));
+    const InitialWavePacket other_wp = make_initial_wave_packet(other.config, other.grids, other.gas, other.fft);
+    EXPECT_EQ(AnalysisSurface(other.config, other.grids, other_wp.specular).index(), index) << z_ana_sp;
+  }
+
+  // The report, without and with colours.
+  const WavePacketPropagation propagation(s.config, s.grids, s.angular, s.potential, s.gas, s.fft);
+  for (const bool color : {false, true}) {
+    const std::string text = propagation_setup_report(s.grids, propagation, color);
+    EXPECT_NE(text.find("fixed at Z = " + fixed(z[224], 6)), std::string::npos) << text;
+    EXPECT_EQ(text.find("dynamic, starts at Z"), std::string::npos) << text;
+  }
+}
+
+// The last point allowed to carry the initial wave packet (CoherentStateFunc iHigh): before the
+// specular absorber when the surface is dynamic or fixed at the absorber, before ZAnaSp when given.
+TEST(AnalysisSurface, LastPointInside) {
+  const int before_absorber = reference_setup().grids.z_specular_optical->first - 1;
+  const GasPhaseSetup& dynamic = reference_setup();
+  EXPECT_EQ(make_initial_wave_packet(dynamic.config, dynamic.grids, dynamic.gas, dynamic.fft).info.i_high,
+            before_absorber);
+
+  const GasPhaseSetup at_absorber(fixed_surface_json(std::nullopt));
+  EXPECT_EQ(
+      make_initial_wave_packet(at_absorber.config, at_absorber.grids, at_absorber.gas, at_absorber.fft).info.i_high,
+      before_absorber);
+
+  for (const auto& [z_ana_sp, last] : {std::pair{16.0, 224}, std::pair{16.0 - 5e-13, 224}, std::pair{16.03, 225}}) {
+    const GasPhaseSetup at_z(fixed_surface_json(z_ana_sp));
+    const InitialWavePacket wp = make_initial_wave_packet(at_z.config, at_z.grids, at_z.gas, at_z.fft);
+    EXPECT_EQ(wp.info.i_high, last) << z_ana_sp;
+    EXPECT_LT(wp.info.i_high, before_absorber);
+  }
 }

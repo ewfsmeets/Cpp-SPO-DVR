@@ -1,6 +1,7 @@
 #pragma once
 
-// Shared set-up of the GPU tests: skip without a GPU, random data, relative differences.
+// Shared set-up of the GPU tests: skip without a GPU (fail on a broken CUDA set-up), random data,
+// relative differences.
 
 #include <gtest/gtest.h>
 
@@ -16,12 +17,36 @@
 
 namespace spodvr::testing {
 
-// Skips the current test when the machine has no CUDA-capable GPU.
-#define SPODVR_REQUIRE_GPU()                                                           \
-  do {                                                                                 \
-    int spodvr_gpu_count = 0;                                                          \
-    if (cudaGetDeviceCount(&spodvr_gpu_count) != cudaSuccess || spodvr_gpu_count == 0) \
-      GTEST_SKIP() << "no CUDA-capable GPU";                                           \
+// What a GPU test does on this machine.
+enum class GpuCheck { run, skip, fail };
+
+// The decision from what the CUDA runtime reports: driver_version from cudaDriverGetVersion (0: no
+// driver installed), count_status and device_count from cudaGetDeviceCount. A machine without a GPU
+// (no driver, no device) skips the test; any other error with a driver present fails it (e.g.
+// cudaErrorInsufficientDriver: a driver older than the toolkit), so that a broken set-up does not
+// pass as skipped tests.
+inline GpuCheck gpu_check(int driver_version, cudaError_t count_status, int device_count) {
+  if (driver_version == 0 || count_status == cudaErrorNoDevice) return GpuCheck::skip;
+  if (count_status != cudaSuccess) return GpuCheck::fail;
+  return device_count == 0 ? GpuCheck::skip : GpuCheck::run;
+}
+
+// Skips the current test when the machine has no CUDA-capable GPU; fails it when the CUDA runtime
+// reports another error (gpu_check).
+#define SPODVR_REQUIRE_GPU()                                                                                      \
+  do {                                                                                                            \
+    int spodvr_driver_version = 0;                                                                                \
+    int spodvr_gpu_count = 0;                                                                                     \
+    (void)cudaDriverGetVersion(&spodvr_driver_version);                                                           \
+    const cudaError_t spodvr_count_status = cudaGetDeviceCount(&spodvr_gpu_count);                                \
+    const ::spodvr::testing::GpuCheck spodvr_gpu_check =                                                          \
+        ::spodvr::testing::gpu_check(spodvr_driver_version, spodvr_count_status, spodvr_gpu_count);               \
+    if (spodvr_gpu_check == ::spodvr::testing::GpuCheck::skip)                                                    \
+      GTEST_SKIP() << "no CUDA-capable GPU (driver version " << spodvr_driver_version << ", " << spodvr_gpu_count \
+                   << " devices: " << cudaGetErrorString(spodvr_count_status) << ")";                             \
+    if (spodvr_gpu_check == ::spodvr::testing::GpuCheck::fail)                                                    \
+      GTEST_FAIL() << "CUDA driver " << spodvr_driver_version << " present, but cudaGetDeviceCount "              \
+                   << "failed: " << cudaGetErrorString(spodvr_count_status);                                      \
   } while (false)
 
 // Reproducible pseudo-random values in [-1, 1) (a 64-bit LCG; no <random> dependence).

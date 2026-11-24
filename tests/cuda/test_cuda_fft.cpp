@@ -62,8 +62,10 @@ TEST(CudaFft, StridedBatchOf2DTransformsMatchesTheCpu) {
   EXPECT_LT(compare(gpu, &cpu, nullptr, FftSign::Plus, v), 1e-15);
 }
 
-// The phi transforms of the angular transform: 1D, values n apart, batches at distance 1; a tiny
-// work-area limit forces execution in slabs (with a remainder).
+// The phi transforms of the angular transform: 1D, values n apart, batches at distance 1. cuFFT
+// needs no work area for them (CUDA 13.3, 1001 columns: none for the 22 lengths from 10 to 8192
+// tried), so they run in one call whatever the limit. A length of 16384 needs 16 bytes of work per
+// value: a limit of 10 such transforms forces execution in slabs (of 8 transforms) with a remainder.
 TEST(CudaFft, StridedBatchOf1DTransformsMatchesTheCpuAlsoInSlabs) {
   SPODVR_REQUIRE_GPU();
   const int n_phi = 12;
@@ -73,7 +75,17 @@ TEST(CudaFft, StridedBatchOf1DTransformsMatchesTheCpuAlsoInSlabs) {
   const DeviceFftShape gpu{{n_phi}, n, 1, n};
   const FftLayout cpu{n_phi, n, n, 1};
   EXPECT_LT(compare(gpu, nullptr, &cpu, FftSign::Plus, v), 1e-15);
-  DeviceFftPlan small(gpu, FftSign::Plus, 1);  // work limit 1 byte: smallest slabs cuFFT allows
-  EXPECT_LE(small.batch_per_call(), n);
-  EXPECT_LT(compare(gpu, nullptr, &cpu, FftSign::Plus, v, 1), 1e-15);
+
+  const int n_long = 16384;
+  const int n_columns = 61;
+  std::vector<cplx> w(std::size_t(n_long) * n_columns);
+  fill_pseudo_random(w, 4);
+  const DeviceFftShape gpu_long{{n_long}, n_columns, 1, n_columns};
+  const FftLayout cpu_long{n_long, n_columns, n_columns, 1};
+  const std::size_t limit = std::size_t(10) * n_long * sizeof(cplx);
+  DeviceFftPlan sliced(gpu_long, FftSign::Plus, limit);
+  EXPECT_LT(sliced.batch_per_call(), n_columns);              // more than one slab
+  EXPECT_NE(n_columns % sliced.batch_per_call(), 0);          // and a remainder slab
+  EXPECT_LT(compare(gpu_long, nullptr, &cpu_long, FftSign::Plus, w), 1e-15);         // one call
+  EXPECT_LT(compare(gpu_long, nullptr, &cpu_long, FftSign::Plus, w, limit), 1e-15);  // in slabs
 }

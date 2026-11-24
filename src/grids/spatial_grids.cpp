@@ -97,7 +97,12 @@ SpatialGrids make_spatial_grids(const Config& config) {
   if (iz == g.z_scattering.size()) throw InputError("Zana", "analysis value ZAnalysis lies outside grid");
   g.iz_analysis = iz;
   g.z_analysis = g.z_scattering[iz];
+  // Unreachable: z_analysis is now a point of this grid (no point at all is the error just above). Kept
+  // because the Fortran keeps it (Setup.f90 MiscellaneousSetup).
   if (rgt(g.z_analysis, g.z_scattering.back())) throw InputError("Zana", "analysis value ZAnalysis lies outside grid");
+  // Guarded by validate_input ("ZAnalysis > ZOptStart." and "ZAna not on a grid point."), except where their
+  // 1e-12 tolerances add up: ZAna up to 1e-12 above ZOptStart, moved up to 1e-12 further onto its grid point
+  // (violation row ZanaInsideTheAbsorberWithinTheTolerances).
   if (rgt(g.z_analysis, p.z_opt_start))
     throw InputError("Zana", "analysis value ZAnalysis lies inside optical potential");
 

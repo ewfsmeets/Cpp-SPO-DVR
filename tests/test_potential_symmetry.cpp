@@ -235,6 +235,73 @@ TEST(SymmetryCheck, PerssonFailsBecauseOfItsPeriod) {
   EXPECT_NO_THROW((void)compute_potential_grid(*pes, tolerant.config, tolerant.grids, tolerant.angular));
 }
 
+// UseSymmetry with no usable operation is refused (make_grid_symmetry). A copy of the Dai-Light
+// configuration (C6v, 60 deg lattice) with another point group: C3 needs nphi to be a multiple of 3
+// for its 120 deg rotations, so with nphi = 10 (no nPhisOptimal) none is usable; "none" has no
+// operation besides the identity at all (and no phi hint in the message).
+namespace {
+
+Config with_point_group(const Config& config, const std::string& point_group) {
+  Config copy = config;
+  copy.derived.system.point_group = point_group;
+  return copy;
+}
+
+const RunSetup& dai_light_ten_phi() {
+  static const RunSetup s = [] {
+    Json json = case_json("cu111_dailight_short_sym");
+    json["nPhisOptimal"] = false;
+    return RunSetup(json);
+  }();
+  return s;
+}
+
+// The InputError of make_grid_symmetry ("" and a failure if there is none).
+std::string grid_symmetry_error(const Config& config, const AngularGrid& angular) {
+  try {
+    (void)make_grid_symmetry(config, angular);
+  } catch (const InputError& e) {
+    EXPECT_EQ(e.parameter(), "UseSymmetry");
+    return e.what();
+  }
+  ADD_FAILURE() << "no InputError for point group " << config.derived.system.point_group;
+  return "";
+}
+
+}  // namespace
+
+TEST(SymmetryCheck, NoUsableOperationC3) {
+  const RunSetup& s = dai_light_ten_phi();
+  ASSERT_EQ(s.angular.n_phi(), 10);
+  ASSERT_TRUE(s.config.input.use_symmetry);
+  const std::string message = grid_symmetry_error(with_point_group(s.config, "C3"), s.angular);
+  EXPECT_NE(message.find("no operation of point group C3 is usable with 10 phi points (a multiple of 3 is needed; "
+                         "set nPhisOptimal)."),
+            std::string::npos)
+      << message;
+}
+
+TEST(SymmetryCheck, NoUsableOperationNone) {
+  auto expect_refused = [](const RunSetup& s) {
+    const std::string message = grid_symmetry_error(with_point_group(s.config, "none"), s.angular);
+    EXPECT_NE(message.find("no operation of point group none is usable."), std::string::npos) << message;
+    EXPECT_EQ(message.find("phi points"), std::string::npos) << message;
+  };
+  expect_refused(dai_light_ten_phi());
+  expect_refused(dai_light_symmetric());  // nphi = 12 does not help
+}
+
+// The same C3 copy with nphi = 12 (nPhisOptimal) uses the identity and both rotations.
+TEST(SymmetryCheck, C3WithTwelvePhiPointsIsValid) {
+  const RunSetup& s = dai_light_symmetric();
+  ASSERT_EQ(s.angular.n_phi(), 12);
+  const GridSymmetry symmetry = make_grid_symmetry(with_point_group(s.config, "C3"), s.angular);
+  EXPECT_FALSE(symmetry.is_trivial());
+  EXPECT_EQ(symmetry.point_group(), "C3");
+  EXPECT_EQ(symmetry.operations().size(), 3U);
+  EXPECT_TRUE(symmetry.dropped_operations().empty());
+}
+
 // --- the reduced potential grid ----------------------------------------------------------------
 
 // The hard wall does not depend on x, y, phi: the C2v-reduced grid gathers to exactly the full one.

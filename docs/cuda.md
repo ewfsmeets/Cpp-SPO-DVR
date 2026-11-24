@@ -31,7 +31,8 @@ OMP_NUM_THREADS=8 ctest --test-dir build-cuda -R Cuda --output-on-failure
   repository, see the README) and GCC 15 (accepted from CUDA 13.0 on). Developed with CUDA 12.0 (Ubuntu 24.04 packages, g++-12
   as nvcc's host compiler, C++17 kernels); untested with 12.0 since the kernels are C++20.
 - **Tests:** the GPU tests in `tests/cuda/` are only built with the option, and they skip on a
-  machine without a GPU.
+  machine without a GPU (no driver, or no device). With a driver present, any other CUDA error fails
+  them (e.g. a driver older than the toolkit), so that a broken set-up does not pass as skipped tests.
 - **Host code:** only kernels and their launch functions are in `.cu` files (C++20, nvcc). All host
   code of the backend is in `.cpp` files compiled by the normal C++ compiler: they keep nvcc away
   from the project headers and the host code inside LTO.

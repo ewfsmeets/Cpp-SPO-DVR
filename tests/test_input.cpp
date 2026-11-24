@@ -211,6 +211,39 @@ TEST(Input, UnsupportedFeatures) {
   EXPECT_THROW((void)build(json), NotSupportedError);
 }
 
+// The other keys of PES mixing (SystemMix) are refused whatever their value, each naming itself.
+TEST(Input, UnsupportedMixingKeys) {
+  const std::pair<std::string, Json> keys[] = {
+      {"PESMixingAlfa", 0.5}, {"SystemID2", "H2Cu111DaiLight"}, {"SystemMixCoeff", 0.5}};
+  for (const auto& [key, value] : keys) {
+    Json json = reference_json();
+    json[key] = value;
+    try {
+      (void)build(json);
+      ADD_FAILURE() << "no NotSupportedError for " << key;
+    } catch (const NotSupportedError& e) {
+      EXPECT_EQ(std::string(e.what()), key + " is not supported by this program");
+    }
+  }
+}
+
+// DoDump and FullSMatrix are accepted with either value (docs/input_schema.md: accepted and ignored;
+// the program reads them nowhere else).
+TEST(Input, FullSMatrixAndDoDumpAccepted) {
+  const Config plain = build(reference_json());
+  EXPECT_FALSE(plain.input.do_dump);
+  EXPECT_FALSE(plain.input.full_s_matrix);
+  for (const bool value : {true, false}) {
+    Json json = reference_json();
+    json["DoDump"] = value;
+    json["FullSMatrix"] = value;
+    const Config config = build(json);
+    EXPECT_NO_THROW((void)make_spatial_grids(config));
+    EXPECT_EQ(config.input.do_dump, value);
+    EXPECT_EQ(config.input.full_s_matrix, value);
+  }
+}
+
 // dtFrames needs dtAna / dtStep to be whole as the program counts it: it truncates (Fortran INT), and 2.4 / 0.8 is
 // 2.9999999999999996, so the analysis step would be 2 time steps (1.6 a.u.), not 3. Without dtFrames the input is
 // accepted as the Fortran accepts it; with dtFrames it is refused, naming dtAna.
@@ -699,6 +732,34 @@ TEST(Input, RStartJustAboveZeroIsValid) {
   EXPECT_EQ(config.input.r_start, 2.0e-12);
 }
 
+// ZAna 0.9e-12 below its grid point 8.88 (on the grid within 1e-12) and ZOptStart = ZAna: the grid point lies
+// 0.9e-12 above ZOptStart, within the tolerance, so the input is valid. With ZOptStart 0.9e-12 lower still, the
+// offsets add up to 1.8e-12 (violation row ZanaInsideTheAbsorberWithinTheTolerances).
+TEST(Input, ZanaWithinTheTolerancesIsValid) {
+  Json json = reference_json();
+  json["Zana"] = 8.88 - 0.9e-12;
+  json["ZOptStart"] = 8.88 - 0.9e-12;
+  const Config config = build(json);
+  const SpatialGrids grids = make_spatial_grids(config);
+  EXPECT_EQ(grids.iz_analysis, 136);
+  EXPECT_NEAR(grids.z_analysis, 8.88, 1e-14);
+}
+
+// ZAnaSp exactly at ZSpOptStart and exactly at Z0 is valid: the Fortran checks ZAnaSp > ZSpOptStart and
+// ZAnaSp < Z0 with plain comparisons (ReadInput; 1e-13 beyond them is in the violation table).
+TEST(Input, ZAnaSpAtItsBoundsIsValid) {
+  Json json = reference_json();
+  json["DynamZSpAna"] = false;
+  for (const double z : {16.8, 11.44}) {
+    json["ZAnaSp"] = z;
+    const Config config = build(json);
+    EXPECT_NO_THROW((void)make_spatial_grids(config)) << z;
+    EXPECT_EQ(config.input.z_analysis_specular, z);
+    EXPECT_EQ(config.input.zsp_opt_start, 16.8);
+    EXPECT_EQ(config.input.z0, 11.44);
+  }
+}
+
 // Low-Z absorbers on both grids from exactly ZStart to exactly Zana are valid: the Fortran checks
 // Start < ZStart and End > Zana with plain comparisons (1e-13 beyond them is in the violation table).
 TEST(Input, LowZAbsorbersAtTheirBoundsAreValid) {
@@ -771,9 +832,13 @@ TEST(Input, PlotSitesOnTheGridWithinTheTolerance) {
   json["writePotential"] = true;
   json["PlotSites"] = site_list({{"inside", 0.25 + 2e-10, 0.0}});
   EXPECT_NO_THROW(build(json));
-  for (const double x : {0.25 + 5e-10, 1.0 - 1e-12, -1e-12}) {
+  // Each refused site reaches its own check (all three name PlotSites).
+  const std::pair<double, std::string> refused[] = {{0.25 + 5e-10, "is not on the grid"},
+                                                    {1.0 - 1e-12, "rounds to 1, the next cell's x = 0"},
+                                                    {-1e-12, "is not in [0, 1)"}};
+  for (const auto& [x, message] : refused) {
     json["PlotSites"] = site_list({{"edge", x, 0.0}});
-    EXPECT_THROW(build(json), InputError) << x;
+    expect_input_error(json, "PlotSites", message);
   }
 }
 
@@ -1002,6 +1067,9 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ZanaLtZasymp", [](Json& j) { j["Zana"] = 6.0; }, "Zana", "ZAna < ZAsymptotic."},
         Violation{"ZanaOffGrid", [](Json& j) { j["Zana"] = 8.01; }, "Zana", "ZAna not on a grid point."},
         Violation{"ZanaGtZOptStart", [](Json& j) { j["Zana"] = 9.04; }, "Zana", "ZAnalysis > ZOptStart."},
+        // The grid set-up's own check (Setup.f90): ZAna 0.9e-12 above ZOptStart passes the check above, and moving it
+        // 0.9e-12 up onto its grid point (8.88) puts it 1.8e-12 above ZOptStart (Input.ZanaWithinTheTolerancesIsValid).
+        Violation{"ZanaInsideTheAbsorberWithinTheTolerances", [](Json& j) { j["Zana"] = 8.88 - 0.9e-12; j["ZOptStart"] = 8.88 - 1.8e-12; }, "Zana", "analysis value ZAnalysis lies inside optical potential"},
         Violation{"JAnaGtJMax", [](Json& j) { j["JAna"] = 6; }, "JAna", "JAna > JMax."},
         Violation{"VAnaGtNr", [](Json& j) { j["VAna"] = 56; }, "VAna", "VAna > nR-1."},
         Violation{"DifOrdGt", [](Json& j) { j["DifOrdAna"] = 7; }, "DifOrdAna", "DifOrdAna > nX+nY-2 (the maximum diffraction order possible)."},
@@ -1071,6 +1139,10 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"ZAnaSpDynamic", [](Json& j) { j["ZAnaSp"] = 12.0; }, "ZAnaSp", "ZAnaSp can only be used with DynamZSpAna set to FALSE"},
         Violation{"ZAnaSpGtOpt", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 17.0; }, "ZAnaSp", "ZAnaSp was set > ZSpOptStart"},
         Violation{"ZAnaSpLtZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.0; }, "ZAnaSp", "ZAnaSp was set < Z0"},
+        // The Fortran's plain > and <: 1e-13 above ZSpOptStart (16.8) or below Z0 (11.44) is rejected (.RGT./.RLT.
+        // would accept it); Input.ZAnaSpAtItsBoundsIsValid accepts both bounds themselves.
+        Violation{"ZAnaSpJustAboveZSpOptStart", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 16.8 + 1.0e-13; }, "ZAnaSp", "ZAnaSp was set > ZSpOptStart"},
+        Violation{"ZAnaSpJustBelowZ0", [](Json& j) { j["DynamZSpAna"] = false; j["ZAnaSp"] = 11.44 - 1.0e-13; }, "ZAnaSp", "ZAnaSp was set < Z0"},
         // Low-Z absorbers. low-Z D3: an incomplete set of keys (the Fortran ignores it).
         Violation{"LowZD3OnlyStart", [](Json& j) { j["ZOptLowStart"] = -2.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowEnd", "ZOptLowEnd is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},
         Violation{"LowZD3OnlyEnd", [](Json& j) { j["ZOptLowEnd"] = 8.0; j["ZOptLowEnergy"] = 0.3; }, "ZOptLowStart", "ZOptLowStart is missing: a low-Z absorber needs ZOptLowStart and ZOptLowEnd; give Start, End and one of Energy/Factor, or none of them"},

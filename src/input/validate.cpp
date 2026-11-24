@@ -222,6 +222,10 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   const double z_end = p.z_start + (p.nz - 1) * p.dz;
   check(rgt(p.z_opt_start, p.z_opt_end), "ZOptStart", "ZOptStart > ZOptEnd.");
   check(rgt(p.z_opt_end, z_end), "ZOptEnd", "ZOptEnd is too big for the scattering grid in Z.");
+  // Duplicates of the ZAna block's "ZAnalysis > ZOptStart." (rgt), kept because the Fortran keeps them (InputNew.f90
+  // ValidateInput, the optical-potential block). The second is unreachable (the same test). The first fires before
+  // it only where ZOptStart - ZAna is exactly +-1e-12: rge is false there, so rlt (= !rge) is true while rgt is false
+  // (at +1e-12 although ZOptStart lies above ZAna; MyOperators.f90 behaves the same).
   check(rlt(p.z_opt_start, p.z_analysis), "ZOptStart", "ZOptStart < ZAna.");
   check(rgt(p.z_analysis, p.z_opt_start), "Zana", "ZAna > ZOptStart.");
 

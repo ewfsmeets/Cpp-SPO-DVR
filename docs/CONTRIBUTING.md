@@ -117,7 +117,7 @@ Measured 2026-11-22: the 83 Python tests 462 s with `-j 8` (their single times a
   stored in `tests/reference/` (the CRP and SCM driver outputs in `tests/crplib/reference/` and
   `tests/scm/reference/`). The gates, their tolerances and cases: [validation.md](validation.md);
 - GPU tests (`tests/cuda/`, names `Cuda…`): only in builds with `-DSPODVR_USE_CUDA=ON`. They skip on
-  a machine without a GPU;
+  a machine without a GPU and fail on a CUDA error with a driver present ([cuda.md](cuda.md));
 - the wave-packet designer (`tools/wave_packet_designer/`, Python, names `WavePacketDesigner.…`): its
   copies of the program's rules against the C++ (input keys, checks, grid indices, packet values), its
   design rules and its figure. They run in the repository's Python environment (`.venv/`, made by

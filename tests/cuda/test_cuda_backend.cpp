@@ -33,6 +33,7 @@
 #include "propagation/cpu_backend.hpp"
 #include "propagation/initial_wave_packet.hpp"
 #include "propagation/memory_estimate.hpp"
+#include "propagation/potential_operator.hpp"
 
 using namespace spodvr;
 using namespace spodvr::testing;
@@ -209,6 +210,64 @@ TEST(CudaBackend, ExpPotentialCallbackMatchesTheKernel) {
     if (std::memcmp(&a[i], &b[i], sizeof(cplx)) != 0) ++differing;
   EXPECT_LT(relative_difference(a, b), 1e-15) << differing << " of " << a.size() << " values differ";
   EXPECT_GT(relative_difference(scattering, a), 1e-3);  // the stage did change the wave function
+}
+
+// The GPU potential stage executed in several slabs of (Z, r) points equals the CPU's
+// PotentialOperator (all points at once): one stage on a random wave packet, with surface symmetry,
+// the coupling to the specular grid and the exp(i A) callback (the default mode).
+TEST(CudaPotential, SlabsEqualTheCpu) {
+  SPODVR_REQUIRE_GPU();
+  const BackendSetup s("cu111_dailight_short_sym");
+  const InputParameters& p = s.config.input;
+  const ScatteringShape shape{s.basis.size(), p.nx, p.ny, p.nr, p.nz};
+  const int n_xy = p.nx * p.ny;
+  const int n_zr = p.nr * p.nz;
+  const int nz_specular = static_cast<int>(s.grids.z_specular.size());
+  auto potential = s.potential.values;  // copy, premultiplied below
+  premultiply_with_time_step(potential, p.time_step);
+  const AngularTransform transform(s.angular, s.basis, s.fft);
+
+  const std::size_t scratch_limit = std::size_t(64) << 20;  // several slabs
+  const std::size_t fft_limit = std::size_t(512) << 20;
+  cuda::DevicePotentialOperator gpu(shape, s.grids.nz_potential, s.basis.initial_index(), s.tables, transform,
+                                    potential, s.potential.symmetry, fft_limit, scratch_limit);
+  const std::int64_t interaction_points = std::int64_t(s.grids.nz_potential) * p.nr;
+  ASSERT_LT(gpu.slab_points(), interaction_points);  // more than one slab
+  ASSERT_TRUE(gpu.exp_potential_in_fft_callback());
+  const PotentialOperator cpu(shape, s.grids.nz_potential, s.basis.initial_index(), s.tables, transform, potential,
+                              s.potential.symmetry);
+
+  WavePacket host{ScatteringWave(shape.n_rot, n_xy, n_zr), SpecularWave(p.nr, nz_specular)};
+  fill_pseudo_random(host.scattering.values, 5);
+  fill_pseudo_random(host.specular.values, 6);
+  const WavePacket before = host;
+
+  // GPU: host layout -> device layout through a staging copy, one stage, and back.
+  cuda::DeviceFftPlans plans = gpu.fft_plans();
+  std::size_t work_bytes = 1;
+  for (const cuda::DeviceFftPlan& plan : plans) work_bytes = std::max(work_bytes, plan.work_size());
+  cuda::DeviceBuffer<std::byte> work(work_bytes);
+  for (cuda::DeviceFftPlan& plan : plans) plan.set_work_area(work.data());
+  const cuda::DeviceLayout layout{n_zr, shape.n_rot, n_xy};
+  cuda::DeviceWavePacket device(layout, p.nr, nz_specular);
+  cuda::DeviceBuffer<cuda::Complex> staging(cuda::as_device_complex(std::span<const cplx>(host.scattering.values)));
+  cuda::host_chunk_to_device(staging.data(), layout, 0, n_zr, device.scattering.data());
+  device.specular.upload(cuda::as_device_complex(std::span<const cplx>(host.specular.values)));
+  gpu.apply(device);
+  cuda::device_to_host_chunk(device.scattering.data(), layout, 0, n_zr, staging.data());
+  std::vector<cplx> gpu_scattering(host.scattering.values.size());
+  std::vector<cplx> gpu_specular(host.specular.values.size());
+  staging.download(cuda::as_device_complex(std::span<cplx>(gpu_scattering)));
+  device.specular.download(cuda::as_device_complex(std::span<cplx>(gpu_specular)));
+
+  cpu.apply(host);
+  const double scattering_difference = relative_difference(host.scattering.values, gpu_scattering);
+  const double specular_difference = relative_difference(host.specular.values, gpu_specular);
+  EXPECT_LT(scattering_difference, 1e-13) << gpu.slab_points() << " points per slab of " << interaction_points;
+  EXPECT_LT(specular_difference, 1e-13);
+  // The stage changed both parts (the specular one through its coupling to the scattering grid).
+  EXPECT_GT(relative_difference(before.scattering.values, host.scattering.values), 1e-3);
+  EXPECT_GT(relative_difference(before.specular.values, host.specular.values), 1e-3);
 }
 
 // The merged GPU kinetic stage equals the CPU's T_Z + T_r stage followed by its T_xy stage, also

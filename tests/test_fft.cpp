@@ -27,6 +27,23 @@ std::vector<cplx> naive_dft(const std::vector<cplx>& x, double sign, double scal
   return y;
 }
 
+// An allowed FFT length from its factorisation, independent of fft_sizes.cpp: even, and n / 2 =
+// 2^a 3^i 5^j 7^k 11^m with i <= 2 and j, k, m <= 1 (ffts.f90 GetNearestFFTSize; its limits h <= 25
+// and n < 2^30 lie far above the sizes tested here).
+bool allowed_by_factorisation(int n) {
+  if (n < 2 || n % 2 != 0) return false;
+  int rest = n;
+  while (rest % 2 == 0) rest /= 2;
+  int threes = 0;
+  while (rest % 3 == 0) {
+    rest /= 3;
+    ++threes;
+  }
+  for (const int prime : {5, 7, 11})
+    if (rest % prime == 0) rest /= prime;
+  return threes <= 2 && rest == 1;
+}
+
 std::vector<double> test_signal(std::size_t n, double phase) {
   std::vector<double> x(n);
   for (std::size_t i = 0; i < n; ++i)
@@ -60,13 +77,42 @@ TEST(FftSizes, LowestSizes) {
   EXPECT_EQ(lowest_fft_size(50), 48);
   EXPECT_EQ(lowest_fft_size(2), 2);
   EXPECT_EQ(lowest_fft_size(1), 1);  // no allowed size: Fortran returns 1 as well
-  // Against a brute-force search over the allowed sizes.
+  // Against a brute-force search over the allowed sizes (from their factorisation).
   for (int n = 2; n <= 3000; ++n) {
     int expected = 2;
     for (int s = 2; s <= n; s += 2)
-      if (is_valid_fft_size(s)) expected = s;
+      if (allowed_by_factorisation(s)) expected = s;
     ASSERT_EQ(lowest_fft_size(n), expected) << "n = " << n;
   }
+}
+
+// The allowed sizes up to 3000, listed by their factorisation in this test (not by the loops of
+// fft_sizes.cpp): is_valid_fft_size accepts exactly them and nearest_fft_size finds the next one.
+TEST(FftSizes, ValidSizesFromTheirFactorisation) {
+  // The factorisation itself: the first allowed sizes, written out (the halves skip e.g. the prime
+  // 13, 25 = 5^2 and 27 = 3^3).
+  const std::vector<int> first = {2,  4,  6,  8,  10, 12, 14, 16, 18, 20, 22, 24, 28, 30, 32,  36, 40,
+                                  42, 44, 48, 56, 60, 64, 66, 70, 72, 80, 84, 88, 90, 96, 110, 112};
+  std::vector<int> listed;
+  for (int n = 1; n <= first.back(); ++n)
+    if (allowed_by_factorisation(n)) listed.push_back(n);
+  EXPECT_EQ(listed, first);
+
+  const int n_max = 3000;
+  int next_allowed = 0;  // the smallest allowed size >= n, found walking down from n_max
+  int n_allowed = 0;
+  for (int n = n_max; n >= 1; --n) {
+    const bool allowed = allowed_by_factorisation(n);
+    if (allowed) {
+      next_allowed = n;
+      ++n_allowed;
+    }
+    ASSERT_EQ(is_valid_fft_size(n), allowed) << "n = " << n;
+    if (next_allowed > 0) {
+      ASSERT_EQ(nearest_fft_size(n), next_allowed) << "n = " << n;
+    }
+  }
+  EXPECT_EQ(n_allowed, 125);  // the count of the same factorisation in a Python one-liner
 }
 
 TEST(Fftw, ComplexMatchesNaiveDftBothSigns) {
