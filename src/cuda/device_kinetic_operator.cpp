@@ -2,24 +2,13 @@
 // CPU twins: propagation/kinetic_operators.cpp, propagation/specular_operator.cpp
 #include "cuda/device_kinetic_operator.hpp"
 
-#include <algorithm>
-#include <complex>
-
 #include "cuda/kernels.hpp"
 
 namespace spodvr::cuda {
 
-namespace {
-
-using cplx = std::complex<double>;
-
-bool is_one(const cplx& c) { return c.real() == 1.0 && c.imag() == 0.0; }
-
-}  // namespace
-
 DeviceKineticOperator::DeviceKineticOperator(const ScatteringShape& s, const PropagationTables& tables,
                                              std::size_t max_fft_work)
-    : shape_(s), shift_(!std::all_of(tables.shift_forward.begin(), tables.shift_forward.end(), is_one)) {
+    : shape_(s), shift_(xy_momentum_shift_needed(tables.shift_forward)) {  // the CPU's test
   const std::int64_t n_zr = std::int64_t(s.nr) * s.nz;
   const std::int64_t n_xy = std::int64_t(s.nx) * s.ny;
 
