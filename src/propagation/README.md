@@ -436,8 +436,11 @@ parity of J_in.
 
 **The grid** is nφ equidistant φ_k = 2πk/nφ and Gauss–Legendre points θ_t with weights w_t. For a homonuclear
 molecule the θ grid is the half cos θ ≥ 0 of the (JMax+1)-point rule, with doubled weights (θ = π/2 not doubled).
-That suffices because P̄_J^m(−x) = (−1)^(J+m) P̄_J^m(x): within one mJ block all functions share one parity in
-cos θ, so the products the transform needs are even. Source: `src/grids/angular_grid.cpp`.
+That suffices for two reasons. The round trip B†B: P̄_J^m(−x) = (−1)^(J+m) P̄_J^m(x), so within one mJ block all
+functions share one parity in cos θ and the products the transform needs are even. The potential step: V of two
+identical nuclei is symmetric under their exchange, V(π − θ, φ + π) = V(θ, φ), and with one J parity
+ψ(π − θ, φ + π) = ±ψ(θ, φ); the lower hemisphere repeats the upper one at φ + π, which is on the grid because nφ
+is even. A PES without that exchange symmetry must not run with `HomoNuc`. Source: `src/grids/angular_grid.cpp`.
 
 **B** maps the coefficients c_JmJ to quadrature-weighted values on the grid:
 
