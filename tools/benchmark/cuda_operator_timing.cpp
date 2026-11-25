@@ -5,7 +5,8 @@
 // times are those of the GPU work.
 // Usage: spodvr_cuda_operator_timing <input.json> [repetitions]
 // It calls the kernels and launchers directly, so it holds their raw device pointers (a listed exception of the
-// pointer rule, docs/developer_guide.md); the buffers they point into are owned by the operators' DeviceBuffers.
+// pointer rule, docs/developer_guide.md); the buffers they point into are DeviceBuffers (the operators', the wave
+// packet's and the tool's own).
 #include <cuda_runtime_api.h>
 
 #include <algorithm>

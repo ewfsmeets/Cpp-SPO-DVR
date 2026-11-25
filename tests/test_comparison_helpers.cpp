@@ -952,8 +952,9 @@ TEST(GateComparisons, Fort25ReadsAThreeDigitExponent) {
 }
 
 // printed_text_tolerance reads every exponent form gfortran prints: a three-digit exponent without its letter (it
-// read that as exponent 0 before: half a unit of 1e-7 instead of 1e-107), E, D, none; a text without a decimal point
-// (NaN, a non-number) gets a NaN tolerance, so every comparison with it fails.
+// read that as exponent 0 before: half a unit of 1e-7 instead of 1e-107), E, D, none; any other text (NaN, Infinity,
+// ****, a two-digit exponent without its letter, a lowercase e) gets a NaN tolerance, so every comparison with it
+// fails.
 TEST(GateComparisons, PrintedToleranceReadsEveryExponentForm) {
   EXPECT_DOUBLE_EQ(printed_text_tolerance("0.1234567-100", 0.0), 5.05e-108);
   EXPECT_DOUBLE_EQ(printed_text_tolerance("0.1234567+100", 0.0), 5.05e92);
@@ -962,6 +963,9 @@ TEST(GateComparisons, PrintedToleranceReadsEveryExponentForm) {
   EXPECT_DOUBLE_EQ(printed_text_tolerance("0.1234567", 0.0), 5.05e-8);
   EXPECT_TRUE(std::isnan(printed_text_tolerance("NaN", 0.0)));
   EXPECT_TRUE(std::isnan(printed_text_tolerance("*********", 1e-20)));
+  EXPECT_TRUE(std::isnan(printed_text_tolerance("Infinity", 0.0)));
+  EXPECT_TRUE(std::isnan(printed_text_tolerance("0.1234567-10", 0.0)));
+  EXPECT_TRUE(std::isnan(printed_text_tolerance("0.1234567e-05", 0.0)));
 }
 
 // The second block's header with diffraction order 2: its row matches no C++ state of that order.

@@ -19,7 +19,8 @@ void zero_device_memory(void* device, std::size_t bytes);
 
 // An array in GPU memory (RAII, like std::vector but without element access from the host).
 // Device pointers are plain pointers by nature: they are the documented exception to the
-// pointer rule inside src/cuda/ and never leave it.
+// pointer rule inside src/cuda/ and the GPU timing tool (tools/benchmark/cuda_operator_timing.cpp);
+// the CUDA tests only pass data() straight into the backend's calls.
 template <class T>
 class DeviceBuffer {
  public:

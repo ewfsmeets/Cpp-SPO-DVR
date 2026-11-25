@@ -187,78 +187,109 @@ def stationary_s(run: Path, slip: str = "", partial: bool = False) -> tuple[np.n
     return sums.z_bohr[rows], out, indices
 
 
-def stationary_s_differences(run: Path, slip: str = "") -> np.ndarray:
-    """Per energy: max over Z and over s_matrix.tsv's open channels but the initial one of |S_f(Z) - S_tsv|, over that
-    energy's largest |S_tsv|."""
+def stationary_channels(run: Path, slip: str = "") -> list[tuple[int, int, int, complex, np.ndarray, float]]:
+    """The checked channels: every open channel of s_matrix.tsv at the sums' energies but the initial one, as
+    (energy index e, v, j, S_tsv, S_f(Z) of stationary_s, k_f)."""
     info = read_run_info(run)
     bk = read_bk_coefficients(run / "bk_coefficients.bin")
     _, s_of_z, indices = stationary_s(run, slip)
     table = read_s_matrix(run / "s_matrix.tsv")
-    collision = analysis_energies(info).collision_ev
+    energies = analysis_energies(info)
     state_of = {tuple(label[:4]): i for i, label in enumerate(bk.labels)}
     initial = (info.data["initial_state"]["j"], info.data["initial_state"]["mJ"], 0, 0)
     n_states = bk.labels.shape[0]
-    worst, largest = np.zeros(len(indices)), np.zeros(len(indices))
+    mass = info.data["molecule"]["total_mass"]
+    channels = []
     for row in range(len(table["E_coll"])):
-        ie = int(np.argmin(np.abs(collision - table["E_coll"][row])))
+        ie = int(np.argmin(np.abs(energies.collision_ev - table["E_coll"][row])))
         key = tuple(int(table[c][row]) for c in ("j", "mJ", "n", "m"))
         if ie not in indices or key == initial:
             continue
-        e = indices.index(ie)
+        v, state = int(table["v"][row]), state_of[key]
+        k_f = float(np.sqrt(2 * mass * (energies.total_hartree[ie] - bk.channel_energy_hartree[v, state])))
         s_file = complex(table["Re_S"][row], table["Im_S"][row])
-        s_here = s_of_z[e, :, state_of[key] + n_states * int(table["v"][row])]
-        worst[e] = np.max([worst[e], np.max(np.abs(s_here - s_file))])  # np.max keeps a NaN
+        channels.append((indices.index(ie), v, key[0], s_file, s_of_z[indices.index(ie), :, state + n_states * v], k_f))
+    return channels
+
+
+def stationary_s_differences(run: Path, slip: str = "", planted: np.ndarray | None = None) -> np.ndarray:
+    """Per energy: max over Z and over the checked channels of |S_f(Z) - S_tsv|, over that energy's largest |S_tsv|.
+    planted (negative tests): per energy, a relative error put into the data: at the middle Z point of the energy's
+    largest channel, S_f(Z) becomes S_tsv + planted * largest |S_tsv|."""
+    channels = stationary_channels(run, slip)
+    n_energies = 1 + max(c[0] for c in channels)
+    largest = np.zeros(n_energies)
+    for e, _, _, s_file, _, _ in channels:
         largest[e] = np.max([largest[e], abs(s_file)])
+    worst = np.zeros(n_energies)
+    planted_at = set()
+    for e, _, _, s_file, s_here, _ in channels:
+        if planted is not None and e not in planted_at and abs(s_file) == largest[e]:
+            s_here = s_here.copy()
+            s_here[len(s_here) // 2] = s_file + planted[e] * largest[e]
+            planted_at.add(e)
+        worst[e] = np.max([worst[e], np.max(np.abs(s_here - s_file))])  # np.max keeps a NaN
     return worst / largest
 
 
 def split_operator_drift(run: Path) -> np.ndarray:
-    """Per energy of the sums: the phase drift of the split operator's propagated momentum against k_f over the
-    checked Z range, delta / v * (Z range) = |delta| M / k0 * (valid top - zasymp), with delta the Strang step's
-    energy shift of the initial vibrational state (strang_shift_hartree): 3.15e-4 and 2.78e-4 for dailight_rho_e
-    (delta 6.89e-7 hartree, k0 9.72 and 11.02 bohr^-1, 1.21 bohr). An estimate, not a strict bound; it is added to
-    the truncation indicator."""
-    info, sums = read_run_info(run), read_energy_resolved(run)
-    energies = analysis_energies(info)
-    k0 = energies.k0_per_bohr[[int(np.argmin(np.abs(energies.collision_ev - e))) for e in sums.collision_ev]]
-    span = valid_region(info).z_high_bohr - info.data["z_asymptotic"]
-    return abs(strang_shift_hartree(run, info)) * info.data["molecule"]["total_mass"] / k0 * span
+    """Per energy of the sums: the largest phase drift of a checked channel f over the checked Z range, relative to
+    the energy's largest |S_tsv|. The split operator propagates channel f with the kinetic energy E - E_f - delta_f
+    (delta_f: the Strang step's energy shift of phi_{v_f j_f}, strang_shift_hartree), so its momentum differs from
+    k_f by |delta_f| M / k_f, and S_f(Z) turns away from S_f (analysed at Zana) by that times |Z - Zana|:
+    |delta_f| M / k_f * max |Z - Zana| * |S_f| / max |S|. For dailight_rho_e (delta 6.84e-7 to 6.89e-7 hartree,
+    Z 8.0 to 9.21 bohr, Zana 8.0): 2.95e-4 and 2.64e-4, both from the channel (n, m) = (-1, -1) (k_f 10.37 and 11.60
+    bohr^-1, above k0 at this oblique incidence). An estimate, not a strict bound; it is added to the truncation
+    indicator."""
+    info = read_run_info(run)
+    channels = stationary_channels(run)
+    z_ana = info.data["analysis"]["z_ana"]
+    span = max(valid_region(info).z_high_bohr - z_ana, z_ana - info.data["z_asymptotic"])
+    mass = info.data["molecule"]["total_mass"]
+    n_energies = 1 + max(c[0] for c in channels)
+    largest, drift = np.zeros(n_energies), np.zeros(n_energies)
+    shift = {}  # delta per (v, j), computed once each
+    for e, v, j, s_file, _, _ in channels:
+        largest[e] = np.max([largest[e], abs(s_file)])
+        if (v, j) not in shift:
+            shift[(v, j)] = abs(strang_shift_hartree(run, info, v, j))
+    for e, v, j, s_file, _, k_f in channels:
+        drift[e] = np.max([drift[e], shift[(v, j)] * mass / k_f * span * abs(s_file)])
+    return drift / largest
 
 
 def stationary_check(run: Path, planted: float | None = None) -> int:
     """The number of energies at which S_f(Z) differs from s_matrix.tsv by more than the truncation indicator of
-    the same quantity (the partial sums against the final ones) plus split_operator_drift. planted: an extra
-    relative error of that fraction of each energy's margin (tolerance - measured), for the negative tests."""
-    relative = stationary_s_differences(run)
+    the same quantity (the partial sums against the final ones) plus split_operator_drift. planted (negative tests):
+    an error of that fraction of each energy's tolerance, put into the data (stationary_s_differences)."""
     _, final, _ = stationary_s(run)
     _, partial, _ = stationary_s(run, partial=True)
     largest = np.max(np.abs(final), axis=(1, 2))
     tolerance = np.max(np.abs(final - partial), axis=(1, 2)) / largest + split_operator_drift(run)
-    if planted is not None:
-        relative = relative + planted * (tolerance - relative)
+    relative = stationary_s_differences(run, planted=None if planted is None else planted * tolerance)
     assert len(relative) == 2
     return int(np.sum(~(relative <= tolerance)))  # a NaN counts as failing
 
 
 def test_split_operator_drift_matches_its_derivation(fixture_runs: Path) -> None:
-    """The drift term per energy, from delta = 6.891e-7 hartree (2026-11-25): 3.15e-4 and 2.78e-4 (to 1 %)."""
+    """The drift term per energy (2026-11-25): 2.95e-4 and 2.64e-4 (to 1 %)."""
     drift = split_operator_drift(fixture_runs / "dailight_rho_e")
-    assert np.allclose(drift, [3.15e-4, 2.78e-4], rtol=0.01), drift
+    assert np.allclose(drift, [2.95e-4, 2.64e-4], rtol=0.01), drift
 
 
 def test_stationary_channels_hold_the_s_matrix_at_every_z(fixture_runs: Path) -> None:
     """dailight_rho_e at both energies: S_f(Z) of the plot tool's psi_E equals s_matrix.tsv's S_f at every Z between
     zasymp (8.0) and the valid region's top (9.2 bohr) for every open non-initial channel, within the truncation
     indicator of the same quantity (the partial sums against the final ones: 2.2e-3, 9.3e-4 of max |S|) plus the
-    split operator's drift (3.15e-4, 2.78e-4); measured 1.1e-3, 7.1e-4 (2026-11-25). The only check of psi_E at
+    split operator's drift (2.95e-4, 2.64e-4); measured 1.1e-3, 7.1e-4 (2026-11-25). The only check of psi_E at
     oblique incidence (k0 from the parallel momentum, the weight) and of the valid region's top."""
     assert stationary_check(fixture_runs / "dailight_rho_e") == 0
 
 
 @pytest.mark.parametrize(("planted", "failing"), [(1.01, 2), (0.99, 0)])
 def test_an_error_at_the_tolerance_fails_at_both_energies(fixture_runs: Path, planted: float, failing: int) -> None:
-    """Negative test of the per-energy tolerance: an extra relative error of 1.01 times each energy's margin fails
-    both energies, one of 0.99 times fails none."""
+    """Negative test of the per-energy tolerance through the data: S_f at one Z point of one channel per energy off
+    by 1.01 times the tolerance fails both energies, by 0.99 times none."""
     assert stationary_check(fixture_runs / "dailight_rho_e", planted) == failing
 
 
@@ -286,18 +317,21 @@ def wall_hartree(z_bohr: np.ndarray, info: RunInfo) -> np.ndarray:
     return np.where(z_bohr < WALL_Z_MAX, factor * v_z, 0.0) / info.hartree_to_ev
 
 
-def strang_shift_hartree(run: Path, info: RunInfo) -> float:
-    """delta: the effective energy of phi_v under one Strang step of the r motion, exp(-i T dt/2) [ROpt]
-    exp(-i V_asy dt) exp(-i T dt/2) on numpy's FFT grid, minus its FGH energy: -arg <phi|U|phi> / dt - E_v."""
+def strang_shift_hartree(run: Path, info: RunInfo, v: int | None = None, j: int | None = None) -> float:
+    """delta: the effective energy of phi_vj (default: the initial state) under one Strang step of the r motion,
+    exp(-i T dt/2) [ROpt] exp(-i (V_asy + j (j + 1) / (2 mu r^2)) dt) exp(-i T dt/2) on numpy's FFT grid (the
+    rotational energy acts with V_asy: src/propagation/propagation_tables.cpp), minus its FGH energy:
+    -arg <phi|U|phi> / dt - E_vj."""
+    v = info.data["initial_state"]["v"] if v is None else v
+    j = info.data["initial_state"]["j"] if j is None else j
     gas = read_gas_phase_states(run / "gas_phase_states.dat")
-    state = np.flatnonzero((gas.v == info.data["initial_state"]["v"]) & (gas.j == info.data["initial_state"]["j"]))[0]
+    state = np.flatnonzero((gas.v == v) & (gas.j == j))[0]
     phi, r = gas.wave_functions[state], gas.r_bohr
     dt, mu = info.data["times"]["dt_step"], info.data["molecule"]["reduced_mass"]
     k = 2 * np.pi * np.fft.fftfreq(len(r), r[1] - r[0])
     half_kinetic = np.exp(-1j * k**2 / (2 * mu) * dt / 2)
-    potential = absorber_factors(info, absorbers_on(info, "r", "scattering"), r) * np.exp(
-        -1j * read_asymptotic_potential(run / "asymptotic_potential.dat").v_hartree * dt
-    )
+    v_r = read_asymptotic_potential(run / "asymptotic_potential.dat").v_hartree + j * (j + 1) / (2 * mu * r * r)
+    potential = absorber_factors(info, absorbers_on(info, "r", "scattering"), r) * np.exp(-1j * v_r * dt)
     stepped = np.fft.ifft(half_kinetic * np.fft.fft(potential * np.fft.ifft(half_kinetic * np.fft.fft(phi))))
     amplitude = np.sum(phi * stepped) / np.sum(phi * phi)
     return float(-np.angle(amplitude) / dt - gas.energy_hartree[state])
