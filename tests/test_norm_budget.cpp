@@ -270,3 +270,28 @@ TEST(NormBudgetFiles, ProjectedSizeAndMemoryItem) {
             std::uintmax_t(small_hardwall_analysis_steps) * (6 + 6 + 1 + 1 + 1) * sizeof(double));
   EXPECT_EQ(NormBudget(low.config, low.grids, low.tables).absorbers().size(), 6u);
 }
+
+// record_interval_au is the analysis step the program uses (nanspo dtStep): dtAna for the hard-wall input, and
+// 3 * 0.3 = 0.8999999999999999 for dtStep 0.3, dtAna 0.9 (the ratio is exactly 3.0 in double, so the input is valid).
+TEST(NormBudgetFiles, RecordIntervalIsTheAnalysisStepTheProgramUses) {
+  TemporaryDirectory dir("norm_budget_interval");
+  nlohmann::json json = small_hardwall_input();
+  json["NormBudget"] = true;
+  nlohmann::json decimal = json;
+  decimal["dtStep"] = 0.3;
+  decimal["dtAna"] = 0.9;
+  decimal["dtAve"] = 9.0;
+  decimal["nStep"] = 3000;
+  decimal["tEnd"] = 900.0;
+  int k = 0;
+  for (const auto& [input, expected] : {std::pair{json, 10.0}, std::pair{decimal, 3 * 0.3}}) {
+    const Config config = build_config(parse_input(input));
+    const fs::path out = dir.path() / std::to_string(k++);
+    {
+      const NormBudgetFiles files(out, config, {});
+    }
+    std::ifstream manifest(out / "norm_budget" / "manifest.json");
+    EXPECT_EQ(nlohmann::json::parse(manifest)["record_interval_au"].get<double>(), expected) << input["dtAna"];
+  }
+  EXPECT_NE(3 * 0.3, 0.9);  // the second case differs from dtAna in the last bit
+}

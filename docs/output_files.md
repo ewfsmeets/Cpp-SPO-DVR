@@ -134,7 +134,11 @@ A restart writes the records of its own segment into its own output directory, f
 that time is on the record grid of the earlier run, its first record repeats that run's last one (the
 same wave function: bitwise equal on the same device and build, equal to rounding when the restart runs on
 another device); the plot tool joins the segments and drops the repeat after checking that it equals the earlier
-record to 1e-12 of its largest value.
+record to 1e-12 of its largest value. Each manifest's `record_interval_au` is the interval the program uses
+between records, from its truncated counts times dtStep: within 1e-12 of the input key (dtAna, dtFrames; dtAve
+up to one dtAna less when dtAve lies just below a multiple), and not always bitwise equal to it (3 · 0.3 is
+0.8999999999999999). Before 2026-11-25 the manifests held the input keys, so a segment written before then joins
+a later one only where the two values are equal, as they are for every whole ratio exact in binary.
 
 ### `densities/` (`writeDensities`)
 
@@ -147,7 +151,7 @@ One record at tStart and at every dtAve, the times of `averages.dat`:
 | `surface_index.bin` | `<i4` [] | 0-based Z index of the specular analysis surface (it moves until it is fixed, `DynamZSpAna`) |
 | `norm.bin` | `<f8` [] | the norm of the `averages.dat` row at this time |
 
-The manifest adds `record_interval_au` (dtAve) and `grids` (`z_start`, `dz`, `nz`, `nz_specular`,
+The manifest adds `record_interval_au` (the averaging interval, nave · nanspo · dtStep) and `grids` (`z_start`, `dz`, `nz`, `nz_specular`,
 `r_start`, `dr`, `nr`; both Z grids start at `z_start` with the same spacing). The records are the
 numbers the averages are computed from, so the sum of both datasets over all cells is the norm (to
 rounding), and writing them adds no computation to the time loop. A probability per cell divided by
@@ -179,7 +183,7 @@ With `FrameExtras` the record holds, after those, the datasets of the extras tha
 At each Z the first three sum to the frame's probability at that Z (`pop_jmj_z` summed over the states);
 `prob_kr` sums to the probability on the scattering grid (`prob_zrxy` summed), `prob_kz_spec` to the norm of the
 specular wave (Parseval, and completeness for `vibration`). The manifest adds
-`record_interval_au` (dtFrames), `grids` (`z_start`, `dz`, `nz`, `nz_specular`, `r_start`,
+`record_interval_au` (the frame interval, analyses per frame · nanspo · dtStep), `grids` (`z_start`, `dz`, `nz`, `nz_specular`, `r_start`,
 `dr`, `nr`, `nx`, `ny`), `rotational_states` ([J, mJ] per state), `initial_index` (the state that holds χ),
 `sites` (as in `potential/`) and, with `FrameExtras`, `extras`: `names`, with `angular` its `theta_rad`, `theta_weights`, `phi_rad` and
 `homonuclear`, with `vibration` its `vibration_j_values`. The sum of `prob_zrxy` and `prob_tail_zr` is the norm (ψ_scat holds no
@@ -209,7 +213,7 @@ loss = ρ_start (1 − F) + (ρ_end − F ρ_start) (γ/(1 − F) − 1),
 which reduces to ρ_start (1 − F) without motion and to ρ γ for a steady cell. The indicator is γ²/6 of the cell's
 inflow ρ_end − ρ_start + loss: the leading distance between the loss and the mean of the two one-sided estimates
 ρ_start (1 − F) and ρ_end (1/F − 1), so it falls with dtAna squared. Where a Z absorber and the r absorber overlap, the
-cell's loss and indicator are shared in the ratio of their V_opt. The manifest adds `record_interval_au` (dtAna),
+cell's loss and indicator are shared in the ratio of their V_opt. The manifest adds `record_interval_au` (the analysis step nanspo · dtStep),
 `window` (`steps` n, `dt_step`) and `absorbers`, one object per entry of the loss datasets: `name` (`ZOpt`, `ZOptLow`,
 `ROpt`, `ZSpOpt`, `ZSpOptLow`) and `grid` (`scattering` or `specular`; `ROpt` acts on both and has one entry per
 grid).

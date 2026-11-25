@@ -153,7 +153,9 @@ nlohmann::ordered_json frame_manifest_fields(const Config& config, const Spatial
   const InputParameters& p = config.input;
   nlohmann::ordered_json states = nlohmann::ordered_json::array();
   for (int irot = 0; irot < basis.size(); ++irot) states.push_back({basis.j(irot), basis.mj(irot)});
-  nlohmann::ordered_json fields = {{"record_interval_au", *p.dt_frames},
+  // The frame interval the program uses (analyses per frame times nanspo dtStep), dtFrames within 1e-12.
+  const double record_interval = config.derived.analyses_per_frame * config.derived.analysis_time_step;
+  nlohmann::ordered_json fields = {{"record_interval_au", record_interval},
                                    {"grids",
                                     {{"z_start", grids.z_scattering.start()},
                                      {"dz", grids.z_scattering.spacing()},

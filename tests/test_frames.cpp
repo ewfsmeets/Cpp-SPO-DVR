@@ -455,3 +455,31 @@ TEST(FrameExtras, P2ElementsEqualTheQuadrature) {
   }
   EXPECT_EQ(checked, 231);  // sum over m of (7 - |m|)^2: the (J, J') pairs with both J >= |m|
 }
+
+// record_interval_au is the frame interval the program uses (analyses per frame times nanspo dtStep): dtFrames for
+// the frames input (10 analyses of 10 a.u.), and 3 * (3 * 0.3) = 2.6999999999999997 for dtStep 0.3, dtAna 0.9,
+// dtFrames 2.7 (tEnd 810 = 300 frames).
+TEST(FrameFiles, RecordIntervalIsTheFrameIntervalTheProgramUses) {
+  TemporaryDirectory dir("frames_interval");
+  nlohmann::json decimal = frames_input();
+  decimal["dtStep"] = 0.3;
+  decimal["dtAna"] = 0.9;
+  decimal["dtAve"] = 9.0;
+  decimal["dtFrames"] = 2.7;
+  decimal["nStep"] = 2700;
+  decimal["tEnd"] = 810.0;
+  int k = 0;
+  for (const auto& [input, expected] : {std::pair{frames_input(), 100.0}, std::pair{decimal, 3 * (3 * 0.3)}}) {
+    const Config config = build_config(parse_input(input));
+    const SpatialGrids grids = make_spatial_grids(config);
+    const AngularGrid angular = make_angular_grid(config);
+    const RotationalBasis basis(angular, config.input.j_in, config.input.mj_in);
+    const fs::path out = dir.path() / std::to_string(k++);
+    {
+      const FrameFiles files(out, config, grids, angular, basis, frame_layout(config, grids, basis, {}));
+    }
+    std::ifstream manifest(out / "frames" / "manifest.json");
+    EXPECT_EQ(nlohmann::json::parse(manifest)["record_interval_au"].get<double>(), expected) << input["dtFrames"];
+  }
+  EXPECT_NE(3 * (3 * 0.3), 2.7);  // the second case differs from dtFrames in the last bit
+}

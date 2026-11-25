@@ -103,3 +103,22 @@ TEST(DensitiesFiles, ReplacedPlotDataCountsAsFree) {
   EXPECT_EQ(replaced_plot_data_bytes(dir.path(), sizes), 320u);
   EXPECT_GT(free_space(dir.path() / "not" / "yet" / "made"), 0u);  // its nearest existing ancestor's
 }
+
+// record_interval_au is the averaging interval the program uses, the truncated counts times dtStep: dtAve itself
+// for the hard-wall input (10 analyses of 5 steps of 2 a.u. = 100), and 90 for dtAve 5e-13 below 100, which counts
+// 9 analyses per average (analysis D4 allows it).
+TEST(DensitiesFiles, RecordIntervalIsTheAveragingIntervalTheProgramUses) {
+  TemporaryDirectory dir("densities_interval");
+  for (const auto& [dt_averages, expected] : {std::pair{100.0, 100.0}, std::pair{100.0 - 5e-13, 90.0}}) {
+    nlohmann::json json = small_hardwall_input();
+    json["writeDensities"] = true;
+    json["dtAve"] = dt_averages;
+    const Config config = build_config(parse_input(json));
+    const fs::path out = dir.path() / std::to_string(config.derived.analyses_per_average);
+    {
+      const DensitiesFiles files(out, config, make_spatial_grids(config));
+    }
+    std::ifstream manifest(out / "densities" / "manifest.json");
+    EXPECT_EQ(nlohmann::json::parse(manifest)["record_interval_au"].get<double>(), expected) << dt_averages;
+  }
+}
