@@ -108,8 +108,9 @@ def suggested_keys(
 def fit_time(p: InputParameters, t_end: float) -> dict[str, float | int]:
     """tEnd and nStep for a propagation of at least `t_end` (a.u.): whole averaging intervals dtAve after
     tStart, so tEnd = tStart + nStep dtStep and the propagation time is a whole multiple of dtAna and dtAve
-    (the program's checks), in whole multiples of the program's truncated time steps per analysis too (a decimal
-    dtAna / dtStep such as 1.2 / 0.1 truncates to 11: docs/fortran_deviations.md, analysis D4)."""
+    (the program's checks), in whole multiples of the program's truncated time steps per analysis too. For a valid
+    dtAna that is dtAna / dtStep itself; a decimal ratio such as 1.2 / 0.1 truncates to 11, and the program refuses
+    such a dtAna (docs/fortran_deviations.md, analysis D5), which the fitted nStep leaves as the only time error."""
     steps_per_average = math.lcm(round(p.dt_averages / p.time_step), steps_per_analysis(p))
     intervals = max(1, math.ceil((t_end - p.t_start) / (steps_per_average * p.time_step) - 1e-9))
     n_steps = intervals * steps_per_average

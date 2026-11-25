@@ -245,7 +245,8 @@ wall a rest norm of 1.5e-5 gave errors in P up to 6.5e-3, and with the line fixe
 
 - **Energy resolution** ≈ 2π/T (6.8 meV at 25 000 a.u.). A finer `NrOfEs` spacing interpolates.
 - **`dtAna`**: 2π/`dtAna` must exceed the span of total energies (incl. internal energy) in the
-  analysis (8.5 eV at 20 a.u.).
+  analysis (8.5 eV at 20 a.u.). It must be a whole multiple of `dtStep` whose ratio is exact in
+  binary (20 / 2.5 = 8); the program refuses 2.4 / 0.8 = 2.9999999999999996, which it would truncate to 2.
 - **Errors no norm shows**: an absorber returns part of a channel's outgoing wave across the
   analysis line. It reflects √R of the amplitude; the transmitted part wraps round to ZStart, is
   reflected by the wall and crosses the absorber again, so about T comes back too (when V at ZStart

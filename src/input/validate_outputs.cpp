@@ -5,10 +5,10 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <limits>
 #include <set>
 
 #include "core/real_compare.hpp"
-#include "input/process.hpp"
 #include "input/validation_helpers.hpp"
 
 namespace spodvr {
@@ -46,17 +46,6 @@ bool whole_multiple(double t, double dt, double tolerance) {
   return std::abs(ratio - validation::nint(ratio)) <= tolerance;
 }
 
-// dtAna / dtStep must be a whole number for a key whose records follow the analysis steps (the program truncates
-// it, Fortran INT, so the records would come at other times than dtAna says); `key` names the key that needs it.
-void check_whole_analysis_steps(const InputParameters& p, const std::string& key) {
-  using validation::nint;
-  const double steps = p.dt_analysis / p.time_step;
-  // (< 1 is rejected by validate_input before, analysis D4; kept as a guard.)
-  check(steps_per_analysis(p) != nint(steps) || steps_per_analysis(p) < 1, "dtAna",
-        "dtAna / dtStep is not a whole number with " + key +
-            " (the program truncates it, so its records would come at other times than dtAna says)");
-}
-
 // dtFrames (C++ only checks): frames line up with the analysis steps (to an absolute 1e-12, as the Fortran's dtAna
 // checks) and, across restarts, with tStart and tEnd (relative to the frame interval).
 void check_frames(const InputParameters& p, bool propagates) {
@@ -67,9 +56,13 @@ void check_frames(const InputParameters& p, bool propagates) {
   const double dt = *p.dt_frames;
   check(p.write_2d_pes, "dtFrames", "write2DPES stops the run after the cut of the PES, before the propagation");
   check(!propagates, "dtFrames", "only a propagating run (a new run or a restart) writes frames");
-  check_whole_analysis_steps(p, "dtFrames");
   check(!(dt > 0.0), "dtFrames", "dtFrames <= 0.");
   check(rlt(dt, p.dt_analysis), "dtFrames", "dtFrames < dtAna.");
+  // The program holds the analyses per frame in an int (analysis D4); the rounding of the next check also needs a
+  // ratio within the range of a long.
+  check(dt / p.dt_analysis > std::numeric_limits<int>::max(), "dtFrames",
+        std::format("dtFrames / dtAna = {} is above {}, the largest number of analyses per frame the program can hold.",
+                    dt / p.dt_analysis, std::numeric_limits<int>::max()));
   check(rne(nint(dt / p.dt_analysis) * p.dt_analysis, dt), "dtFrames", "dtFrames must be a whole multiple of dtAna.");
   check(!whole_multiple(p.t_start, dt, frame_grid_tolerance), "dtFrames",
         "tStart must be a whole multiple of dtFrames (the frames of a restart continue those of the run before)");
@@ -171,7 +164,6 @@ void validate_output_keys(const Config& config) {
   if (p.norm_budget) {  // NormBudget: one record per analysis window of the propagation
     check(p.write_2d_pes, "NormBudget", "write2DPES stops the run after the cut of the PES, before the propagation");
     check(!propagates, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget");
-    check_whole_analysis_steps(p, "NormBudget");
   }
 }
 

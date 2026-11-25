@@ -89,13 +89,16 @@ def test_time_is_fitted_to_whole_averaging_intervals() -> None:
 
 
 def test_time_fit_keeps_whole_truncated_analysis_steps() -> None:
-    """dtStep 0.1 with dtAna = dtAve = 1.2: the program counts INT(1.2 / 0.1) = 11 time steps per analysis
-    (analysis D4), so nStep is fitted to multiples of lcm(12, 11) = 132 steps, which its time checks accept."""
+    """dtStep 0.1 with dtAna = dtAve = 1.2: the program counts INT(1.2 / 0.1) = 11 time steps per analysis, so
+    nStep is fitted to multiples of lcm(12, 11) = 132 steps. The only time error left is the program's refusal of
+    that dtAna (analysis D5: not a whole multiple of dtStep in binary)."""
     p = replace(load_parameters(DZ_INPUT), time_step=0.1, dt_analysis=1.2, dt_averages=1.2)
     fitted = fit_time(p, 100.0)
     check_equal((fitted["n_steps"] % 132, fitted["n_steps"]), (0, 1056), "nStep")
     findings = validate_input(replace(p, **fitted), DAI_LIGHT_SYSTEM, 15.0)
-    check([f for f in findings if f.key in ("dtAna", "dtAve", "tEnd")] == [], f"time findings: {findings}")
+    time_findings = [f for f in findings if f.key in ("dtAna", "dtAve", "tEnd")]
+    check_equal(len(time_findings), 1, f"time findings: {time_findings}")
+    check("is not a whole multiple of dtStep" in time_findings[0].message, f"time findings: {time_findings}")
 
 
 def test_memory_must_fit() -> None:

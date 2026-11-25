@@ -13,18 +13,19 @@ The short entries are in [fortran_deviations.md](../fortran_deviations.md), unde
 The sections cover the flux analysis checks (flux Q1, flux Q2), the default strength that the
 Fortran keeps for an absorber energy of 0 (absorber D1), the optical potentials at the low end
 of the Z grid that upstream 5.24 added (low-Z D1–D4), the number of analysis energies
-(analysis D1), dtAna or dtAve just below a multiple of dtStep or dtAna (analysis D4, open in the Fortran), and three
-checks found by the audit of 2026-11-25 ([README.md](README.md#the-audit-of-2026-11-25)): an r absorber that starts at the first r
-point (input Q1), `nPhisOptimal` with a C3v or C3 potential (input Q2), and the absolute tolerance of the time checks
+(analysis D1), dtAna or dtAve just below a multiple of dtStep or dtAna (analysis D4, open in the Fortran),
+dtAna not a whole multiple of dtStep (analysis D5, open in the Fortran), and three checks found by the audit of
+2026-11-25 ([README.md](README.md#the-audit-of-2026-11-25)): an r absorber that starts at the first r point
+(input Q1), `nPhisOptimal` with a C3v or C3 potential (input Q2), and the absolute tolerance of the time checks
 (input Q3).
 
 **Status (2026-11-24):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
 analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
 NaN), and the C++ follows the fixed checks. The reference of the port is r1727 since 2026-11-23, so it has them.
-Analysis D4 is still open in the Fortran (r1727 included); the C++ rejects those inputs. Each section starts with
-its status. The demonstrations of the fixed checks show the Fortran before those fixes (5.19 and r1713); those of
-analysis D4 ran 5.19 and r1727. Input Q1–Q3 (2026-11-25) are open in r1727 and not yet reported upstream; their
-demonstrations ran r1727 and the C++ at git `48e5bdd`.
+Analysis D4 and D5 are still open in the Fortran (r1727 included); the C++ rejects those inputs. Each section
+starts with its status. The demonstrations of the fixed checks show the Fortran before those fixes (5.19 and r1713);
+those of analysis D4 ran 5.19 and r1727, that of analysis D5 r1727. Input Q1–Q3 (2026-11-25) are open in r1727 and
+not yet reported upstream; their demonstrations ran r1727 and the C++ at git `48e5bdd`.
 
 ## The demonstration runs
 
@@ -560,8 +561,8 @@ times, and no fort.25 is written.
 The ratios are truncated. A value up to 1e-12 below a multiple passes the tolerant checks and counts one less, and
 so does an ordinary decimal ratio that is not exact in binary: 1.2 / 0.1 = 11.999999999999998 gives 11 time steps
 per analysis (likewise 0.3 / 0.1, 0.6 / 0.2, 2.4 / 0.2). The Fortran never checks that dtAna is a whole multiple
-of dtStep (dtAna 5 with dtStep 2 gives 2 steps per analysis); the C++ checks it only when dtFrames or NormBudget is
-set (`check_whole_analysis_steps`, `src/input/validate_outputs.cpp`). The sites of the two SIGFPEs below are
+of dtStep (dtAna 5 with dtStep 2 gives 2 steps per analysis); the C++ has refused such a dtAna since analysis D5
+(next section). The sites of the two SIGFPEs below are
 identified from where the output stops and the code (the backtraces carry no symbols).
 
 - **dtAna just below dtStep:** nanspo = 0. The Fortran stops with SIGFPE (the build traps no floating-point
@@ -597,7 +598,8 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
 
 - `src/input/validate.cpp` (`validate_input`) adds three exact checks after the tolerant ones, on the ratios
   dtAna / dtStep and dtAve / dtAna themselves: a ratio below 1 (truncated to 0) is rejected, and nStep must be a
-  multiple of the truncated dtAna / dtStep. Each case above is an input error (exit code 2):
+  multiple of the truncated dtAna / dtStep. Each case above was an input error (exit code 2) when the checks came
+  (2026-11-24):
 
   ```text
   Input error: dtAna: dtAna = 1.9999999999995 lies within the 1e-12 tolerance below dtStep = 2, so dtAna / dtStep truncates to 0 time steps per analysis; use dtAna >= dtStep.
@@ -605,21 +607,73 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
   Input error: dtAna: nStep = 3 is not a multiple of the 2 time steps per analysis that dtAna / dtStep = 2.9999999999999996 truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in binary, e.g. dtStep 0.125 or 0.25.
   ```
 
-  The same check stops the decimal example (dtStep 0.1, dtAna 1.2, nStep 120): "nStep = 120 is not a multiple of
-  the 11 time steps per analysis that dtAna / dtStep = 11.999999999999998 truncates to; …". The checks compare the
-  ratios themselves, so a huge ratio cannot overflow the conversion to int.
+  The same check stopped the decimal example (dtStep 0.1, dtAna 1.2, nStep 120): "nStep = 120 is not a multiple
+  of the 11 time steps per analysis that dtAna / dtStep = 11.999999999999998 truncates to; …". The checks compare
+  the ratios themselves, so a huge ratio cannot overflow the conversion to int.
 
-- Still allowed, as in the Fortran: a truncated dtAna / dtStep when nStep is a multiple of the truncated count
-  (the run reaches tEnd, with the analysis interval nanspo · dtStep throughout, printed as "Steps (total / per
-  analysis)"), and dtAve just below m·dtAna.
+- Since analysis D5 (next section) case (m) and the decimal example are refused earlier, by the whole-multiple
+  check of dtAna; the nStep check is then left only where the 1e-12 tolerances of that check and of "Propagation
+  time must be an integer times dtAna" add up over the steps of a small dtStep (dtStep 1.1e-12, dtAna 2.7e-12,
+  nStep 3: 3 is not a multiple of the 2 truncated steps). It compares the truncated count with nStep, so dtAna
+  5e-13 above 5 dtStep with nStep 5 is one whole analysis step, as the Fortran runs it.
+- The ratios the program holds in an int are bounded: dtAna / dtStep (reachable with nStep = 0), dtAve / dtAna
+  and dtFrames / dtAna above 2147483647 are input errors.
+- Still allowed, as in the Fortran: dtAve just below m·dtAna.
 - The wave-packet designer has the same checks (`tools/wave_packet_designer/program/validate.py`), and its
   suggested nStep is a whole number of the truncated steps per analysis too (`design/suggest.py fit_time`).
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD4DtAnaTruncatesToZeroSteps`,
   `AnalysisD4DtAveTruncatesToZeroAnalyses`, `AnalysisD4NStepNotAMultipleOfTheTruncatedSteps`,
-  `AnalysisD4DtAnaBelowTheBand`, `AnalysisD4DecimalRatioTruncates`, `AnalysisD4RatioNotWhole`,
-  `AnalysisD4HugeRatioDoesNotOverflow`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
-  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple`);
-  the designer's `tests/test_validate.py` and `tests/test_design.py`.
+  `AnalysisD4NStepNotAMultipleOverManySteps`, `AnalysisD4DtAnaBelowTheBand`, `AnalysisD4StepsPerAnalysisAboveIntMax`,
+  `AnalysisD4AnalysesPerAverageAboveIntMax`, `DtFramesAboveIntMaxAnalyses`, `AnalysisD4HugeRatioDoesNotOverflow`,
+  `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`, `Input.AnalysisD4RatioJustAboveNStepIsOneAnalysisStep`,
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`); the designer's `tests/test_validate.py` and
+  `tests/test_design.py`.
+
+## analysis D5: dtAna not a whole multiple of dtStep
+
+**Status:** open in the Fortran (5.19 and r1727, the reference). The C++ rejects these inputs since 2026-11-25, in
+every run (a deviation: [fortran_deviations.md](../fortran_deviations.md#analysis-d5)).
+
+### The Fortran code
+
+`ValidateInput` checks that the propagation time is a whole multiple of dtAna (above), never that dtAna is a whole
+multiple of dtStep; `ProcessInput` truncates `nanspo = INT(dtAnalysis/dtlan)`. The analysis then runs every
+nanspo · dtStep, while the output names dtAna as the interval.
+
+### Demonstration
+
+`tests/reference/hardwall_small/DVR.inp` with dtStep 2.0, nStep 10, tEnd 20.0 and dtAna = dtAve = 5.0 (the
+propagation time 20 is 4 dtAna, so every Fortran check passes; nanspo = INT(2.5) = 2), the r1727 install, 4
+threads:
+
+```text
+* Wave function analysed every (aut):                       0.50000000E+01
+* Averages printed every (aut):                             0.50000000E+01
+```
+
+and then the averages at t = 4, 8, 12, 16 and 20 a.u. (exit 0): five analyses 4 a.u. apart, not four 5 a.u. apart.
+The C++ before this check ran it too ("Steps (total / per analysis) .. 10 / 2").
+
+### The C++ behaviour
+
+- `validate_input` refuses dtAna when the truncated dtAna / dtStep differs from its rounding (2.4 / 0.8 =
+  2.9999999999999996, 1.2 / 0.1 = 11.999999999999998) or when the rounded multiple of dtStep differs from dtAna by
+  1e-12 or more (dtAna 5 or 4.8 with dtStep 2), in every run mode, so nanspo · dtStep is dtAna for every accepted
+  input (0.9 / 0.3 = 3 exactly in double, although 3 · 0.3 is 0.8999999999999999: accepted):
+
+  ```text
+  Input error: dtAna: dtAna = 5 is not a whole multiple of dtStep = 2: dtAna / dtStep = 2.5, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25.
+  ```
+
+- It replaces the weaker check that applied only with dtFrames or NormBudget (it accepted a ratio such as 2.4,
+  whose truncation and rounding agree).
+- An onlyAnalysis run or a restart of an earlier run with such a ratio is refused by the same check.
+- The truncation (nanspo = INT) is kept; for an accepted input it equals the rounding.
+- The wave-packet designer has the same check.
+- Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD5RatioJustBelowWhole`,
+  `AnalysisD5DecimalRatio`, `AnalysisD5RatioHalf`, `AnalysisD5RatioBelowHalf`, `Input.AnalysisD5WholeRatiosAreValid`,
+  `Input.AnalysisD5RefusesTheRatioWithOrWithoutPlotKeys`); the designer's `tests/test_validate.py` and
+  `tests/test_design.py`.
 
 ## input Q1: an r absorber from the first r point
 

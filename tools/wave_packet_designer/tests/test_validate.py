@@ -129,18 +129,31 @@ VIOLATIONS = [
     ({"write_2d_pes": True, "theta_2d_pes": 361.0}, "theta2DPES", "theta2DPES > 360."),
     ({"write_2d_pes": True, "phi_2d_pes": -1.0}, "phi2DPES", "phi2DPES < 0."),
     ({"write_2d_pes": True, "phi_2d_pes": 361.0}, "phi2DPES", "phi2DPES > 360."),
-    # analysis D4, on the DZ input (dtStep 2.5, dtAna 20, dtAve 500, nStep 7000)
+    # analysis D4 and D5, on the DZ input (dtStep 2.5, dtAna 20, dtAve 500, nStep 7000)
     ({"dt_analysis": 2.4999999999995}, "dtAna", "truncates to 0 time steps per analysis"),
     (
         {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 24.0, "n_steps": 3, "t_end": 2.4},
         "dtAna",
-        "time steps per analysis that dtAna / dtStep = 2.9999999999999996 truncates to",
+        "dtAna / dtStep = 2.9999999999999996, which the program truncates to 2 time steps per analysis",
     ),
     (
         {"time_step": 0.1, "dt_analysis": 1.2, "dt_averages": 1.2, "n_steps": 120, "t_end": 12.0},
         "dtAna",
-        "dtAna / dtStep = 11.999999999999998 truncates to",
+        "dtAna / dtStep = 11.999999999999998, which the program truncates to 11 time steps per analysis",
     ),
+    ({"dt_analysis": 21.0}, "dtAna", "dtAna / dtStep = 8.4, which the program truncates to 8 time steps"),
+    # D4 after D5: the 1e-12 tolerances of D5 and of the propagation time add up over the steps of a small dtStep.
+    (
+        {"time_step": 1.1e-12, "dt_analysis": 2.7e-12, "dt_averages": 2.7e-12, "n_steps": 3, "t_end": 3.3e-12},
+        "dtAna",
+        "nStep = 3 is not a multiple of the 2 time steps per analysis",
+    ),
+    (
+        {"n_steps": 0, "t_end": 0.0, "dt_analysis": 2.5e10},
+        "dtAna",
+        "the largest number of time steps per analysis the program can hold.",
+    ),
+    ({"dt_averages": 1e15}, "dtAve", "the largest number of analyses per average the program can hold."),
     ({"dt_averages": 19.9999999999995}, "dtAve", "0 analyses per average"),
 ]
 
@@ -162,17 +175,26 @@ def test_limits_just_inside_are_valid() -> None:
     # truncated count does not).
     one_step = {"dt_analysis": 20.0000000000005, "dt_averages": 20.0000000000005, "n_steps": 8, "t_end": 20.0}
     check_equal(findings_of(one_step), [], f"findings of {one_step}")
-    # analysis D4: dtAna / dtStep truncates to 2, and nStep is a multiple of 2: the run reaches tEnd.
-    allowed = {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 2.4, "n_steps": 6, "t_end": 4.8}
+    # analysis D5: a whole ratio that is exactly 3.0 in double (0.9 / 0.3), although 3 * 0.3 is 0.8999999999999999.
+    allowed = {"time_step": 0.3, "dt_analysis": 0.9, "dt_averages": 9.0, "n_steps": 3000, "t_end": 900.0}
     check_equal(findings_of(allowed), [], f"findings of {allowed}")
 
 
 def test_d4_findings_only_where_the_cpp_gets_that_far() -> None:
     """dtAna below dtStep and dtAve below dtAna are errors of their own; the analysis D4 messages ("lies within the
-    1e-12 tolerance") would be false there, and the C++ stops at the first error."""
-    for changes in ({"dt_analysis": 1.0}, {"dt_averages": 10.0}):
-        band = [f for f in findings_of(changes) if "lies within the 1e-12 tolerance" in f.message]
-        check_equal(band, [], f"analysis D4 findings of {changes}")
+    1e-12 tolerance") and D5's ("is not a whole multiple of dtStep") would be false there or need a ratio the C++
+    never computes (dtStep 0), and the C++ stops at the first error. In the band just below dtStep (ratio
+    0.9999999999998) the C++ stops at D4's band check, before D5."""
+    for changes in ({"dt_analysis": 1.0}, {"dt_averages": 10.0}, {"time_step": 0.0}):
+        band = [
+            f
+            for f in findings_of(changes)
+            if "lies within the 1e-12 tolerance" in f.message or "is not a whole multiple of dtStep" in f.message
+        ]
+        check_equal(band, [], f"analysis D4 and D5 findings of {changes}")
+    band = {"dt_analysis": 2.4999999999995}
+    d5 = [f for f in findings_of(band) if "is not a whole multiple of dtStep" in f.message]
+    check_equal(d5, [], f"analysis D5 findings of {band}")
 
 
 def test_each_violation_is_found() -> None:

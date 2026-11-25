@@ -110,7 +110,7 @@ area element of the skewed (x, y) grid, γ the angle between the lattice vectors
 | sub-step | one entry of the schedule (`SplitOperatorSubStep`): T over dt′, then W unless it is the last; Fortran `KineticAndPotentialOp` and the calls before it |
 | `nz_potential` | the number of Z points in the interaction region (Fortran `nzpot`) |
 | `initial_index()` | i₀ in the rotational basis (Fortran `ichn`) |
-| `steps_per_analysis` | n (Fortran `nanspo`) |
+| `steps_per_analysis` | n (Fortran `nanspo`): dtAna/dtStep, a whole number by the input checks |
 
 ```text
 scattering wave  ψ[irot + n_rot · (ixy + n_xy · izr)]     first index fastest, as in the Fortran
@@ -538,8 +538,9 @@ flowchart TB
     more -->|"no"| done
 ```
 
-The run has three clocks. The counts are truncated as in the Fortran (`INT`), and the input checks reject ratios
-that would break the run ([analysis D4](../../docs/fortran_deviations.md#analysis-d4)):
+The run has three clocks. The counts are truncated as in the Fortran (`INT`). The input checks require dtAna to be a
+whole multiple of dtStep, so n · dt is dtAna ([analysis D5](../../docs/fortran_deviations.md#analysis-d5)), and
+reject the other ratios that would break the run ([analysis D4](../../docs/fortran_deviations.md#analysis-d4)):
 
 | Clock | Input key | Count | What happens |
 |---|---|---|---|

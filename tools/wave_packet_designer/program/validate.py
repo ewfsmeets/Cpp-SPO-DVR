@@ -99,6 +99,9 @@ def check_rotational_basis(p: InputParameters, checks: FindingList) -> None:
     checks.error_if(p.projection_operator not in (0, 1, 2), "ProjOp", "ProjOp must be 0, 1 or 2.")
 
 
+INT_MAX = 2**31 - 1  # std::numeric_limits<int>::max(): the C++ holds the truncated counts in an int
+
+
 def steps_per_analysis(p: InputParameters) -> int:
     """Time steps per analysis, truncated as the Fortran INT (nanspo). Shadows: src/input/process.cpp."""
     return int(p.dt_analysis / p.time_step)
@@ -151,6 +154,19 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         f"dtAna = {p.dt_analysis} lies within the 1e-12 tolerance below dtStep = {p.time_step}, so dtAna / dtStep "
         "truncates to 0 time steps per analysis; use dtAna >= dtStep.",
     )
+    # analysis D5: dtAna a whole multiple of dtStep (the truncation equals the rounding, and the rounded multiple of
+    # dtStep is dtAna to 1e-12); nint as the C++'s std::round, not Python's round (half to even).
+    checks.error_if(
+        analysis_ratio is not None
+        and analysis_ratio >= 1.0
+        and (
+            math.floor(analysis_ratio) != nint(analysis_ratio) or rne(nint(analysis_ratio) * p.time_step, p.dt_analysis)
+        ),
+        "dtAna",
+        f"dtAna = {p.dt_analysis} is not a whole multiple of dtStep = {p.time_step}: dtAna / dtStep = {analysis_ratio}, "
+        f"which the program truncates to {analysis_steps} time steps per analysis. Use a dtStep and dtAna whose ratio "
+        "is whole and exact in binary, e.g. dtStep 0.125 or 0.25.",
+    )
     checks.error_if(rle(p.dt_averages, 0.0), "dtAve", "dtAve <= 0.")
     checks.error_if(rlt(p.dt_averages, p.time_step), "dtAve", "dtAve < dtStep.")
     if p.j_analysis is not None:
@@ -183,7 +199,20 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         f"{analysis_ratio} truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in "
         "binary, e.g. dtStep 0.125 or 0.25.",
     )
+    # analysis D4: the program holds the truncated counts in an int.
+    checks.error_if(
+        analysis_ratio is not None and analysis_ratio > INT_MAX,
+        "dtAna",
+        f"dtAna / dtStep = {analysis_ratio} is above {INT_MAX}, the largest number of time steps per analysis the "
+        "program can hold.",
+    )
     checks.error_if(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.")
+    checks.error_if(
+        p.dt_averages / p.dt_analysis > INT_MAX,
+        "dtAve",
+        f"dtAve / dtAna = {p.dt_averages / p.dt_analysis} is above {INT_MAX}, the largest number of analyses per "
+        "average the program can hold.",
+    )
     checks.error_if(
         rne(nint(p.dt_averages / p.dt_analysis) * p.dt_analysis, p.dt_averages),
         "dtAve",

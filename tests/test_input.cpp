@@ -244,22 +244,23 @@ TEST(Input, FullSMatrixAndDoDumpAccepted) {
   }
 }
 
-// dtFrames needs dtAna / dtStep to be whole as the program counts it: it truncates (Fortran INT), and 2.4 / 0.8 is
-// 2.9999999999999996, so the analysis step would be 2 time steps (1.6 a.u.), not 3. Without dtFrames the input is
-// accepted as the Fortran accepts it; with dtFrames it is refused, naming dtAna.
-TEST(Input, DtFramesNeedsAWholeNumberOfStepsPerAnalysis) {
+// analysis D5: the program truncates dtAna / dtStep (Fortran INT), and 2.4 / 0.8 is 2.9999999999999996, so the
+// analysis step would be 2 time steps (1.6 a.u.), not 3. The Fortran accepts the input; the C++ refuses it for every
+// run, with or without the keys whose records follow the analysis steps (dtFrames, NormBudget).
+TEST(Input, AnalysisD5RefusesTheRatioWithOrWithoutPlotKeys) {
   Json json = reference_json();
   json["dtStep"] = 0.8;
   json["nStep"] = 18000;
   json["tEnd"] = 14400.0;
   json["dtAna"] = 2.4;
   json["dtAve"] = 24.0;
-  EXPECT_EQ(build(json).derived.steps_per_analysis, 2);
+  const std::string message = "dtAna / dtStep = 2.9999999999999996, which the program truncates to 2 time steps";
+  expect_input_error(json, "dtAna", message);
   json["dtFrames"] = 24.0;
-  expect_input_error(json, "dtAna", "dtAna / dtStep is not a whole number with dtFrames (the program truncates it");
+  expect_input_error(json, "dtAna", message);
   json.erase("dtFrames");
-  json["NormBudget"] = true;  // its records follow the analysis steps too
-  expect_input_error(json, "dtAna", "dtAna / dtStep is not a whole number with NormBudget");
+  json["NormBudget"] = true;
+  expect_input_error(json, "dtAna", message);
 }
 
 // write2DPES and its coordinates (Fortran defaults false, 0, 0, 90, 0). The coordinates are checked only with
@@ -700,17 +701,25 @@ TEST(Input, AnalysisD4DtAveJustBelowAMultipleIsAccepted) {
   EXPECT_EQ(config.derived.analyses_per_average, 9);
 }
 
-// analysis D4: dtAna / dtStep = 2.4 / 0.8 truncates to 2, and nStep 6 is a multiple of 2: the run reaches tEnd.
-TEST(Input, AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple) {
-  Json json = reference_json();
-  json["dtStep"] = 0.8;
-  json["nStep"] = 6;
-  json["tEnd"] = 4.8;
-  json["dtAna"] = 2.4;
-  json["dtAve"] = 2.4;
-  const Config config = build(json);
-  EXPECT_EQ(config.derived.steps_per_analysis, 2);
-  EXPECT_EQ(config.derived.analyses_per_average, 1);
+// analysis D5: whole ratios are valid: 20 / 2.5 = 8; 0.9 / 0.3 = 3 (exactly 3.0 in double, although 3 * 0.3 is
+// 0.8999999999999999: within the 1e-12); and a dtAna 5e-13 above 5 dtStep (with nStep, tEnd and dtAve chosen so that
+// the propagation-time and dtAve checks pass too).
+TEST(Input, AnalysisD5WholeRatiosAreValid) {
+  struct Case {
+    double dt_step, dt_analysis, dt_averages;
+    int n_steps, steps_per_analysis;
+  };
+  for (const Case& c : {Case{2.5, 20.0, 100.0, 7000, 8}, Case{0.3, 0.9, 9.0, 3000, 3},
+                        Case{2.0, 10.0000000000005, 10.0000000000005, 5, 5}}) {
+    Json json = reference_json();
+    json["dtStep"] = c.dt_step;
+    json["dtAna"] = c.dt_analysis;
+    json["dtAve"] = c.dt_averages;
+    json["nStep"] = c.n_steps;
+    json["tEnd"] = c.n_steps * c.dt_step;
+    const Config config = build(json);
+    EXPECT_EQ(config.derived.steps_per_analysis, c.steps_per_analysis) << c.dt_analysis << " / " << c.dt_step;
+  }
 }
 
 // analysis D3: VIn = nR-2 (no VAna) is valid; VIn = nR-1 is the violation row AnalysisD3VInIsTheLastLevel.
@@ -999,7 +1008,7 @@ INSTANTIATE_TEST_SUITE_P(
                     j["tEnd"] = 150.0 + j["nStep"].get<double>() * j["dtStep"].get<double>();
                     j["dtFrames"] = 100.0;  // tStart 150 is not on its grid (checked before tEnd)
                   }, "dtFrames", "tStart must be a whole multiple of dtFrames (the frames of a restart continue those of the run before)"},
-        Violation{"DtFramesDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["dtFrames"] = 100.0; }, "dtAna", "dtAna / dtStep is not a whole number with dtFrames (the program truncates it, so its records would come at other times than dtAna says)"},
+        Violation{"DtFramesAboveIntMaxAnalyses", [](Json& j) { j["dtFrames"] = 1e11; }, "dtFrames", "is above 2147483647, the largest number of analyses per frame the program can hold."},
         Violation{"DtFramesAnalysisOnly",
                   [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["dtFrames"] = 100.0; }, "dtFrames", "only a propagating run (a new run or a restart) writes frames"},
         Violation{"DtFramesPotentialOnly", [](Json& j) { j["Potential"] = true; j["dtFrames"] = 100.0; }, "dtFrames", "only a propagating run (a new run or a restart) writes frames"},
@@ -1013,7 +1022,6 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"FrameExtrasNotAList", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = "angular"; }, "FrameExtras", "expected a list of names"},
         Violation{"FrameExtrasNotNames", [](Json& j) { j["dtFrames"] = 100.0; j["FrameExtras"] = {"angular", 3}; }, "FrameExtras", "expected a string"},
         // NormBudget (norm_budget/): propagating runs only, one record per analysis step of whole time steps.
-        Violation{"NormBudgetDtAnaNotAMultipleOfDtStep", [](Json& j) { j["dtAna"] = 5.0; j["NormBudget"] = true; }, "dtAna", "dtAna / dtStep is not a whole number with NormBudget (the program truncates it, so its records would come at other times than dtAna says)"},
         Violation{"NormBudgetAnalysisOnly",
                   [](Json& j) { j["onlyAnalysis"] = true; j["RestartDir"] = "earlier"; j["NormBudget"] = true; }, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget"},
         Violation{"NormBudgetPotentialOnly", [](Json& j) { j["Potential"] = true; j["NormBudget"] = true; }, "NormBudget", "only a propagating run (a new run or a restart) has a norm budget"},
@@ -1122,10 +1130,19 @@ INSTANTIATE_TEST_SUITE_P(
         // analysis D4: dtAna or dtAve that truncate (hardwall_small: tStart 0, dtStep 2).
         Violation{"AnalysisD4DtAnaTruncatesToZeroSteps", [](Json& j) { j["nStep"] = 1; j["tEnd"] = 2.0; j["dtAna"] = 1.9999999999995; j["dtAve"] = 1.9999999999995; }, "dtAna", "truncates to 0 time steps per analysis; use dtAna >= dtStep."},
         Violation{"AnalysisD4DtAveTruncatesToZeroAnalyses", [](Json& j) { j["nStep"] = 5; j["tEnd"] = 10.0; j["dtAna"] = 10.0; j["dtAve"] = 9.9999999999995; }, "dtAve", "0 analyses per average; use dtAve >= dtAna."},
-        Violation{"AnalysisD4NStepNotAMultipleOfTheTruncatedSteps", [](Json& j) { j["dtStep"] = 0.8; j["nStep"] = 3; j["tEnd"] = 2.4; j["dtAna"] = 2.4; j["dtAve"] = 2.4; }, "dtAna", "truncates to; the run would stop before tEnd."},
+        // analysis D4 after D5: the 1e-12 tolerances of D5 (dtAna 5e-13 above 2 dtStep) and of the propagation time
+        // add up over the steps of a small dtStep: nStep 3 passes both, but is not a multiple of 2 steps per analysis.
+        Violation{"AnalysisD4NStepNotAMultipleOfTheTruncatedSteps", [](Json& j) { j["dtStep"] = 1.1e-12; j["nStep"] = 3; j["tEnd"] = 3.3e-12; j["dtAna"] = 2.7e-12; j["dtAve"] = 2.7e-12; }, "dtAna", "nStep = 3 is not a multiple of the 2 time steps per analysis that dtAna / dtStep = 2.4545454545454546 truncates to; the run would stop before tEnd."},
+        // The same over 2000000001 steps of dtStep 1e-3 (dtAna 1e-12 above 2 dtStep).
+        Violation{"AnalysisD4NStepNotAMultipleOverManySteps", [](Json& j) { j["dtStep"] = 1e-3; j["nStep"] = 2000000001; j["tEnd"] = 2000000.001; j["dtAna"] = 0.002000000001; j["dtAve"] = 0.002000000001; }, "dtAna", "nStep = 2000000001 is not a multiple of the 2 time steps per analysis"},
         Violation{"AnalysisD4DtAnaBelowTheBand", [](Json& j) { j["dtAna"] = 2.0 - 2e-12; }, "dtAna", "dtAna < dtStep."},
-        Violation{"AnalysisD4DecimalRatioTruncates", [](Json& j) { j["dtStep"] = 0.1; j["nStep"] = 120; j["tEnd"] = 12.0; j["dtAna"] = 1.2; j["dtAve"] = 1.2; }, "dtAna", "dtAna / dtStep = 11.999999999999998 truncates to"},
-        Violation{"AnalysisD4RatioNotWhole", [](Json& j) { j["dtAna"] = 5.0; j["nStep"] = 2805; j["tEnd"] = 5610.0; }, "dtAna", "nStep = 2805 is not a multiple of the 2 time steps per analysis"},
+        Violation{"AnalysisD4StepsPerAnalysisAboveIntMax", [](Json& j) { j["nStep"] = 0; j["tEnd"] = 0.0; j["dtAna"] = 2e10; }, "dtAna", "is above 2147483647, the largest number of time steps per analysis the program can hold."},
+        Violation{"AnalysisD4AnalysesPerAverageAboveIntMax", [](Json& j) { j["dtAve"] = 1e15; }, "dtAve", "is above 2147483647, the largest number of analyses per average the program can hold."},
+        // analysis D5: dtAna must be a whole multiple of dtStep (hardwall_small: dtStep 2).
+        Violation{"AnalysisD5RatioJustBelowWhole", [](Json& j) { j["dtStep"] = 0.8; j["nStep"] = 6; j["tEnd"] = 4.8; j["dtAna"] = 2.4; j["dtAve"] = 2.4; }, "dtAna", "dtAna = 2.4 is not a whole multiple of dtStep = 0.8: dtAna / dtStep = 2.9999999999999996, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25."},
+        Violation{"AnalysisD5DecimalRatio", [](Json& j) { j["dtStep"] = 0.1; j["nStep"] = 120; j["tEnd"] = 12.0; j["dtAna"] = 1.2; j["dtAve"] = 1.2; }, "dtAna", "dtAna / dtStep = 11.999999999999998, which the program truncates to 11 time steps"},
+        Violation{"AnalysisD5RatioHalf", [](Json& j) { j["dtAna"] = 5.0; j["nStep"] = 2805; j["tEnd"] = 5610.0; }, "dtAna", "dtAna / dtStep = 2.5, which the program truncates to 2 time steps"},
+        Violation{"AnalysisD5RatioBelowHalf", [](Json& j) { j["dtAna"] = 4.8; j["dtAve"] = 96.0; j["nStep"] = 7200; j["tEnd"] = 14400.0; }, "dtAna", "dtAna / dtStep = 2.4, which the program truncates to 2 time steps"},
         // A ratio of 5e9 (beyond int) reaches the propagation-time check, not an overflowed D4 check.
         Violation{"AnalysisD4HugeRatioDoesNotOverflow", [](Json& j) { j["dtAna"] = 1e10; j["dtAve"] = 1e10; }, "dtAna", "Propagation time must be an integer times dtAna."},
         Violation{"VMinGtVMax", [](Json& j) { j["ImposeVMin"] = true; j["ImposeVMax"] = true; j["VMin"] = 2.0; j["VMax"] = 1.0; }, "VMin", "VMin > VMax."},

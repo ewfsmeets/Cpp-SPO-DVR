@@ -317,7 +317,7 @@ The reverted code numbered them Q1–Q9. Q1 and Q2 are input checks and are stil
 | In the reverted code | Content | Port's choice |
 |---|---|---|
 | Q3 | the energy count INT((EMax − EMin)/ΔE) + 1 in hartree drops EMaxFluxAna for most inputs (0.2–0.6 eV by 0.1: 4 energies; 0.40–0.95 by 0.025: 22) | kept, with a warning |
-| Q4 | the Fortran weighs each step with the input dtAna, but a step lasts nanspo·dtStep, nanspo = INT(dtAna/dtStep) (dtAna 10.5 at dtStep 2: weights 1.05 times too large; 0.3/0.1 truncates to nanspo 2) | fixed: nanspo·dtStep, as the S-matrix sums |
+| Q4 | the Fortran weighs each step with the input dtAna, but a step lasts nanspo·dtStep, nanspo = INT(dtAna/dtStep) (dtAna 10.5 at dtStep 2: weights 1.05 times too large; 0.3/0.1 truncates to nanspo 2) | fixed: nanspo·dtStep, as the S-matrix sums (since 2026-11-25 the program refuses both example inputs: analysis D5) |
 | Q5 | `Constants_eV2Ha` in the flux analysis, chaev = 27.2114 everywhere else (1.27e-7 apart; \|b\|² differs from the packet's momentum distribution by 2.9e-7 of its peak) | kept |
 | Q6 | with `onlyAnalysis` the Fortran sets the flux analysis up but computes nothing | a note, no flux files |
 | Q7 | the initial channel is left out at r_c (section 2) | kept, with a warning (section 7.4) |

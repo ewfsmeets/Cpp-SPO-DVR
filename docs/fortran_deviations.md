@@ -216,14 +216,28 @@ differences are in [validation.md](validation.md).
 - analysis D4<a id="analysis-d4"></a>: dtAna or dtAve just below a multiple is an input error when the program's
   truncation (Fortran `nanspo = INT(dtAnalysis/dtlan)`, `nave = INT(dtAverages/dtAnalysis)`) would break the run.
   The Fortran's checks are tolerant (1e-12), so dtAna in the band below dtStep gives nanspo = 0 (the Fortran stops
-  with SIGFPE, the C++ looped forever), dtAve in the band below dtAna gives nave = 0 (SIGFPE in both), and any
-  dtAna / dtStep that truncates (just below k ≥ 2, a decimal such as 1.2 / 0.1 = 11.999999999999998, or a ratio
-  that is not whole) stops the run before tEnd unless nStep is a multiple of the truncated count. The C++ rejects
-  these three cases (`validate_input`, comparing the ratios themselves); a truncated count with nStep a multiple of
-  it, and dtAve just below m·dtAna (m − 1 analyses per average), stay allowed. Details and
-  demonstration runs: [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#analysis-d4-dtana-or-dtave-just-below-a-multiple).
-  Tests: `Checks/InputViolation.IsRejected/AnalysisD4*`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
-  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple`.
+  with SIGFPE, the C++ looped forever), dtAve in the band below dtAna gives nave = 0 (SIGFPE in both), and a
+  truncated nanspo stops the run before tEnd unless nStep is a multiple of it. The C++ rejects these cases
+  (`validate_input`, comparing the ratios themselves; since analysis D5 the last one is left only where the 1e-12
+  tolerances add up over the steps of a small dtStep, e.g. dtStep 1.1e-12, dtAna 2.7e-12, nStep 3), and ratios
+  beyond the int the program counts in (dtAna / dtStep with nStep = 0, dtAve / dtAna, dtFrames / dtAna above
+  2147483647). dtAve just below m·dtAna (m − 1 analyses per average) stays allowed. Details and demonstration runs:
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#analysis-d4-dtana-or-dtave-just-below-a-multiple).
+  Tests: `Checks/InputViolation.IsRejected/AnalysisD4*`, `Checks/InputViolation.IsRejected/DtFramesAboveIntMaxAnalyses`,
+  `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`, `Input.AnalysisD4RatioJustAboveNStepIsOneAnalysisStep`,
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`.
+- analysis D5<a id="analysis-d5"></a>: dtAna must be a whole multiple of dtStep, in every run (new, restart,
+  analysis-only, potential-only, write2DPES). The Fortran only checks that the propagation time is a whole multiple
+  of dtAna and then truncates nanspo = INT(dtAnalysis/dtlan): dtAna 5 with dtStep 2 analyses every 4 a.u. while its
+  output says "analysed every 5", and a decimal ratio such as 2.4 / 0.8 = 2.9999999999999996 counts one step less.
+  The C++ refuses a ratio whose truncation differs from its rounding or whose rounded multiple of dtStep differs from
+  dtAna by 1e-12 or more (`validate_input`), so nanspo · dtStep is dtAna for every accepted input. The truncation
+  itself is kept. It replaces the weaker check that applied only with dtFrames or NormBudget. A BK or restart file of
+  an earlier run with such a ratio can no longer be read (an onlyAnalysis run or a restart gives the same input
+  error). Details and the demonstration run:
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#analysis-d5-dtana-not-a-whole-multiple-of-dtstep). Tests:
+  `Checks/InputViolation.IsRejected/AnalysisD5*`, `Input.AnalysisD5WholeRatiosAreValid`,
+  `Input.AnalysisD5RefusesTheRatioWithOrWithoutPlotKeys`; the designer's `tests/test_validate.py`.
 - physics Q1<a id="physics-q1"></a>: with `UseSwitching` the asymptotic potential V_asy is the PES at
   ZmaxSwitch (`H2SurfaceSystem.f90` line 426 passes the switched zasymp), while the switch blends V towards the PES at
   the unswitched asymptotic Z (`Potential.f90 switchPotentialToGasPhase`): V steps at ZmaxSwitch, and the asymptotic
