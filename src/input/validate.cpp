@@ -129,10 +129,12 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
         "Propagation time must be an integer times dtAna.");
   // analysis D4: dtAna / dtStep truncates (a ratio just below k, a decimal such as 1.2 / 0.1 = 11.999999999999998, or
   // a ratio that is not whole) and nStep is not a whole number of the truncated steps: the time loop would stop
-  // before tEnd. A ratio above nStep leaves no whole analysis step (then only nStep = 0 is a multiple); at most nStep,
-  // the conversion to int cannot overflow.
+  // before tEnd. A truncated count above nStep leaves no whole analysis step (then only nStep = 0 is a multiple); at
+  // most nStep, the conversion to int cannot overflow. (The count, not the ratio: dtAna 5e-13 above 5 dtStep with
+  // nStep 5 is one whole analysis step.)
   const double analysis_ratio = p.dt_analysis / p.time_step;
-  check(analysis_ratio > p.n_steps ? p.n_steps != 0 : p.n_steps % static_cast<int>(analysis_ratio) != 0, "dtAna",
+  check(std::floor(analysis_ratio) > p.n_steps ? p.n_steps != 0 : p.n_steps % static_cast<int>(analysis_ratio) != 0,
+        "dtAna",
         std::format("nStep = {} is not a multiple of the {} time steps per analysis that dtAna / dtStep = {} "
                     "truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in "
                     "binary, e.g. dtStep 0.125 or 0.25.",

@@ -177,7 +177,7 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     checks.error_if(
         analysis_ratio is not None
         and analysis_ratio >= 1.0
-        and (p.n_steps != 0 if analysis_ratio > p.n_steps else p.n_steps % math.floor(analysis_ratio) != 0),
+        and (p.n_steps != 0 if math.floor(analysis_ratio) > p.n_steps else p.n_steps % math.floor(analysis_ratio) != 0),
         "dtAna",
         f"nStep = {p.n_steps} is not a multiple of the {analysis_steps} time steps per analysis that dtAna / dtStep = "
         f"{analysis_ratio} truncates to; the run would stop before tEnd. Use a dtStep and dtAna whose ratio is exact in "

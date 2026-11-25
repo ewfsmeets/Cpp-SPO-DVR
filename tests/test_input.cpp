@@ -676,6 +676,20 @@ TEST(Input, AnalysisD4DtAnaEqualToDtStepIsAccepted) {
   EXPECT_EQ(config.derived.steps_per_analysis, 1);
 }
 
+// analysis D4: dtAna 5e-13 above 5 dtStep truncates to 5 steps per analysis, and nStep 5 is one whole analysis step
+// (the ratio 5.00000000000025 lies above nStep, its truncated count does not). dtAve = dtAna and tEnd 10 pass the
+// propagation-time and dtAve checks.
+TEST(Input, AnalysisD4RatioJustAboveNStepIsOneAnalysisStep) {
+  Json json = reference_json();
+  json["dtAna"] = 10.0000000000005;
+  json["dtAve"] = 10.0000000000005;
+  json["nStep"] = 5;
+  json["tEnd"] = 10.0;
+  const Config config = build(json);
+  EXPECT_EQ(config.derived.steps_per_analysis, 5);
+  EXPECT_EQ(config.derived.analyses_per_average, 1);
+}
+
 // analysis D4: dtAve 5e-13 below 10 dtAna passes every check and truncates to 9 analyses per average (allowed: the
 // averages carry their real times).
 TEST(Input, AnalysisD4DtAveJustBelowAMultipleIsAccepted) {

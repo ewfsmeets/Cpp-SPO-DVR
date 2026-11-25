@@ -158,6 +158,10 @@ def test_limits_just_inside_are_valid() -> None:
     """The analysis limits (r1726: JIn < JMax, VIn < VAna, JIn < JAna; analysis D3: VIn < nR-1) just inside."""
     for changes in ({"j_in": 26}, {"v_in": 0, "v_analysis": 1}, {"j_in": 0, "j_analysis": 2}, {"v_in": 38}):
         check_equal(findings_of(changes), [], f"findings of {changes}")
+    # analysis D4: dtAna 5e-13 above 8 dtStep and nStep 8: one whole analysis step (the ratio lies above nStep, its
+    # truncated count does not).
+    one_step = {"dt_analysis": 20.0000000000005, "dt_averages": 20.0000000000005, "n_steps": 8, "t_end": 20.0}
+    check_equal(findings_of(one_step), [], f"findings of {one_step}")
     # analysis D4: dtAna / dtStep truncates to 2, and nStep is a multiple of 2: the run reaches tEnd.
     allowed = {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 2.4, "n_steps": 6, "t_end": 4.8}
     check_equal(findings_of(allowed), [], f"findings of {allowed}")
