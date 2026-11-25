@@ -69,10 +69,10 @@ std::string scientific(double x, int decimals) { return exponent_form(decimals, 
 
 void print_section(std::ostream& out, const Style& style, std::string_view title) {
   const std::string rule(80, '=');
-  out << '\n'
-      << style.heading(rule) << '\n'
-      << style.heading(std::string("  ") + std::string(title)) << '\n'
-      << style.heading(rule) << "\n\n";
+  // Formatted, not concatenated: GCC 15's LTO flags std::string("  ") + std::string(title) with a false
+  // -Wstringop-overflow (it misses that the sum leaves the short-string buffer by allocating).
+  const std::string indented_title = std::format("  {}", title);
+  out << '\n' << style.heading(rule) << '\n' << style.heading(indented_title) << '\n' << style.heading(rule) << "\n\n";
 }
 
 void KeyValueList::add(std::string label, std::string value, std::string unit) {
