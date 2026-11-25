@@ -44,10 +44,19 @@ GridSymmetry make_grid_symmetry(const Config& config, const AngularGrid& angular
   const PointGroup group(config.derived.system.point_group);
   GridSymmetry symmetry(SurfaceLattice(config.derived.system), group, p.nx, p.ny, angular.n_phi());
   if (symmetry.is_trivial()) {
-    std::string message = "UseSymmetry: no operation of point group " + group.name() + " is usable";
-    if (group.order() > 1)
+    // Name the grids that the dropped operations do not fit: the phi grid, the (x, y) grid, or both.
+    const auto& dropped = symmetry.dropped_operations();
+    const bool phi_misfit =
+        std::any_of(dropped.begin(), dropped.end(), [](const auto& d) { return d.phi_grid_misfit; });
+    const bool xy_misfit = std::any_of(dropped.begin(), dropped.end(), [](const auto& d) { return d.xy_grid_misfit; });
+    // InputError prefixes "UseSymmetry: " itself.
+    std::string message = "no operation of point group " + group.name() + " is usable";
+    if (phi_misfit)
       message += " with " + std::to_string(angular.n_phi()) + " phi points (a multiple of " +
                  std::to_string(symmetry.phi_points_multiple()) + " is needed; set nPhisOptimal)";
+    if (xy_misfit)
+      message += std::string(phi_misfit ? " and" : "") + " on the " + std::to_string(p.nx) + " x " +
+                 std::to_string(p.ny) + " (x, y) grid (its operations fit it when nX = nY)";
     throw InputError("UseSymmetry", message + ".");
   }
   return symmetry;

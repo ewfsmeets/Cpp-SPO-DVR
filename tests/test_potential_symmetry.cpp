@@ -274,18 +274,45 @@ TEST(SymmetryCheck, NoUsableOperationC3) {
   const RunSetup& s = dai_light_ten_phi();
   ASSERT_EQ(s.angular.n_phi(), 10);
   ASSERT_TRUE(s.config.input.use_symmetry);
-  const std::string message = grid_symmetry_error(with_point_group(s.config, "C3"), s.angular);
-  EXPECT_NE(message.find("no operation of point group C3 is usable with 10 phi points (a multiple of 3 is needed; "
-                         "set nPhisOptimal)."),
-            std::string::npos)
-      << message;
+  EXPECT_EQ(grid_symmetry_error(with_point_group(s.config, "C3"), s.angular),
+            "UseSymmetry: no operation of point group C3 is usable with 10 phi points (a multiple of 3 is needed; set "
+            "nPhisOptimal).");
+}
+
+// On a 60 deg cell with nX != nY the rotations of C3 do not map the (x, y) grid onto itself. The input
+// check demands nX = nY for C4v, C6v and C3v (validate_input), not for C3, so a C3 PES can get here. The
+// error must name that grid, not the phi points, when nphi fits (12), and both when neither fits (10).
+// (A copy of the Dai-Light configuration with the point group and nY changed after the input checks.)
+namespace {
+
+Config c3_on_eight_by_six(const Config& config) {
+  Config copy = with_point_group(config, "C3");
+  copy.input.ny = 6;
+  return copy;
+}
+
+}  // namespace
+
+TEST(SymmetryCheck, NoUsableOperationOnTheXyGrid) {
+  const RunSetup& s = dai_light_symmetric();
+  ASSERT_EQ(s.angular.n_phi(), 12);
+  EXPECT_EQ(grid_symmetry_error(c3_on_eight_by_six(s.config), s.angular),
+            "UseSymmetry: no operation of point group C3 is usable on the 8 x 6 (x, y) grid (its operations fit it "
+            "when nX = nY).");
+}
+
+TEST(SymmetryCheck, NoUsableOperationOnEitherGrid) {
+  const RunSetup& s = dai_light_ten_phi();
+  ASSERT_EQ(s.angular.n_phi(), 10);
+  EXPECT_EQ(grid_symmetry_error(c3_on_eight_by_six(s.config), s.angular),
+            "UseSymmetry: no operation of point group C3 is usable with 10 phi points (a multiple of 3 is needed; set "
+            "nPhisOptimal) and on the 8 x 6 (x, y) grid (its operations fit it when nX = nY).");
 }
 
 TEST(SymmetryCheck, NoUsableOperationNone) {
   auto expect_refused = [](const RunSetup& s) {
-    const std::string message = grid_symmetry_error(with_point_group(s.config, "none"), s.angular);
-    EXPECT_NE(message.find("no operation of point group none is usable."), std::string::npos) << message;
-    EXPECT_EQ(message.find("phi points"), std::string::npos) << message;
+    EXPECT_EQ(grid_symmetry_error(with_point_group(s.config, "none"), s.angular),
+              "UseSymmetry: no operation of point group none is usable.");
   };
   expect_refused(dai_light_ten_phi());
   expect_refused(dai_light_symmetric());  // nphi = 12 does not help

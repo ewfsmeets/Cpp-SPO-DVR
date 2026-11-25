@@ -169,7 +169,20 @@ A bound state's tails are not those of the exact function:
   ([docs/fortran_deviations.md](../../docs/fortran_deviations.md), "Reference-case property"). How far the r grid
   must reach: [inputs/README.md](../../inputs/README.md).
 
-All numbers are from a potential-only run of `inputs/hardwall_small` (its `gas_phase_states.dat`).
+All numbers are from a potential-only run of `inputs/hardwall_small` (its `gas_phase_states.dat`); the figure shows
+them ([figures/make_figures.py](figures/make_figures.py) remakes it from such a run):
+
+![Left panel: V_asy(r) of hardwall_small from 0.6 to 3.6 bohr with the J = 0 levels as horizontal lines between their
+turning points: v = 0 (0 meV) and v = 1 (504 meV) solid and open, below the dash-dotted line E(0, 0) + E_avail
+(E_avail = 600 meV); v = 2 (987 meV) dotted and closed; RStart at 0.80 bohr marked, the grid ending at 9.05 bohr.
+Right panel: |u_00(r)| and |u_10(r)| on a log axis over the whole r grid, filled markers where u > 0 and open markers
+where u \< 0: the inner tail cut at RStart (1.1e-2 against a peak of 1.49), a plateau of about 1.3e-7 with
+alternating signs inside the r absorber, and the wrapped tail rising to 7.2e-4 at r_last, where the sign rule makes
+u positive.](figures/gas_phase.png)
+
+Left: the J = 0 levels in the well; v = 0 and v = 1 lie below E(0, 0) + E_avail and are open, v = 2 is not
+(section 3). Right: look at the three tails of the same two states: cut at `RStart`, a plateau where open (u \< 0)
+and filled (u > 0) markers alternate, and the wrapped tail rising to r_last, where the sign rule makes u positive.
 
 ### From eigenvectors to states
 
@@ -239,6 +252,7 @@ gantt
     J = 4, 141 : milestone, 141, 1ms
 ```
 
+The left panel of the [figure in section 2](#what-the-grid-can-describe) shows the same J = 0 levels in the well.
 Two vibrational levels are open (`nviba` = 2). Every J of the basis is open up to JMax = 4. The search for J = 6 runs
 past JMax, so `jana` = 4, with the warning "Rotational basis too small to describe all open channels!", which this
 test case expects ([README, Quick start](../../README.md#quick-start)). The set-up table of the run (four of its ten

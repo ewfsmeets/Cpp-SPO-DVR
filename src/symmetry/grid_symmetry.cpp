@@ -42,14 +42,18 @@ GridSymmetry::GridSymmetry(const SurfaceLattice& lattice, const PointGroup& grou
     if (!a)
       throw InputError("UseSymmetry", "point group " + group.name() + " does not fit the surface cell (" + describe(g) +
                                           " is not a lattice symmetry).");
-    if (phi_shift(g, nphi) < 0) {
-      dropped_.push_back({g, "nphi = " + std::to_string(nphi) + " is not a multiple of " +
-                                 std::to_string(12 / std::gcd(12, g.angle_twelfths))});
-      continue;
-    }
-    if ((a->a12 * nx) % ny != 0 || (a->a21 * ny) % nx != 0) {
-      dropped_.push_back(
-          {g, "it does not map the " + std::to_string(nx) + " x " + std::to_string(ny) + " (x, y) grid onto itself"});
+    // Both tests, so that the reason names every misfit (the error for a trivial group needs both).
+    const bool phi_misfit = phi_shift(g, nphi) < 0;
+    const bool xy_misfit = (a->a12 * nx) % ny != 0 || (a->a21 * ny) % nx != 0;
+    if (phi_misfit || xy_misfit) {
+      std::string reason;
+      if (phi_misfit)
+        reason = "nphi = " + std::to_string(nphi) + " is not a multiple of " +
+                 std::to_string(12 / std::gcd(12, g.angle_twelfths));
+      if (xy_misfit)
+        reason += std::string(phi_misfit ? ", and it" : "it") + " does not map the " + std::to_string(nx) + " x " +
+                  std::to_string(ny) + " (x, y) grid onto itself";
+      dropped_.push_back({g, phi_misfit, xy_misfit, reason});
       continue;
     }
     operations_.push_back(g);

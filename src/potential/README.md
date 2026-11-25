@@ -382,8 +382,9 @@ The potential step is the only place in the time loop that reads the reduced gri
 read through `operator()`. The operations, orbits and φ maps come from the symmetry engine (the orbits drawn:
 [src/symmetry/README.md](../symmetry/README.md#5-orbits-and-representatives)). `make_grid_symmetry`
 (`potential_symmetry.cpp`) builds them from the PES's point group and the grid. If no operation but the identity fits
-the grid (nφ not a multiple the group needs, or the point group `none`), that is an input error, not a silent fallback:
-the message names the multiple, and `nPhisOptimal` chooses one.
+the grid (nφ not a multiple the group needs, an (x, y) grid with nX ≠ nY that a C3 group's operations do not map
+onto itself, or the point group `none`), that is an input error, not a silent fallback: the message names the
+cause (the multiple, which `nPhisOptimal` chooses, or the (x, y) grid).
 
 **The self-check** (`check_potential_symmetry`, not in the Fortran). Storing representatives assumes V(g q) = V(q).
 Before the grid is computed the program tests that at 1000 configurations:

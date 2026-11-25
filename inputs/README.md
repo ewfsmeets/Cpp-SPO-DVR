@@ -34,7 +34,7 @@ total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
 
 ### Layout (DZ case, `thesis_fig5_3_dz`)
 
-Both charts use a numeric axis: **1 s on the axis = 1 bohr**. Bars are ranges; vertical marker lines
+Both charts use a numeric axis: **1 s on the axis = 1 bohr**. Bars are ranges; the diamonds in the first row
 are the input positions.
 
 ```mermaid
@@ -45,10 +45,10 @@ gantt
     tickInterval 2second
     todayMarker off
 
-    Zana = Z_asymp (15.0)        : vert, za, 15000, 1ms
-    Z0 (18.0)                    : vert, z0, 18000, 1ms
-    ZSpOptStart (22.08)          : vert, zs, 22080, 1ms
-
+    section Input positions
+    Zana = Z_asymp (15.0)        : milestone, za, 15000, 1ms
+    Z0 (18.0)                    : milestone, z0, 18000, 1ms
+    ZSpOptStart (22.08)          : milestone, zs, 22080, 1ms
     section Scattering grid 6D
     grid, 160 points             : 0, 19080
     6D potential V, nzpot = 125  : 0, 15000
@@ -69,8 +69,8 @@ gantt
     tickInterval 1second
     todayMarker off
 
-    ROptStart (4.1)              : vert, rs, 4100, 1ms
-
+    section Input positions
+    ROptStart (4.1)              : milestone, rs, 4100, 1ms
     section r grid
     grid RStart to last point, 40 points : 500, 8300
     H2 bound states up to the analysed v and j : 800, 2600

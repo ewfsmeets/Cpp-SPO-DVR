@@ -233,6 +233,24 @@ against it); it also lists numbers repeated across docs (report-only). ctest run
 - The final wave packet of two builds, or of the CPU and the GPU: `spodvr_dump_wave` and
   `spodvr_compare_wave` ([performance.md](performance.md)).
 
+### Strict floating point in every build
+
+Most sources are compiled with `fp_flags` (`CMakeLists.txt`): the strict flags `strict_fp_flags`
+(`-ffp-contract=off -fno-fast-math -fcx-fortran-rules -fno-math-errno -fno-trapping-math`), or, in the
+`SPODVR_FAST_MATH` build, `-ffast-math -fno-finite-math-only -fcx-fortran-rules`. Code whose results must equal the
+Fortran's bit for bit in every build, the fast-math build included, is compiled strictly always:
+
+- the SCM sources (`src/potential/scm/`) form the OBJECT library `spodvr_strict_objects`, which `spodvr_core`
+  includes; it takes `strict_fp_flags` from the INTERFACE target `spodvr_strict_fp`;
+- the CRP library (`src/crplib/`) and the list-directed reader (`src/fortran_text/`) take `crplib_fp_flags` from
+  `spodvr_crplib_fp` (the same flags without `-fcx-fortran-rules`; [crp_library.md](crp_library.md)).
+
+Put a new source into `spodvr_strict_objects` when its complex division or operation order must match gfortran in
+every build. That library takes none of `spodvr_core`'s compile definitions except the one it copies
+(`SPODVR_POISON_UNINITIALISED`, see the comment in `CMakeLists.txt`): copy any other definition that changes a header
+its sources include. Real × complex products keep the sign of an exact zero that gfortran flips, so compare such
+data by value, not by bytes.
+
 ### Additions to the time loop
 
 Everything added to the propagation loop (a reduction of ψ, a copy, a file write) is switched on by an

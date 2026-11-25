@@ -521,7 +521,12 @@ TEST(GridSymmetry, UsableOperationsFormASubgroup) {
     EXPECT_EQ(s.group_order(), group.order());
     EXPECT_EQ(s.point_group(), group.name());
     EXPECT_EQ(s.operations().front(), identity_operation());
-    for (const auto& d : s.dropped_operations()) EXPECT_FALSE(d.reason.empty());
+    for (const auto& d : s.dropped_operations()) {
+      EXPECT_FALSE(d.reason.empty());
+      EXPECT_TRUE(d.phi_grid_misfit || d.xy_grid_misfit) << describe(d.operation);
+      // The phi cause is exactly "k nphi is not a multiple of 12" (k = angle_twelfths).
+      EXPECT_EQ(d.phi_grid_misfit, (d.operation.angle_twelfths * c.nphi) % 12 != 0) << describe(d.operation);
+    }
     // With nphi a multiple of the group's multiple and nx = ny every operation is usable.
     if (c.nphi % s.phi_points_multiple() == 0 && c.nx == c.ny) {
       EXPECT_TRUE(s.dropped_operations().empty());

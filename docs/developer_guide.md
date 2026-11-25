@@ -103,7 +103,10 @@ Each step names the test or check that notices when it is forgotten.
 
 1. A class implementing `Potential` (`potential/potential.hpp`): `value()` in eV with the coordinate
    conventions stated there (skewed x, y; θ from the surface normal, φ from the first lattice vector),
-   `system_parameters()`, `name()`. Copy an existing PES as a template.
+   `system_parameters()`, `name()`. Copy an existing PES as a template. Add its `.cpp` to the source list of
+   `spodvr_core` in `CMakeLists.txt` (next to the other `src/potential/` files) — the link fails otherwise.
+   More on the interface, the coordinates and what a PES must satisfy:
+   [src/potential/README.md](../src/potential/README.md).
 2. Its `SystemID` in `make_potential` and `potential_is_implemented` (`potential/potential_factory.cpp`)
    — if it is missing there, any input with it fails with "unknown system ID".
 3. Its data files, if any, in `potentials/` (tracked: the root `.gitignore` lets `potentials/` in although

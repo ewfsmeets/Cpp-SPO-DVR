@@ -84,8 +84,9 @@ stores 21 of the 64 (x, y) points instead of 10.
 **Errors** (all input errors, exit code 2):
 
 - the PES's group does not fit its cell (an operation is not a lattice symmetry, §3);
-- only the identity is usable. The cause is nφ (not a multiple the group needs) or nx ≠ ny; the message names
-  only the first and suggests `nPhisOptimal`;
+- only the identity is usable. The message names the cause: nφ not a multiple the group needs (set
+  `nPhisOptimal`), the (x, y) grid (its operations fit it when nX = nY), or both. The input check already demands
+  nX = nY for C4v, C6v and C3v (`validate_input`, as the Fortran), so the (x, y) cause can only arise for C3;
 - the PES fails the self-check (§6): it differs from its symmetry images by more than `SymmetryTolerance`, or it is
   not finite at a sample. The message suggests raising the tolerance or switching `UseSymmetry` off;
 - `UseSymmetry` with `CRPDistrtSurface`: the distorted slab of the SCM potential has no symmetry, although the CRP
@@ -264,6 +265,14 @@ iy=0 A b c d e d c b
 - The orbits of 6 lie on mirror lines; the orbits of 12 (h and g) are general points.
 - The hollow sites, at a third of the cell, fall between the points of an 8 × 8 grid.
 - The ten representatives all lie at ix ≤ 2, because they are the first points in memory order.
+
+The same map to scale on the unit cell:
+
+![The 60° unit cell with its lattice vectors a₁ and a₂, the 64 grid points as rings coloured by orbit size (1 pink, 3 vermillion, 6 green, 12 blue) and labelled with the orbit letters of the text map, the ten representatives A to J ringed in black, the top and bridge sites labelled, the hcp and fcc hollows marked by triangles between grid points, and the C6v mirror lines dashed](figures/orbits_c6v_8x8.png)
+
+Look at how the green orbits of 6 sit on the dashed mirror lines and the blue orbits of 12 between them. The
+figure comes from [figures/make_figures.py](figures/make_figures.py), which first checks that its orbit walk gives
+the text map above letter for letter (`uv run --locked python -I -B src/symmetry/figures/make_figures.py`).
 
 **How many representatives.** By Burnside's lemma, the number of orbits is the average, over the operations of H, of
 the number of grid points each one keeps fixed:

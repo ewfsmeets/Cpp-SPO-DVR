@@ -25,9 +25,12 @@ namespace spodvr {
 // (generalised: the Fortran stores one index per (phi, theta, x, y) point instead)
 class GridSymmetry {
  public:
-  // An operation of the group that cannot be used on this grid, and why.
+  // An operation of the group that cannot be used on this grid, and why: the phi grid (nphi not a
+  // multiple the operation needs), the (x, y) grid (it does not map the grid onto itself), or both.
   struct DroppedOperation {
     SurfaceOperation operation;
+    bool phi_grid_misfit;
+    bool xy_grid_misfit;
     std::string reason;
   };
 
