@@ -135,10 +135,12 @@ that time is on the record grid of the earlier run, its first record repeats tha
 same wave function: bitwise equal on the same device and build, equal to rounding when the restart runs on
 another device); the plot tool joins the segments and drops the repeat after checking that it equals the earlier
 record to 1e-12 of its largest value. Each manifest's `record_interval_au` is the interval the program uses
-between records, from its truncated counts times dtStep: within 1e-12 of the input key (dtAna, dtFrames; dtAve
-up to one dtAna less when dtAve lies just below a multiple), and not always bitwise equal to it (3 · 0.3 is
-0.8999999999999999). Before 2026-11-25 the manifests held the input keys, so a segment written before then joins
-a later one only where the two values are equal, as they are for every whole ratio exact in binary.
+between records, its time steps per record times dtStep: equal to the input key to the tolerances of the input
+checks (dtAna to a relative 1e-12, dtFrames to that plus the absolute 1e-12 of its own check; dtAve up to one
+dtAna less when dtAve lies just below a multiple), and not always bitwise equal to it (3 · 0.3 is
+0.8999999999999999). Before 2026-11-25 the manifests held the input keys, so a segment written before then joins a
+later one only where the two values are equal, as they are when dtStep, dtAna, dtAve and dtFrames are themselves
+exact in binary (e.g. 2.5, 20, 500).
 
 ### `densities/` (`writeDensities`)
 

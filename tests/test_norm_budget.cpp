@@ -284,7 +284,7 @@ TEST(NormBudgetFiles, RecordIntervalIsTheAnalysisStepTheProgramUses) {
   decimal["nStep"] = 3000;
   decimal["tEnd"] = 900.0;
   int k = 0;
-  for (const auto& [input, expected] : {std::pair{json, 10.0}, std::pair{decimal, 3 * 0.3}}) {
+  for (const auto& [input, expected] : {std::pair{json, 10.0}, std::pair{decimal, 0.8999999999999999}}) {
     const Config config = build_config(parse_input(input));
     const fs::path out = dir.path() / std::to_string(k++);
     {
@@ -293,5 +293,5 @@ TEST(NormBudgetFiles, RecordIntervalIsTheAnalysisStepTheProgramUses) {
     std::ifstream manifest(out / "norm_budget" / "manifest.json");
     EXPECT_EQ(nlohmann::json::parse(manifest)["record_interval_au"].get<double>(), expected) << input["dtAna"];
   }
-  EXPECT_NE(3 * 0.3, 0.9);  // the second case differs from dtAna in the last bit
+  EXPECT_NE(0.8999999999999999, 0.9);  // the second case differs from dtAna in the last bit
 }

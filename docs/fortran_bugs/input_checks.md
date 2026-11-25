@@ -612,9 +612,9 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
   the ratios themselves, so a huge ratio cannot overflow the conversion to int.
 
 - Since analysis D5 (next section) case (m) and the decimal example are refused earlier, by the whole-multiple
-  check of dtAna; the nStep check is then left only where the 1e-12 tolerances of that check and of "Propagation
-  time must be an integer times dtAna" add up over the steps of a small dtStep (dtStep 1.1e-12, dtAna 2.7e-12,
-  nStep 3: 3 is not a multiple of the 2 truncated steps). It compares the truncated count with nStep, so dtAna
+  check of dtAna; the nStep check is then left only where that check's relative 1e-12 and the absolute 1e-12 of
+  "Propagation time must be an integer times dtAna" add up over the steps of a dtStep near 1e-12 (dtStep
+  1.0000001e-12, dtAna 2.0000002000018e-12, nStep 200001: not a multiple of the 2 truncated steps). It compares the truncated count with nStep, so dtAna
   5e-13 above 5 dtStep with nStep 5 is one whole analysis step, as the Fortran runs it.
 - The ratios the program holds in an int are bounded: dtAna / dtStep (reachable with nStep = 0), dtAve / dtAna
   and dtFrames / dtAna above 2147483647 are input errors.
@@ -623,10 +623,10 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
   suggested nStep is a whole number of the truncated steps per analysis too (`design/suggest.py fit_time`).
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD4DtAnaTruncatesToZeroSteps`,
   `AnalysisD4DtAveTruncatesToZeroAnalyses`, `AnalysisD4NStepNotAMultipleOfTheTruncatedSteps`,
-  `AnalysisD4NStepNotAMultipleOverManySteps`, `AnalysisD4DtAnaBelowTheBand`, `AnalysisD4StepsPerAnalysisAboveIntMax`,
+  `AnalysisD4DtAnaBelowTheBand`, `AnalysisD4StepsPerAnalysisAboveIntMax`,
   `AnalysisD4AnalysesPerAverageAboveIntMax`, `DtFramesAboveIntMaxAnalyses`, `AnalysisD4HugeRatioDoesNotOverflow`,
   `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`, `Input.AnalysisD4RatioJustAboveNStepIsOneAnalysisStep`,
-  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`); the designer's `tests/test_validate.py` and
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4CountsAtTheIntBoundAreValid`); the designer's `tests/test_validate.py` and
   `tests/test_design.py`.
 
 ## analysis D5: dtAna not a whole multiple of dtStep
@@ -656,10 +656,12 @@ The C++ before this check ran it too ("Steps (total / per analysis) .. 10 / 2").
 
 ### The C++ behaviour
 
-- `validate_input` refuses dtAna when the truncated dtAna / dtStep differs from its rounding (2.4 / 0.8 =
-  2.9999999999999996, 1.2 / 0.1 = 11.999999999999998) or when the rounded multiple of dtStep differs from dtAna by
-  1e-12 or more (dtAna 5 or 4.8 with dtStep 2), in every run mode, so nanspo · dtStep is dtAna for every accepted
-  input (0.9 / 0.3 = 3 exactly in double, although 3 · 0.3 is 0.8999999999999999: accepted):
+- `validate_input` refuses dtAna when dtAna / dtStep exceeds its truncation by more than a relative 1e-12 (2.4 / 0.8
+  = 2.9999999999999996, 1.2 / 0.1 = 11.999999999999998, dtAna 5 or 4.8 with dtStep 2), in every run mode, so
+  nanspo · dtStep equals dtAna to a relative 1e-12 for every accepted input (0.9 / 0.3 = 3 exactly in double,
+  although 3 · 0.3 is 0.8999999999999999: accepted). The tolerance is relative because the Fortran's absolute 1e-12
+  on dtAna accepts a ratio of 2.45 at dtStep 1.1e-12 and refuses whole ratios above dtAna ≈ 4096, where it is below
+  the spacing of doubles (13107.4 / 0.1 = 131074 exactly):
 
   ```text
   Input error: dtAna: dtAna = 5 is not a whole multiple of dtStep = 2: dtAna / dtStep = 2.5, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25.
@@ -671,7 +673,8 @@ The C++ before this check ran it too ("Steps (total / per analysis) .. 10 / 2").
 - The truncation (nanspo = INT) is kept; for an accepted input it equals the rounding.
 - The wave-packet designer has the same check.
 - Tests: `tests/test_input.cpp` (`Checks/InputViolation.IsRejected/AnalysisD5RatioJustBelowWhole`,
-  `AnalysisD5DecimalRatio`, `AnalysisD5RatioHalf`, `AnalysisD5RatioBelowHalf`, `Input.AnalysisD5WholeRatiosAreValid`,
+  `AnalysisD5DecimalRatio`, `AnalysisD5RatioHalf`, `AnalysisD5RatioJustAboveTheTolerance`,
+  `AnalysisD5RatioAboveTheTolerance`, `AnalysisD5RatioBelowHalf`, `Input.AnalysisD5WholeRatiosAreValid`,
   `Input.AnalysisD5RefusesTheRatioWithOrWithoutPlotKeys`); the designer's `tests/test_validate.py` and
   `tests/test_design.py`.
 

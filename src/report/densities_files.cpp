@@ -37,9 +37,11 @@ std::vector<DatasetSpec> density_datasets(const Config& config, const SpatialGri
 
 nlohmann::ordered_json density_grids(const Config& config, const SpatialGrids& grids) {
   const InputParameters& p = config.input;
-  // The averaging interval the program uses: the truncated counts (Fortran nave, nanspo) times dtStep. Not always
-  // dtAve: dtAve just below m dtAna gives m - 1 analyses per average (analysis D4), and 3 * 0.3 is 0.8999999999999999.
-  const double record_interval = config.derived.analyses_per_average * config.derived.analysis_time_step;
+  // The averaging interval the program uses: its time steps per average (Fortran nave * nanspo, truncated counts)
+  // times dtStep. Not always dtAve: dtAve just below m dtAna gives m - 1 analyses per average (analysis D4), and the
+  // product need not be bitwise the key (3 * 0.3 is 0.8999999999999999).
+  const double steps = static_cast<double>(config.derived.analyses_per_average) * config.derived.steps_per_analysis;
+  const double record_interval = steps * config.input.time_step;
   return {{"record_interval_au", record_interval},
           {"grids",
            {{"z_start", grids.z_scattering.start()},

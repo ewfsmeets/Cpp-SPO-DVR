@@ -141,12 +141,15 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     checks.error_if(rle(p.dt_analysis, 0.0), "dtAna", "dtAna <= 0.")
     checks.error_if(rlt(p.dt_analysis, p.time_step), "dtAna", "dtAna < dtStep.")
     # analysis D4 (as validate.cpp, with the ratios themselves), only where the C++ gets that far: it stops at the
-    # first error, so after "dtAna < dtStep." it never reports the band below dtStep.
+    # first error, so after "dtAna < dtStep." it never reports the band below dtStep. An infinite ratio (dtAna near
+    # the largest double) passes D4 and D5 in the C++ and stops at the propagation-time check; here it gets no ratio.
     analysis_ratio = (
         p.dt_analysis / p.time_step
         if not rle(p.time_step, 0.0) and not rle(p.dt_analysis, 0.0) and not rlt(p.dt_analysis, p.time_step)
         else None
     )
+    if analysis_ratio is not None and not math.isfinite(analysis_ratio):
+        analysis_ratio = None
     analysis_steps = math.floor(analysis_ratio) if analysis_ratio is not None else None
     checks.error_if(
         analysis_ratio is not None and analysis_ratio < 1.0,
@@ -154,14 +157,14 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
         f"dtAna = {p.dt_analysis} lies within the 1e-12 tolerance below dtStep = {p.time_step}, so dtAna / dtStep "
         "truncates to 0 time steps per analysis; use dtAna >= dtStep.",
     )
-    # analysis D5: dtAna a whole multiple of dtStep (the truncation equals the rounding, and the rounded multiple of
-    # dtStep is dtAna to 1e-12); nint as the C++'s std::round, not Python's round (half to even).
-    checks.error_if(
+    # analysis D5: dtAna a whole multiple of dtStep (the ratio exceeds its truncation by at most a relative 1e-12).
+    d5_violated = (
         analysis_ratio is not None
         and analysis_ratio >= 1.0
-        and (
-            math.floor(analysis_ratio) != nint(analysis_ratio) or rne(nint(analysis_ratio) * p.time_step, p.dt_analysis)
-        ),
+        and analysis_ratio - math.floor(analysis_ratio) > 1e-12 * analysis_ratio
+    )
+    checks.error_if(
+        d5_violated,
         "dtAna",
         f"dtAna = {p.dt_analysis} is not a whole multiple of dtStep = {p.time_step}: dtAna / dtStep = {analysis_ratio}, "
         f"which the program truncates to {analysis_steps} time steps per analysis. Use a dtStep and dtAna whose ratio "
@@ -193,6 +196,7 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     checks.error_if(
         analysis_ratio is not None
         and analysis_ratio >= 1.0
+        and not d5_violated  # the C++ stops at D5
         and (p.n_steps != 0 if math.floor(analysis_ratio) > p.n_steps else p.n_steps % math.floor(analysis_ratio) != 0),
         "dtAna",
         f"nStep = {p.n_steps} is not a multiple of the {analysis_steps} time steps per analysis that dtAna / dtStep = "

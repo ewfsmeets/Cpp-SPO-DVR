@@ -116,13 +116,12 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
                     "time steps per analysis; use dtAna >= dtStep.",
                     p.dt_analysis, p.time_step));
   // analysis D5 (C++ only): dtAna must be a whole multiple of dtStep, so that the program's truncated steps per
-  // analysis (Fortran nanspo = INT(dtAna/dtStep)) give the analysis step dtAna says. Whole means: the truncation
-  // equals the rounding (2.4 / 0.8 = 2.9999999999999996 truncates to 2) and the rounded multiple of dtStep equals
-  // dtAna to the Fortran's 1e-12 (a ratio of 2.4 fails there). floor and round stay in double: the ratio is unbounded
-  // here.
-  check(std::floor(analysis_ratio) != std::round(analysis_ratio) ||
-            rne(std::round(analysis_ratio) * p.time_step, p.dt_analysis),
-        "dtAna",
+  // analysis (Fortran nanspo = INT(dtAna/dtStep)) give the analysis step dtAna says. Whole means: the ratio exceeds
+  // its truncation by at most a relative 1e-12, so 2.4 / 0.8 = 2.9999999999999996 (truncated to 2), 2.5 and 2.4 fail.
+  // Relative, not the Fortran's absolute 1e-12: that one accepts a ratio of 2.45 at dtStep 1.1e-12 and refuses
+  // 13107.4 / 0.1 = 131074 exactly (1e-12 is below the spacing of doubles there). floor stays in double: the ratio
+  // is unbounded here.
+  check(analysis_ratio - std::floor(analysis_ratio) > 1e-12 * analysis_ratio, "dtAna",
         std::format("dtAna = {} is not a whole multiple of dtStep = {}: dtAna / dtStep = {}, which the program "
                     "truncates to {} time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact "
                     "in binary, e.g. dtStep 0.125 or 0.25.",
@@ -142,9 +141,10 @@ void validate_input(const InputParameters& p, const SystemParameters& system, do
   check(rne(nint(n_steps * p.time_step / p.dt_analysis) * p.dt_analysis, n_steps * p.time_step), "dtAna",
         "Propagation time must be an integer times dtAna.");
   // analysis D4: nStep must be a whole number of the truncated steps per analysis, or the time loop stops before
-  // tEnd. After D5 this fires only where the 1e-12 tolerances of D5 and of the propagation-time check add up over
-  // the steps of a small dtStep (dtStep 1.1e-12, dtAna 2.7e-12, nStep 3). A truncated count above nStep leaves no
-  // whole analysis step (then only nStep = 0 is a multiple); at most nStep, the conversion to int cannot overflow.
+  // tEnd. After D5 this fires only where D5's relative 1e-12 and the absolute 1e-12 of the propagation-time check
+  // add up over the steps of a dtStep near 1e-12 (dtStep 1.0000001e-12, dtAna 2.0000002000018e-12, nStep 200001). A
+  // truncated count above nStep leaves no whole analysis step (then only nStep = 0 is a multiple); at most nStep,
+  // the conversion to int cannot overflow.
   // (The count, not the ratio: dtAna 5e-13 above 5 dtStep with nStep 5 is one whole analysis step.)
   check(std::floor(analysis_ratio) > p.n_steps ? p.n_steps != 0 : p.n_steps % static_cast<int>(analysis_ratio) != 0,
         "dtAna",

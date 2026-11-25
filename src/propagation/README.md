@@ -539,7 +539,7 @@ flowchart TB
 ```
 
 The run has three clocks. The counts are truncated as in the Fortran (`INT`). The input checks require dtAna to be a
-whole multiple of dtStep, so n · dt is dtAna ([analysis D5](../../docs/fortran_deviations.md#analysis-d5)), and
+whole multiple of dtStep, so n · dt is dtAna to a relative 1e-12 ([analysis D5](../../docs/fortran_deviations.md#analysis-d5)), and
 reject the other ratios that would break the run ([analysis D4](../../docs/fortran_deviations.md#analysis-d4)):
 
 | Clock | Input key | Count | What happens |

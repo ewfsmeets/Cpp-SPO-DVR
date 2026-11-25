@@ -20,9 +20,9 @@ DZ_SYSTEM = ANALYTIC_SYSTEMS["H2Cu111DaiLight"]  # Z_asymptotic 15.0, C6v
 FLUX_KEYS = {"rFluxAnalysis", "EMinFluxAna", "EMaxFluxAna", "DeltaEFluxAna"}
 
 # (InputParameters changes, expected key, part of the expected message), in the order of validate.py, except the
-# JIn > JMax row (next to JIn >= JMax) and the analysis D4 rows (at the end). Where a row changes more than one
-# key, the other changes keep the input valid in every other respect that matters for the targeted check; the
-# comment says which.
+# JIn > JMax row (next to JIn >= JMax) and the rows of analysis D4 and D5 and of the int bounds (at the end). Where a
+# row changes more than one key, the other changes keep the input valid in every other respect that matters for the
+# targeted check; the comment says which.
 VIOLATIONS = [
     ({"system_id": "H2Cu100"}, "SystemID", "Unknown system ID"),
     ({"z_dof": False}, "ZDoF", "6D"),
@@ -142,12 +142,32 @@ VIOLATIONS = [
         "dtAna / dtStep = 11.999999999999998, which the program truncates to 11 time steps per analysis",
     ),
     ({"dt_analysis": 21.0}, "dtAna", "dtAna / dtStep = 8.4, which the program truncates to 8 time steps"),
-    # D4 after D5: the 1e-12 tolerances of D5 and of the propagation time add up over the steps of a small dtStep.
+    # D5's relative tolerance from above (2.2e-12 relative above 2; 1.8e-12 is valid).
     (
-        {"time_step": 1.1e-12, "dt_analysis": 2.7e-12, "dt_averages": 2.7e-12, "n_steps": 3, "t_end": 3.3e-12},
+        {
+            "time_step": 1e-3,
+            "dt_analysis": 0.0020000000000022,
+            "dt_averages": 0.0020000000000022,
+            "n_steps": 1000,
+            "t_end": 1.0,
+        },
         "dtAna",
-        "nStep = 3 is not a multiple of the 2 time steps per analysis",
+        "dtAna / dtStep = 2.0000000000022, which the program truncates to 2 time steps per analysis",
     ),
+    # D4 after D5: D5's relative and the propagation time's absolute 1e-12 add up over the steps of a dtStep near 1e-12.
+    (
+        {
+            "time_step": 1.0000001e-12,
+            "dt_analysis": 2.0000002000018e-12,
+            "dt_averages": 2.0000002000018e-12,
+            "n_steps": 200001,
+            "t_end": 2.0000102000010001e-07,
+        },
+        "dtAna",
+        "nStep = 200001 is not a multiple of the 2 time steps per analysis",
+    ),
+    # An infinite dtAna / dtStep passes D4 and D5 (as in the C++) and fails the propagation-time check.
+    ({"time_step": 0.5, "dt_analysis": 1.7e308}, "dtAna", "Propagation time must be an integer times dtAna."),
     (
         {"n_steps": 0, "t_end": 0.0, "dt_analysis": 2.5e10},
         "dtAna",
@@ -175,12 +195,27 @@ def test_limits_just_inside_are_valid() -> None:
     # truncated count does not).
     one_step = {"dt_analysis": 20.0000000000005, "dt_averages": 20.0000000000005, "n_steps": 8, "t_end": 20.0}
     check_equal(findings_of(one_step), [], f"findings of {one_step}")
-    # analysis D5: a whole ratio that is exactly 3.0 in double (0.9 / 0.3), although 3 * 0.3 is 0.8999999999999999.
-    allowed = {"time_step": 0.3, "dt_analysis": 0.9, "dt_averages": 9.0, "n_steps": 3000, "t_end": 900.0}
-    check_equal(findings_of(allowed), [], f"findings of {allowed}")
+    # analysis D5: a whole ratio that is exactly 3.0 in double (0.9 / 0.3), although 3 * 0.3 is 0.8999999999999999;
+    # and 1.8e-12 relative above 2, inside the relative 1e-12 per unit of the ratio.
+    for allowed in (
+        {"time_step": 0.3, "dt_analysis": 0.9, "dt_averages": 9.0, "n_steps": 3000, "t_end": 900.0},
+        {
+            "time_step": 1e-3,
+            "dt_analysis": 0.0020000000000018,
+            "dt_averages": 0.0020000000000018,
+            "n_steps": 1000,
+            "t_end": 1.0,
+        },
+    ):
+        check_equal(findings_of(allowed), [], f"findings of {allowed}")
+    # analysis D5 at a large dtAna: 13107.4 / 0.1 is exactly 131074 (an absolute 1e-12 on dtAna would refuse it;
+    # other checks refuse this input, D5 does not).
+    large = {"time_step": 0.1, "dt_analysis": 13107.4}
+    d5 = [f for f in findings_of(large) if "is not a whole multiple of dtStep" in f.message]
+    check_equal(d5, [], f"analysis D5 findings of {large}")
 
 
-def test_d4_findings_only_where_the_cpp_gets_that_far() -> None:
+def test_d4_d5_findings_only_where_the_cpp_gets_that_far() -> None:
     """dtAna below dtStep and dtAve below dtAna are errors of their own; the analysis D4 messages ("lies within the
     1e-12 tolerance") and D5's ("is not a whole multiple of dtStep") would be false there or need a ratio the C++
     never computes (dtStep 0), and the C++ stops at the first error. In the band just below dtStep (ratio
@@ -195,6 +230,10 @@ def test_d4_findings_only_where_the_cpp_gets_that_far() -> None:
     band = {"dt_analysis": 2.4999999999995}
     d5 = [f for f in findings_of(band) if "is not a whole multiple of dtStep" in f.message]
     check_equal(d5, [], f"analysis D5 findings of {band}")
+    # D5 refuses 2.4 / 0.8 before D4's nStep check (nStep 3 is not a multiple of the 2 truncated steps either)
+    not_whole = {"time_step": 0.8, "dt_analysis": 2.4, "dt_averages": 24.0, "n_steps": 3, "t_end": 2.4}
+    d4 = [f for f in findings_of(not_whole) if "time steps per analysis that dtAna / dtStep" in f.message]
+    check_equal(d4, [], f"analysis D4 nStep findings of {not_whole}")
 
 
 def test_each_violation_is_found() -> None:
@@ -254,8 +293,10 @@ def test_every_check_has_a_violating_case() -> None:
     """Every check of validate.py is triggered by some row of VIOLATIONS."""
     found = {(f.key, f.message) for changes, _, _ in VIOLATIONS for f in findings_of(changes)}
     for key, message in python_checks():
-        fixed_part = message.split("{}")[0]  # the start of an f-string message, before its first value
-        check(any(k == key and m.startswith(fixed_part) for k, m in found), f"no row triggers {key}: '{message}'")
+        # the whole message, each {} standing for a value (matching only its start confused checks that share a
+        # beginning, such as the two "dtAna = {} ..." messages of analysis D4 and D5)
+        template = re.compile("(.*?)".join(map(re.escape, message.split("{}"))), re.DOTALL)
+        check(any(k == key and template.fullmatch(m) for k, m in found), f"no row triggers {key}: '{message}'")
 
 
 def test_pes_cut_bounds_without_a_lattice() -> None:

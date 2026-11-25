@@ -67,7 +67,7 @@ program carries the incoming channel on a second, longer (Z, r) grid, the **spec
 
 The time loop advances one analysis step of n time steps per call (`WavePacketPropagation`,
 `propagation/propagation.cpp`), n = int(dtAna / dtStep), truncated as in the Fortran
-(`input/process.cpp`); dtAna must be a whole multiple of dtStep, so n · dtStep is dtAna (analysis D5 in
+(`input/process.cpp`); dtAna must be a whole multiple of dtStep, so n · dtStep is dtAna to a relative 1e-12 (analysis D5 in
 [fortran_deviations.md](fortran_deviations.md#analysis-d5)). The split-operator propagator (thesis (2.35)) with adjacent half steps of T
 merged is
 

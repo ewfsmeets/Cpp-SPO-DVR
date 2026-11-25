@@ -702,15 +702,15 @@ TEST(Input, AnalysisD4DtAveJustBelowAMultipleIsAccepted) {
 }
 
 // analysis D5: whole ratios are valid: 20 / 2.5 = 8; 0.9 / 0.3 = 3 (exactly 3.0 in double, although 3 * 0.3 is
-// 0.8999999999999999: within the 1e-12); and a dtAna 5e-13 above 5 dtStep (with nStep, tEnd and dtAve chosen so that
-// the propagation-time and dtAve checks pass too).
+// 0.8999999999999999); and 0.0020000000000018 / 0.001 = 2.0000000000018, 0.9e-12 relative above 2, inside D5's
+// relative 1e-12 (its twin 2.2e-12 above is the row AnalysisD5RatioJustAboveTheTolerance).
 TEST(Input, AnalysisD5WholeRatiosAreValid) {
   struct Case {
     double dt_step, dt_analysis, dt_averages;
     int n_steps, steps_per_analysis;
   };
   for (const Case& c : {Case{2.5, 20.0, 100.0, 7000, 8}, Case{0.3, 0.9, 9.0, 3000, 3},
-                        Case{2.0, 10.0000000000005, 10.0000000000005, 5, 5}}) {
+                        Case{1e-3, 0.0020000000000018, 0.0020000000000018, 1000, 2}}) {
     Json json = reference_json();
     json["dtStep"] = c.dt_step;
     json["dtAna"] = c.dt_analysis;
@@ -720,6 +720,26 @@ TEST(Input, AnalysisD5WholeRatiosAreValid) {
     const Config config = build(json);
     EXPECT_EQ(config.derived.steps_per_analysis, c.steps_per_analysis) << c.dt_analysis << " / " << c.dt_step;
   }
+}
+
+// analysis D4: the int counts at their bound are valid: dtAna / dtStep, dtAve / dtAna and dtFrames / dtAna exactly
+// 2147483647 (dtStep 2^-30 with dtAna (2^31 - 1) 2^-30; dtAve and dtFrames 21474836470 with dtAna 10), nStep 0.
+TEST(Input, AnalysisD4CountsAtTheIntBoundAreValid) {
+  Json steps = reference_json();
+  steps["dtStep"] = 9.313225746154785e-10;
+  steps["dtAna"] = 1.9999999990686774;
+  steps["dtAve"] = 1.9999999990686774;
+  steps["nStep"] = 0;
+  steps["tEnd"] = 0.0;
+  EXPECT_EQ(build(steps).derived.steps_per_analysis, 2147483647);
+  Json averages = reference_json();
+  averages["dtAve"] = 21474836470.0;
+  EXPECT_EQ(build(averages).derived.analyses_per_average, 2147483647);
+  Json frames = reference_json();
+  frames["nStep"] = 0;
+  frames["tEnd"] = 0.0;
+  frames["dtFrames"] = 21474836470.0;
+  EXPECT_EQ(build(frames).derived.analyses_per_frame, 2147483647);
 }
 
 // analysis D3: VIn = nR-2 (no VAna) is valid; VIn = nR-1 is the violation row AnalysisD3VInIsTheLastLevel.
@@ -1130,11 +1150,10 @@ INSTANTIATE_TEST_SUITE_P(
         // analysis D4: dtAna or dtAve that truncate (hardwall_small: tStart 0, dtStep 2).
         Violation{"AnalysisD4DtAnaTruncatesToZeroSteps", [](Json& j) { j["nStep"] = 1; j["tEnd"] = 2.0; j["dtAna"] = 1.9999999999995; j["dtAve"] = 1.9999999999995; }, "dtAna", "truncates to 0 time steps per analysis; use dtAna >= dtStep."},
         Violation{"AnalysisD4DtAveTruncatesToZeroAnalyses", [](Json& j) { j["nStep"] = 5; j["tEnd"] = 10.0; j["dtAna"] = 10.0; j["dtAve"] = 9.9999999999995; }, "dtAve", "0 analyses per average; use dtAve >= dtAna."},
-        // analysis D4 after D5: the 1e-12 tolerances of D5 (dtAna 5e-13 above 2 dtStep) and of the propagation time
-        // add up over the steps of a small dtStep: nStep 3 passes both, but is not a multiple of 2 steps per analysis.
-        Violation{"AnalysisD4NStepNotAMultipleOfTheTruncatedSteps", [](Json& j) { j["dtStep"] = 1.1e-12; j["nStep"] = 3; j["tEnd"] = 3.3e-12; j["dtAna"] = 2.7e-12; j["dtAve"] = 2.7e-12; }, "dtAna", "nStep = 3 is not a multiple of the 2 time steps per analysis that dtAna / dtStep = 2.4545454545454546 truncates to; the run would stop before tEnd."},
-        // The same over 2000000001 steps of dtStep 1e-3 (dtAna 1e-12 above 2 dtStep).
-        Violation{"AnalysisD4NStepNotAMultipleOverManySteps", [](Json& j) { j["dtStep"] = 1e-3; j["nStep"] = 2000000001; j["tEnd"] = 2000000.001; j["dtAna"] = 0.002000000001; j["dtAve"] = 0.002000000001; }, "dtAna", "nStep = 2000000001 is not a multiple of the 2 time steps per analysis"},
+        // analysis D4 after D5: D5's relative 1e-12 (dtAna 9e-13 relative above 2 dtStep) and the absolute 1e-12 of
+        // the propagation time add up over the steps of a dtStep near 1e-12: nStep 200001 passes both, but is not a
+        // multiple of the 2 time steps per analysis (tEnd = nStep dtStep as computed in double).
+        Violation{"AnalysisD4NStepNotAMultipleOfTheTruncatedSteps", [](Json& j) { j["dtStep"] = 1.0000001e-12; j["nStep"] = 200001; j["tEnd"] = 2.0000102000010001e-07; j["dtAna"] = 2.0000002000018e-12; j["dtAve"] = 2.0000002000018e-12; }, "dtAna", "nStep = 200001 is not a multiple of the 2 time steps per analysis that dtAna / dtStep = 2.0000000000018 truncates to; the run would stop before tEnd."},
         Violation{"AnalysisD4DtAnaBelowTheBand", [](Json& j) { j["dtAna"] = 2.0 - 2e-12; }, "dtAna", "dtAna < dtStep."},
         Violation{"AnalysisD4StepsPerAnalysisAboveIntMax", [](Json& j) { j["nStep"] = 0; j["tEnd"] = 0.0; j["dtAna"] = 2e10; }, "dtAna", "is above 2147483647, the largest number of time steps per analysis the program can hold."},
         Violation{"AnalysisD4AnalysesPerAverageAboveIntMax", [](Json& j) { j["dtAve"] = 1e15; }, "dtAve", "is above 2147483647, the largest number of analyses per average the program can hold."},
@@ -1142,6 +1161,9 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"AnalysisD5RatioJustBelowWhole", [](Json& j) { j["dtStep"] = 0.8; j["nStep"] = 6; j["tEnd"] = 4.8; j["dtAna"] = 2.4; j["dtAve"] = 2.4; }, "dtAna", "dtAna = 2.4 is not a whole multiple of dtStep = 0.8: dtAna / dtStep = 2.9999999999999996, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25."},
         Violation{"AnalysisD5DecimalRatio", [](Json& j) { j["dtStep"] = 0.1; j["nStep"] = 120; j["tEnd"] = 12.0; j["dtAna"] = 1.2; j["dtAve"] = 1.2; }, "dtAna", "dtAna / dtStep = 11.999999999999998, which the program truncates to 11 time steps"},
         Violation{"AnalysisD5RatioHalf", [](Json& j) { j["dtAna"] = 5.0; j["nStep"] = 2805; j["tEnd"] = 5610.0; }, "dtAna", "dtAna / dtStep = 2.5, which the program truncates to 2 time steps"},
+        // D5's tolerance from above: 2.2e-12 relative above 2 (its twin 1.8e-12 above is valid), and 5e-10 above.
+        Violation{"AnalysisD5RatioJustAboveTheTolerance", [](Json& j) { j["dtStep"] = 1e-3; j["nStep"] = 1000; j["tEnd"] = 1.0; j["dtAna"] = 0.0020000000000022; j["dtAve"] = 0.0020000000000022; }, "dtAna", "dtAna / dtStep = 2.0000000000022, which the program truncates to 2 time steps"},
+        Violation{"AnalysisD5RatioAboveTheTolerance", [](Json& j) { j["dtStep"] = 1e-3; j["nStep"] = 2000000001; j["tEnd"] = 2000000.001; j["dtAna"] = 0.002000000001; j["dtAve"] = 0.002000000001; }, "dtAna", "dtAna / dtStep = 2.000000001, which the program truncates to 2 time steps"},
         Violation{"AnalysisD5RatioBelowHalf", [](Json& j) { j["dtAna"] = 4.8; j["dtAve"] = 96.0; j["nStep"] = 7200; j["tEnd"] = 14400.0; }, "dtAna", "dtAna / dtStep = 2.4, which the program truncates to 2 time steps"},
         // A ratio of 5e9 (beyond int) reaches the propagation-time check, not an overflowed D4 check.
         Violation{"AnalysisD4HugeRatioDoesNotOverflow", [](Json& j) { j["dtAna"] = 1e10; j["dtAve"] = 1e10; }, "dtAna", "Propagation time must be an integer times dtAna."},

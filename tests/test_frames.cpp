@@ -457,7 +457,7 @@ TEST(FrameExtras, P2ElementsEqualTheQuadrature) {
 }
 
 // record_interval_au is the frame interval the program uses (analyses per frame times nanspo dtStep): dtFrames for
-// the frames input (10 analyses of 10 a.u.), and 3 * (3 * 0.3) = 2.6999999999999997 for dtStep 0.3, dtAna 0.9,
+// the frames input (10 analyses of 10 a.u.), and 9 * 0.3 = 2.6999999999999997 for dtStep 0.3, dtAna 0.9,
 // dtFrames 2.7 (tEnd 810 = 300 frames).
 TEST(FrameFiles, RecordIntervalIsTheFrameIntervalTheProgramUses) {
   TemporaryDirectory dir("frames_interval");
@@ -469,7 +469,7 @@ TEST(FrameFiles, RecordIntervalIsTheFrameIntervalTheProgramUses) {
   decimal["nStep"] = 2700;
   decimal["tEnd"] = 810.0;
   int k = 0;
-  for (const auto& [input, expected] : {std::pair{frames_input(), 100.0}, std::pair{decimal, 3 * (3 * 0.3)}}) {
+  for (const auto& [input, expected] : {std::pair{frames_input(), 100.0}, std::pair{decimal, 2.6999999999999997}}) {
     const Config config = build_config(parse_input(input));
     const SpatialGrids grids = make_spatial_grids(config);
     const AngularGrid angular = make_angular_grid(config);
@@ -481,5 +481,5 @@ TEST(FrameFiles, RecordIntervalIsTheFrameIntervalTheProgramUses) {
     std::ifstream manifest(out / "frames" / "manifest.json");
     EXPECT_EQ(nlohmann::json::parse(manifest)["record_interval_au"].get<double>(), expected) << input["dtFrames"];
   }
-  EXPECT_NE(3 * (3 * 0.3), 2.7);  // the second case differs from dtFrames in the last bit
+  EXPECT_NE(2.6999999999999997, 2.7);  // the second case differs from dtFrames in the last bit
 }

@@ -218,20 +218,23 @@ differences are in [validation.md](validation.md).
   The Fortran's checks are tolerant (1e-12), so dtAna in the band below dtStep gives nanspo = 0 (the Fortran stops
   with SIGFPE, the C++ looped forever), dtAve in the band below dtAna gives nave = 0 (SIGFPE in both), and a
   truncated nanspo stops the run before tEnd unless nStep is a multiple of it. The C++ rejects these cases
-  (`validate_input`, comparing the ratios themselves; since analysis D5 the last one is left only where the 1e-12
-  tolerances add up over the steps of a small dtStep, e.g. dtStep 1.1e-12, dtAna 2.7e-12, nStep 3), and ratios
+  (`validate_input`, comparing the ratios themselves; since analysis D5 the last one is left only where D5's
+  relative and the propagation time's absolute 1e-12 add up over the steps of a dtStep near 1e-12, e.g. dtStep
+  1.0000001e-12, dtAna 2.0000002000018e-12, nStep 200001), and ratios
   beyond the int the program counts in (dtAna / dtStep with nStep = 0, dtAve / dtAna, dtFrames / dtAna above
   2147483647). dtAve just below m·dtAna (m − 1 analyses per average) stays allowed. Details and demonstration runs:
   [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#analysis-d4-dtana-or-dtave-just-below-a-multiple).
   Tests: `Checks/InputViolation.IsRejected/AnalysisD4*`, `Checks/InputViolation.IsRejected/DtFramesAboveIntMaxAnalyses`,
   `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`, `Input.AnalysisD4RatioJustAboveNStepIsOneAnalysisStep`,
-  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`.
+  `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4CountsAtTheIntBoundAreValid`.
 - analysis D5<a id="analysis-d5"></a>: dtAna must be a whole multiple of dtStep, in every run (new, restart,
   analysis-only, potential-only, write2DPES). The Fortran only checks that the propagation time is a whole multiple
   of dtAna and then truncates nanspo = INT(dtAnalysis/dtlan): dtAna 5 with dtStep 2 analyses every 4 a.u. while its
   output says "analysed every 5", and a decimal ratio such as 2.4 / 0.8 = 2.9999999999999996 counts one step less.
-  The C++ refuses a ratio whose truncation differs from its rounding or whose rounded multiple of dtStep differs from
-  dtAna by 1e-12 or more (`validate_input`), so nanspo · dtStep is dtAna for every accepted input. The truncation
+  The C++ refuses a ratio that exceeds its truncation by more than a relative 1e-12 (`validate_input`): 2.4 / 0.8,
+  2.5 and 2.4 are refused, 0.9 / 0.3 (exactly 3.0) is accepted, so nanspo · dtStep equals dtAna to a relative 1e-12
+  for every accepted input. Relative, not the Fortran's absolute 1e-12 on dtAna, which accepts a ratio of 2.45 at
+  dtStep 1.1e-12 and refuses whole ratios above dtAna ≈ 4096 (13107.4 / 0.1 = 131074 exactly). The truncation
   itself is kept. It replaces the weaker check that applied only with dtFrames or NormBudget. A BK or restart file of
   an earlier run with such a ratio can no longer be read (an onlyAnalysis run or a restart gives the same input
   error). Details and the demonstration run:

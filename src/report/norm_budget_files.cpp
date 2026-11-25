@@ -48,7 +48,8 @@ std::vector<DatasetSpec> budget_datasets(int n_absorbers) {
 nlohmann::ordered_json budget_manifest_fields(const Config& config, const std::vector<BudgetAbsorber>& absorbers) {
   nlohmann::ordered_json list = nlohmann::ordered_json::array();
   for (const BudgetAbsorber& a : absorbers) list.push_back({{"name", a.name}, {"grid", a.grid}});
-  // The analysis step the program uses (nanspo dtStep): dtAna within 1e-12, not always bitwise (3 * 0.3).
+  // The analysis step the program uses (nanspo dtStep): dtAna to a relative 1e-12 (analysis D5), not always bitwise
+  // (3 * 0.3 is 0.8999999999999999).
   return {{"record_interval_au", config.derived.analysis_time_step},
           {"window", {{"steps", config.derived.steps_per_analysis}, {"dt_step", config.input.time_step}}},
           {"absorbers", list}};
