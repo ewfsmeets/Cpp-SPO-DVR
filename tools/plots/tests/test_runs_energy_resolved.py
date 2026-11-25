@@ -212,25 +212,54 @@ def stationary_s_differences(run: Path, slip: str = "") -> np.ndarray:
     return worst / largest
 
 
-# The phase drift of the split operator's propagated momentum against k_f over the checked Z range: delta / v =
-# 6.9e-7 hartree x M / k0 = 2.3-2.6e-4 bohr^-1 (dtStep 2) over at most 1.2 bohr of Z, 2.8-3.1e-4: rounded, not a
-# strict bound (small next to the truncation indicator it is added to).
-SPLIT_OPERATOR_DRIFT = 3e-4
+def split_operator_drift(run: Path) -> np.ndarray:
+    """Per energy of the sums: the phase drift of the split operator's propagated momentum against k_f over the
+    checked Z range, delta / v * (Z range) = |delta| M / k0 * (valid top - zasymp), with delta the Strang step's
+    energy shift of the initial vibrational state (strang_shift_hartree): 3.15e-4 and 2.78e-4 for dailight_rho_e
+    (delta 6.89e-7 hartree, k0 9.72 and 11.02 bohr^-1, 1.21 bohr). An estimate, not a strict bound; it is added to
+    the truncation indicator."""
+    info, sums = read_run_info(run), read_energy_resolved(run)
+    energies = analysis_energies(info)
+    k0 = energies.k0_per_bohr[[int(np.argmin(np.abs(energies.collision_ev - e))) for e in sums.collision_ev]]
+    span = valid_region(info).z_high_bohr - info.data["z_asymptotic"]
+    return abs(strang_shift_hartree(run, info)) * info.data["molecule"]["total_mass"] / k0 * span
+
+
+def stationary_check(run: Path, planted: float | None = None) -> int:
+    """The number of energies at which S_f(Z) differs from s_matrix.tsv by more than the truncation indicator of
+    the same quantity (the partial sums against the final ones) plus split_operator_drift. planted: an extra
+    relative error of that fraction of each energy's margin (tolerance - measured), for the negative tests."""
+    relative = stationary_s_differences(run)
+    _, final, _ = stationary_s(run)
+    _, partial, _ = stationary_s(run, partial=True)
+    largest = np.max(np.abs(final), axis=(1, 2))
+    tolerance = np.max(np.abs(final - partial), axis=(1, 2)) / largest + split_operator_drift(run)
+    if planted is not None:
+        relative = relative + planted * (tolerance - relative)
+    assert len(relative) == 2
+    return int(np.sum(~(relative <= tolerance)))  # a NaN counts as failing
+
+
+def test_split_operator_drift_matches_its_derivation(fixture_runs: Path) -> None:
+    """The drift term per energy, from delta = 6.891e-7 hartree (2026-11-25): 3.15e-4 and 2.78e-4 (to 1 %)."""
+    drift = split_operator_drift(fixture_runs / "dailight_rho_e")
+    assert np.allclose(drift, [3.15e-4, 2.78e-4], rtol=0.01), drift
 
 
 def test_stationary_channels_hold_the_s_matrix_at_every_z(fixture_runs: Path) -> None:
     """dailight_rho_e at both energies: S_f(Z) of the plot tool's psi_E equals s_matrix.tsv's S_f at every Z between
     zasymp (8.0) and the valid region's top (9.2 bohr) for every open non-initial channel, within the truncation
-    indicator of the same quantity (the partial sums against the final ones: 2.2e-3, 9.3e-4 of max |S|) plus
-    SPLIT_OPERATOR_DRIFT; measured 1.1e-3, 7.1e-4 (2026-11-20). The only check of psi_E at oblique incidence (k0 from
-    the parallel momentum, the weight) and of the valid region's top."""
-    run = fixture_runs / "dailight_rho_e"
-    relative = stationary_s_differences(run)
-    _, final, _ = stationary_s(run)
-    _, partial, _ = stationary_s(run, partial=True)
-    largest = np.max(np.abs(final), axis=(1, 2))
-    tolerance = np.max(np.abs(final - partial), axis=(1, 2)) / largest + SPLIT_OPERATOR_DRIFT
-    assert len(relative) == 2 and np.all(relative <= tolerance), (relative, tolerance)
+    indicator of the same quantity (the partial sums against the final ones: 2.2e-3, 9.3e-4 of max |S|) plus the
+    split operator's drift (3.15e-4, 2.78e-4); measured 1.1e-3, 7.1e-4 (2026-11-25). The only check of psi_E at
+    oblique incidence (k0 from the parallel momentum, the weight) and of the valid region's top."""
+    assert stationary_check(fixture_runs / "dailight_rho_e") == 0
+
+
+@pytest.mark.parametrize(("planted", "failing"), [(1.01, 2), (0.99, 0)])
+def test_an_error_at_the_tolerance_fails_at_both_energies(fixture_runs: Path, planted: float, failing: int) -> None:
+    """Negative test of the per-energy tolerance: an extra relative error of 1.01 times each energy's margin fails
+    both energies, one of 0.99 times fails none."""
+    assert stationary_check(fixture_runs / "dailight_rho_e", planted) == failing
 
 
 @pytest.mark.parametrize("slip", ["no weight", "k0 for kf", "into ZOpt"])
