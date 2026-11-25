@@ -22,9 +22,10 @@ constexpr double frame_seconds_per_value_cpu = 0.52e-9;
 constexpr double frame_seconds_per_value_gpu = 2.45e-9;
 
 // FrameExtras, measured on the same grid (200 steps, 6 frames, every extra on; 2026-11-20): host seconds per complex
-// value of psi per frame, the same on the CPU and the GPU backend (the extras run on the host); the vibration
-// extra's per value and r point (each value enters nR overlaps).
-constexpr double angular_seconds_per_value = 3.75e-9;
+// value of psi per frame (the extras run on the host, so both backends pay them); the vibration extra's per value and
+// r point (each value enters nR overlaps). The angular extra measured again after its code changed (2 CPU runs,
+// 2026-11-25: 0.84 s per frame instead of 1.50 s); the others then within 5 % of these values, their code unchanged.
+constexpr double angular_seconds_per_value = 2.11e-9;
 constexpr double diffraction_seconds_per_value = 1.15e-9;
 constexpr double vibration_seconds_per_value_and_r = 0.132e-9;
 constexpr double rotation_moments_seconds_per_value = 0.88e-9;
