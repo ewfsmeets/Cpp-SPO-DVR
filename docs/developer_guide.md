@@ -69,7 +69,8 @@ The same rules as for the existing code; reviews check them.
   `fft/fftw_fft.cpp`, LAPACK in `linalg/lapack_eigensolver.cpp`, the allocator of `AlignedVector`,
   the `char*` calls of the binary file helpers (`io/binary_file.hpp`), `std::from_chars` in the
   list-directed reader, and device pointers in `src/cuda/` (owned by `DeviceBuffer`; kernels and
-  launchers take raw device pointers).
+  launchers take raw device pointers) and in the GPU timing tool `tools/benchmark/cuda_operator_timing.cpp`,
+  which calls those kernels and launchers directly.
 - **No globals.** The configuration is an immutable `Config` built by `build_config` and passed
   explicitly.
 - **Arrays:** multi-dimensional data are a flat `std::vector` (or `AlignedVector` for large arrays)
