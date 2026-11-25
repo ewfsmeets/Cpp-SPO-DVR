@@ -1,7 +1,7 @@
 // Tests: fine analysis (run mode 2) without Fortran output: the time-to-energy transform (direct
 // sum, analytic transform, the two-FFT form of Fortran hlftrf), the probaf prefactors against
 // the on-the-fly analysis, the interpolation, and the model of the Fortran interpolation bugs
-// (docs/fortran_fine_analysis_bugs.md) against the exact S at the analysis energies.
+// (docs/fortran_bugs/fine_analysis.md) against the exact S at the analysis energies.
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -426,7 +426,7 @@ TEST(FineAnalysis, SkippedEnergiesAndSmallGrids) {
 namespace {
 
 // Fortran 5.19 smatrix_calc (nread = 2, non-NAG) literally, bugs included: the documented 5.19
-// model (docs/fortran_fine_analysis_bugs.md). The gate 5 test emulates the reference (since 5.24 r1713),
+// model (docs/fortran_bugs/fine_analysis.md). The gate 5 test emulates the reference (since 5.24 r1713),
 // which fixed the s1_real typo.
 cplx fortran519_interpolation_with_bugs(cplx s1, cplx s2, double f) {
   const double prob1 = s1.real() * s1.real() + s1.imag() * s1.imag();
@@ -455,7 +455,7 @@ cplx intended_interpolation(cplx s1, cplx s2, double f) {
 // from the intended interpolation only where predicted (Re S or Im S changes sign between the
 // grid points, or the typo changes the sign of the interpolated Im S); (2) the C++
 // interpolation is close to the exact S (the transform evaluated at the analysis energy),
-// the Fortran one is not. The numbers are quoted in docs/fortran_fine_analysis_bugs.md.
+// the Fortran one is not. The numbers are quoted in docs/fortran_bugs/fine_analysis.md.
 TEST(FortranInterpolationBugs, OnlyPredictedPointsDifferAndFixIsAccurate) {
   const RunSetup& s = hardwall_small();
   const double chaev = units::legacy.energy_factor();

@@ -1,7 +1,7 @@
 # Fortran input checks: bugs and how the C++ handles them
 
 The C++ program reproduces the input checks of the Fortran code (`InputNew.f90` ReadInput and
-ValidateInput, and the grid checks of `Setup.f90`; see [input_schema.md](input_schema.md),
+ValidateInput, and the grid checks of `Setup.f90`; see [input_schema.md](../input_schema.md),
 "Validation"). A few of those checks are wrong. This document describes each one:
 
 - the Fortran code;
@@ -9,18 +9,22 @@ ValidateInput, and the grid checks of `Setup.f90`; see [input_schema.md](input_s
 - a demonstration with the unmodified Fortran executables;
 - what the C++ does instead.
 
-The short entries are in [fortran_deviations.md](fortran_deviations.md), under the same IDs.
+The short entries are in [fortran_deviations.md](../fortran_deviations.md), under the same IDs.
 The sections cover the flux analysis checks (flux Q1, flux Q2), the default strength that the
 Fortran keeps for an absorber energy of 0 (absorber D1), the optical potentials at the low end
 of the Z grid that upstream 5.24 added (low-Z D1–D4), the number of analysis energies
-(analysis D1), and dtAna or dtAve just below a multiple of dtStep or dtAna (analysis D4, open in the Fortran).
+(analysis D1), dtAna or dtAve just below a multiple of dtStep or dtAna (analysis D4, open in the Fortran), and three
+checks found by the audit of 2026-11-25 ([README.md](README.md#the-audit-of-2026-11-25)): an r absorber that starts at the first r
+point (input Q1), `nPhisOptimal` with a C3v or C3 potential (input Q2), and the absolute tolerance of the time checks
+(input Q3).
 
 **Status (2026-11-24):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
 analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
 NaN), and the C++ follows the fixed checks. The reference of the port is r1727 since 2026-11-23, so it has them.
 Analysis D4 is still open in the Fortran (r1727 included); the C++ rejects those inputs. Each section starts with
 its status. The demonstrations of the fixed checks show the Fortran before those fixes (5.19 and r1713); those of
-analysis D4 ran 5.19 and r1727.
+analysis D4 ran 5.19 and r1727. Input Q1–Q3 (2026-11-25) are open in r1727 and not yet reported upstream; their
+demonstrations ran r1727 and the C++ at git `48e5bdd`.
 
 ## The demonstration runs
 
@@ -30,8 +34,8 @@ analysis D4 ran 5.19 and r1727.
     `-O3`, OpenMP, FFTW);
   - 5.24: the install `r1713-dce0ecc`, upstream master at commit dce0ecc (svn r1713), built with
     `O3FLAGS = -O3` in `GNU.mk` (the default flags enable fast-math); the reference of the port until
-    2026-11-23. The reference since then, `r1727-3d00331`, has the fixes ([validation.md](validation.md#reference-data)).
-  - The installs: [tools/fortran_reference/README.md](../tools/fortran_reference/README.md#the-reference-install).
+    2026-11-23. The reference since then, `r1727-3d00331`, has the fixes ([validation.md](../validation.md#reference-data)).
+  - The installs: [tools/fortran_reference/README.md](../../tools/fortran_reference/README.md#the-reference-install).
 - **Input:** `tests/reference/hardwall_small/DVR.inp` with the keys of each case appended (or, where
   a case says so, lines of it replaced).
   - Its wave packet spans EMinWP = 0.2 to EMaxWP = 0.6 eV.
@@ -134,7 +138,7 @@ Both versions accept it:
   Input error: EMaxFluxAna: EMaxFluxAna > EMaxWP (0.8 eV > 0.6 eV): the flux analysis energies must lie inside the wave packet's energy range; use EMaxFluxAna <= EMaxWP
   ```
 - Case (a) passes the input checks. The flux analysis itself is not ported
-  ([flux_analysis_findings.md](flux_analysis_findings.md)), so a propagating run then stops with
+  ([flux_analysis_findings.md](../flux_analysis_findings.md)), so a propagating run then stops with
   exit code 3:
   ```text
   Not supported: doFluxAnalysis = true: the flux analysis is not implemented yet
@@ -527,7 +531,7 @@ times, and no fort.25 is written.
 ## analysis D4: dtAna or dtAve just below a multiple
 
 **Status:** open in the Fortran (5.19, r1713 and r1727, the reference). The C++ rejects these inputs since
-2026-11-24 (a deviation: [fortran_deviations.md](fortran_deviations.md#analysis-d4)).
+2026-11-24 (a deviation: [fortran_deviations.md](../fortran_deviations.md#analysis-d4)).
 
 ### The Fortran code
 
@@ -616,3 +620,157 @@ size limit. 5.19 and r1727 behave identically in every case (the same exit statu
   `AnalysisD4HugeRatioDoesNotOverflow`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
   `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple`);
   the designer's `tests/test_validate.py` and `tests/test_design.py`.
+
+## input Q1: an r absorber from the first r point
+
+**Status:** open in the Fortran (r1727). The C++ accepts the input and absorbs from the first point (a deviation).
+
+### The Fortran code
+
+ValidateInput checks only that ROptStart ≤ ROptEnd ≤ the end of the r grid (`InputNew.f90` lines 738–739). The first
+point inside the r absorber is found in `Setup.f90` (lines 483–490):
+
+```fortran
+          do i = 1 , nr
+            if(rgrid(i).RLT.rsplmi) then
+              nrchsp = i + 1
+              nrchmi = nrchsp - 1
+            else
+              exit
+            endif
+          enddo
+```
+
+and the r absorber of the specular grid loops from it (`Absorption.f90 PerformEXPOpticalOpSpec`, lines 231–235):
+
+```fortran
+      do iz = 1 , nzsp
+       do ir = nrchsp, nrchmx
+         SpecWave(ir,iz) = EXPOptR(ir) * SpecWave(ir,iz)
+       enddo
+      enddo
+```
+
+### What goes wrong
+
+- With ROptStart ≤ RStart the loop exits at i = 1 and never sets `nrchsp` or `nrchmi`. They have no initial value
+  (`globaldata.f90` line 187); in the gfortran build they are 0.
+- The set-up prints `rgrid(0)`, and every time step the absorber loop runs from ir = 0: it multiplies
+  `SpecWave(nr, iz−1)` by `EXPOptR(0)`, which lies outside its array, and for iz = 1 it writes before the start of
+  `SpecWave`, into the heap's bookkeeping.
+- An r absorber over the whole r grid is a poor choice, but the input checks accept it, and it is easy to make when
+  ROptStart is meant as "absorb everything beyond the bound region" on a short r grid.
+
+### Demonstration
+
+`ROptStart : REAL : 0.8;` (= RStart) instead of 4.55, and a short propagation (`tEnd` 200.0, `nStep` 100). The
+set-up prints
+
+```text
+     start optical potential in r scat.grid:
+     nrchmi =                                           0
+     r(nrchmi)=                                        0.000000
+```
+
+and the run writes the averages at t = 0 and 100, then stops with SIGABRT (exit status 134), before it writes
+fort.25:
+
+```text
+free(): invalid size
+
+Program received signal SIGABRT: Process abort signal.
+```
+
+With `ROptStart` 0.95 (the second r point) the same run ends normally (exit status 0).
+
+### The C++ behaviour
+
+- The index range of each absorber starts at the first point inside it, the first grid point included
+  (`src/grids/spatial_grids.cpp`, `optical_range`), so the case above runs (exit code 0) and absorbs from r = 0.8.
+  A deviation (input Q1 in [fortran_deviations.md](../fortran_deviations.md)).
+- Proposed Fortran fix: initialise `nrchsp = 1` and `nrchmi = 1` before the loop (the r absorber then starts at the
+  first point, as the Z loops do), or reject ROptStart ≤ RStart.
+
+## input Q2: nPhisOptimal with a C3v or C3 potential stops the run
+
+**Status:** open in the Fortran (r1727). The C++ supports these groups (a deviation).
+
+### The Fortran code
+
+With `UseSymmetry` and `nPhisOptimal`, `Main.f90` (lines 275–276) asks the surface-symmetry module for the multiple
+of nφ the point group needs before the symmetry is set up. `CxvSurfaceSymmetry.f90 getCxvNumPhisSmallestMultiple`
+(lines 111–145) knows C2v, C4v, C6v and "none", and stops for C3 and C3v:
+
+```text
+ Error in routine getCxvNumPhisSmallestMultiple in module CxvSurfaceSymmetry:
+ unknown symmetry!
+```
+
+The set-up of the symmetry, which comes later (`setupCxvSurfaceSymmetry`, lines 50–89), switches `UseSymmetry` off
+for C3v and C3 with a warning ("C3v symmetry not implemented; option disabled").
+
+### What goes wrong
+
+The same input runs without symmetry when `nPhisOptimal` is absent, and stops when it is given. For C2v and C4v the
+routine rounds nφ up to a multiple of 2 or 4, although the symmetry is switched off afterwards (harmless).
+
+### Demonstration
+
+`crp_cu111_srp48_small` (the SRP48 data set, C3v) with `UseSymmetry`, `nPhisOptimal` and `Potential` appended (all
+`LOGICAL : TRUE`): the run stops right after the input echo with the message above (exit status 0). Without
+`nPhisOptimal` it warns, switches the symmetry off and computes the potential with nφ = 10 (exit status 0).
+
+### The C++ behaviour
+
+- The C++ supports C3v and C3 with `UseSymmetry` ([fortran_deviations.md](../fortran_deviations.md#surface-symmetry-deviations)):
+  the same input rounds nφ from 10 to 12 (a multiple of 6), computes V at 10 of the 36 (x, y) points and passes the
+  symmetry self-check (exit code 0). A deviation (input Q2 in [fortran_deviations.md](../fortran_deviations.md)).
+- Proposed Fortran fix: return 1 (no constraint) from `getCxvNumPhisSmallestMultiple` for the groups whose symmetry
+  is switched off, or ask for the multiple after the symmetry set-up.
+
+## input Q3: the time checks reject valid decimal steps
+
+**Status:** open in the Fortran (r1727). The C++ has the same checks.
+
+### The Fortran code
+
+`InputNew.f90 ValidateInput` (lines 626 and 646–647):
+
+```fortran
+    CALL ERROR( tottym .RNE. (starttime+nstep*dtlan), 'tEnd /= tStart + nStep*dtStep < 0.' )
+    ...
+    Test = (NINT(FLOAT(nstep)*dtlan/dtAnalysis)*dtAnalysis) .RNE. (FLOAT(nstep)*dtlan)
+    CALL ERROR( Test, 'Propagation time must be an integer times dtAna.' )
+```
+
+`.RNE.` compares with an absolute tolerance of 1e-12 (`MyOperators.f90`).
+
+### What goes wrong
+
+nStep·dtStep in double precision differs from the decimal tEnd by rounding: 21000 × 0.7 = 14699.999999999998, 1.8e-12
+below 14700. Above t ≈ 8192 a.u. one ulp exceeds 1e-12, so the checks demand bitwise equality, and many decimal steps
+(0.7, 1.1, 2.2, …) fail from about 10⁴ steps on. Writing tEnd as 14699.999999999998 does not help: the dtAna check
+then fails for every usual dtAna (3.5, 7, 10.5, 14, 70).
+
+### Demonstration
+
+`dtStep` 0.7, `nStep` 21000, `tEnd` 14700.0, `dtAna` 3.5, `dtAve` 105.0 and `Potential : LOGICAL : TRUE;`: the run
+stops with `ERROR: tEnd /= tStart + nStep*dtStep < 0.` (exit status 0).
+
+### The C++ behaviour
+
+- The same checks with the same tolerance (`src/input/validate.cpp`): the case above is an input error (exit code 2),
+  `Input error: tEnd: tEnd /= tStart + nStep*dtStep.`
+- Proposed fix (both codes): compare with a tolerance relative to tEnd (a few ulp), or derive tEnd from
+  tStart + nStep·dtStep instead of reading it.
+
+## Checks stricter than needed
+
+Found in the same audit; they reject inputs the code would handle, but there is a simple way around them, so they are
+not proposed upstream. The C++ has both.
+
+- A homonuclear molecule needs JMax and |MJMax| of the same parity (`InputNew.f90` lines 605–606). Nothing in the
+  basis or the transforms needs it (each m has its own J ladder of one parity); the heteronuclear run with JMax 4 and
+  MJMax 1 (HD masses) builds the basis and runs.
+- nX = nY is required for C3v, C4v and C6v potentials also without `UseSymmetry` (`InputNew.f90` lines 582–586); the
+  symmetry modules need it only with symmetry (`C6vSurfaceSymmetry.f90` lines 48–52).

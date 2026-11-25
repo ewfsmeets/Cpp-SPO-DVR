@@ -62,7 +62,7 @@ int count_open_vibrational_levels(const RovibrationalStates& states, double avai
 // Highest open j (for v = 0), searched from JIn upwards in steps of delta_j (2 for a homonuclear
 // molecule), so it has the parity of the basis. Fortran: SetupAsympWF (E. Pijper part), jmaxAnalysis;
 // upstream r1727 starts at jin (before, at 0: for a homonuclear molecule with odd JIn only even j were
-// tested, docs/fortran_analysis_limits_bugs.md).
+// tested, docs/fortran_bugs/analysis_limits.md).
 int highest_open_rotational_level(const RovibrationalStates& states, int j_in, int delta_j, double available_energy,
                                   std::vector<std::string>& warnings) {
   const double e00 = states.energy(0, 0);

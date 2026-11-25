@@ -19,7 +19,7 @@ elsewhere: `MiscellaneousSetup` in r1717, the low-Z switch, and `SetupAsympWF` i
 
 - **Not ported.** The flux keys are read and checked ([input_schema.md](input_schema.md); two
   Fortran checks were wrong up to r1713 and are fixed, upstream too: flux Q1 and flux Q2 in
-  [fortran_deviations.md](fortran_deviations.md) and [fortran_input_bugs.md](fortran_input_bugs.md)). A propagating run (new or restart) with
+  [fortran_deviations.md](fortran_deviations.md) and [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md)). A propagating run (new or restart) with
   `doFluxAnalysis: true` then stops with exit code 3 and "doFluxAnalysis = true: the flux analysis
   is not implemented yet" (`src/app/run.cpp`; test `FluxAnalysisGuard.PropagatingRunIsRefusedWithExitCode3`).
   Analysis-only and potential-only runs accept the keys and ignore them
@@ -312,7 +312,7 @@ an earlier Fortran run's `flux_reaction.dat` in all 8 printed digits.
 
 The reverted code numbered them Q1–Q9. Q1 and Q2 are input checks and are still active
 (flux Q1, flux Q2 in [fortran_deviations.md](fortran_deviations.md), details in
-[fortran_input_bugs.md](fortran_input_bugs.md)). The others, by content:
+[fortran_bugs/input_checks.md](fortran_bugs/input_checks.md)). The others, by content:
 
 | In the reverted code | Content | Port's choice |
 |---|---|---|

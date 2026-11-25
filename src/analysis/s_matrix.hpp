@@ -61,7 +61,7 @@ void combine_s_matrix(EnergyResult& e, const AnalysisBasis& basis, const GasPhas
 // free outgoing phase exp(i kz Z): the specular analysis line for the initial state once that line was fixed
 // (specular_line: from then on its coefficients come from the specular grid there, balint_kurti.cpp), else Zana.
 // The Fortran's fine analysis (probaf) uses Zana for every state, as its on-the-fly analysis did up to r1719, which
-// puts a phase k (Z_sp - Zana) on the initial state's elements (docs/fortran_elastic_phase_bug.md); nothing in
+// puts a phase k (Z_sp - Zana) on the initial state's elements (docs/fortran_bugs/elastic_phase.md); nothing in
 // specular_line gives that convention.
 [[nodiscard]] double measurement_line(const Config& config, const AnalysisBasis& basis, int is,
                                       std::optional<double> specular_line);

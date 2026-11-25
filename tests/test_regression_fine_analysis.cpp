@@ -4,7 +4,7 @@
 // tools/fortran_reference/run_fine_analysis_reference.sh (unmodified Fortran binary, onlyAnalysis runs), in
 // <case>/fine_<variant>/.
 // The Fortran interpolated S-matrix elements (fort.25) are compared with an emulation of the
-// Fortran interpolation including its bugs (docs/fortran_fine_analysis_bugs.md); everything
+// Fortran interpolation including its bugs (docs/fortran_bugs/fine_analysis.md); everything
 // else with the C++ results directly. Every value of fil10, unit 3 and fort.25 is compared, or
 // skipped with a named, counted reason; the counts are asserted against the Fortran's write rules.
 #include <gtest/gtest-spi.h>
@@ -80,7 +80,7 @@ struct FineRun {
 
   [[nodiscard]] FineAnalysisResults run() const {
     const fs::path bk_file = fs::path(config.input.restart_dir) / "fortran_fort21.bin";
-    // No checkpoint: every phase refers to Zana, as in the Fortran's fort.25 (docs/fortran_elastic_phase_bug.md).
+    // No checkpoint: every phase refers to Zana, as in the Fortran's fort.25 (docs/fortran_bugs/elastic_phase.md).
     return run_fine_analysis(config, setup, gas, BkInput{bk_file, true}, fft);
   }
   // State index is of the labels (order, n, m, j, mJ); -1 if not in the basis.

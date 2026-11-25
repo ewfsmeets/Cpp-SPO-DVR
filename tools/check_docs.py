@@ -6,9 +6,10 @@ Checks (each finding is printed as `file:line: <check>: <what>; <how to fix>`):
   output-files  file names written by src/app, src/io, src/report <-> docs/output_files.md
   links         tracked *.md: relative links, images and #anchors resolve (GitHub slugs);
                 `file.ext:N` / `path/file.ext:N-M` anchors name a repository file with >= N lines
-  decision-ids  `flux Qn`, `SCM Dn`, `CRP Dn`, `absorber Dn`, `low-Z Dn`, `analysis Dn` cited in a
-                tracked file are defined in docs/fortran_deviations.md (a heading, list item or
-                table row that starts with the ID); the unqualified "decision Dn" wording is reported
+  decision-ids  `flux Qn`, `physics Qn`, `input Qn`, `SCM Dn`, `CRP Dn`, `absorber Dn`, `low-Z Dn`,
+                `analysis Dn` cited in a tracked file are defined in docs/fortran_deviations.md (a heading,
+                list item or table row that starts with the ID); the unqualified "decision Dn" wording is
+                reported
   local-paths   tracked text files hold no ~/work path other than the Fortran trees and no plan
                 vocabulary (the thesis record docs/validation_thesis_fig5_3_dz/ is exempt)
   cli           the options of `spodvr --help` <-> the usage block of README "Running"
@@ -452,7 +453,7 @@ def check_links(repo: Repo) -> list[Finding]:
 # 4. Decision IDs
 # ---------------------------------------------------------------------------------------------
 DEVIATIONS = "docs/fortran_deviations.md"
-ID_PREFIX = r"(flux Q|SCM D|CRP D|absorber D|low-Z D|analysis D)"
+ID_PREFIX = r"(flux Q|physics Q|input Q|SCM D|CRP D|absorber D|low-Z D|analysis D)"
 ID_CITATION = re.compile(r"\b" + ID_PREFIX + r"(\d+)((?:/[DQ]?\d+)*)")
 ID_DEFINITION = re.compile(r"^\s*(?:#{1,6}\s+|[-*]\s+|\|\s*)?(?:\*\*)?" + ID_PREFIX + r"(\d+)(?!\d)")
 UNQUALIFIED_ID = re.compile(r"\bdecision (D\d+(?:/D?\d+)*)")
@@ -505,7 +506,7 @@ def check_decision_ids(repo: Repo) -> list[Finding]:
                         "decision-ids",
                         f,
                         number,
-                        f'unqualified decision ID "{m.group(0)}"; name its area (flux Qn, SCM Dn, '
+                        f'unqualified decision ID "{m.group(0)}"; name its area (flux Qn, physics Qn, input Qn, SCM Dn, '
                         "CRP Dn, absorber Dn, low-Z Dn, analysis Dn) as defined in "
                         f"{DEVIATIONS}",
                         line,

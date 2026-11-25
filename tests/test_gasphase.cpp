@@ -114,7 +114,7 @@ bool has_warning(const GasPhase& gas, const std::string& text) {
   return false;
 }
 
-// The bug report's example 1 (docs/fortran_analysis_limits_bugs.md): odd JIn, homonuclear, levels j = 1, 3
+// The bug report's example 1 (docs/fortran_bugs/analysis_limits.md): odd JIn, homonuclear, levels j = 1, 3
 // open (E(0, j) - E(0, 0) = 0.01424, 0.08482 eV; available 0.12 + 0.01424), j = 5 closed (0.20923).
 const nlohmann::json odd_jin_example = {{"JMax", 5}, {"MJMax", 5},     {"JIn", 1},
                                         {"MJIn", 0}, {"EMinWP", 0.06}, {"EMaxWP", 0.12}};

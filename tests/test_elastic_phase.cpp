@@ -1,6 +1,6 @@
 // The elastic S-matrix element of a hard-wall run against the exact 1D reflection amplitude: a check
 // of the analysis independent of the Fortran, including the phase of the initial state, which is
-// measured at the specular analysis line (docs/fortran_elastic_phase_bug.md).
+// measured at the specular analysis line (docs/fortran_bugs/elastic_phase.md).
 #include <gtest/gtest.h>
 
 #include <cmath>

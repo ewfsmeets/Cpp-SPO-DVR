@@ -581,7 +581,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 - **Results that differ on purpose:**
   - the Fortran's fine analysis has interpolation and sign errors, fixed in the C++: the
     probabilities are the same, the S-matrix elements and phases differ
-    ([docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md));
+    ([docs/fortran_bugs/fine_analysis.md](docs/fortran_bugs/fine_analysis.md));
   - a restart carries over the whole state of the specular analysis line; the Fortran does not save
     two parts of it, `anlyTol` and `oldValZanly` ([restart bug](docs/fortran_deviations.md#fortran-restart-bug));
   - the phase of the S-matrix elements of the initial rotational and diffraction state (elastic and
@@ -608,7 +608,7 @@ The production-size calculation above (DZ PES, 7000 steps), as run on one deskto
 | [docs/analysis_gallery.md](docs/analysis_gallery.md) | what one run shows: every figure and movie of the plot tool on the thesis grid, explained |
 | [docs/port_status.md](docs/port_status.md) | every Fortran feature and its status in the C++; the additions |
 | [docs/fortran_deviations.md](docs/fortran_deviations.md) | every known difference from the Fortran code |
-| [docs/fortran_input_bugs.md](docs/fortran_input_bugs.md), [docs/fortran_fine_analysis_bugs.md](docs/fortran_fine_analysis_bugs.md), [docs/fortran_elastic_phase_bug.md](docs/fortran_elastic_phase_bug.md), [docs/fortran_analysis_limits_bugs.md](docs/fortran_analysis_limits_bugs.md) | Fortran bugs found during the port and later |
+| [docs/fortran_bugs/](docs/fortran_bugs/README.md) | Fortran bugs found during the port and later: wrong physics, input checks, the fine analysis, the elastic phase, the analysis limits |
 | [docs/upstream_sync.md](docs/upstream_sync.md) | the upstream changes since 5.19 and their port status |
 | [docs/performance.md](docs/performance.md) | build options, threads and NUMA, memory, benchmarks |
 | [docs/cuda.md](docs/cuda.md) | the GPU backend: design, numerics, memory, performance |

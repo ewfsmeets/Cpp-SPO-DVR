@@ -202,8 +202,9 @@ waves, a high one reflects slow ones.
   Z grid, V_opt = A·(3/2)·((end − q)/L)², strongest at Start, with ZStart ≤ Start < End ≤ `Zana`.
 - **When to use them:** off by default; only for amplitude that reaches the start of a Z grid, which
   the periodic grid carries over to its far end. Like every absorber they remove whatever they
-  overlap. The specular grid holds the free incoming molecule (no surface potential), which crosses
-  the surface region towards ZStart: a `ZSpOptLow…` absorber also absorbs incoming amplitude. In the
+  overlap. The specular grid holds the initial channel (the initial j, mJ and diffraction order (0, 0), every v),
+  the incoming molecule included; inside the interaction region it feels the full potential, and it crosses the
+  surface region towards ZStart: a `ZSpOptLow…` absorber also absorbs incoming amplitude. In the
   gate case `cu111_dailight_short_lowz` (both weak, from −2 to `Zana` = 8) the specular one absorbed
   1.6 % of the norm by t = 2000, the scattering one 0.02 % (C++ runs with one of them removed,
   2026-11-12; [validation.md](../docs/validation.md)).

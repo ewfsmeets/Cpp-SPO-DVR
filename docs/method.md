@@ -157,7 +157,7 @@ from the initial channel energy), kept within the 95 % energy range of the packe
 interpolated to the `NrOfEs` analysis energies (`analysis/fine_analysis.hpp`; Fortran:
 `AsympInfo.f90`, `Analyzor.f90`). The on-the-fly analysis instead sums at the exact analysis energies
 (above). The Fortran's interpolation has errors that the C++ fixes:
-[fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md).
+[fortran_bugs/fine_analysis.md](fortran_bugs/fine_analysis.md).
 
 ## Gas phase
 

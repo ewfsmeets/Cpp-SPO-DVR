@@ -58,7 +58,7 @@ with ([upstream_sync.md](upstream_sync.md)).
 
 With the switch the C++ follows 5.24 twice: `RStart ≤ 0` is rejected (5.19: only `< 0`), and
 gate 5 emulates the interpolation with 5.24's `s1_imag`; the unit tests `FortranInterpolationBugs.*`
-keep the 5.19 model with its `s1_real` typo ([fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md)).
+keep the 5.19 model with its `s1_real` typo ([fortran_bugs/fine_analysis.md](fortran_bugs/fine_analysis.md)).
 
 ## Gates
 

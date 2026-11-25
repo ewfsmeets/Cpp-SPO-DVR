@@ -93,7 +93,7 @@ TEST(AnalysisBasis, ReferenceCaseMatchesFortran) {
   EXPECT_EQ(a.n_v(), 2);                             // nviba
 }
 
-// The bug report's example 1 (docs/fortran_analysis_limits_bugs.md): JIn 1 of a homonuclear molecule; the
+// The bug report's example 1 (docs/fortran_bugs/analysis_limits.md): JIn 1 of a homonuclear molecule; the
 // analysed rotational states are j = 1 (3 states) and j = 3 (7), and the initial state is among them.
 TEST(AnalysisBasis, OddJInExampleHasTenRotationalStates) {
   nlohmann::json json = reference_json();

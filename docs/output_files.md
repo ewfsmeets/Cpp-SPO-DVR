@@ -309,7 +309,7 @@ Written to `fine_analysis/` in the output directory, in the same table formats a
 | `fine_analysis/grid.json` | records in the file / up to tEnd / used (ndused), transform length, time step, effective time, spectral resolution (eV), first and last grid index, number of points (nen95), skipped analysis energies with the reason, and the count of large phase steps |
 
 The interpolated S-matrix elements and phases differ from the Fortran fort.25 because two Fortran
-bugs are fixed; the probabilities are the same. See `docs/fortran_fine_analysis_bugs.md`. The phases
+bugs are fixed; the probabilities are the same. See `docs/fortran_bugs/fine_analysis.md`. The phases
 of the initial state's elements refer to the specular analysis line of the analysed run (analysis D2),
 read from the analysis surface of its checkpoint (native `checkpoint.bin`, or the Fortran fort.8/fort.9),
 which must be next to the BK file.

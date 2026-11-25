@@ -284,7 +284,7 @@ The C++ follows upstream in all three r1726 checks (the user's decision, 2026-11
 
 - `highest_open_rotational_level` (`src/gasphase/gas_phase.cpp`) starts at JIn;
 - `validate_input` (`src/input/validate.cpp`): `JIn >= JMax`, `VIn >= VAna`, `JIn >= JAna`;
-- [analysis D3](fortran_deviations.md#analysis-d3): VIn = nR − 1 is an input error;
+- [analysis D3](../fortran_deviations.md#analysis-d3): VIn = nR − 1 is an input error;
 - `compute_gas_phase` and `AnalysisBasis` stop when the initial state is not analysed (internal checks, unreachable
   for a valid input). This also covers the sites the C++ reached out of range in bug 1 with JIn = JMax and in bug 2:
   `balint_kurti.cpp`, `fine_analysis.cpp`, `fine_analysis_run.cpp`, `analysis_report.cpp` (the initial state's
@@ -295,7 +295,7 @@ The C++ follows upstream in all three r1726 checks (the user's decision, 2026-11
   `JInEqJAna`, `AnalysisD3VInIsTheLastLevel`, and the designer's copy (`tools/wave_packet_designer`). Against the
   Fortran (r1727): the reference case `cu111_dailight_oblique` (JIn 1, MJIn −1, JMax 3) has `jana` 3 and `nana` 10
   in both codes; gate 2 compares `nana`, `nstata`, `inchna` (`RegressionPes.Gate2AnalysisLimits`), gates 4 and 5
-  all five limits ([validation.md](validation.md)).
+  all five limits ([validation.md](../validation.md)).
 - BK and checkpoint files written before the fix by a run with odd JIn and without JAna have another number of
   analysed states; reading them now stops with exit code 4 (give the old run's JAna to read them).
 - Commits: the input checks d18066b, the search and analysis D3 26f1730.

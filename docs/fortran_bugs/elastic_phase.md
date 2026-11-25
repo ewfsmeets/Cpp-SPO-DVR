@@ -1,9 +1,9 @@
 # Bug: the phase of the specular S-matrix elements is referred to the wrong Z
 
-**Status:** fixed in the C++ on 2026-11-21 (a deviation from the Fortran: [fortran_deviations.md](fortran_deviations.md),
+**Status:** fixed in the C++ on 2026-11-21 (a deviation from the Fortran: [fortran_deviations.md](../fortran_deviations.md),
 analysis D2; see [The C++ fix](#the-c-fix)). Fixed upstream for the on-the-fly analysis in r1720 (`smatrix_calc`,
 2026-11-21, the patch of [Proposed fix: Fortran](#proposed-fix-fortran)); the reference is r1727 since 2026-11-23,
-and gate 4 compares those elements, phases included ([validation.md](validation.md)). Still open in the Fortran's
+and gate 4 compares those elements, phases included ([validation.md](../validation.md)). Still open in the Fortran's
 fine analysis (`probaf`, `Analyzor.f90` line 1406 at r1727), and in 5.19 and 5.24. The C++ port reproduced the bug
 until 2026-11-21. It was found in a code review on 2026-11-20 and verified on the hard-wall case against the exact
 answer.
@@ -62,7 +62,7 @@ Z_sp.
     start of `ZSpOpt`, depending on `TolSp`, the grid, the time step and the dynamics.
 
   From the step at which the line is fixed, the BK coefficient of the initial state is *replaced* by the projection
-  of the specular wave at Z_sp (a documented kept quirk, [fortran_deviations.md](fortran_deviations.md)).
+  of the specular wave at Z_sp (a documented kept quirk, [fortran_deviations.md](../fortran_deviations.md)).
 
 ## The bug in the code
 

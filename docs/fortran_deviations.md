@@ -6,7 +6,7 @@ fixes, Fortran quirks that it reproduces on purpose, features that were not port
 where the Fortran computes in quad precision while the C++ uses double. The port started from 5.19,
 which gives the same results as the reference for its features; where the two versions differ, the
 entry says so. Add every new deviation here. The fine-analysis bugs are described in detail in
-[fortran_fine_analysis_bugs.md](fortran_fine_analysis_bugs.md); the gates that bound the numerical
+[fortran_bugs/fine_analysis.md](fortran_bugs/fine_analysis.md); the gates that bound the numerical
 differences are in [validation.md](validation.md).
 
 - `nZSpecular` read depends on `nproj` before `ProjOp` is read (always uses default 2), so the
@@ -16,12 +16,12 @@ differences are in [validation.md](validation.md).
   inside the wave packet and accepted ranges beyond it. r1714 checks the range the way the C++ always did
   (error if EMaxFluxAna > EMaxWP, tolerant) and adds EMinFluxAna > EMaxWP and EMaxFluxAna < EMinWP, which the
   C++ now has too. No deviation remains. Details and a demonstration:
-  [fortran_input_bugs.md](fortran_input_bugs.md#flux-q1-emaxfluxana-is-checked-the-wrong-way-round).
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#flux-q1-emaxfluxana-is-checked-the-wrong-way-round).
 - flux Q2<a id="flux-q2"></a>: resolved upstream in r1719. Up to r1713 the Fortran rejected only
   `deltaEFluxAna < 0` (plain `<`), so ΔE = 0 passed and `FluxAnalyzor.f90 setupFluxAnalyzor` divided by it (a
   garbage energy count, no flux results). r1719 rejects `deltaEFluxAna <= 0.0` (exact); the C++ check, tolerant
   before, is exact now too. No deviation remains. Details:
-  [fortran_input_bugs.md](fortran_input_bugs.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#flux-q2-a-zero-deltaefluxana-passes-the-check).
 - Not ported (yet): the flux analysis (`FluxAnalyzor.f90`). `doFluxAnalysis = true` stops a
   propagating run (new or restart) with exit code 3 once the input checks have passed;
   analysis-only (`onlyAnalysis`) and potential-only (`Potential`) runs accept the keys and ignore them.
@@ -54,7 +54,7 @@ differences are in [validation.md](validation.md).
   `inputfields.f90 inp_VerifyFieldName`), and an unknown key is an error (the Fortran stores an
   unknown key that carries a type, `Name : REAL : value;`, and never reads it). An input error
   exits with status 2; the Fortran's `errortrap.f90 AbortWithError` stops with status 0
-  ([fortran_input_bugs.md](fortran_input_bugs.md#the-demonstration-runs)).
+  ([fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#the-demonstration-runs)).
 - <a id="output-not-reproduced"></a>Output not reproduced: the mean rotational and diffraction energies per final v (Fortran stdout,
   `Analyzor.f90 smatrix_combine`, and fil10, `probaf`), which the C++ computes (`combine_s_matrix`)
   but does not write: it writes the means over all v; and the CPU time per operator
@@ -88,7 +88,7 @@ differences are in [validation.md](validation.md).
   (`globaldata.f90 SetupGlobalDataModule`, e.g. 4.38e-3 hartree for ZOpt), so it absorbed without saying so;
   the C++ gave strength 0. `ZOptLowEnergy` keeps the tolerant `.RLT. 0` check: an energy of 0 stays valid
   there and means no absorption in both codes (the low-Z default strength is 0). Details:
-  [fortran_input_bugs.md](fortran_input_bugs.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength).
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#absorber-d1-an-absorber-energy-of-0-keeps-the-default-strength).
 - absorber D2<a id="absorber-d2"></a>: an absorber whose reduced length L/λ is exactly 1, the first point of the
   Vibók–Balint-Kurti table, matches no interval of `MyFunctions.f90 getACoeffOptPotential` (the
   test is `xtab(i) < L/λ ≤ xtab(i+1)`, and L/λ < 1 is the clamp branch). The Fortran then returns
@@ -99,7 +99,7 @@ differences are in [validation.md](validation.md).
   (its energy key), in the Fortran's order (`InputNew.f90 ProcessInput`).
 - The low-Z absorbers of upstream 5.24 (keys `ZOptLow…`, `ZSpOptLow…`; `InputNew.f90 ReadInput`,
   `Absorption.f90 SetupAbsorpPot`). The Fortran's silent cases are errors here; details and
-  demonstrations: [fortran_input_bugs.md](fortran_input_bugs.md#the-low-z-absorbers-of-upstream-524).
+  demonstrations: [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#the-low-z-absorbers-of-upstream-524).
   - low-Z D1: Start > End is an error (the Fortran leaves the absorber off without a message).
   - low-Z D2: Start = End is an error. Up to r1713 the Fortran switched on a zero-length absorber (a grid
     point equal to Start got 0·(0/0) = NaN, and the wave function became NaN); since r1717 it leaves the
@@ -166,7 +166,7 @@ differences are in [validation.md](validation.md).
   such number of each result set, and exits with code 5 (README "Exit codes"; `src/analysis/non_finite.hpp`). The
   Fortran has no such check (no `ieee_is_nan` or `ieee_is_finite` in its sources) and writes such results without
   notice.
-- Fine analysis, fixed (`docs/fortran_fine_analysis_bugs.md`): `smatrix_calc` (nread 2, non-NAG)
+- Fine analysis, fixed (`docs/fortran_bugs/fine_analysis.md`): `smatrix_calc` (nread 2, non-NAG)
   uses ATAN instead of ATAN2 and takes the signs of Re/Im S separately from the linear
   interpolation. Only S and phases at the analysis energies are affected (probabilities: P
   interpolated linearly, unaffected). C++: P linear, phase = arg of the linearly interpolated S.
@@ -189,7 +189,7 @@ differences are in [validation.md](validation.md).
   `InputNew.f90 ProcessInput` divided by zero in `denrgy = (EMaxWP-EMinWP)/(nenrgy-1)`, and the run reported NaN
   energies and P_reaction = 1. The same change makes NrOfEs = −95 (`Constants_NEN95`, collision energies on the
   grid of multiples of π/tEnd) an input error; the C++ no longer has that choice. Details and a demonstration:
-  [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d1-nrofes--0-and-1-pass-the-check).
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#analysis-d1-nrofes--0-and-1-pass-the-check).
 - analysis D2<a id="analysis-d2"></a>: the phase of the initial state's S-matrix elements (the elastic element and
   the vibrationally inelastic specular ones) is referred to the line where those coefficients are measured, the
   specular analysis line Z_sp once it is fixed, not to Zana. The Fortran's fine analysis removes the free outgoing
@@ -202,13 +202,13 @@ differences are in [validation.md](validation.md).
   from the checkpoint in RestartDir. Gate 5 analyses the Fortran's BK file without a checkpoint, i.e. with the
   Fortran's convention, to compare with its fort.25. Tests: `ElasticPhase.HardWallElasticElementIsTheExactReflection`
   (the hard-wall elastic element against the exact 1D reflection, with the phase referred to Zana as negative test),
-  `SMatrix.InitialStatePhaseRefersToTheSpecularLine`. Details: [fortran_elastic_phase_bug.md](fortran_elastic_phase_bug.md).
+  `SMatrix.InitialStatePhaseRefersToTheSpecularLine`. Details: [fortran_bugs/elastic_phase.md](fortran_bugs/elastic_phase.md).
 - analysis D3<a id="analysis-d3"></a>: VIn = nR − 1 is an input error. Without VAna the gas phase analyses at most
   nR − 1 vibrational levels (v = 0 to nR − 2: `GasPhase.f90 SetupAsympWF` stops the open-level search at
   `iv == nr`, C++ `count_open_vibrational_levels`), and the levels are sorted with EMaxWP > 0, so with
   VIn = nR − 1 every level is open and the initial one is still left out of the analysis. The Fortran (r1727)
   accepts that input and then analyses no initial level (read from the code; the case of bug 2 in
-  [fortran_analysis_limits_bugs.md](fortran_analysis_limits_bugs.md)); with VAna given, its r1726 check VIn ≥ VAna
+  [fortran_bugs/analysis_limits.md](fortran_bugs/analysis_limits.md)); with VAna given, its r1726 check VIn ≥ VAna
   already rejects it. The C++ also checks after the gas phase that the initial state is analysed
   (`compute_gas_phase`, `AnalysisBasis`; unreachable for a valid input). Tests:
   `Checks/InputViolation.IsRejected/AnalysisD3VInIsTheLastLevel`, `Input.AnalysisD3VInBelowTheLastLevelIsValid`,
@@ -221,9 +221,39 @@ differences are in [validation.md](validation.md).
   that is not whole) stops the run before tEnd unless nStep is a multiple of the truncated count. The C++ rejects
   these three cases (`validate_input`, comparing the ratios themselves); a truncated count with nStep a multiple of
   it, and dtAve just below m·dtAna (m − 1 analyses per average), stay allowed. Details and
-  demonstration runs: [fortran_input_bugs.md](fortran_input_bugs.md#analysis-d4-dtana-or-dtave-just-below-a-multiple).
+  demonstration runs: [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#analysis-d4-dtana-or-dtave-just-below-a-multiple).
   Tests: `Checks/InputViolation.IsRejected/AnalysisD4*`, `Input.AnalysisD4DtAnaEqualToDtStepIsAccepted`,
   `Input.AnalysisD4DtAveJustBelowAMultipleIsAccepted`, `Input.AnalysisD4TruncatedStepsAcceptedWhenNStepIsAMultiple`.
+- physics Q1<a id="physics-q1"></a>: with `UseSwitching` the asymptotic potential V_asy is the PES at
+  ZmaxSwitch (`H2SurfaceSystem.f90` line 426 passes the switched zasymp), while the switch blends V towards the PES at
+  the unswitched asymptotic Z (`Potential.f90 switchPotentialToGasPhase`): V steps at ZmaxSwitch, and the asymptotic
+  states are those of the wrong potential (+8.8 to +10.9 meV for the Dai–Light cases switched at 6–8 bohr). Kept: the
+  C++ computes the same (`src/potential/potential_grid.cpp`), so the gates compare the same thing. Deviation: with
+  `UseSwitching` and no `ZmaxSwitch` key the Fortran keeps the PES's asymptotic Z (the key is not pre-registered and
+  `GetRealField` leaves zasymp unchanged), the C++ takes the default 8.0 (`src/input/process.cpp` `build_config`);
+  `cu111_dailight_small` without its `ZmaxSwitch` line stops in the Fortran (ZAna < ZAsymptotic) and runs in the C++.
+  Details and a demonstration: [fortran_bugs/physics_q1_switching.md](fortran_bugs/physics_q1_switching.md).
+- physics Q2<a id="physics-q2"></a>: a Fortran restart (fort.8, fort.22) is not checked against the run it continues.
+  With another dtAna the old BK records keep their times but get the new weight (`Analyzor.f90
+  GetSMatrixElemsOfOldRun`); tStart is not compared with the end of the earlier run; another analysis basis reads the
+  old records with the new sizes. The S matrix is wrong without a message (hard wall: sums of the probabilities up to
+  5.2 instead of 1). The C++ refuses such restarts (exit code 4): `src/io/fortran_files.cpp` checks fort.22's sizes,
+  dtAna, labels and record sizes, `src/app/run.cpp` tStart. Details: [fortran_bugs/physics_q2_restart.md](fortran_bugs/physics_q2_restart.md).
+- physics Q3<a id="physics-q3"></a>: PES morphing (`Potential.f90 MorphPotential`, run when `pesmorphparameters.dat`
+  exists) projects V onto the basis J ≤ JMax at every (Z, r) even for terms that change nothing (up to 0.29 eV in the
+  barrier region of `cu111_dailight_small`), applies `cons` k = 2, 4 or 8 times for zero indices, and runs out of
+  bounds with `UseSymmetry`. Not ported (the C++ ignores the file; [upstream_sync.md](upstream_sync.md)). Details:
+  [fortran_bugs/physics_q3_morphing.md](fortran_bugs/physics_q3_morphing.md).
+- input Q1<a id="input-q1"></a>: ROptStart ≤ RStart passes the Fortran's checks, leaves `nrchsp`/`nrchmi` unset (0)
+  and makes the specular r absorber write outside `SpecWave`; the r1727 run stops with SIGABRT. The C++ starts the
+  absorber at the first r point and runs. Details: [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#input-q1-an-r-absorber-from-the-first-r-point).
+- input Q2<a id="input-q2"></a>: `UseSymmetry` with `nPhisOptimal` and a C3v or C3 potential stops the Fortran
+  ("unknown symmetry!", `CxvSurfaceSymmetry.f90 getCxvNumPhisSmallestMultiple`); without `nPhisOptimal` it switches the
+  symmetry off. The C++ supports these groups (a multiple of 6 or 3 φ points). Details:
+  [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#input-q2-nphisoptimal-with-a-c3v-or-c3-potential-stops-the-run).
+- input Q3<a id="input-q3"></a>: the checks tEnd = tStart + nStep·dtStep and "nStep·dtStep a multiple of dtAna" use
+  the absolute tolerance 1e-12, so decimal steps fail at large times (dtStep 0.7, nStep 21000, tEnd 14700). Kept: the
+  C++ has the same checks. Details: [fortran_bugs/input_checks.md](fortran_bugs/input_checks.md#input-q3-the-time-checks-reject-valid-decimal-steps).
 - <a id="projop-1"></a>ProjOp = 1 (Fortran `CheckOneGridContinuation`/`ProceedWithOneGrid`) is not ported (legacy
   option); the input reader rejects it.
 - Kept on purpose (`Analyzor.f90 FindNewAnalysisPoint`): the clamp of `izanlySpecChan` to `nschmi`
@@ -343,7 +373,8 @@ Open physics questions: [scm_open_questions.md](scm_open_questions.md).
   other SystemID is an error naming it. Tests: `Input.ScmD1KeysOnlyWithCrpDistrtSurface`,
   `ScmCrpPotential.ScmD1FactoryIsCaseInsensitive`.
 - SCM D2: surface symmetry. The potential's point group is the CRP data set's, which the Fortran
-  also uses for `UseSymmetry`: it switches the symmetry off for C3v ("not implemented") and would
+  also uses for `UseSymmetry`: it switches the symmetry off for C3v ("not implemented"; with `nPhisOptimal` it
+  stops instead, input Q2) and would
   symmetrise the distorted potential of a C6v data set (a latent bug: the distorted slab has no
   symmetry). The C++ keeps the CRP's point group (input checks, report) and rejects
   `UseSymmetry: true` with `CRPDistrtSurface`, naming it. Test: `Input.ScmD2UseSymmetryRejected`.
