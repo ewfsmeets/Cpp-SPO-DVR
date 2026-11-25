@@ -47,7 +47,8 @@ TEST(Core, FortranComparisonsUseAbsoluteTolerance) {
   EXPECT_FALSE(seq("HardWallPES", "HardWall"));
 }
 
-TEST(AlignedVector, AlignedAndPoisonedInDebugBuilds) {
+// 64-byte aligned always; NaN-filled (poisoned) only in a build with SPODVR_POISON_UNINITIALISED.
+TEST(AlignedVector, AlignedAndPoisonedWhenConfigured) {
   spodvr::AlignedVector<double> v(5);
   spodvr::ComplexVector c(3);
   EXPECT_EQ(reinterpret_cast<std::uintptr_t>(v.data()) % 64, 0u);
