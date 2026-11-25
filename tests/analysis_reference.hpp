@@ -31,14 +31,15 @@ namespace spodvr::testing {
 
 // Half a unit in the last printed digit of a Fortran number as printed (E14.7, D14.7, F10.7, ...),
 // with a 1% margin for the decimal conversion. Values below `floor` are numerical noise
-// (|S|^2 of channels that are not populated: ~1e-26 in both codes) and compared absolutely.
+// (|S|^2 of channels that are not populated: ~1e-26 in both codes) and compared absolutely. A three-digit exponent
+// without its letter (0.1234567-100) is read as the exponent (fortran_text_with_e). A text without a decimal point
+// (NaN, Infinity, ****) is not a printed real: its tolerance is NaN, so every comparison with it fails.
 inline double printed_text_tolerance(const std::string& text, double floor = 1e-20) {
-  std::string t = text;
-  for (char& c : t)
-    if (c == 'D' || c == 'd') c = 'E';
+  const std::string t = fortran_text_with_e(text);
   const auto e = t.find('E');
   const std::string mantissa = t.substr(0, e);
   const auto point = mantissa.find('.');
+  if (point == std::string::npos) return std::numeric_limits<double>::quiet_NaN();
   const int digits = static_cast<int>(mantissa.size() - point - 1);
   const int exponent = e == std::string::npos ? 0 : std::stoi(t.substr(e + 1));
   return std::max(1.01 * 0.5 * std::pow(10.0, exponent - digits), floor);
