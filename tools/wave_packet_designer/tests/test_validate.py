@@ -169,6 +169,12 @@ VIOLATIONS = [
     ),
     # An infinite dtAna / dtStep passes D4 and D5 (as in the C++) and fails the propagation-time check.
     ({"time_step": 0.5, "dt_analysis": 1.7e308}, "dtAna", "Propagation time must be an integer times dtAna."),
+    # With nStep 0 it passes that check too and stops at the int bound (as the C++: "dtAna / dtStep = inf is above").
+    (
+        {"n_steps": 0, "t_end": 0.0, "time_step": 0.5, "dt_analysis": 1.7e308},
+        "dtAna",
+        "dtAna / dtStep = inf is above 2147483647, the largest number of time steps per analysis the program can hold.",
+    ),
     (
         {"n_steps": 0, "t_end": 0.0, "dt_analysis": 2.5e10},
         "dtAna",

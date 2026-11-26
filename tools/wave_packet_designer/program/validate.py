@@ -142,14 +142,15 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     checks.error_if(rlt(p.dt_analysis, p.time_step), "dtAna", "dtAna < dtStep.")
     # analysis D4 (as validate.cpp, with the ratios themselves), only where the C++ gets that far: it stops at the
     # first error, so after "dtAna < dtStep." it never reports the band below dtStep. An infinite ratio (dtAna near
-    # the largest double) passes D4 and D5 in the C++ and stops at the propagation-time check; here it gets no ratio.
-    analysis_ratio = (
+    # the largest double) passes D4 and D5 in the C++ and stops at the propagation-time check, or with nStep 0 at the
+    # int bound. math.floor(inf) raises, so the checks that truncate the ratio get none here; the int bound reads
+    # dt_ratio, also when infinite.
+    dt_ratio = (
         p.dt_analysis / p.time_step
         if not rle(p.time_step, 0.0) and not rle(p.dt_analysis, 0.0) and not rlt(p.dt_analysis, p.time_step)
         else None
     )
-    if analysis_ratio is not None and not math.isfinite(analysis_ratio):
-        analysis_ratio = None
+    analysis_ratio = dt_ratio if dt_ratio is not None and math.isfinite(dt_ratio) else None
     analysis_steps = math.floor(analysis_ratio) if analysis_ratio is not None else None
     checks.error_if(
         analysis_ratio is not None and analysis_ratio < 1.0,
@@ -205,9 +206,9 @@ def check_propagation_and_analysis(p: InputParameters, z_asymptotic: float, chec
     )
     # analysis D4: the program holds the truncated counts in an int.
     checks.error_if(
-        analysis_ratio is not None and analysis_ratio > INT_MAX,
+        dt_ratio is not None and dt_ratio > INT_MAX,
         "dtAna",
-        f"dtAna / dtStep = {analysis_ratio} is above {INT_MAX}, the largest number of time steps per analysis the "
+        f"dtAna / dtStep = {dt_ratio} is above {INT_MAX}, the largest number of time steps per analysis the "
         "program can hold.",
     )
     checks.error_if(rlt(p.dt_averages, p.dt_analysis), "dtAve", "dtAve < dtAna.")
