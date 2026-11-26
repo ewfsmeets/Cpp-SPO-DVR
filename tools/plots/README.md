@@ -161,6 +161,7 @@ flowchart LR
 |---|---|---|
 | `copies/s_matrix.py` | the S matrix from the BK coefficients: time sums, prefactor, phases, the packet's weight of k0 | `src/analysis/s_matrix.cpp` |
 | `copies/real_compare.py` | the tolerant comparison `rne` | `src/core/real_compare.hpp` |
+| `copies/point_group.py` | the surface point groups: generators, closure, how an operation moves a Cartesian point | `src/symmetry/point_group.cpp`, `surface_operation.cpp` |
 | `readers/errors.py` | `ReadError`, the one error the tool raises for a run it cannot read | — |
 | `readers/tables.py` | averages.dat and the tab-separated tables (read by column name), the gas-phase files | `src/report/propagation_report.cpp`, `analysis_files.cpp`, `sections.cpp` |
 | `readers/binary.py` | bk_coefficients.bin, checkpoint.bin (memory-mapped); the byte layouts as named struct formats | `src/io/checkpoint.cpp` |

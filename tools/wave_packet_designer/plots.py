@@ -1,12 +1,13 @@
 """The figure of an Evaluation: one function per panel, each drawing on a given matplotlib Axes.
 
-Presentation layer (README, "Architecture"): the panels draw what evaluate() computed and compute nothing.
-Used by the window (gui_mpl.py) and by `wave_packet_designer.py check --png`; explanations.py says what each
-panel shows. Style as the repository's validation figures (docs/validation_thesis_fig5_3_dz/scripts/style.py):
-the first three slots of the dataviz reference palette, which pass its colour-vision checks (validated
-2026-11-18). Colour follows the grid (blue the scattering grid, aqua the specular grid, orange r); line styles
-and labels separate everything else, so identity never rests on colour alone. One quantity per axes; values
-below a panel's floor are not drawn (masked), so nothing lies along the bottom axis that looks like data.
+Presentation layer (README, "Architecture"): the panels draw what evaluate() computed and compute nothing. Used by
+the window (gui_mpl.py) and by `wave_packet_designer.py check --png`; explanations.py says what each panel shows.
+Style as the repository's validation figures (docs/validation_thesis_fig5_3_dz/scripts/style.py): the first three
+slots of the dataviz reference palette, which that palette documents as passing its colour-vision checks (its
+validator needs node and was not run here: see style.py). Colour follows the grid (blue the scattering grid, aqua
+the specular grid, orange r); line styles and labels separate everything else, so identity never rests on colour
+alone. One quantity per axes; values below a panel's floor are not drawn (masked), so nothing lies along the bottom
+axis that looks like data.
 """
 
 import textwrap

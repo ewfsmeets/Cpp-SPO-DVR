@@ -343,14 +343,14 @@ A frame (`frames/`) is reduced on the host from exact copies of the Z planes (`z
 backend adds no kernel for it. On the thesis DZ grid a frame costs 0.98 s, most of it the copies of the 160 planes
 (0.73 s measured alone): 0.7 % of the propagation at dtFrames = 25 dtAna (500 a.u.), 4 % at 5 dtAna
 ([performance.md](performance.md#plot-data-on-the-thesis-dz-grid-2026-11-20)). The frames of the same ψ are bitwise
-the CPU's (`CudaBackend.FrameOfTheSameWaveIsTheCpus`, also with every `FrameExtras` extra). The extras are host
-work on the same copies, 6.4 s per frame on DZ with all five, so with the GPU backend they weigh more (25 % of the
-propagation at 5 dtAna, about 5 % at 25 dtAna). The norm budget (`NormBudget`) adds one `block_densities()` per
-analysis step, 0.067 s on DZ (1.2 %). The energy-resolved sums (`EnergyResolvedSites`) download one site's column of
-ψ per site and analysis step (`site_column`: one contiguous copy, the device layout keeps an (x, y) point's (Z, r,
-rotation) column together; bitwise the CPU's on the same ψ, `CudaBackend.CopiesAreExactAndDensitiesMatchTheCpu`) and
-sum on the host: 0.38 s for two pairs in 25 analysis steps on DZ (0.27 %). Without these keys the loop is unchanged
-(`CudaTimeLoopCalls.*`).
+the CPU's (`CudaBackend.FrameOfTheSameWaveIsTheCpus`, also with every `FrameExtras` extra). The extras are host work
+on the same copies, 5.7 s per frame on DZ with all five (2026-11-25; 6.4 s on 2026-11-20, when they made up most of
+a GPU frame's 25 % of the propagation at 5 dtAna, about 5 % at 25 dtAna), so with the GPU backend they weigh more.
+The norm budget (`NormBudget`) adds one `block_densities()` per analysis step, 0.067 s on DZ (1.2 %). The
+energy-resolved sums (`EnergyResolvedSites`) download one site's column of ψ per site and analysis step
+(`site_column`: one contiguous copy, the device layout keeps an (x, y) point's (Z, r, rotation) column together;
+bitwise the CPU's on the same ψ, `CudaBackend.CopiesAreExactAndDensitiesMatchTheCpu`) and sum on the host: 0.38 s
+for two pairs in 25 analysis steps on DZ (0.27 %). Without these keys the loop is unchanged (`CudaTimeLoopCalls.*`).
 
 ### Fast build (`build-cuda-fast`: FMA in the kernels)
 

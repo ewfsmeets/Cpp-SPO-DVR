@@ -210,17 +210,22 @@ the run ("Frames (dtFrames)") and projects it at set-up (the PLOT DATA line, fro
 | at dtFrames = 25 dtAna (500 a.u.: 200 steps between frames) | 0.02 % | 0.7 % |
 | propagation time of the run (200 steps) | 901.9 s | 147.1 s |
 
-`FrameExtras` (every extra, a run of its own, the same grid, steps and frames) add host work to each frame, the
-same on both backends (seconds per frame; the PLOT DATA line projects them from these per-value costs):
+`FrameExtras` (all five in one run, the same grid, steps and frames) add host work to each frame, the same on
+both backends. Seconds per frame as the program prints them, measured again on 2026-11-25 (the same input, two CPU
+runs, their mean) after the angular extra began to transform the (x, y) columns in cache-sized passes:
 
-| angular | diffraction | vibration | rotation_moments | momentum | all five |
-|---|---|---|---|---|---|
-| 1.50 s | 0.46 s | 2.12 s (nR overlaps per value) | 0.35 s | 1.96 s (the FFTs on one thread) | 6.4 s |
+| measured | angular | diffraction | vibration | rotation_moments | momentum | all five |
+|---|---|---|---|---|---|---|
+| 2026-11-20 | 1.50 s | 0.46 s | 2.12 s (nR overlaps per value) | 0.35 s | 1.96 s (the FFTs on one thread) | 6.4 s |
+| 2026-11-25 | 0.84 s | 0.48 s | 2.12 s | 0.36 s | 1.91 s | 5.7 s |
 
-With all five a frame took 7.16 s on the CPU (4.6 % of the propagation at dtFrames = 5 dtAna, about 1 % at 25
-dtAna) and 8.47 s with the GPU backend (25 %, about 5 % at 25 dtAna). The extras of the CPU's and the GPU's run
-differ by at most 1.2e-13 of each record's largest value (the propagation's drift; on the same ψ they are bitwise
-equal: `CudaBackend.FrameOfTheSameWaveIsTheCpus`), the moments by 4e-19 of the frame's probability.
+The PLOT DATA line projects them from per-value costs: the angular extra's from 2026-11-25, the others from
+2026-11-20 (their code is unchanged and the two dates agree within 5 %). With all five a frame took 7.16 s on the
+CPU on 2026-11-20 (4.6 % of the propagation at dtFrames = 5 dtAna, about 1 % at 25 dtAna) and 8.47 s with the GPU
+backend (25 %, about 5 % at 25 dtAna); 6.43 and 6.47 s on the CPU on 2026-11-25 (the GPU was not measured then). The
+extras of the CPU's and the GPU's run differ by at most 1.2e-13 of each record's largest value (the propagation's
+drift; on the same ψ they are bitwise equal: `CudaBackend.FrameOfTheSameWaveIsTheCpus`), the moments by 4e-19 of the
+frame's probability.
 
 The norm budget (`NormBudget`, measured in a run of its own, the same grid and steps): a block-density reduction
 after every analysis step (26 in this run; at the averages rows they are the averages' own), 0.586 s each on the CPU

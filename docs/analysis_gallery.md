@@ -902,6 +902,10 @@ uv run tools/plots/view.py runs/thesis_fig5_3_dz_plotting_cuda_fast
 | `EnergyResolvedSites` + `EnergyResolvedEnergies` | `energy_resolved/` | stationary states at chosen energies and sites | 766 MiB | 58 s in all (0.4 %) |
 | `alsoAnalysis` | `fine_analysis/` | the fine analysis after the run | 112 MiB | 0.8 s |
 
+These are the times of this run (2026-11-20). The angular `FrameExtras` extra has since become faster: on the
+thesis DZ grid with all five on, 0.84 s instead of 1.50 s per frame on the CPU (2026-11-25,
+[performance.md](performance.md#plot-data-on-the-thesis-dz-grid-2026-11-20)).
+
 - **Run time:** with all keys the propagation took 4.0 h (2.05 s per step), against 1.3 h (0.66 s per
   step) for the same input without them, on the same fast build. (The README's 1.4 h is the validated
   default build.)
