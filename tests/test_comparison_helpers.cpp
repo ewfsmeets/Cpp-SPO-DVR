@@ -951,10 +951,10 @@ TEST(GateComparisons, Fort25ReadsAThreeDigitExponent) {
   EXPECT_EQ(printed_text_tolerance(fortran_text_with_e("0.100000-119"), 0.0), 1.01 * 0.5 * std::pow(10.0, -125));
 }
 
-// printed_text_tolerance reads every exponent form gfortran prints: a three-digit exponent without its letter (it
-// read that as exponent 0 before: half a unit of 1e-7 instead of 1e-107), E, D, none; any other text (NaN, Infinity,
-// ****, a two-digit exponent without its letter, a lowercase e) gets a NaN tolerance, so every comparison with it
-// fails.
+// printed_text_tolerance reads every exponent form gfortran prints: a three-digit exponent without its letter
+// (before, it took the whole text as the mantissa, 11 digits after the point, with exponent 0: half a unit of 1e-11
+// instead of 1e-107), E, D, none; any other text (NaN, Infinity, ****, a two-digit exponent without its letter, a
+// lowercase e) gets a NaN tolerance, so every comparison with it fails.
 TEST(GateComparisons, PrintedToleranceReadsEveryExponentForm) {
   EXPECT_DOUBLE_EQ(printed_text_tolerance("0.1234567-100", 0.0), 5.05e-108);
   EXPECT_DOUBLE_EQ(printed_text_tolerance("0.1234567+100", 0.0), 5.05e92);

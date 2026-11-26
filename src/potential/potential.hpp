@@ -43,8 +43,9 @@ class Potential {
   // - iz and ir are hints for grid-based PESs only (no ported PES uses them). The 6D grid passes its own
   //   indices (iz < nz_potential); the gas phase iz = nz_potential, one past the potential's Z grid; the
   //   symmetry self-check the Z and r grid indices, with x, y and phi off the grid; the 2D cut
-  //   (write2DPES) scattering-grid indices, so iz up to nZ - 1, beyond nz_potential; the SCM edge
-  //   diagnostic 0, 0.
+  //   (write2DPES) scattering-grid indices, so iz up to nZ - 1, beyond nz_potential; the SCM set-up
+  //   report the 6D grid's indices in its hole scans, iz = nz_potential (as the gas phase) at zasymp, and
+  //   0, 0 in its edge diagnostic.
   // - For a heteronuclear PES: which atom sits at +r/2 along (theta, phi) is the PES's choice (Persson
   //   and the CRP adapter: the second; Dai-Light: the first; for H2 it does not matter).
   [[nodiscard]] virtual double value(double x, double y, double z, double r, double theta, double phi, int iz,

@@ -1161,7 +1161,8 @@ INSTANTIATE_TEST_SUITE_P(
         Violation{"AnalysisD5RatioJustBelowWhole", [](Json& j) { j["dtStep"] = 0.8; j["nStep"] = 6; j["tEnd"] = 4.8; j["dtAna"] = 2.4; j["dtAve"] = 2.4; }, "dtAna", "dtAna = 2.4 is not a whole multiple of dtStep = 0.8: dtAna / dtStep = 2.9999999999999996, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25."},
         Violation{"AnalysisD5DecimalRatio", [](Json& j) { j["dtStep"] = 0.1; j["nStep"] = 120; j["tEnd"] = 12.0; j["dtAna"] = 1.2; j["dtAve"] = 1.2; }, "dtAna", "dtAna / dtStep = 11.999999999999998, which the program truncates to 11 time steps"},
         Violation{"AnalysisD5RatioHalf", [](Json& j) { j["dtAna"] = 5.0; j["nStep"] = 2805; j["tEnd"] = 5610.0; }, "dtAna", "dtAna / dtStep = 2.5, which the program truncates to 2 time steps"},
-        // D5's tolerance from above: 2.2e-12 relative above 2 (its twin 1.8e-12 above is valid), and 5e-10 above.
+        // D5's tolerance from above: a ratio 2.2e-12 above 2, 1.1e-12 relative (its twin 1.8e-12 above, 0.9e-12
+        // relative, is valid), and 1e-9 above (5e-10 relative).
         Violation{"AnalysisD5RatioJustAboveTheTolerance", [](Json& j) { j["dtStep"] = 1e-3; j["nStep"] = 1000; j["tEnd"] = 1.0; j["dtAna"] = 0.0020000000000022; j["dtAve"] = 0.0020000000000022; }, "dtAna", "dtAna / dtStep = 2.0000000000022, which the program truncates to 2 time steps"},
         Violation{"AnalysisD5RatioAboveTheTolerance", [](Json& j) { j["dtStep"] = 1e-3; j["nStep"] = 2000000001; j["tEnd"] = 2000000.001; j["dtAna"] = 0.002000000001; j["dtAve"] = 0.002000000001; }, "dtAna", "dtAna / dtStep = 2.000000001, which the program truncates to 2 time steps"},
         Violation{"AnalysisD5RatioBelowHalf", [](Json& j) { j["dtAna"] = 4.8; j["dtAve"] = 96.0; j["nStep"] = 7200; j["tEnd"] = 14400.0; }, "dtAna", "dtAna / dtStep = 2.4, which the program truncates to 2 time steps"},

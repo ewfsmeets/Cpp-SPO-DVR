@@ -5,8 +5,10 @@ Colours: the first three slots of the dataviz reference palette (blue, orange, a
 there to pass the all-pairs colour-vision checks), plus violet for the third code pair and green
 for the strict-build GPU run (added 2026-11-08). Identity
 never rests on colour alone: every series also has its own line style and marker, a legend, and
-direct labels where they fit. (The palette validator needs node, which this machine lacks; the
-slot choice follows the documented validation.)"""
+direct labels where they fit. (The palette's validator, validate_palette.py in light mode with all
+pairs, run on the three slots on 2026-11-26: the colour-vision checks pass; aqua's contrast against
+white is 2.82:1, below 3:1, where the validator asks for a second cue: every series has its line
+style, marker and label. Violet and green were not run through it.)"""
 
 import matplotlib
 

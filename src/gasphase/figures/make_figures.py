@@ -30,7 +30,7 @@ from matplotlib.lines import Line2D  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 
-# Colours and rc settings copied from tools/plots/style.py (INK ... AQUA, DPI) and the wave-packet designer's
+# Colours and rc settings copied from tools/plots/style.py (INK ... ORANGE, DPI) and the wave-packet designer's
 # apply_style (tools/wave_packet_designer/plots.py); copied, not imported, so that this script stands alone.
 INK = "#0b0b0b"
 INK_2 = "#52514e"

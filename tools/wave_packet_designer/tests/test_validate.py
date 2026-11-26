@@ -142,7 +142,8 @@ VIOLATIONS = [
         "dtAna / dtStep = 11.999999999999998, which the program truncates to 11 time steps per analysis",
     ),
     ({"dt_analysis": 21.0}, "dtAna", "dtAna / dtStep = 8.4, which the program truncates to 8 time steps"),
-    # D5's relative tolerance from above (2.2e-12 relative above 2; 1.8e-12 is valid).
+    # D5's relative tolerance from above: a ratio 2.2e-12 above 2 (1.1e-12 relative) is refused, its twin 1.8e-12 above
+    # (0.9e-12 relative) is valid.
     (
         {
             "time_step": 1e-3,
@@ -196,7 +197,7 @@ def test_limits_just_inside_are_valid() -> None:
     one_step = {"dt_analysis": 20.0000000000005, "dt_averages": 20.0000000000005, "n_steps": 8, "t_end": 20.0}
     check_equal(findings_of(one_step), [], f"findings of {one_step}")
     # analysis D5: a whole ratio that is exactly 3.0 in double (0.9 / 0.3), although 3 * 0.3 is 0.8999999999999999;
-    # and 1.8e-12 relative above 2, inside the relative 1e-12 per unit of the ratio.
+    # and a ratio 1.8e-12 above 2 (0.9e-12 relative), inside the relative 1e-12 per unit of the ratio.
     for allowed in (
         {"time_step": 0.3, "dt_analysis": 0.9, "dt_averages": 9.0, "n_steps": 3000, "t_end": 900.0},
         {

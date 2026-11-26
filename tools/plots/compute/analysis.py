@@ -42,8 +42,8 @@ def analysis_energies(info: RunInfo) -> AnalysisEnergies:
 
 def analysis_time_step_au(info: RunInfo) -> float:
     """The time between two BK records, as the program's S matrix takes it: steps per analysis * dtStep
-    (src/analysis/s_matrix.cpp; equal to dtAna within 1e-12 since the program refuses other dtAna, but not
-    always bitwise: 3 * 0.3 is 0.8999999999999999)."""
+    (src/analysis/s_matrix.cpp; equal to dtAna within a relative 1e-12 since the program refuses other dtAna, but
+    not always bitwise: 3 * 0.3 is 0.8999999999999999)."""
     return info.data["times"]["steps_per_analysis"] * info.data["times"]["dt_step"]
 
 
