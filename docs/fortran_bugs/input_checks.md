@@ -19,7 +19,7 @@ dtAna not a whole multiple of dtStep (analysis D5, open in the Fortran), and thr
 (input Q1), `nPhisOptimal` with a C3v or C3 potential (input Q2), and the absolute tolerance of the time checks
 (input Q3).
 
-**Status (2026-11-24):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
+**Status (2026-11-25):** upstream fixed these checks in r1714–r1719 (flux Q1 in r1714, absorber D1 in r1718,
 analysis D1 in r1715–r1719, flux Q2 in r1719; low-Z D2 leaves the absorber off since r1717 instead of producing
 NaN), and the C++ follows the fixed checks. The reference of the port is r1727 since 2026-11-23, so it has them.
 Analysis D4 and D5 are still open in the Fortran (r1727 included); the C++ rejects those inputs. Each section
@@ -660,8 +660,9 @@ The C++ before this check ran it too ("Steps (total / per analysis) .. 10 / 2").
   = 2.9999999999999996, 1.2 / 0.1 = 11.999999999999998, dtAna 5 or 4.8 with dtStep 2), in every run mode, so
   nanspo · dtStep equals dtAna to a relative 1e-12 for every accepted input (0.9 / 0.3 = 3 exactly in double,
   although 3 · 0.3 is 0.8999999999999999: accepted). The tolerance is relative because an absolute 1e-12 on dtAna, as
-  the Fortran's comparison operators use, would accept a ratio of 2.45 at dtStep 1.1e-12 and refuse whole ratios
-  above dtAna ≈ 8192, where it is below the spacing of doubles (13107.4 / 0.1 = 131074 exactly):
+  the Fortran's comparison operators use, would accept a ratio of 2.45 at dtStep 1.1e-12 and, above dtAna ≈ 8192,
+  where it is below the spacing of doubles, refuse a whole ratio whenever the product does not round to dtAna
+  (13107.4 / 0.1 = 131074 exactly):
 
   ```text
   Input error: dtAna: dtAna = 5 is not a whole multiple of dtStep = 2: dtAna / dtStep = 2.5, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25.

@@ -34,8 +34,8 @@ total molecular mass (H₂: 3674.2 mₑ), μ the reduced mass.
 
 ### Layout (DZ case, `thesis_fig5_3_dz`)
 
-Both charts use a numeric axis: **1 s on the axis = 1 bohr**. Bars are ranges; the diamonds in the first row
-are the input positions.
+Both charts use a numeric axis: **1 s on the axis = 1 bohr**. Bars are ranges; the diamonds in the first section
+(Input positions) are the input positions.
 
 ```mermaid
 gantt

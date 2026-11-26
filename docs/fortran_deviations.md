@@ -234,8 +234,8 @@ differences are in [validation.md](validation.md).
   The C++ refuses a ratio that exceeds its truncation by more than a relative 1e-12 (`validate_input`): 2.4 / 0.8,
   2.5 and 2.4 are refused, 0.9 / 0.3 (exactly 3.0) is accepted, so nanspo · dtStep equals dtAna to a relative 1e-12
   for every accepted input. Relative, not an absolute 1e-12 on dtAna as the Fortran's comparison operators use, which
-  would accept a ratio of 2.45 at dtStep 1.1e-12 and refuse whole ratios above dtAna ≈ 8192, where one ulp exceeds
-  1e-12 (13107.4 / 0.1 = 131074 exactly). The truncation
+  would accept a ratio of 2.45 at dtStep 1.1e-12 and, above dtAna ≈ 8192 where one ulp exceeds 1e-12, refuse a whole
+  ratio whenever the product does not round to dtAna (13107.4 / 0.1 = 131074 exactly). The truncation
   itself is kept. It replaces the weaker check that applied only with dtFrames or NormBudget. A BK or restart file of
   an earlier run with such a ratio can no longer be read (an onlyAnalysis run or a restart gives the same input
   error). Details and the demonstration run:
