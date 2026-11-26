@@ -14,6 +14,7 @@
 
 namespace spodvr {
 
+// Writes norm_budget/: the manifest at construction, then one record per analysis window.
 class NormBudgetFiles {
  public:
   NormBudgetFiles(const std::filesystem::path& output_dir, const Config& config,

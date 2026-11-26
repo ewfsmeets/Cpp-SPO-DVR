@@ -23,6 +23,9 @@ struct AnalysisEnergies {
   [[nodiscard]] int size() const { return static_cast<int>(collision.size()); }
 };
 
+// The NrOfEs analysis energies, EMinWP + EParallel to EMaxWP + EParallel in equal steps, as collision and total
+// energies (eV) and total energies (hartree).
+// Fortran: Analyzor.f90 SetupAnalysis (ensctr, enscev, enscau)
 [[nodiscard]] AnalysisEnergies make_analysis_energies(const Config& config, const GasPhase& gas);
 
 // S-matrix element, probability and phase of every analysed state at one energy, plus the
@@ -66,6 +69,8 @@ void combine_s_matrix(EnergyResult& e, const AnalysisBasis& basis, const GasPhas
 [[nodiscard]] double measurement_line(const Config& config, const AnalysisBasis& basis, int is,
                                       std::optional<double> specular_line);
 
+// The results of an analysis, one EnergyResult per energy: at the analysis energies (on the fly, interpolated
+// fine analysis) or at the fine analysis grid points.
 struct ScatteringResults {
   std::vector<EnergyResult> energies;
 };

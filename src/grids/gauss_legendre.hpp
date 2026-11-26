@@ -4,6 +4,7 @@
 
 namespace spodvr {
 
+// The roots and weights of a Gauss quadrature (gauss_associated_legendre).
 struct QuadratureRule {
   std::vector<double> roots;
   std::vector<double> weights;

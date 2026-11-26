@@ -18,10 +18,12 @@
 
 namespace spodvr {
 
+// Writes frames/: the manifest at construction, then one record per frame.
 class FrameFiles {
  public:
   FrameFiles(const std::filesystem::path& output_dir, const Config& config, const SpatialGrids& grids,
              const AngularGrid& angular, const RotationalBasis& basis, const FrameLayout& layout);
+  // The frame at `time`: its record and the Z index of the specular analysis surface then.
   void append(double time, const FrameRecord& record, int surface_index);
 
  private:

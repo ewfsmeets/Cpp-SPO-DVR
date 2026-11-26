@@ -18,6 +18,7 @@
 
 namespace spodvr {
 
+// Writes energy_resolved/: the manifest at construction, then the partial and the final sums.
 class EnergyResolvedFiles {
  public:
   // Creates energy_resolved/ in output_dir with its manifest (the sites and their s2s factors, the energies, the

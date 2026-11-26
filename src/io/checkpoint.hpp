@@ -26,6 +26,7 @@ namespace spodvr {
 void write_checkpoint(const std::filesystem::path& path, const Config& config, double time, const WavePacket& psi,
                       const AnalysisSurfaceState& surface);
 
+// What a checkpoint holds besides psi: the time at which it was written and the analysis surface state.
 struct CheckpointInfo {
   double time;
   AnalysisSurfaceState surface;

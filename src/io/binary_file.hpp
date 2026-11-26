@@ -65,6 +65,7 @@ class BinaryWriter {
   std::ofstream file_;
 };
 
+// Raw binary input, the counterpart of BinaryWriter: a short or failed read is a CheckpointError naming the file.
 class BinaryReader {
  public:
   explicit BinaryReader(const std::filesystem::path& path) : path_(path), file_(path, std::ios::binary) {

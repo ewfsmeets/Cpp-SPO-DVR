@@ -68,6 +68,8 @@ struct InitialStateProperties {
   double r_mean = 0.0;
 };
 
+// The gas-phase (asymptotic) rovibrational states of the molecule, the open and analysed levels and the initial
+// state's properties. Fortran: the values GasPhase.f90 SetupAsympWF computes
 struct GasPhase {
   explicit GasPhase(RovibrationalStates solved_states) : states(std::move(solved_states)) {}
 

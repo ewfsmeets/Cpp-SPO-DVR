@@ -119,6 +119,8 @@ struct SkippedEnergy {
   std::string reason;
 };
 
+// The fine analysis of one BK time series: its energy grid, the S-matrix results at the grid points and
+// interpolated to the analysis energies, and what was skipped. Fortran: StateToStateProbs (nread = 2)
 struct FineAnalysisResults {
   FineAnalysisGrid grid;
   ScatteringResults spectrum;      // at the grid points

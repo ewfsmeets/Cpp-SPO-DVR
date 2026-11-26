@@ -11,6 +11,7 @@
 
 namespace spodvr {
 
+// The kinetic factors of a whole time step dt or of half of one, dt / 2 (the first and last T of an analysis step).
 enum class TimeStep { Full, Half };
 
 // Shape of the scattering wave function: (irot, iy + ny*ix, ir + nr*iz).

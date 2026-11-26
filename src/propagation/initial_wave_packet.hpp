@@ -20,6 +20,7 @@ struct InitialWavePacketInfo {
   double norm_inside = 0.0;        // norm between i_low and i_high (must be > 1 - tolsp)
 };
 
+// The initial wave packet on the specular grid and its diagnostics.
 struct InitialWavePacket {
   SpecularWave specular;  // the scattering grid part starts at zero
   InitialWavePacketInfo info;

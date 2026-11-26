@@ -43,6 +43,7 @@ class FortranRecord {
   std::vector<std::byte> bytes_;
 };
 
+// Writes records to a gfortran sequential unformatted file, split into subrecords above max_subrecord bytes.
 class FortranRecordWriter {
  public:
   static constexpr std::int64_t default_max_subrecord = 2147483639;  // gfortran default
@@ -94,6 +95,7 @@ class FortranRecordParser {
   std::size_t position_ = 0;
 };
 
+// Reads the records of a gfortran sequential unformatted file, joining their subrecords.
 class FortranRecordReader {
  public:
   explicit FortranRecordReader(const std::filesystem::path& path) : file_(path) {}
