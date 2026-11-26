@@ -72,13 +72,13 @@ serially (no `-j`), with `OMP_NUM_THREADS` set to the number of physical cores; 
 side by side (`-j 8`): each runs with one thread (`OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS` and `MKL_NUM_THREADS` set
 to 1 by `add_pytest_test`, so numpy's BLAS does not start 8 threads in each) and its own matplotlib cache, and the
 plot fixtures' writer (`PlotRuns.Fixtures`, 8 threads, labelled `python` too) reserves 6 slots (`PROCESSORS 6`).
-Measured 2026-11-24: the 97 Python tests 474 s with `-j 8` (their single times add up to 766 s).
+Measured 2026-11-26: the 97 Python tests 460 s with `-j 8` (their single times add up to 742 s).
 
 - **Quick tier:** `ctest --test-dir build -E 'RegressionPropagation|PlotRuns'` (or in two parts:
   `-L python -E PlotRuns -j 8`, then `-LE python -E RegressionPropagation`) runs everything but
   the propagation gates (gates 3 and 4 against the Fortran, 24–91 s each; the regular expression
   also leaves out their GPU twins `CudaRegressionPropagation.*`) and the plot tool's runs and the tests
-  that read them (`PlotRuns.*`, about 330 s for the fixture runs, measured 2026-11-24). Run it while
+  that read them (`PlotRuns.*`, about 326 s for the fixture runs, measured 2026-11-26). Run it while
   working on a change; run the full suite before every commit that touches `src/`, `tests/`, the
   build files or reference data (the quick tier is enough for a commit of docs or Python tools only; for a change to
   `tools/plots` add `ctest -R '^(PlotRuns|Plots)\.'`), and always before merging into `main`.
@@ -146,7 +146,7 @@ ctest --test-dir build -R Gate3                   # gates 3 and 4 (propagation, 
 ```
 
 - The last line runs one test program directly (GoogleTest's own filter).
-- The wave-packet designer's tests take about 47 s (`ctest -R WavePacketDesigner`, 2026-11-19).
+- The wave-packet designer's tests take about 47 s (`ctest -R WavePacketDesigner`, 2026-11-26).
 - **Suites run as one test:** ctest runs most GoogleTest cases as tests of their own, but five
   suites whose cases share an expensive set-up (a function-local static: program runs, potential
   grids) run as one test each, in one process, so the set-up is computed once:
