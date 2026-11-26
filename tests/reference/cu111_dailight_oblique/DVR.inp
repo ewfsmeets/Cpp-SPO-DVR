@@ -1,7 +1,9 @@
 # Oblique-incidence Dai-Light H2/Cu(111) case with J > 0 (gates 1-5, default ctest): ../cu111_dailight_short/DVR.inp
 # with JIn 1, MJIn -1, JMax 3, MJMax 3 (the odd-parity angular grid), EParallel 0.1 eV and PhiParallel 17 deg (the
 # momentum shift, the oblique analysis channels), and tEnd/nStep 2100 a.u., 1050 steps (the specular analysis line
-# fixes at t = 1610 a.u. and the run stops 490 a.u. later: a code test of these paths, not a converged S matrix).
+# fixes at Z = 10.88 bohr in both codes: the C++ at t = 1610 a.u.; the Fortran prints no time, only the line,
+# between its 1600 and 1700 a.u. averages. The run stops 490 a.u. after the C++'s fix: a code test of these paths,
+# not a converged S matrix).
 # The C++ equivalent of this file is input.json in this directory; keep both in sync.
 
 Title       : STRING  : "Dai-Light H2/Cu(111) oblique incidence test (JIn 1, MJIn -1, EParallel 0.1 eV)";
