@@ -659,9 +659,9 @@ The C++ before this check ran it too ("Steps (total / per analysis) .. 10 / 2").
 - `validate_input` refuses dtAna when dtAna / dtStep exceeds its truncation by more than a relative 1e-12 (2.4 / 0.8
   = 2.9999999999999996, 1.2 / 0.1 = 11.999999999999998, dtAna 5 or 4.8 with dtStep 2), in every run mode, so
   nanspo · dtStep equals dtAna to a relative 1e-12 for every accepted input (0.9 / 0.3 = 3 exactly in double,
-  although 3 · 0.3 is 0.8999999999999999: accepted). The tolerance is relative because the Fortran's absolute 1e-12
-  on dtAna accepts a ratio of 2.45 at dtStep 1.1e-12 and refuses whole ratios above dtAna ≈ 4096, where it is below
-  the spacing of doubles (13107.4 / 0.1 = 131074 exactly):
+  although 3 · 0.3 is 0.8999999999999999: accepted). The tolerance is relative because an absolute 1e-12 on dtAna, as
+  the Fortran's comparison operators use, would accept a ratio of 2.45 at dtStep 1.1e-12 and refuse whole ratios
+  above dtAna ≈ 8192, where it is below the spacing of doubles (13107.4 / 0.1 = 131074 exactly):
 
   ```text
   Input error: dtAna: dtAna = 5 is not a whole multiple of dtStep = 2: dtAna / dtStep = 2.5, which the program truncates to 2 time steps per analysis. Use a dtStep and dtAna whose ratio is whole and exact in binary, e.g. dtStep 0.125 or 0.25.

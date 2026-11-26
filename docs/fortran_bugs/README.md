@@ -9,7 +9,7 @@ wrong, a demonstration with an unmodified Fortran build and what the C++ does. T
 | [physics_q1_switching.md](physics_q1_switching.md) | physics Q1: with `UseSwitching` the asymptotic potential is the PES at ZmaxSwitch, not the gas phase | open |
 | [physics_q2_restart.md](physics_q2_restart.md) | physics Q2: a restart is not checked against the run it continues (dtAna, tStart, analysis basis) | open |
 | [physics_q3_morphing.md](physics_q3_morphing.md) | physics Q3: PES morphing changes V where nothing is morphed, compounds `cons`, runs out of bounds with `UseSymmetry` | open |
-| [input_checks.md](input_checks.md) | input checks that are wrong: flux Q1/Q2, absorber D1, low-Z D1–D4, analysis D1, analysis D4, input Q1–Q3 | most fixed in r1714–r1719; analysis D4 and input Q1–Q3 open |
+| [input_checks.md](input_checks.md) | input checks that are wrong: flux Q1/Q2, absorber D1, low-Z D1–D4, analysis D1, analysis D4, analysis D5, input Q1–Q3 | most fixed in r1714–r1719; analysis D4, analysis D5 and input Q1–Q3 open |
 | [fine_analysis.md](fine_analysis.md) | the interpolation of the fine analysis (ATAN instead of ATAN2, signs, `s1_real`) | `s1_real` fixed in r1713; the rest open |
 | [elastic_phase.md](elastic_phase.md) | the phase of the initial state's S-matrix elements referred to the wrong Z (analysis D2) | fixed on the fly in r1720; open in the fine analysis |
 | [analysis_limits.md](analysis_limits.md) | the highest analysed j for odd JIn, and VIn against VAna | fixed in r1726/r1727 |
